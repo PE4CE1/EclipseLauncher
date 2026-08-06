@@ -1,32 +1,54 @@
 <img width="1919" height="1030" alt="Screenshot 2026-08-06 024927" src="https://github.com/user-attachments/assets/8b63598e-8cb8-4af2-bc42-718ef1d79841" />
-# 🌑 Eclipse Launcher
+💡 Why Eclipse Launcher?
+If you play games on PC, you know the drill: opening five different launchers just to see what games you own, dealing with bloated interfaces, slow boot times, and store pages shoved in your face before you can even hit "Play".
 
-A sleek, modern, and lightweight open-source PC game launcher designed for efficiency and aesthetic minimalism.
+Eclipse Launcher was created to fix that.
 
----
+It brings your entire game collection — from Steam, Epic, to standalone .exe files — into one lightweight, ultra-smooth interface. No clutter, no unnecessary background processes eating your RAM, just your library ready to launch.
 
-## 🚀 About Eclipse Launcher
-Eclipse Launcher brings all your games into a single, clean hub—focusing on performance, rich Discord integration, and intuitive library management.
+🔥 Features at a Glance
+🎮 Automated Game Detection
+Multi-Platform Scanner: Automatically detects installed games from Steam and Epic Games, plus any custom .exe added manually.
+Smart Metadata Matching: Dynamically fetches official logos, high-res hero banners, background screenshots, and video trailers directly from SteamDB & Steam Store APIs.
+💬 Custom Discord Rich Presence
+Shows your friends what you're actually playing in real time.
+Integrated Idle State: Automatically updates to "Browsing Library" when you're hanging out in the launcher menu.
+Direct Download Button: Friends viewing your status on Discord can click a direct link to download Eclipse Launcher for themselves.
+⏱️ Playtime & Session Tracking
+Accurately measures played time per game and updates your personal total play duration.
+Automatically handles background tracking — starts when a game opens and pauses the moment it closes.
+📥 Built-in Download Manager
+Integrated HTTP and WebTorrent download handlers for direct game files and updates without needing extra tools.
+🎨 Clean, Fast UI
+Dark glassmorphism aesthetic built with smooth micro-animations.
+Fast startup and low memory footprint compared to traditional launchers.
+Convenient navigation history with full support for mouse side-buttons (Back/Forward).
+👤 About the Developer
+Hey! I’m PE4CE1, a solo developer who got tired of fragmented game libraries and heavy desktop clients.
 
----
+Eclipse Launcher started as a personal passion project to build the ultimate, minimal PC launcher. Every feature in this app — from the smooth UI transitions to the custom Discord RPC — is built from scratch with focus on what actually improves the daily gaming experience.
 
-## ✨ Key Features
-- 🎮 Unified Library & Auto-Scanner (Steam, Epic, Custom .exe)
-- ⏱️ Real-time Playtime Tracking
-- 💬 Custom Discord Rich Presence (Active Games, Idle States & Download Buttons)
-- 🎨 Premium Minimalist Glassmorphism UI
-- 📥 Integrated HTTP & Torrent Download Engine
-- 🖼️ Rich Game Media Galleries (Logos, Trailers, Screenshots)
-- ⚡ Auto Updater via GitHub Releases
+Because this is a solo project, your feedback matters a lot. If you find bugs, have feature ideas, or want to contribute, feel free to open an issue or jump into discussions!
 
----
+🛠️ Tech Stack
+Desktop Core: Electron
+Frontend: React 18 + TypeScript
+Styling & Motion: TailwindCSS + Framer Motion
+Build System: Vite & Electron Builder
+📦 Download & Installation
+Go to the Releases Page.
+Download the latest installer (Eclipse Launcher Setup 1.0.5.exe).
+Run the installer and you're good to go!
+🗺️ Roadmap & Future Plans
+ Custom community theme support
+ Direct cloud save backup integration
+ Game tagging and custom category filters
+ Achievement sync support for additional platforms
+🤝 Feedback & Support
+Found a bug or have an idea?
 
-## 👤 About the Developer
-Independently designed and developed by a solo developer (`PE4CE1`). Built out of a passion for clean UI design and seamless gaming UX.
-
----
-
-## 🛠️ Built With
-Electron, React, TypeScript, TailwindCSS, Framer Motion & Vite.
+Open an Issue on GitHub.
+Contributions and PRs are always welcome!
+Crafted with ❤️ by PE4CE1
 <img width="1915" height="1028" alt="Screenshot 2026-08-06 025148" src="https://github.com/user-attachments/assets/409249d7-3148-4e66-8f5a-7579e8c9597b" />
 
