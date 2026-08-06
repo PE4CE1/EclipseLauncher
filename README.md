@@ -13,13 +13,13 @@ Tired of opening five different sluggish launchers just to play a game? **Eclips
 
 ## ✨ Features
 
-- 🎮 **Unified Library**: Automatic scanner for Steam and Epic Games, plus manual `.exe` support.
-- ⏱️ **Playtime Tracking**: Tracks your sessions in real-time and monitors total play hours.
-- 💬 **Discord Rich Presence**: Displays your active game or "Idle" state on Discord, including a direct download button for your friends.
-- 🎨 **Minimalist UI**: Smooth dark-glassmorphism theme with fast load times and low RAM usage.
-- 📥 **Built-in Downloads**: Integrated HTTP and WebTorrent download manager.
-- 🖼️ **Rich Media**: Dynamically fetches official steam banners, screenshots, and game trailers.
-- ⚡ **Auto-Updater**: Automatic update support via GitHub Releases.
+-  **Unified Library**: Automatic scanner for Steam and Epic Games, plus manual `.exe` support.
+-  **Playtime Tracking**: Tracks your sessions in real-time and monitors total play hours.
+-  **Discord Rich Presence**: Displays your active game or "Idle" state on Discord, including a direct download button for your friends.
+-  **Minimalist UI**: Smooth dark-glassmorphism theme with fast load times and low RAM usage.
+-  **Built-in Downloads**: Integrated HTTP and WebTorrent download manager.
+-  **Rich Media**: Dynamically fetches official steam banners, screenshots, and game trailers.
+-  **Auto-Updater**: Automatic update support via GitHub Releases.
 
 ---
 
@@ -37,7 +37,7 @@ Built with **Electron**, **React 18**, **TypeScript**, **TailwindCSS**, and **Vi
 
 ---
 
-## 📥 Download
+##  Download
 
 Download the latest version from the [Releases Page](https://github.com/PE4CE1/EclipseLauncher/releases).
 <img width="1915" height="1028" alt="Screenshot 2026-08-06 025148" src="https://github.com/user-attachments/assets/409249d7-3148-4e66-8f5a-7579e8c9597b" />
