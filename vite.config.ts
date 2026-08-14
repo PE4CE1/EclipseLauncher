@@ -13,7 +13,6 @@ export default defineConfig({
         // Main process
         entry: 'electron/main.ts',
         onstart(options) {
-          // Let the plugin handle launching Electron in dev mode
           options.startup()
         },
         vite: {
@@ -23,7 +22,6 @@ export default defineConfig({
             rollupOptions: {
               external: ['electron', 'webtorrent', 'discord-rpc', 'uiohook-napi'],
             },
-
           },
         },
       },
@@ -31,7 +29,6 @@ export default defineConfig({
         // Preload script
         entry: 'electron/preload.ts',
         onstart(options) {
-          // Reload the renderer when preload changes
           options.reload()
         },
         vite: {
@@ -53,6 +50,7 @@ export default defineConfig({
     },
   },
   server: {
+    host: '127.0.0.1',
     port: 5173,
   },
   build: {

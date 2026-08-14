@@ -204,22 +204,26 @@ function createWindow() {
     }, 4000)
   }
 
-  const devUrl = process.env['VITE_DEV_SERVER_URL'] || process.env.VITE_DEV_SERVER_URL || (!app.isPackaged ? 'http://localhost:5173' : undefined)
+  const indexPath = path.join(__dirname, '../dist/index.html')
+  const devUrl = process.env['VITE_DEV_SERVER_URL']
 
   if (devUrl) {
     console.log(`[MainWindow] Loading Vite Dev Server: ${devUrl}`)
     mainWindow.loadURL(devUrl)
     mainWindow.webContents.openDevTools({ mode: 'detach' })
+  } else if (fs.existsSync(indexPath)) {
+    console.log(`[MainWindow] Loading local build: ${indexPath}`)
+    mainWindow.loadFile(indexPath)
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
+    console.log(`[MainWindow] Fallback to localhost:5173`)
+    mainWindow.loadURL('http://127.0.0.1:5173/')
   }
 
   mainWindow.webContents.on('did-fail-load', (_e, errorCode, errorDesc, validatedURL) => {
     console.warn(`[MainWindow] did-fail-load: ${validatedURL} (${errorCode} - ${errorDesc})`)
-    if (devUrl && !app.isPackaged) {
-      setTimeout(() => {
-        mainWindow?.loadURL(devUrl).catch(() => {})
-      }, 1000)
+    if (fs.existsSync(indexPath) && validatedURL.startsWith('http')) {
+      console.log(`[MainWindow] Falling back immediately to local build bundle: ${indexPath}`)
+      mainWindow?.loadFile(indexPath).catch(() => {})
     }
   })
 
