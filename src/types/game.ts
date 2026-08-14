@@ -217,6 +217,7 @@ export interface ElectronAPI {
   cancelDownload: (infoHash: string) => Promise<void>
   onTorrentProgress: (callback: (payload: any) => void) => () => void
   selectDirectory: () => Promise<string | null>
+  getDefaultDownloadPath?: () => Promise<string>
 
   // Cloudflare bypass
   fetchSourceCF: (url: string) => Promise<string | null>

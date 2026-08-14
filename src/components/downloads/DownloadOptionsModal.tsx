@@ -46,7 +46,7 @@ interface DownloadOptionsModalProps {
 export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onDownload }: DownloadOptionsModalProps) {
   const [step, setStep] = useState<1 | 2>(1)
   const [selectedDownload, setSelectedDownload] = useState<DownloadOption | null>(null)
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSource, setSelectedSource] = useState<string>('all')
@@ -62,14 +62,22 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
   const deferredSearchQuery = useDeferredValue(searchQuery)
   const [linkStatuses, setLinkStatuses] = useState<Record<string, boolean | 'loading'>>({})
 
-  // Reset state when opened/closed
+  // Fetch real Windows Downloads folder if not set
   useEffect(() => {
     if (isOpen) {
       setStep(1)
       setSelectedDownload(null)
       setLinkStatuses({})
+
+      if (!settings.downloadPath && window.electronAPI?.getDefaultDownloadPath) {
+        window.electronAPI.getDefaultDownloadPath().then((p: string) => {
+          if (p) setDownloadPath(p)
+        }).catch(() => {})
+      } else if (settings.downloadPath) {
+        setDownloadPath(settings.downloadPath)
+      }
     }
-  }, [isOpen])
+  }, [isOpen, settings.downloadPath])
 
   const uniqueSources = useMemo(() => {
     const sources = new Set(downloads.map(d => d.sourceName))
@@ -86,7 +94,6 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
       return matchesSearch && matchesSource
     })
     
-    // Sort by uploadDate descending
     result.sort((a, b) => {
       const dateA = a.uploadDate || ''
       const dateB = b.uploadDate || ''
@@ -105,7 +112,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
         if (uri.startsWith('magnet:')) {
           hosters.push({ 
             id: uri, 
-            type: 'Torrent (P2P)', 
+            type: 'BitTorrent (P2P)', 
             badge: '🧲 BitTorrent', 
             color: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]', 
             speedPriority: 10 
@@ -208,16 +215,16 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
             <div className="p-6 pb-4 border-b border-white/[0.08] flex items-start justify-between flex-shrink-0 bg-[#111317]">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold text-white mb-0.5">Download Optionen</h2>
+                  <h2 className="text-xl font-bold text-white mb-0.5">{t('downloadOptions')}</h2>
                   <span className="bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/30 flex items-center gap-1">
-                    <ShieldCheck size={11} /> Native Installer
+                    <ShieldCheck size={11} /> {t('nativeInstaller')}
                   </span>
                 </div>
-                <p className="text-xs font-medium text-hub-muted truncate">{gameName} · {sortedAndFilteredDownloads.length} {t('chooseRepack') || 'Versionen verfügbar'}</p>
+                <p className="text-xs font-medium text-hub-muted truncate">{gameName} · {sortedAndFilteredDownloads.length} {t('chooseRepack')}</p>
               </div>
               <button 
                 onClick={onClose}
-                className="text-hub-muted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
+                className="text-hub-muted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10 cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -228,7 +235,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
               <div className="flex-1 relative">
                 <input 
                   type="text" 
-                  placeholder={t('filterRepacks') || 'Repacks oder Quellen durchsuchen...'}
+                  placeholder={t('filterRepacks')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-[#0b0c0e] border border-white/10 rounded-xl py-2 px-3.5 text-xs text-white placeholder-hub-muted/60 focus:outline-none focus:border-indigo-500/50 transition-colors"
@@ -240,7 +247,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
                   onChange={(e) => setSelectedSource(e.target.value)}
                   className="appearance-none bg-[#0b0c0e] border border-white/10 rounded-xl py-2 pl-3.5 pr-8 text-xs font-medium text-white/90 focus:outline-none focus:border-indigo-500/50 transition-colors cursor-pointer"
                 >
-                  <option value="all">{t('filterBySource') || 'Alle Quellen'}</option>
+                  <option value="all">{t('filterBySource')}</option>
                   {uniqueSources.map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -253,7 +260,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
             <div className="flex-1 overflow-y-auto p-4 px-6 space-y-2.5 custom-scrollbar min-h-0">
               {sortedAndFilteredDownloads.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-hub-muted text-sm p-8">
-                  {t('noMatchingRepacks') || 'Keine passenden Repacks gefunden'}
+                  {t('noMatchingRepacks')}
                 </div>
               ) : (
                 sortedAndFilteredDownloads.map((dl, idx) => (
@@ -267,7 +274,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
                         <h3 className="font-semibold text-xs text-white/90 group-hover:text-white truncate">{dl.title}</h3>
                         {isRecentDate(dl.uploadDate) && (
                           <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">
-                            Neu
+                            {t('new')}
                           </span>
                         )}
                       </div>
@@ -314,18 +321,18 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
               <div className="flex gap-4 items-start">
                 <button 
                   onClick={() => setStep(1)}
-                  className="text-hub-muted hover:text-white transition-colors mt-1 p-1 hover:bg-white/10 rounded-lg"
+                  className="text-hub-muted hover:text-white transition-colors mt-1 p-1 hover:bg-white/10 rounded-lg cursor-pointer"
                 >
                   <ArrowLeft size={18} />
                 </button>
                 <div>
-                  <h3 className="text-base font-bold text-white mb-0.5">Download-Konfiguration</h3>
+                  <h3 className="text-base font-bold text-white mb-0.5">{t('downloadConfig')}</h3>
                   <span className="text-xs font-medium text-hub-muted truncate">{selectedDownload?.title}</span>
                 </div>
               </div>
               <button 
                 onClick={onClose}
-                className="text-hub-muted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
+                className="text-hub-muted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10 cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -336,8 +343,8 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
               {/* Downloader Host Selection */}
               <div>
                 <div className="flex items-center justify-between mb-2.5">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-white/70">Download-Server / Hoster wählen</h3>
-                  <span className="text-[11px] text-hub-muted">{availableDownloaders.length} Optionen</span>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-white/70">{t('chooseHoster')}</h3>
+                  <span className="text-[11px] text-hub-muted">{availableDownloaders.length} {t('optionsAvailable')}</span>
                 </div>
                 
                 <div className="bg-[#16181c] border border-white/5 rounded-xl overflow-hidden max-h-[220px] overflow-y-auto custom-scrollbar">
@@ -357,13 +364,13 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
 
                       <div className="flex items-center gap-3">
                         {linkStatuses[hoster.id] === 'loading' ? (
-                          <span className="text-[10px] text-hub-muted bg-white/5 px-1.5 py-0.5 rounded animate-pulse">Prüfe...</span>
+                          <span className="text-[10px] text-hub-muted bg-white/5 px-1.5 py-0.5 rounded animate-pulse">{t('checking')}</span>
                         ) : linkStatuses[hoster.id] === true ? (
                           <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
-                            <span className="text-emerald-400 text-[10px] font-bold">Online</span>
+                            <span className="text-emerald-400 text-[10px] font-bold">{t('online')}</span>
                           </div>
                         ) : linkStatuses[hoster.id] === false ? (
-                          <span className="text-rose-400 text-[10px] bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 font-bold">Offline</span>
+                          <span className="text-rose-400 text-[10px] bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 font-bold">{t('offline')}</span>
                         ) : null}
 
                         {selectedDownloader === hoster.id && (
@@ -376,14 +383,14 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
                   ))}
                   
                   {availableDownloaders.length === 0 && (
-                    <div className="p-4 text-center text-sm text-hub-muted">Keine Download-Links gefunden</div>
+                    <div className="p-4 text-center text-sm text-hub-muted">{t('noValidLinks')}</div>
                   )}
                 </div>
               </div>
 
               {/* Target Download Folder */}
               <div>
-                <label className="text-xs font-bold text-white/70 uppercase tracking-wider mb-2 block">Zielverzeichnis</label>
+                <label className="text-xs font-bold text-white/70 uppercase tracking-wider mb-2 block">{t('downloadDirectory')}</label>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 bg-[#16181c] border border-white/10 rounded-xl px-4 py-2.5 flex items-center">
                     <span className="text-xs text-white/90 truncate font-mono">{downloadPath}</span>
@@ -393,13 +400,13 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
                       if (window.electronAPI?.selectDirectory) {
                         window.electronAPI.selectDirectory().then((p: string | null) => { if (p) setDownloadPath(p) })
                       } else {
-                        const newPath = prompt('Neuen Download-Pfad eingeben:', downloadPath)
+                        const newPath = prompt(t('enterNewDirectory'), downloadPath)
                         if (newPath) setDownloadPath(newPath)
                       }
                     }}
-                    className="text-xs font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2.5 rounded-xl transition-colors"
+                    className="text-xs font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
                   >
-                    Durchsuchen...
+                    {t('browse')}
                   </button>
                 </div>
               </div>
@@ -411,7 +418,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
                     {autoExtract && <Check size={14} className="stroke-[3]" />}
                   </div>
                   <input type="checkbox" className="hidden" checked={autoExtract} onChange={e => setAutoExtract(e.target.checked)} />
-                  <span className="text-xs text-white/90 font-medium">Spiel-Archiv nach Download automatisch mit 7-Zip entpacken</span>
+                  <span className="text-xs text-white/90 font-medium">{t('autoExtract')}</span>
                 </label>
 
                 <label className="flex items-center gap-3 cursor-pointer group select-none">
@@ -419,17 +426,17 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
                     {autoDelete && <Check size={14} className="stroke-[3]" />}
                   </div>
                   <input type="checkbox" className="hidden" checked={autoDelete} onChange={e => setAutoDelete(e.target.checked)} />
-                  <span className="text-xs text-white/70 font-medium">Original-Archivdateien nach dem Entpacken automatisch löschen (Speicher sparen)</span>
+                  <span className="text-xs text-white/70 font-medium">{t('autoDeleteAfterExtract')}</span>
                 </label>
               </div>
 
               {/* Launch Download Action */}
               <button
                 onClick={handleStartDownload}
-                className="w-full bg-white hover:bg-gray-100 text-black font-bold text-sm rounded-xl py-3.5 flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-white/10"
+                className="w-full bg-white hover:bg-gray-100 text-black font-bold text-sm rounded-xl py-3.5 flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-white/10 cursor-pointer"
               >
                 <Download size={17} />
-                Jetzt im Launcher herunterladen
+                {t('downloadNow')}
               </button>
 
             </div>

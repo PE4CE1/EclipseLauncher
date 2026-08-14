@@ -6,12 +6,15 @@ import crypto from 'crypto'
 import https from 'https'
 import http from 'http'
 import { URL } from 'url'
-import { resolveDownloadLink } from './linkResolverService'
+import { resolveDownloadLink, resolveHeadlessStream } from './linkResolverService'
 import { extractArchive } from './extractService'
 
-const defaultDownloadPath = path.join(app.getPath('userData'), 'Downloads')
-if (!fs.existsSync(defaultDownloadPath)) {
-  fs.mkdirSync(defaultDownloadPath, { recursive: true })
+function getDefaultDownloadPath(): string {
+  try {
+    return app.getPath('downloads') || path.join(app.getPath('home'), 'Downloads')
+  } catch {
+    return path.join(app.getPath('userData'), 'Downloads')
+  }
 }
 
 export type HttpDownloadPayload = {
@@ -25,6 +28,7 @@ export type HttpDownloadPayload = {
   status: 'downloading' | 'paused' | 'extracting' | 'done' | 'error'
   mainExe?: string | null
   installPath?: string
+  errorMessage?: string
 }
 
 class HttpDownloader {
@@ -39,6 +43,8 @@ class HttpDownloader {
   public autoExtract: boolean = true
   public autoDelete: boolean = false
   public mainExe: string | null = null
+  public customHeaders: Record<string, string> = {}
+  public errorMessage?: string
   
   private req: any = null
   private fileStream: fs.WriteStream | null = null
@@ -46,16 +52,17 @@ class HttpDownloader {
   private lastDownloaded: number = 0
   public downloadSpeed: number = 0
   private onProgressCallback: ((payload: HttpDownloadPayload) => void) | null = null
+  private retryCount: number = 0
 
-  constructor(id: string, url: string, name: string, targetDir: string, autoExtract: boolean, autoDelete: boolean) {
+  constructor(id: string, url: string, name: string, targetDir: string, autoExtract: boolean, autoDelete: boolean, customHeaders: Record<string, string> = {}) {
     this.id = id
     this.url = url
     this.name = name
     this.targetDir = targetDir
     this.autoExtract = autoExtract
     this.autoDelete = autoDelete
+    this.customHeaders = customHeaders
 
-    // Clean filename
     const cleanName = name.replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim() || 'game_download'
     const ext = url.includes('.rar') ? '.rar' : url.includes('.7z') ? '.7z' : '.zip'
     this.targetPath = path.join(targetDir, `${cleanName}${ext}`)
@@ -95,7 +102,8 @@ class HttpDownloader {
         length: this.length,
         status: this.status,
         mainExe: this.mainExe,
-        installPath: this.targetDir
+        installPath: this.targetDir,
+        errorMessage: this.errorMessage
       })
     }, 1000)
   }
@@ -108,6 +116,8 @@ class HttpDownloader {
       const headers: Record<string, string> = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept': '*/*',
+        'Connection': 'keep-alive',
+        ...this.customHeaders
       }
 
       // Check existing partial file for Resume support
@@ -119,7 +129,7 @@ class HttpDownloader {
         }
       }
 
-      this.req = client.get(this.url, { headers }, (res) => {
+      this.req = client.get(this.url, { headers }, async (res) => {
         // Handle 3xx Redirects
         if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 303 || res.statusCode === 307 || res.statusCode === 308) {
           if (res.headers.location) {
@@ -134,14 +144,34 @@ class HttpDownloader {
         }
 
         if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 400)) {
-          console.error(`[HttpDownloader] Server responded with status ${res.statusCode}`)
+          console.error(`[HttpDownloader] Server responded with HTTP status ${res.statusCode}`)
           this.status = 'error'
+          this.errorMessage = `HTTP Fehler ${res.statusCode}`
           return
         }
 
+        const contentType = (res.headers['content-type'] || '').toLowerCase()
         const totalContentLength = parseInt(res.headers['content-length'] || '0', 10)
+
+        // Validation: If server returned HTML page under 500KB, it's not the game binary!
+        if (contentType.includes('text/html') && totalContentLength > 0 && totalContentLength < 500000 && this.retryCount === 0) {
+          console.warn(`[HttpDownloader] Server returned HTML page (${totalContentLength} bytes) instead of binary. Trying headless sniffer...`)
+          this.retryCount++
+          const headless = await resolveHeadlessStream(this.url, 12000)
+          if (headless && headless.streamUrl) {
+            this.url = headless.streamUrl
+            if (headless.headers) this.customHeaders = { ...this.customHeaders, ...headless.headers }
+            this.download()
+            return
+          } else {
+            console.error('[HttpDownloader] Could not resolve binary stream from landing page')
+            this.status = 'error'
+            this.errorMessage = 'Server lieferte Webseite statt Download-Datei'
+            return
+          }
+        }
+
         if (res.statusCode === 206) {
-          // Partial content resumed
           this.length = this.downloaded + totalContentLength
           this.fileStream = fs.createWriteStream(this.targetPath, { flags: 'a' })
         } else {
@@ -211,7 +241,7 @@ class HttpDownloader {
               console.log(`[HttpDownloader] Finished & extracted game to: ${result.targetDir}, Main Exe: ${result.mainExe}`)
             } catch (extractErr) {
               console.error('[HttpDownloader] Extraction error:', extractErr)
-              this.status = 'done' // Mark as done even if extraction failed so user can inspect file
+              this.status = 'done'
             }
           } else {
             this.status = 'done'
@@ -236,22 +266,25 @@ class HttpDownloader {
         res.on('error', (err) => {
           console.error('[HttpDownloader] Response error:', err)
           this.status = 'error'
+          this.errorMessage = err.message
         })
       })
 
       this.req.on('error', (err: any) => {
         console.error('[HttpDownloader] Request error:', err)
         this.status = 'error'
+        this.errorMessage = err.message
       })
 
-      this.req.setTimeout(25000, () => {
+      this.req.setTimeout(35000, () => {
         console.warn('[HttpDownloader] Connection timeout')
         this.req.destroy()
         this.status = 'paused'
       })
-    } catch (e) {
+    } catch (e: any) {
       console.error('[HttpDownloader] Unexpected download error:', e)
       this.status = 'error'
+      this.errorMessage = e.message
     }
   }
 
@@ -274,7 +307,6 @@ class HttpDownloader {
     if (this.fileStream) {
       this.fileStream.close()
     }
-    // Delete partial file if cancelled
     try {
       if (fs.existsSync(this.targetPath)) {
         fs.unlinkSync(this.targetPath)
@@ -287,9 +319,14 @@ const activeHttpDownloads = new Map<string, HttpDownloader>()
 
 export function initHttpDownloadIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.BrowserWindow) {
   
+  // Return default downloads directory
+  ipcMain.handle('app:get-default-download-path', () => {
+    return getDefaultDownloadPath()
+  })
+
   // Smart Native Start Download
   ipcMain.handle('http-download:start', async (_event, rawUrl: string, gameTitle: string, customDownloadPath?: string, autoExtract = true, autoDelete = false) => {
-    const targetDir = customDownloadPath || defaultDownloadPath
+    const targetDir = customDownloadPath || getDefaultDownloadPath()
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true })
     }
@@ -300,7 +337,6 @@ export function initHttpDownloadIPC(ipcMain: Electron.IpcMain, mainWindow: Elect
       return { success: true, infoHash: downloadId }
     }
 
-    // Resolve URL seamlessly in background
     console.log(`[HttpDownload] Resolving link for "${gameTitle}": ${rawUrl}`)
     const resolved = await resolveDownloadLink(rawUrl, gameTitle)
 
@@ -310,7 +346,8 @@ export function initHttpDownloadIPC(ipcMain: Electron.IpcMain, mainWindow: Elect
       gameTitle,
       targetDir,
       autoExtract,
-      autoDelete
+      autoDelete,
+      resolved.headers || {}
     )
 
     activeHttpDownloads.set(downloadId, downloader)
@@ -344,10 +381,12 @@ export function initHttpDownloadIPC(ipcMain: Electron.IpcMain, mainWindow: Elect
 
   ipcMain.handle('link:check', async (_event, url: string) => {
     try {
-      const res = await fetch(url, { method: 'HEAD' })
-      return res.ok || res.status === 405 || res.status === 403 // some hosters block HEAD
+      if (url.startsWith('magnet:')) return true
+      if (url.includes('pixeldrain.com') || url.includes('gofile.io') || url.includes('buzzheavier.com')) return true
+      const res = await fetch(url, { method: 'HEAD', headers: { 'User-Agent': 'Mozilla/5.0' } })
+      return res.ok || res.status === 405 || res.status === 403
     } catch {
-      return true // assume ok if fetch fails
+      return true
     }
   })
 }

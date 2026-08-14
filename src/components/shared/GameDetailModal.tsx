@@ -158,13 +158,13 @@ export function GameDetailModal() {
           useUIStore.getState().setActiveView('downloads');
           setIsDownloadOptionsOpen(false);
           setIsGameModalOpen(false);
-          showNotification(`Download gestartet: ${gameTitle}`, 'success');
+          showNotification(t('downloadStarted', { name: gameTitle }) || `Download started: ${gameTitle}`, 'success');
         } else {
-          showNotification('Fehler beim Starten des Downloads', 'error');
+          showNotification(t('downloadFailed') || 'Fehler beim Starten des Downloads', 'error');
         }
       }).catch((err: any) => {
         console.error('Download start error:', err);
-        showNotification('Download-Fehler: ' + (err?.message || 'Unbekannt'), 'error');
+        showNotification((t('downloadError', { error: err?.message || '' }) || `Download-Fehler: ${err?.message || ''}`), 'error');
       });
     } else {
       window.open(uri);

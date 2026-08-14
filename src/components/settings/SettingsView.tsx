@@ -56,7 +56,17 @@ export function SettingsView() {
     createShortcut: true
   })
 
-  useEffect(() => { setLocalSettings(settings) }, [settings])
+  useEffect(() => { 
+    setLocalSettings(settings) 
+    if (!settings.downloadPath && window.electronAPI?.getDefaultDownloadPath) {
+      window.electronAPI.getDefaultDownloadPath().then((p: string) => {
+        if (p) {
+          set('downloadPath', p)
+          updateSettings({ downloadPath: p })
+        }
+      }).catch(() => {})
+    }
+  }, [settings])
 
   function set(key: string, value: any) {
     setLocalSettings(prev => ({ ...prev, [key]: value }))

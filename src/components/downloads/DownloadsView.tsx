@@ -27,8 +27,8 @@ export function DownloadsView() {
     const minutes = Math.floor((ms / (1000 * 60)) % 60)
     const hours = Math.floor((ms / (1000 * 60 * 60)) % 24)
     if (hours > 0) return `${hours}h ${minutes}m`
-    if (minutes > 0) return `${minutes} ${t('min') || 'min'}`
-    return `${seconds} ${t('sec') || 's'}`
+    if (minutes > 0) return `${minutes} ${t('min')}`
+    return `${seconds} ${t('sec')}`
   }
   
   const activeDownloads = allDownloads.filter(d => d.status !== 'done')
@@ -63,7 +63,7 @@ export function DownloadsView() {
               <Download size={20} />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">Downloads</h1>
+              <h1 className="text-xl font-bold text-white tracking-tight">{t('downloads')}</h1>
               <p className="text-xs text-white/50 mt-0.5">
                 {language === 'de' ? 'Aktive Spiel-Downloads, Entpackvorgänge und Historie' : 'Active game downloads, extractions and history'}
               </p>
@@ -74,20 +74,20 @@ export function DownloadsView() {
           <div className="flex items-center gap-2.5">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-hub-surface/60 border border-white/10 text-xs">
               <ArrowDown size={13} className={totalSpeed > 0 ? "text-emerald-400 animate-bounce" : "text-white/40"} />
-              <span className="text-white/50">{language === 'de' ? 'Gesamtspeed:' : 'Speed:'}</span>
+              <span className="text-white/50">{t('speed')}</span>
               <span className="font-bold text-white">{formatBytes(totalSpeed)}/s</span>
             </div>
 
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-hub-surface/60 border border-white/10 text-xs">
               <span className="w-2 h-2 rounded-full bg-indigo-400" />
               <span className="font-semibold text-white">{activeDownloads.length}</span>
-              <span className="text-white/50">{language === 'de' ? 'Aktiv' : 'Active'}</span>
+              <span className="text-white/50">{t('active')}</span>
             </div>
 
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-hub-surface/60 border border-white/10 text-xs">
               <Check size={13} className="text-emerald-400" />
               <span className="font-semibold text-white">{completedDownloads.length}</span>
-              <span className="text-white/50">{language === 'de' ? 'Fertig' : 'Done'}</span>
+              <span className="text-white/50">{t('done')}</span>
             </div>
           </div>
         </div>
@@ -96,11 +96,11 @@ export function DownloadsView() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold tracking-wider uppercase text-white/60">
-              {language === 'de' ? 'Aktive Downloads' : 'Active Downloads'}
+              {t('activeDownloads')}
             </h2>
             {activeDownloads.length > 0 && (
               <span className="text-xs text-white/40 font-medium">
-                {activeDownloads.length} {activeDownloads.length === 1 ? (language === 'de' ? 'Vorgang' : 'task') : (language === 'de' ? 'Vorgänge' : 'tasks')}
+                {activeDownloads.length} {activeDownloads.length === 1 ? t('tasksSingular') : t('tasksPlural')}
               </span>
             )}
           </div>
@@ -112,12 +112,10 @@ export function DownloadsView() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-white/90">
-                  {language === 'de' ? 'Keine aktiven Downloads' : 'No active downloads'}
+                  {t('noActiveDownloads')}
                 </h3>
                 <p className="text-xs text-white/40 mt-1 max-w-xl leading-relaxed">
-                  {language === 'de' 
-                    ? 'Downloads aus dem Katalog oder Torrent-Quellen werden hier mit Live-Geschwindigkeit, Fortschritt und Restzeit angezeigt.'
-                    : 'Downloads started from the catalogue or sources will appear here with live speed, progress, and ETA.'}
+                  {t('noActiveDownloadsDesc')}
                 </p>
               </div>
             </div>
@@ -157,15 +155,15 @@ export function DownloadsView() {
                           dl.status === 'extracting' ? 'bg-purple-500/10 text-purple-300 border-purple-500/20' :
                           'bg-red-500/10 text-red-300 border-red-500/20'
                         }`}>
-                          {dl.status === 'downloading' && (language === 'de' ? 'Lädt herunter' : 'Downloading')}
-                          {dl.status === 'paused' && (language === 'de' ? 'Pausiert' : 'Paused')}
-                          {dl.status === 'extracting' && (language === 'de' ? 'Entpacken...' : 'Extracting...')}
-                          {dl.status === 'error' && (language === 'de' ? 'Fehler' : 'Error')}
+                          {dl.status === 'downloading' && t('downloading')}
+                          {dl.status === 'paused' && t('paused')}
+                          {dl.status === 'extracting' && t('extracting')}
+                          {dl.status === 'error' && t('error')}
                         </span>
 
                         {dl.peers !== undefined && dl.status === 'downloading' && (
                           <span className="text-[10px] text-white/50 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded ml-1">
-                            {dl.peers} Peers
+                            {dl.peers} {t('peers')}
                           </span>
                         )}
                       </div>
@@ -189,18 +187,18 @@ export function DownloadsView() {
                         {dl.status === 'extracting' ? (
                           <div className="flex items-center gap-2 text-purple-300 text-xs">
                             <ArchiveRestore size={14} className="animate-pulse" />
-                            <span>{language === 'de' ? 'Spieldateien werden automatisch entpackt...' : 'Extracting game archive...'}</span>
+                            <span>{t('extractingGameArchive')}</span>
                           </div>
                         ) : dl.status === 'error' ? (
                           <div className="flex items-center gap-2 text-red-400 text-xs">
                             <AlertCircle size={14} />
-                            <span>{language === 'de' ? 'Download-Fehler aufgetreten' : 'Download error occurred'}</span>
+                            <span>{t('downloadErrorOccurred')}</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-3.5 text-white/50 text-xs">
                             <span>{formatBytes(dl.downloaded)} / {formatBytes(dl.length)}</span>
                             <span className="text-white/80 font-semibold">{formatBytes(dl.downloadSpeed)}/s</span>
-                            <span>ETA: {formatTime(dl.timeRemaining)}</span>
+                            <span>{t('eta')} {formatTime(dl.timeRemaining)}</span>
                           </div>
                         )}
                         <span className="font-bold text-white text-xs">{(dl.progress * 100).toFixed(0)}%</span>
@@ -213,7 +211,7 @@ export function DownloadsView() {
                         <button 
                           onClick={() => handlePauseResume(dl.infoHash, dl.status === 'paused')}
                           className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white transition-all cursor-pointer"
-                          title={dl.status === 'paused' ? 'Fortsetzen' : 'Pausieren'}
+                          title={dl.status === 'paused' ? t('resume') || 'Fortsetzen' : t('paused')}
                         >
                           {dl.status === 'paused' ? <Play size={13} className="fill-current text-white" /> : <Pause size={13} className="fill-current text-white" />}
                         </button>
@@ -221,7 +219,7 @@ export function DownloadsView() {
                       <button 
                         onClick={() => handleCancel(dl.infoHash)}
                         className="w-8 h-8 rounded-xl bg-white/5 hover:bg-red-500/20 hover:text-red-400 border border-white/10 flex items-center justify-center text-white/60 transition-all cursor-pointer"
-                        title="Abbrechen"
+                        title={t('cancel')}
                       >
                         <X size={14} />
                       </button>
@@ -237,11 +235,11 @@ export function DownloadsView() {
         <section className="space-y-4 pt-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold tracking-wider uppercase text-white/60">
-              {language === 'de' ? 'Abgeschlossene Downloads' : 'Completed Downloads'}
+              {t('completedDownloadsHeader') || t('completed')}
             </h2>
             {completedDownloads.length > 0 && (
               <span className="text-xs text-white/40 font-medium">
-                {completedDownloads.length} {language === 'de' ? 'Spiele' : 'games'}
+                {completedDownloads.length} {t('gamesCount')}
               </span>
             )}
           </div>
@@ -249,7 +247,7 @@ export function DownloadsView() {
           {completedDownloads.length === 0 ? (
             <div className="bg-hub-surface/30 border border-white/5 rounded-2xl p-6 flex items-center gap-4 text-white/40 text-xs">
               <CheckCircle2 size={16} className="text-white/30 flex-shrink-0" />
-              <span>{language === 'de' ? 'Noch keine abgeschlossenen Downloads in dieser Sitzung.' : 'No completed downloads in this session yet.'}</span>
+              <span>{t('noCompletedDownloadsDesc') || t('noCompletedDownloads')}</span>
             </div>
           ) : (
             <div className="space-y-3">
@@ -274,7 +272,7 @@ export function DownloadsView() {
                         <span>{formatBytes(dl.length)}</span>
                         <span>•</span>
                         <span className="text-emerald-400 font-medium flex items-center gap-1">
-                          <Check size={11} strokeWidth={3} /> {language === 'de' ? 'Spielbereit' : 'Ready to play'}
+                          <Check size={11} strokeWidth={3} /> {t('readyToPlayStatus')}
                         </span>
                       </div>
                     </div>
@@ -288,11 +286,11 @@ export function DownloadsView() {
                             window.electronAPI.openPath(dl.installPath!)
                           }
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                        title={language === 'de' ? 'Ordner im Explorer öffnen' : 'Open folder in Explorer'}
+                        className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                        title={t('openFolder')}
                       >
                         <FolderOpen size={13} />
-                        <span>{language === 'de' ? 'Ordner' : 'Folder'}</span>
+                        <span>{t('openFolder')}</span>
                       </button>
                     )}
 
@@ -303,17 +301,17 @@ export function DownloadsView() {
                             window.electronAPI.launchGame(dl.mainExe!)
                           }
                         }}
-                        className="px-3.5 py-1.5 rounded-xl bg-white text-black hover:bg-gray-200 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                        className="px-3.5 py-1.5 rounded-xl bg-white text-black hover:bg-gray-200 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
                       >
                         <Play size={12} className="fill-current" />
-                        <span>{language === 'de' ? 'Spielen' : 'Play'}</span>
+                        <span>{t('play')}</span>
                       </button>
                     )}
 
                     <button
                       onClick={() => handleCancel(dl.infoHash)}
-                      className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white border border-white/10 flex items-center justify-center transition-colors"
-                      title={language === 'de' ? 'Aus Liste entfernen' : 'Remove from list'}
+                      className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white border border-white/10 flex items-center justify-center transition-colors cursor-pointer"
+                      title={t('removeFromList')}
                     >
                       <X size={14} />
                     </button>

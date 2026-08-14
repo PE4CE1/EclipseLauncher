@@ -1,7 +1,7 @@
 import { URL } from 'url'
 import path from 'path'
 import fs from 'fs'
-import { app } from 'electron'
+import { app, BrowserWindow, session } from 'electron'
 
 export type ResolvedDownload = {
   type: 'torrent' | 'http'
@@ -9,6 +9,7 @@ export type ResolvedDownload = {
   fileName: string
   isDirect: boolean
   provider?: string
+  headers?: Record<string, string>
 }
 
 // Read settings to check for Debrid API keys
@@ -79,11 +80,10 @@ async function resolveTorbox(url: string, apiKey: string): Promise<string | null
 }
 
 /**
- * Resolves Gofile file ID to direct tokenized CDN download URL
+ * Resolves Gofile file ID to direct tokenized CDN download URL with proper auth headers/cookies
  */
-async function resolveGofile(url: string): Promise<string | null> {
+async function resolveGofile(url: string): Promise<{ streamUrl: string; headers: Record<string, string> } | null> {
   try {
-    // Example: https://gofile.io/d/AbCdEf -> id: AbCdEf
     const match = url.match(/gofile\.io\/d\/([a-zA-Z0-9_-]+)/i)
     if (!match) return null
     const contentId = match[1]
@@ -91,7 +91,7 @@ async function resolveGofile(url: string): Promise<string | null> {
     // Create guest account token
     const accRes = await fetch('https://api.gofile.io/accounts', { method: 'POST' })
     const accData = await accRes.json()
-    const token = accData?.data?.token
+    const token = accData?.data?.token || ''
 
     const headers: Record<string, string> = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
@@ -104,7 +104,13 @@ async function resolveGofile(url: string): Promise<string | null> {
     if (data?.status === 'ok' && data?.data?.children) {
       const children = Object.values(data.data.children) as any[]
       if (children.length > 0 && children[0].link) {
-        return children[0].link
+        const streamUrl = children[0].link
+        const streamHeaders: Record<string, string> = {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Cookie': `accountToken=${token}`,
+          'Authorization': `Bearer ${token}`
+        }
+        return { streamUrl, headers: streamHeaders }
       }
     }
   } catch (e) {
@@ -117,10 +123,46 @@ async function resolveGofile(url: string): Promise<string | null> {
  * Resolves PixelDrain URL to direct download stream
  */
 function resolvePixelDrain(url: string): string | null {
-  // Example: https://pixeldrain.com/u/abc12345 -> https://pixeldrain.com/api/file/abc12345
   const match = url.match(/pixeldrain\.com\/u\/([a-zA-Z0-9_-]+)/i)
   if (match) {
     return `https://pixeldrain.com/api/file/${match[1]}`
+  }
+  return null
+}
+
+/**
+ * Resolves Buzzheavier direct download link
+ */
+function resolveBuzzheavier(url: string): { streamUrl: string; headers: Record<string, string> } | null {
+  const match = url.match(/buzzheavier\.com\/(?:f\/)?([a-zA-Z0-9_-]+)/i)
+  if (match) {
+    const fileId = match[1]
+    return {
+      streamUrl: `https://buzzheavier.com/${fileId}/download`,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': url
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Resolves MediaFire direct download link
+ */
+async function resolveMediafire(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    })
+    const text = await res.text()
+    const match = text.match(/href="((?:https?:)?\/\/[^"]*mediafire\.com\/[^"]*download[^"]*)"/i) || text.match(/aria-label="Download file"\s+href="([^"]+)"/i) || text.match(/id="downloadButton"\s+href="([^"]+)"/i)
+    if (match) {
+      return match[1]
+    }
+  } catch (e) {
+    console.error('[LinkResolver] Mediafire resolve error:', e)
   }
   return null
 }
@@ -130,7 +172,6 @@ function resolvePixelDrain(url: string): string | null {
  */
 async function resolveQiwi(url: string): Promise<string | null> {
   try {
-    // Example: https://qiwi.gg/file/abc12345 -> Direct extraction or head request
     const match = url.match(/qiwi\.gg\/file\/([a-zA-Z0-9_-]+)/i)
     if (match) {
       const res = await fetch(url, {
@@ -147,6 +188,105 @@ async function resolveQiwi(url: string): Promise<string | null> {
 }
 
 /**
+ * Silent Background Headless Stream Sniffer
+ * For Cloudflare-protected or complex hosters (DataNodes, MegaUp, 1Fichier without Debrid)
+ */
+export async function resolveHeadlessStream(url: string, timeoutMs = 12000): Promise<{ streamUrl: string; headers?: Record<string, string> } | null> {
+  return new Promise((resolve) => {
+    let resolved = false
+    let hiddenWin: BrowserWindow | null = null
+
+    const cleanup = () => {
+      if (hiddenWin && !hiddenWin.isDestroyed()) {
+        try {
+          hiddenWin.destroy()
+        } catch (e) {}
+        hiddenWin = null
+      }
+    }
+
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true
+        cleanup()
+        resolve(null)
+      }
+    }, timeoutMs)
+
+    try {
+      hiddenWin = new BrowserWindow({
+        show: false,
+        width: 800,
+        height: 600,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          sandbox: true
+        }
+      })
+
+      // Capture 'will-download' session event
+      hiddenWin.webContents.session.on('will-download', (event, item) => {
+        if (!resolved) {
+          resolved = true
+          clearTimeout(timer)
+          const downloadUrl = item.getURL()
+          item.cancel()
+          cleanup()
+          resolve({ streamUrl: downloadUrl })
+        }
+      })
+
+      // Intercept binary header redirects
+      hiddenWin.webContents.session.webRequest.onHeadersReceived({ urls: ['*://*/*'] }, (details, callback) => {
+        const headers = details.responseHeaders || {}
+        const contentType = (headers['content-type'] || headers['Content-Type'] || [])[0] || ''
+        const contentDisp = (headers['content-disposition'] || headers['Content-Disposition'] || [])[0] || ''
+        
+        const isBinaryStream = contentType.includes('application/octet-stream') || 
+                               contentType.includes('application/zip') || 
+                               contentType.includes('application/x-rar') || 
+                               contentType.includes('application/x-7z') ||
+                               contentDisp.includes('attachment')
+
+        if (isBinaryStream && !resolved) {
+          resolved = true
+          clearTimeout(timer)
+          const finalUrl = details.url
+          cleanup()
+          resolve({ streamUrl: finalUrl })
+          callback({ cancel: true })
+          return
+        }
+
+        callback({ cancel: false })
+      })
+
+      hiddenWin.loadURL(url)
+
+      // Inject auto-click script for download buttons
+      hiddenWin.webContents.on('did-finish-load', async () => {
+        try {
+          if (hiddenWin && !hiddenWin.isDestroyed()) {
+            await hiddenWin.webContents.executeJavaScript(`
+              (() => {
+                const btn = document.querySelector('a#downloadButton, a[href*="download"], button[type="submit"], .btn-download, input[type="submit"]');
+                if (btn) btn.click();
+              })();
+            `).catch(() => {})
+          }
+        } catch (e) {}
+      })
+
+    } catch (err) {
+      console.error('[LinkResolver] Headless stream sniffer error:', err)
+      cleanup()
+      resolve(null)
+    }
+  })
+}
+
+/**
  * Main link resolution engine
  */
 export async function resolveDownloadLink(rawUrl: string, gameTitle: string): Promise<ResolvedDownload> {
@@ -154,7 +294,6 @@ export async function resolveDownloadLink(rawUrl: string, gameTitle: string): Pr
 
   // 1. BitTorrent Magnet Link
   if (trimmedUrl.startsWith('magnet:')) {
-    // Inject best public DHT trackers if missing for ultra-fast peer discovery
     const trackers = [
       'udp://tracker.opentrackr.org:1337/announce',
       'udp://open.tracker.cl:1337/announce',
@@ -236,14 +375,40 @@ export async function resolveDownloadLink(rawUrl: string, gameTitle: string): Pr
   if (gofile) {
     return {
       type: 'http',
-      streamUrl: gofile,
+      streamUrl: gofile.streamUrl,
       fileName: `${gameTitle}.zip`,
       isDirect: true,
-      provider: 'Gofile CDN'
+      provider: 'Gofile CDN',
+      headers: gofile.headers
     }
   }
 
-  // 5. Qiwi Direct Resolver
+  // 5. Buzzheavier Resolver
+  const buzz = resolveBuzzheavier(trimmedUrl)
+  if (buzz) {
+    return {
+      type: 'http',
+      streamUrl: buzz.streamUrl,
+      fileName: `${gameTitle}.zip`,
+      isDirect: true,
+      provider: 'Buzzheavier Direct',
+      headers: buzz.headers
+    }
+  }
+
+  // 6. Mediafire Resolver
+  const mediafire = await resolveMediafire(trimmedUrl)
+  if (mediafire) {
+    return {
+      type: 'http',
+      streamUrl: mediafire,
+      fileName: `${gameTitle}.zip`,
+      isDirect: true,
+      provider: 'MediaFire Direct'
+    }
+  }
+
+  // 7. Qiwi Direct Resolver
   const qiwi = await resolveQiwi(trimmedUrl)
   if (qiwi) {
     return {
@@ -255,7 +420,23 @@ export async function resolveDownloadLink(rawUrl: string, gameTitle: string): Pr
     }
   }
 
-  // 6. Direct HTTP / Archive link (.zip, .rar, .7z, .iso, .exe, or direct CDN)
+  // 8. Headless sniffer for DataNodes / MegaUp / complex hosts
+  if (trimmedUrl.includes('datanodes.to') || trimmedUrl.includes('megaup.net') || trimmedUrl.includes('1fichier.com')) {
+    console.log(`[LinkResolver] Trying headless stream resolution for: ${trimmedUrl}`)
+    const headless = await resolveHeadlessStream(trimmedUrl, 10000)
+    if (headless && headless.streamUrl) {
+      return {
+        type: 'http',
+        streamUrl: headless.streamUrl,
+        fileName: `${gameTitle}.zip`,
+        isDirect: true,
+        provider: 'Direct Stream Sniffer',
+        headers: headless.headers
+      }
+    }
+  }
+
+  // 9. Direct HTTP / Archive link fallback
   return {
     type: 'http',
     streamUrl: trimmedUrl,

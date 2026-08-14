@@ -156,6 +156,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('http-download:cancel', infoHash).catch(() => {})
   ]),
   selectDirectory: () => ipcRenderer.invoke('dialog:open-directory'),
+  getDefaultDownloadPath: () => ipcRenderer.invoke('app:get-default-download-path'),
   onTorrentProgress: (callback: (payload: any) => void) => {
     const handler = (_: Electron.IpcRendererEvent, payload: any) => callback(payload)
     ipcRenderer.on('torrent:progress', handler)
