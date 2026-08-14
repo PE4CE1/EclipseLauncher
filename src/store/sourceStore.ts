@@ -2,19 +2,13 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { DownloadSource, HydraSourceData } from '../types/source'
 
-const DEFAULT_SOURCES = [
-  'https://hydralinks.cloud/sources/rexagames.json',
+export const DEFAULT_SOURCES = [
   'https://wkeynhk.online/steamgg.json',
-  'https://davidkazumisource.com/fontekazumi.json',
-  'https://hydralinks.cloud/sources/kaoskrew.json',
-  'https://hydralinks.cloud/sources/empress.json',
-  'https://hydralinks.cloud/sources/xatab.json',
-  'https://hydralinks.cloud/sources/atop-games.json',
-  'https://hydralinks.cloud/sources/dodi.json',
-  'https://hydralinks.cloud/sources/onlinefix.json',
-  'https://hydralinks.cloud/sources/gog.json',
-  'https://hydralinks.cloud/sources/fitgirl.json',
-  'https://hydralinks.cloud/sources/steamrip.json',
+  'https://hydralinks.pages.dev/sources/gog.json',
+  'https://hydralinks.pages.dev/sources/kaoskrew.json',
+  'https://hydralinks.pages.dev/sources/empress.json',
+  'https://hydralinks.pages.dev/sources/atop-games.json',
+  'https://hydralinks.pages.dev/sources/rexagames.json',
 ]
 
 interface SourceStore {
@@ -27,6 +21,55 @@ interface SourceStore {
   initializeDefaults: () => void
 }
 
+async function fetchSourceContent(url: string): Promise<string | null> {
+  const candidateUrls = [
+    url,
+    url.replace('hydralinks.cloud/sources/', 'hydralinks.pages.dev/sources/'),
+    url.replace('hydralinks.pages.dev/sources/', 'hydralinks.cloud/sources/')
+  ]
+  const uniqueCandidates = Array.from(new Set(candidateUrls))
+
+  for (const targetUrl of uniqueCandidates) {
+    // 1. Direct fetch with browser headers
+    try {
+      const res = await fetch(targetUrl, {
+        headers: {
+          'Accept': 'application/json, text/plain, */*',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        }
+      })
+      if (res.ok) {
+        const text = await res.text()
+        if (text && text.includes('downloads') && text.length > 50) {
+          return text
+        }
+      }
+    } catch {}
+
+    // 2. Electron util:fetch (Native Chromium HTTP Stack)
+    if (typeof window !== 'undefined' && window.electronAPI?.utilFetch) {
+      try {
+        const text = await window.electronAPI.utilFetch(targetUrl)
+        if (text && text.includes('downloads') && text.length > 50) {
+          return text
+        }
+      } catch {}
+    }
+
+    // 3. Electron fetchSourceCF (Headless Sniffer fallback)
+    if (typeof window !== 'undefined' && window.electronAPI?.fetchSourceCF) {
+      try {
+        const text = await window.electronAPI.fetchSourceCF(targetUrl)
+        if (text && text.includes('downloads') && text.length > 50) {
+          return text
+        }
+      } catch {}
+    }
+  }
+
+  return null
+}
+
 export const useSourceStore = create<SourceStore>()(
   persist(
     (set, get) => ({
@@ -36,7 +79,7 @@ export const useSourceStore = create<SourceStore>()(
         if (current.length === 0) {
           const defaults: DownloadSource[] = DEFAULT_SOURCES.map(url => ({
             url,
-            name: new URL(url).pathname.split('/').pop()?.replace('.json', '') || 'Unknown',
+            name: new URL(url).pathname.split('/').pop()?.replace('.json', '') || 'Source',
             status: 'pending',
             optionsCount: 0,
             data: []
@@ -46,11 +89,13 @@ export const useSourceStore = create<SourceStore>()(
         }
       },
       addSource: (url) => {
-        if (get().sources.some(s => s.url === url)) return
+        const trimmed = url.trim()
+        if (!trimmed || get().sources.some(s => s.url === trimmed)) return
+        const name = new URL(trimmed).pathname.split('/').pop()?.replace('.json', '') || 'Source'
         set(state => ({
-          sources: [...state.sources, { url, name: 'Unknown', status: 'pending', optionsCount: 0, data: [] }]
+          sources: [...state.sources, { url: trimmed, name, status: 'pending', optionsCount: 0, data: [] }]
         }))
-        get().syncSource(url)
+        get().syncSource(trimmed)
       },
       removeSource: (url) => {
         set(state => ({ sources: state.sources.filter(s => s.url !== url) }))
@@ -63,40 +108,24 @@ export const useSourceStore = create<SourceStore>()(
           sources: state.sources.map(s => s.url === url ? { ...s, status: 'syncing' } : s)
         }))
         try {
-          let jsonText: string | null = null;
-
-          // Attempt normal fetch first
-          try {
-            const res = await fetch(url, { headers: { 'Accept': 'application/json' } })
-            if (res.ok) {
-              jsonText = await res.text()
-            } else {
-              throw new Error(`HTTP ${res.status}`)
-            }
-          } catch (e) {
-            // Fallback to Cloudflare bypass via Electron main process
-            if (window.electronAPI && window.electronAPI.fetchSourceCF) {
-              jsonText = await window.electronAPI.fetchSourceCF(url);
-            } else {
-              throw e;
-            }
-          }
-
-          if (!jsonText) throw new Error('Empty response');
+          const jsonText = await fetchSourceContent(url)
+          if (!jsonText) throw new Error('Could not fetch source JSON')
 
           const json = JSON.parse(jsonText) as HydraSourceData
+          const downloads = Array.isArray(json.downloads) ? json.downloads : []
+          
           set(state => ({
             sources: state.sources.map(s => s.url === url ? {
               ...s,
               name: json.name || s.name,
               status: 'up_to_date',
-              optionsCount: json.downloads?.length || 0,
+              optionsCount: downloads.length,
               lastSynced: Date.now(),
-              data: json.downloads || []
+              data: downloads
             } : s)
           }))
         } catch (error) {
-          console.error(`Failed to sync ${url}:`, error)
+          console.error(`[SourceStore] Failed to sync ${url}:`, error)
           set(state => ({
             sources: state.sources.map(s => s.url === url ? { ...s, status: 'error' } : s)
           }))
@@ -110,14 +139,46 @@ export const useSourceStore = create<SourceStore>()(
     {
       name: 'eclipse-sources',
       partialize: (state) => ({
-        // Prevent storing large JSON arrays in localStorage
+        // Store metadata without holding huge arrays permanently in localStorage
         sources: state.sources.map(s => ({ ...s, data: [], status: 'pending' }))
       }),
       onRehydrateStorage: () => (state) => {
-        if (state && state.sources.length > 0) {
-          setTimeout(() => state.syncAll(), 500)
-        } else if (state) {
-          state.initializeDefaults()
+        if (state) {
+          // Auto migrate any old un-synced or blocked URLs
+          if (state.sources.length > 0) {
+            const migrated = state.sources.map(s => {
+              if (s.url.includes('hydralinks.cloud/sources/')) {
+                return { ...s, url: s.url.replace('hydralinks.cloud/sources/', 'hydralinks.pages.dev/sources/') }
+              }
+              return s
+            })
+            // Remove completely defunct 404 dead links
+            const valid = migrated.filter(s => 
+              !s.url.includes('davidkazumisource.com') && 
+              !s.url.includes('fitgirl.json') && 
+              !s.url.includes('dodi.json') && 
+              !s.url.includes('steamrip.json') && 
+              !s.url.includes('onlinefix.json') && 
+              !s.url.includes('xatab.json')
+            )
+            // Ensure all working defaults are present
+            DEFAULT_SOURCES.forEach(defUrl => {
+              if (!valid.some(s => s.url === defUrl)) {
+                valid.push({
+                  url: defUrl,
+                  name: new URL(defUrl).pathname.split('/').pop()?.replace('.json', '') || 'Source',
+                  status: 'pending',
+                  optionsCount: 0,
+                  data: []
+                })
+              }
+            })
+
+            state.sources = valid
+            setTimeout(() => state.syncAll(), 200)
+          } else {
+            state.initializeDefaults()
+          }
         }
       }
     }

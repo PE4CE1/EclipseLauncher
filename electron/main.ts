@@ -592,44 +592,65 @@ ipcMain.handle('overlay:save-positions', (_event, positions: Record<string, unkn
 
 
 // ─── Cloudflare Bypass Fetch ──────────────────────────────────────────────────
-ipcMain.handle('source:fetch-cf', async (_event, url: string) => {
+ipcMain.handle('source:fetch-cf', async (_event, rawUrl: string) => {
+  const url = rawUrl.replace('hydralinks.cloud/sources/', 'hydralinks.pages.dev/sources/')
   return new Promise((resolve) => {
+    let resolved = false
     const hiddenWin = new BrowserWindow({
       show: false,
+      width: 800,
+      height: 600,
       webPreferences: { nodeIntegration: false, contextIsolation: true }
     })
-    hiddenWin.loadURL(url)
-    
-    let attempts = 0
-    const interval = setInterval(async () => {
-      attempts++
-      if (attempts > 20) {
-        clearInterval(interval)
-        hiddenWin.destroy()
-        resolve(null)
-        return
+
+    const cleanup = () => {
+      if (hiddenWin && !hiddenWin.isDestroyed()) {
+        try { hiddenWin.destroy() } catch {}
       }
+    }
+
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true
+        cleanup()
+        resolve(null)
+      }
+    }, 10000)
+
+    hiddenWin.webContents.on('did-finish-load', async () => {
       try {
-        if (!hiddenWin || hiddenWin.isDestroyed()) {
-          clearInterval(interval)
-          resolve(null)
-          return
+        const text = await hiddenWin.webContents.executeJavaScript('document.querySelector("pre")?.textContent || document.body.innerText')
+        if (text && (text.includes('"downloads"') || text.includes('downloads'))) {
+          if (!resolved) {
+            resolved = true
+            clearTimeout(timer)
+            cleanup()
+            resolve(text)
+          }
         }
-        const text = await hiddenWin.webContents.executeJavaScript('document.body.innerText')
-        if (text && text.includes('"name"') && text.includes('"downloads"')) {
-          clearInterval(interval)
-          hiddenWin.destroy()
-          resolve(text)
-        }
-      } catch (err) {}
-    }, 1000)
+      } catch {}
+    })
+
+    hiddenWin.loadURL(url).catch(() => {
+      if (!resolved) {
+        resolved = true
+        clearTimeout(timer)
+        cleanup()
+        resolve(null)
+      }
+    })
   })
 })
 
 // ─── Generic Fetch (CORS Bypass) ──────────────────────────────────────────────
 ipcMain.handle('util:fetch', async (_event, url: string) => {
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } })
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*'
+      }
+    })
     if (!res.ok) return null
     return await res.text()
   } catch {
