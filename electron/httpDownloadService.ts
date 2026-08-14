@@ -147,6 +147,19 @@ class HttpDownloader {
           console.error(`[HttpDownloader] Server responded with HTTP status ${res.statusCode}`)
           this.status = 'error'
           this.errorMessage = `HTTP Fehler ${res.statusCode}`
+          if (this.onProgressCallback) {
+            this.onProgressCallback({
+              infoHash: this.id,
+              name: this.name,
+              progress: 0,
+              downloadSpeed: 0,
+              timeRemaining: 0,
+              downloaded: 0,
+              length: 0,
+              status: 'error',
+              installPath: this.targetDir
+            })
+          }
           return
         }
 
@@ -171,9 +184,26 @@ class HttpDownloader {
             this.download()
             return
           } else {
-            console.error('[HttpDownloader] Could not resolve binary stream from landing page')
+            console.error('[HttpDownloader] Could not resolve binary stream from landing page. Opening in browser...')
             this.status = 'error'
             this.errorMessage = 'Dieser Hoster erfordert ein Debrid-Konto oder den Browser-Download'
+            try {
+              const { shell } = require('electron')
+              shell.openExternal(this.url)
+            } catch (e) {}
+            if (this.onProgressCallback) {
+              this.onProgressCallback({
+                infoHash: this.id,
+                name: this.name,
+                progress: 0,
+                downloadSpeed: 0,
+                timeRemaining: 0,
+                downloaded: 0,
+                length: 0,
+                status: 'error',
+                installPath: this.targetDir
+              })
+            }
             return
           }
         }
