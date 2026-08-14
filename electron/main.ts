@@ -195,13 +195,20 @@ function createWindow() {
       mainWindow?.focus()
     })
 
-    // Fallback: show the window after 4 seconds regardless
+    mainWindow.webContents.once('did-finish-load', () => {
+      if (mainWindow && !mainWindow.isVisible()) {
+        mainWindow.show()
+        mainWindow.focus()
+      }
+    })
+
+    // Fallback: show the window quickly regardless
     setTimeout(() => {
       if (mainWindow && !mainWindow.isVisible()) {
         mainWindow.show()
         mainWindow.focus()
       }
-    }, 4000)
+    }, 1500)
   }
 
   const indexPath = path.join(__dirname, '../dist/index.html')

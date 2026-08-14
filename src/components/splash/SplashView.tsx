@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Play, Settings2 } from 'lucide-react'
+import { Check, Play } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useScanner } from '../../hooks/useScanner'
 import { useTranslation } from '../../hooks/useTranslation'
@@ -11,14 +11,39 @@ interface SplashViewProps {
   onComplete: () => void
 }
 
+function getInitialAutoScan(): boolean {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('eclipse-game-store') : null
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (parsed?.state?.settings?.autoScanSplash !== undefined) {
+        return !!parsed.state.settings.autoScanSplash
+      }
+    }
+  } catch {}
+  return true // Default: Auto-scan is ON
+}
+
+function getInitialScanSteam(): boolean {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('eclipse-game-store') : null
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (parsed?.state?.settings?.scanUninstalledSteam !== undefined) {
+        return !!parsed.state.settings.scanUninstalledSteam
+      }
+    }
+  } catch {}
+  return true
+}
+
 export function SplashView({ onComplete }: SplashViewProps) {
-  const settings = useGameStore(state => state.settings)
   const updateSettings = useGameStore(state => state.updateSettings)
   const scanMessage = useGameStore(state => state.scanMessage)
   const { scan } = useScanner()
   const { language } = useTranslation()
 
-  const [hasHydrated, setHasHydrated] = useState(false)
+  const [autoScanEnabled] = useState(getInitialAutoScan)
   const [userClickedStart, setUserClickedStart] = useState(false)
   const [progress, setProgress] = useState(15)
   const [statusText, setStatusText] = useState(
@@ -28,8 +53,8 @@ export function SplashView({ onComplete }: SplashViewProps) {
   const isFinishedRef = useRef(false)
 
   // Local settings toggles for manual start mode
-  const [loadSteam, setLoadSteam] = useState(settings.scanUninstalledSteam ?? true)
-  const [autoScanSplash, setAutoScanSplash] = useState(settings.autoScanSplash ?? false)
+  const [loadSteam, setLoadSteam] = useState(getInitialScanSteam)
+  const [autoScanSplash, setAutoScanSplash] = useState(getInitialAutoScan)
 
   // Minimal, subtle ambient stars
   const stars = useMemo(() => [
@@ -52,13 +77,6 @@ export function SplashView({ onComplete }: SplashViewProps) {
     }
   }
 
-  useEffect(() => {
-    useGameStore.persist.onFinishHydration(() => setHasHydrated(true))
-    if (useGameStore.persist.hasHydrated()) {
-      setHasHydrated(true)
-    }
-  }, [])
-
   // Sync external scanner messages if provided
   useEffect(() => {
     if (scanMessage && !isDone) {
@@ -69,7 +87,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
   const runProgressSequence = async () => {
     const abortController = new AbortController()
 
-    // 1. Initial stage (0.4s)
+    // 1. Initial stage (0.35s)
     await new Promise(r => setTimeout(r, 350))
     setProgress(32)
     setStatusText(language === 'de' ? 'Scanne installierte Spiele & Manifeste...' : 'Scanning game manifests...')
@@ -77,17 +95,17 @@ export function SplashView({ onComplete }: SplashViewProps) {
     // Run parallel scan
     scan({ signal: abortController.signal }).catch(() => {})
 
-    // 2. Library sync stage (0.5s)
+    // 2. Library sync stage (0.55s)
     await new Promise(r => setTimeout(r, 550))
     setProgress(68)
     setStatusText(language === 'de' ? 'Synchronisiere Bibliotheken & Metadaten...' : 'Synchronizing libraries & metadata...')
 
-    // 3. Database optimization stage (0.5s)
+    // 3. Database optimization stage (0.55s)
     await new Promise(r => setTimeout(r, 550))
     setProgress(92)
     setStatusText(language === 'de' ? 'Optimiere Cache & Oberflächen...' : 'Optimizing cache & interface...')
 
-    // 4. Ready stage (0.4s)
+    // 4. Ready stage (0.45s)
     await new Promise(r => setTimeout(r, 450))
     setProgress(100)
     setIsDone(true)
@@ -98,14 +116,12 @@ export function SplashView({ onComplete }: SplashViewProps) {
     finish()
   }
 
-  // Auto-Start if autoScanSplash is enabled
+  // Auto-Start immediately from frame 0 if auto-scan is active
   useEffect(() => {
-    if (hasHydrated) {
-      if (settings.autoScanSplash !== false) {
-        runProgressSequence()
-      }
+    if (autoScanEnabled) {
+      runProgressSequence()
     }
-  }, [hasHydrated])
+  }, [])
 
   const handleManualStart = async () => {
     setUserClickedStart(true)
@@ -116,12 +132,12 @@ export function SplashView({ onComplete }: SplashViewProps) {
     await runProgressSequence()
   }
 
-  const isScanningActive = (settings.autoScanSplash !== false && hasHydrated) || userClickedStart
+  const isScanningActive = autoScanEnabled || userClickedStart
 
   return (
     <motion.div 
       initial={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.02, filter: 'blur(10px)' }}
+      exit={{ opacity: 0, scale: 1.02, filter: 'blur(8px)' }}
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#040405] text-white select-none overflow-hidden"
     >
