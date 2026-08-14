@@ -26,7 +26,7 @@ export type Settings = {
 
 // Expose a typed API to the renderer via window.electronAPI
 contextBridge.exposeInMainWorld('electronAPI', {
-  isOverlay: process.argv.includes('--is-overlay'),
+  isOverlay: typeof process !== 'undefined' && Array.isArray(process?.argv) && process.argv.includes('--is-overlay'),
   
   // Window controls
   minimizeWindow: () => ipcRenderer.send('window:minimize'),

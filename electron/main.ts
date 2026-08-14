@@ -204,12 +204,24 @@ function createWindow() {
     }, 4000)
   }
 
-  if (isDev && DEV_SERVER_URL) {
-    mainWindow.loadURL(DEV_SERVER_URL)
+  const devUrl = process.env['VITE_DEV_SERVER_URL'] || process.env.VITE_DEV_SERVER_URL || (!app.isPackaged ? 'http://localhost:5173' : undefined)
+
+  if (devUrl) {
+    console.log(`[MainWindow] Loading Vite Dev Server: ${devUrl}`)
+    mainWindow.loadURL(devUrl)
     mainWindow.webContents.openDevTools({ mode: 'detach' })
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
+
+  mainWindow.webContents.on('did-fail-load', (_e, errorCode, errorDesc, validatedURL) => {
+    console.warn(`[MainWindow] did-fail-load: ${validatedURL} (${errorCode} - ${errorDesc})`)
+    if (devUrl && !app.isPackaged) {
+      setTimeout(() => {
+        mainWindow?.loadURL(devUrl).catch(() => {})
+      }, 1000)
+    }
+  })
 
   mainWindow.on('close', (e) => {
     if (isQuitting) return
