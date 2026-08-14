@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Sidebar } from './components/layout/Sidebar'
 import { TitleBar } from './components/layout/TitleBar'
@@ -10,7 +10,6 @@ import { DownloadsView } from './components/downloads/DownloadsView'
 import { SettingsView } from './components/settings/SettingsView'
 import { ProfileView } from './components/profile/ProfileView'
 import { NotificationsView } from './components/notifications/NotificationsView'
-import { SplashView } from './components/splash/SplashView'
 import { EclipseInfoView } from './components/eclipse/EclipseInfoView'
 import { EclipseCinemaModal } from './components/eclipse/EclipseCinemaModal'
 import { GameDetailModal } from './components/shared/GameDetailModal'
@@ -22,7 +21,6 @@ import { useGameStore } from './store/gameStore'
 import { useDownloadStore } from './store/downloadStore'
 import { useScanner } from './hooks/useScanner'
 import { sendAppNotification } from './services/notificationService'
-import { playLaunchCue } from './services/soundService'
 
 const pageVariants = {
   initial: { opacity: 0, y: 6, filter: 'blur(3px)' },
@@ -65,13 +63,15 @@ export default function App() {
   const isGameModalOpen = useUIStore(state => state.isGameModalOpen)
   const settings = useGameStore(state => state.settings)
   const { scan } = useScanner()
-  const [isSplashComplete, setIsSplashComplete] = useState(false)
 
-  const handleSplashComplete = useCallback(() => {
-    setIsSplashComplete(true)
+  // Background library scan and startup preferences
+  useEffect(() => {
     const currentSettings = useGameStore.getState().settings
     if (currentSettings.launchInLibrary) {
       useUIStore.getState().setActiveView('library')
+    }
+    if (currentSettings.autoScan !== false) {
+      scan().catch((e) => console.warn('[App] Background scan error:', e))
     }
   }, [])
 
@@ -79,7 +79,6 @@ export default function App() {
   useEffect(() => {
     if (!window.electronAPI?.onUpdaterEvent) return;
 
-    // Check for updates automatically on startup if enabled
     const currentSettings = useGameStore.getState().settings;
     if (currentSettings.autoCheckUpdates && window.electronAPI.checkUpdate) {
       window.electronAPI.checkUpdate();
@@ -130,7 +129,7 @@ export default function App() {
     });
   }, [])
 
-  // Mouse thumb buttons (Back/Forward) & Electron navigation listener
+  // Mouse thumb buttons (Back/Forward)
   useEffect(() => {
     const handleMouseUp = (e: MouseEvent) => {
       // Button 3 = Mouse Back (XButton1)
@@ -147,110 +146,28 @@ export default function App() {
       }
     }
 
-    const handleAuxClick = (e: MouseEvent) => {
-      if (e.button === 3 || e.button === 4) {
-        e.preventDefault()
-        e.stopPropagation()
-      }
-    }
-
     window.addEventListener('mouseup', handleMouseUp)
-    window.addEventListener('auxclick', handleAuxClick)
+    return () => window.removeEventListener('mouseup', handleMouseUp)
+  }, [])
 
-    const handleContextMenu = (e: MouseEvent) => {
-      if (process.env.NODE_ENV === 'production') {
-        e.preventDefault()
+  // Global Keybind: Escape to close GameDetailModal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isGameModalOpen) {
+        useUIStore.getState().setIsGameModalOpen(false)
       }
     }
-    document.addEventListener('contextmenu', handleContextMenu)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isGameModalOpen])
 
-    // Listen for cross-window friend add modal trigger
-    let cleanupAddFriend: (() => void) | undefined
-    if (window.electronAPI?.onShowAddFriendModal) {
-      cleanupAddFriend = window.electronAPI.onShowAddFriendModal(() => {
-        useUIStore.getState().setIsAddFriendOpen(true)
-      })
-    }
-
-    let cleanupFriendProfile: (() => void) | undefined
-    if (window.electronAPI?.onShowFriendProfileModal) {
-      cleanupFriendProfile = window.electronAPI.onShowFriendProfileModal((friendId) => {
-        useUIStore.getState().openFriendProfile(friendId)
-      })
-    }
-
-    let cleanupElectronNav: (() => void) | undefined
-    if (window.electronAPI?.onNavigate) {
-      cleanupElectronNav = window.electronAPI.onNavigate((direction) => {
-        if (direction === 'back') useUIStore.getState().goBack()
-        if (direction === 'forward') useUIStore.getState().goForward()
-      })
-    }
-
-    return () => {
-      window.removeEventListener('mouseup', handleMouseUp)
-      window.removeEventListener('auxclick', handleAuxClick)
-      document.removeEventListener('contextmenu', handleContextMenu)
-      if (cleanupAddFriend) cleanupAddFriend()
-      if (cleanupFriendProfile) cleanupFriendProfile()
-      if (cleanupElectronNav) cleanupElectronNav()
-    }
-  }, [])
-
-  // Process Monitor listeners for game start & stop
-  useEffect(() => {
-    let cleanupStart: (() => void) | undefined
-    let cleanupStop: (() => void) | undefined
-
-    // Initial check in case a game is already running
-    if (window.electronAPI?.getCurrentGame) {
-      window.electronAPI.getCurrentGame().then(game => {
-        if (game) {
-          useGameStore.getState().startPlaySession(game.name, game.name)
-        }
-      })
-    }
-
-    if (window.electronAPI?.onGameStarted) {
-      cleanupStart = window.electronAPI.onGameStarted((data) => {
-        useGameStore.getState().startPlaySession(data.name, data.name)
-        if (useGameStore.getState().settings.soundEffects ?? true) {
-          playLaunchCue()
-        }
-      })
-    }
-    if (window.electronAPI?.onGameStopped) {
-      cleanupStop = window.electronAPI.onGameStopped(() => {
-        useGameStore.getState().stopPlaySession()
-      })
-    }
-
-    return () => {
-      if (cleanupStart) cleanupStart()
-      if (cleanupStop) cleanupStop()
-    }
-  }, [])
-
-  // Active game playtime ticker
+  // Process Monitor & Discord Activity
   const activeGame = useGameStore(state => state.activeGame)
-  useEffect(() => {
-    if (!activeGame) return
-    const interval = setInterval(() => {
-      useGameStore.getState().addPlayTime(activeGame.id, 1)
-    }, 60000)
-
-    return () => {
-      clearInterval(interval)
-    }
-  }, [activeGame])
-
-
-  // Discord RPC syncing
-  const discordRpcEnabled = useGameStore(state => state.settings.discordRpc ?? true)
-  const discordRpcIdleEnabled = useGameStore(state => state.settings.discordRpcIdle ?? false)
-  const discordRpcShowDownloads = useGameStore(state => state.settings.discordRpcShowDownloads ?? true)
-  const discordRpcPrivacyMode = useGameStore(state => state.settings.discordRpcPrivacyMode ?? false)
   const downloads = useDownloadStore(state => state.downloads)
+  const discordRpcEnabled = settings.discordRpc !== false
+  const discordRpcIdleEnabled = settings.discordRpcIdle !== false
+  const discordRpcShowDownloads = settings.discordRpcShowDownloads !== false
+  const discordRpcPrivacyMode = !!settings.discordRpcPrivacyMode
 
   useEffect(() => {
     if (!discordRpcEnabled) {
@@ -286,8 +203,6 @@ export default function App() {
     }
   }, [activeGame, downloads, discordRpcEnabled, discordRpcIdleEnabled, discordRpcShowDownloads, discordRpcPrivacyMode])
 
-
-
   return (
     <div className="flex flex-col h-screen bg-hub-base select-none overflow-hidden relative">
       {/* Custom frameless title bar */}
@@ -319,13 +234,6 @@ export default function App() {
 
       {/* Cinematic Easter Egg Eclipse Animation */}
       <EclipseCinemaModal />
-
-      {/* Startup Splash Overlay with Seamless Crossfade */}
-      <AnimatePresence>
-        {!isSplashComplete && (
-          <SplashView onComplete={handleSplashComplete} />
-        )}
-      </AnimatePresence>
     </div>
   )
 }
