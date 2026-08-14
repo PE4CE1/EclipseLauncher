@@ -500,6 +500,41 @@ ipcMain.handle('settings:set', (_event, data: Record<string, unknown>) => {
   }
 })
 
+// ─── VPN Service IPC ────────────────────────────────────────────────────────
+import { detectInstalledVpns, getVpnStatus, connectVpn, disconnectVpn } from './vpnService'
+
+ipcMain.handle('vpn:detect', async () => {
+  try {
+    return await detectInstalledVpns()
+  } catch (e: any) {
+    return []
+  }
+})
+
+ipcMain.handle('vpn:status', async () => {
+  try {
+    return await getVpnStatus()
+  } catch (e: any) {
+    return { isConnected: false }
+  }
+})
+
+ipcMain.handle('vpn:connect', async (_event, vpnId?: string) => {
+  try {
+    return await connectVpn(vpnId)
+  } catch (e: any) {
+    return { success: false, message: e.message }
+  }
+})
+
+ipcMain.handle('vpn:disconnect', async (_event, vpnId?: string) => {
+  try {
+    return await disconnectVpn(vpnId)
+  } catch (e: any) {
+    return { success: false, message: e.message }
+  }
+})
+
 // ─── Native Notifications ───────────────────────────────────────────────────
 function showNativeWindowsToast(title: string, body: string) {
   if (process.platform !== 'win32') return

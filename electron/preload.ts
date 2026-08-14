@@ -157,6 +157,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ]),
   selectDirectory: () => ipcRenderer.invoke('dialog:open-directory'),
   getDefaultDownloadPath: () => ipcRenderer.invoke('app:get-default-download-path'),
+  // VPN Management
+  detectInstalledVpns: () => ipcRenderer.invoke('vpn:detect'),
+  getVpnStatus: () => ipcRenderer.invoke('vpn:status'),
+  connectVpn: (vpnId?: string) => ipcRenderer.invoke('vpn:connect', vpnId),
+  disconnectVpn: (vpnId?: string) => ipcRenderer.invoke('vpn:disconnect', vpnId),
+
   onTorrentProgress: (callback: (payload: any) => void) => {
     const handler = (_: Electron.IpcRendererEvent, payload: any) => callback(payload)
     ipcRenderer.on('torrent:progress', handler)

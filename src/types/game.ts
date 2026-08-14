@@ -100,6 +100,9 @@ export interface AppSettings {
   downloadPath: string
   autoExtractArchive?: boolean
   autoDeleteArchive?: boolean
+  autoVpnOnDownload?: boolean
+  requireVpnForDownload?: boolean
+  selectedVpnProvider?: string
   realDebridKey?: string
   torboxKey?: string
   allDebridKey?: string
@@ -218,6 +221,12 @@ export interface ElectronAPI {
   onTorrentProgress: (callback: (payload: any) => void) => () => void
   selectDirectory: () => Promise<string | null>
   getDefaultDownloadPath?: () => Promise<string>
+
+  // VPN Management
+  detectInstalledVpns?: () => Promise<Array<{ id: string; name: string; path?: string; cli?: string; isRunning: boolean; isConnected: boolean; isWindowsNative?: boolean; nativeName?: string }>>
+  getVpnStatus?: () => Promise<{ isConnected: boolean; vpnName?: string; adapterName?: string }>
+  connectVpn?: (vpnId?: string) => Promise<{ success: boolean; message?: string }>
+  disconnectVpn?: (vpnId?: string) => Promise<{ success: boolean; message?: string }>
 
   // Cloudflare bypass
   fetchSourceCF: (url: string) => Promise<string | null>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  User, RefreshCw, Save, Shield,
+  User, RefreshCw, Save, Shield, ShieldCheck,
   Settings as SettingsIcon, Download, Bell, Gamepad2, 
   Link, Monitor, Check, Plus, Trash, Loader2, Folder, Volume2
 } from 'lucide-react'
@@ -37,6 +37,39 @@ export function SettingsView() {
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [newSourceUrl, setNewSourceUrl] = useState('')
   const [showAddSource, setShowAddSource] = useState(false)
+
+  // VPN State
+  const [detectedVpns, setDetectedVpns] = useState<Array<{ id: string; name: string; isRunning: boolean; isConnected: boolean }>>([])
+  const [vpnStatus, setVpnStatus] = useState<{ isConnected: boolean; vpnName?: string }>({ isConnected: false })
+  const [isScanningVpns, setIsScanningVpns] = useState(false)
+  const [isConnectingVpn, setIsConnectingVpn] = useState(false)
+
+  const refreshVpns = async () => {
+    if (!window.electronAPI?.detectInstalledVpns) return
+    setIsScanningVpns(true)
+    try {
+      const [vpns, status] = await Promise.all([
+        window.electronAPI.detectInstalledVpns(),
+        window.electronAPI.getVpnStatus ? window.electronAPI.getVpnStatus() : { isConnected: false }
+      ])
+      setDetectedVpns(vpns || [])
+      setVpnStatus(status || { isConnected: false })
+      if (vpns && vpns.length > 0 && !localSettings.selectedVpnProvider) {
+        set('selectedVpnProvider', vpns[0].id)
+        updateSettings({ selectedVpnProvider: vpns[0].id })
+      }
+    } catch (e) {
+      console.warn('VPN scan error:', e)
+    } finally {
+      setIsScanningVpns(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeSettingsTab === 'downloads') {
+      refreshVpns()
+    }
+  }, [activeSettingsTab])
 
   const [startupOptions] = useState({
     exitInsteadOfMinimize: true,
@@ -410,11 +443,161 @@ export function SettingsView() {
 
               <hr className="border-white/[0.08]" />
 
+              {/* ─── VPN & Safe Download Protection ─── */}
+              <section>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={18} className="text-white" />
+                    <h2 className="text-lg font-bold text-white tracking-tight">
+                      {language === 'de' ? 'VPN & Download-Sicherheit' : 'VPN & Safe Download Protection'}
+                    </h2>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                      vpnStatus.isConnected 
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                        : 'bg-white/[0.04] text-white/50 border-white/10'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${vpnStatus.isConnected ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]' : 'bg-white/30'}`} />
+                      {vpnStatus.isConnected 
+                        ? (language === 'de' ? `VPN Aktiv: ${vpnStatus.vpnName || 'Verbunden'}` : `VPN Active: ${vpnStatus.vpnName || 'Connected'}`) 
+                        : (language === 'de' ? 'Kein VPN aktiv' : 'No VPN Active')}
+                    </span>
+
+                    <button
+                      onClick={refreshVpns}
+                      className="p-1.5 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors cursor-pointer"
+                      title={language === 'de' ? 'VPN-Status & Clients aktualisieren' : 'Refresh VPN status & clients'}
+                    >
+                      <RefreshCw size={13} className={isScanningVpns ? 'animate-spin' : ''} />
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-xs text-white/50 mb-4">
+                  {language === 'de' 
+                    ? 'Eclipse Launcher erkennt automatisch installierte VPN-Clients (CyberGhost, NordVPN, Proton, Mullvad etc.) und verbindet diese vor jedem Download.' 
+                    : 'Eclipse Launcher automatically detects installed VPN clients and connects before any download starts.'}
+                </p>
+
+                <div className="space-y-4 max-w-xl">
+                  <div className="space-y-3">
+                    <CleanCheckbox
+                      checked={localSettings.autoVpnOnDownload ?? false}
+                      label={language === 'de' ? 'Auto-VPN vor Download aktivieren' : 'Automatically connect VPN before download'}
+                      description={language === 'de' ? 'Startet und verbindet automatisch das ausgewählte VPN auf deinem System, bevor ein BitTorrent- oder Direktdownload startet.' : 'Automatically launches and connects your VPN before any torrent or direct download begins.'}
+                      onChange={() => {
+                        const val = !(localSettings.autoVpnOnDownload ?? false)
+                        set('autoVpnOnDownload', val)
+                        updateSettings({ autoVpnOnDownload: val })
+                      }}
+                    />
+
+                    <CleanCheckbox
+                      checked={localSettings.requireVpnForDownload ?? false}
+                      label={language === 'de' ? 'Download-Killswitch (Nur mit aktivem VPN laden)' : 'Download Killswitch (Require active VPN)'}
+                      description={language === 'de' ? 'Blockiert den Start von Downloads komplett, wenn kein VPN aktiv ist, um deine echte IP-Adresse zu 100% zu schützen.' : 'Blocks downloads completely if no VPN is active to protect your real IP address.'}
+                      onChange={() => {
+                        const val = !(localSettings.requireVpnForDownload ?? false)
+                        set('requireVpnForDownload', val)
+                        updateSettings({ requireVpnForDownload: val })
+                      }}
+                    />
+                  </div>
+
+                  {/* Detected VPNs List / Card */}
+                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-xs text-white/80 uppercase tracking-wider">
+                        {language === 'de' ? 'Erkannte VPN-Clients' : 'Detected VPN Clients'}
+                      </span>
+                      <span className="text-[11px] text-white/40 font-mono">
+                        {detectedVpns.length} {language === 'de' ? 'gefunden' : 'found'}
+                      </span>
+                    </div>
+
+                    {detectedVpns.length === 0 ? (
+                      <div className="p-3 bg-white/[0.02] border border-white/[0.05] rounded-lg text-center text-xs text-white/40">
+                        {language === 'de' ? 'Kein bekannter VPN-Client installiert. Installiere CyberGhost, NordVPN, ProtonVPN etc.' : 'No known VPN client found. Install NordVPN, CyberGhost, ProtonVPN, etc.'}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {detectedVpns.map((vpn) => {
+                          const isSelected = (localSettings.selectedVpnProvider || detectedVpns[0]?.id) === vpn.id
+                          return (
+                            <div 
+                              key={vpn.id}
+                              onClick={() => {
+                                set('selectedVpnProvider', vpn.id)
+                                updateSettings({ selectedVpnProvider: vpn.id })
+                              }}
+                              className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                                isSelected 
+                                  ? 'bg-white/[0.08] border-white/20 text-white' 
+                                  : 'bg-white/[0.02] border-white/[0.06] text-white/60 hover:bg-white/[0.04]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`w-2 h-2 rounded-full ${vpn.isConnected ? 'bg-emerald-400' : (vpn.isRunning ? 'bg-amber-400' : 'bg-white/20')}`} />
+                                <div>
+                                  <span className="text-xs font-bold text-white block">{vpn.name}</span>
+                                  <span className="text-[10px] text-white/40">
+                                    {vpn.isConnected ? (language === 'de' ? 'Verbunden & Aktiv' : 'Connected & Active') : (vpn.isRunning ? (language === 'de' ? 'Läuft im Hintergrund' : 'Running in background') : (language === 'de' ? 'Installiert' : 'Installed'))}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {isSelected && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-black">
+                                    {language === 'de' ? 'Standard' : 'Default'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Quick Connect / Disconnect Buttons */}
+                    {detectedVpns.length > 0 && (
+                      <div className="pt-2 flex items-center gap-2">
+                        <button
+                          disabled={isConnectingVpn}
+                          onClick={async () => {
+                            setIsConnectingVpn(true)
+                            try {
+                              const res = await window.electronAPI?.connectVpn?.(localSettings.selectedVpnProvider)
+                              if (res?.success) {
+                                showNotification(res.message || 'VPN verbunden!', 'success')
+                              } else {
+                                showNotification(res?.message || 'VPN Verbindung fehlgeschlagen', 'error')
+                              }
+                              await refreshVpns()
+                            } finally {
+                              setIsConnectingVpn(false)
+                            }
+                          }}
+                          className="flex-1 py-2 px-3 bg-white text-black hover:bg-gray-200 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                        >
+                          <ShieldCheck size={13} />
+                          <span>{isConnectingVpn ? (language === 'de' ? 'Verbinde...' : 'Connecting...') : (language === 'de' ? 'VPN jetzt verbinden' : 'Connect VPN Now')}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              <hr className="border-white/[0.08]" />
+
               {/* ─── Debrid Services Integration ─── */}
               <section>
                 <div className="flex items-center justify-between mb-1">
                   <h2 className="text-lg font-bold text-white tracking-tight">{language === 'de' ? 'Debrid Highspeed-Dienste' : 'Debrid Highspeed Services'}</h2>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/[0.06] text-white/80 border border-white/10">
                     Optional
                   </span>
                 </div>

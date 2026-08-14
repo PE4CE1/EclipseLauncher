@@ -24,7 +24,7 @@ export function GameDetailModal() {
   const { launchGame } = useScanner()
 
   const [isDownloadOptionsOpen, setIsDownloadOptionsOpen] = useState(false)
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isKilling, setIsKilling] = useState(false)
   const [playerCount, setPlayerCount] = useState<number | null>(null)
@@ -132,8 +132,36 @@ export function GameDetailModal() {
     }
   }
 
-  function handleDownload(uri: string, title: string, downloadPath: string, isHttp: boolean, autoExtract: boolean, autoDelete = false) {
+  async function handleDownload(uri: string, title: string, downloadPath: string, isHttp: boolean, autoExtract: boolean, autoDelete = false) {
     const gameTitle = game?.name || title
+    const appSettings = useGameStore.getState().settings
+
+    // Auto-VPN & Killswitch check
+    if (window.electronAPI && window.electronAPI.getVpnStatus) {
+      try {
+        const vpnStatus = await window.electronAPI.getVpnStatus()
+        
+        // If Auto-VPN is enabled and not connected, connect automatically
+        if (appSettings.autoVpnOnDownload && !vpnStatus.isConnected && window.electronAPI.connectVpn) {
+          showNotification(language === 'de' ? '🛡️ VPN-Schutz: Verbinde automatisch mit VPN...' : '🛡️ VPN Protection: Connecting to VPN automatically...', 'info')
+          await window.electronAPI.connectVpn(appSettings.selectedVpnProvider)
+          // Wait briefly for tunnel to establish
+          await new Promise(r => setTimeout(r, 2000))
+        }
+
+        // If Killswitch / Require VPN is enabled and still not connected, block download
+        if (appSettings.requireVpnForDownload) {
+          const recheck = await window.electronAPI.getVpnStatus()
+          if (!recheck.isConnected) {
+            showNotification(language === 'de' ? '🛡️ Download blockiert: VPN-Schutz (Killswitch) ist aktiv, aber kein VPN verbunden!' : '🛡️ Download blocked: VPN protection is active, but no VPN is connected!', 'error')
+            return
+          }
+        }
+      } catch (e) {
+        console.warn('VPN check failed:', e)
+      }
+    }
+
     if (window.electronAPI) {
       const downloadPromise = window.electronAPI.startNativeDownload
         ? window.electronAPI.startNativeDownload(uri, gameTitle, downloadPath, autoExtract, autoDelete)
