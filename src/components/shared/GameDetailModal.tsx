@@ -132,33 +132,45 @@ export function GameDetailModal() {
     }
   }
 
-  async function handleDownload(uri: string, title: string, downloadPath: string, isHttp: boolean, autoExtract: boolean, autoDelete = false) {
+  async function handleDownload(uri: string, title: string, downloadPath: string, isHttp: boolean, autoExtract: boolean, autoDelete = false): Promise<boolean> {
     const gameTitle = game?.name || title
     const appSettings = useGameStore.getState().settings
 
-    // Auto-VPN & Killswitch check
-    if (window.electronAPI && window.electronAPI.getVpnStatus) {
+    // Auto-VPN check: ensure VPN is active before proceeding with download
+    if (appSettings.autoVpnOnDownload && window.electronAPI?.getVpnStatus) {
       try {
-        const vpnStatus = await window.electronAPI.getVpnStatus()
+        let vpnStatus = await window.electronAPI.getVpnStatus()
         
-        // If Auto-VPN is enabled and not connected, connect automatically
-        if (appSettings.autoVpnOnDownload && !vpnStatus.isConnected && window.electronAPI.connectVpn) {
+        if (!vpnStatus.isConnected && window.electronAPI.connectVpn) {
           showNotification(t('vpnProtectionConnecting'), 'info')
-          await window.electronAPI.connectVpn(appSettings.selectedVpnProvider)
-          // Wait briefly for tunnel to establish
-          await new Promise(r => setTimeout(r, 2000))
-        }
+          const connectRes = await window.electronAPI.connectVpn(appSettings.selectedVpnProvider)
 
-        // If Killswitch / Require VPN is enabled and still not connected, block download
-        if (appSettings.requireVpnForDownload) {
-          const recheck = await window.electronAPI.getVpnStatus()
-          if (!recheck.isConnected) {
-            showNotification(t('vpnBlockedKillswitch'), 'error')
-            return
+          if (connectRes && !connectRes.isCLI && !connectRes.isNative) {
+            showNotification(`${connectRes.vpnName || 'VPN'}: ${t('vpnWaitingPrompt')}`, 'info')
+          }
+
+          // Robust Polling: Wait for tunnel to come UP (up to 15s)
+          let connected = false
+          const startTime = Date.now()
+          while (Date.now() - startTime < 15000) {
+            await new Promise(r => setTimeout(r, 800))
+            const check = await window.electronAPI.getVpnStatus()
+            if (check && check.isConnected) {
+              connected = true
+              vpnStatus = check
+              break
+            }
+          }
+
+          if (!connected) {
+            showNotification(t('vpnConnectTimeout'), 'error')
+            return false
+          } else {
+            showNotification(t('vpnConnectedStartingDownload'), 'success')
           }
         }
       } catch (e) {
-        console.warn('VPN check failed:', e)
+        console.warn('VPN check error:', e)
       }
     }
 
@@ -169,7 +181,8 @@ export function GameDetailModal() {
             ? window.electronAPI.startHttpDownload(uri, gameTitle, downloadPath, autoExtract, autoDelete)
             : window.electronAPI.startDownload(uri, downloadPath, autoExtract, autoDelete))
         
-      downloadPromise.then((res: any) => {
+      try {
+        const res = await downloadPromise
         if (res && res.success) {
           const cover = (game as any)?.coverImage || (game as any)?.headerImage || (steamId ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${steamId}/header.jpg` : undefined)
           if (res.infoHash && cover) {
@@ -189,15 +202,19 @@ export function GameDetailModal() {
           setIsDownloadOptionsOpen(false);
           setIsGameModalOpen(false);
           showNotification(t('downloadStarted', { name: gameTitle }) || `Download gestartet: ${gameTitle}`, 'success');
+          return true
         } else {
           showNotification(res?.error || t('downloadFailed') || 'Fehler beim Starten des Downloads', 'error');
+          return false
         }
-      }).catch((err: any) => {
+      } catch (err: any) {
         console.error('Download start error:', err);
         showNotification((t('downloadError', { error: err?.message || '' }) || `Download-Fehler: ${err?.message || ''}`), 'error');
-      });
+        return false
+      }
     } else {
       window.open(uri);
+      return true
     }
   }
 

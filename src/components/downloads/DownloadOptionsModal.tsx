@@ -40,7 +40,7 @@ interface DownloadOptionsModalProps {
   onClose: () => void;
   gameName: string;
   downloads: DownloadOption[];
-  onDownload: (uri: string, title: string, path: string, isHttp: boolean, autoExtract: boolean, autoDelete?: boolean) => void;
+  onDownload: (uri: string, title: string, path: string, isHttp: boolean, autoExtract: boolean, autoDelete?: boolean) => Promise<boolean | void> | void;
 }
 
 export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = [], onDownload }: DownloadOptionsModalProps) {
@@ -197,12 +197,19 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = []
     setStep(2)
   }
 
-  function handleStartDownload() {
+  async function handleStartDownload() {
     if (isStarting) return
     if (selectedDownload && selectedDownloader) {
       setIsStarting(true)
       const isHttp = !selectedDownloader.startsWith('magnet:')
-      onDownload(selectedDownloader, selectedDownload.title, downloadPath, isHttp, autoExtract, autoDelete)
+      try {
+        const result = await onDownload(selectedDownloader, selectedDownload.title, downloadPath, isHttp, autoExtract, autoDelete)
+        if (result === false) {
+          setIsStarting(false)
+        }
+      } catch (err) {
+        setIsStarting(false)
+      }
     }
   }
 

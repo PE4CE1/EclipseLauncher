@@ -491,17 +491,6 @@ export function SettingsView() {
                         updateSettings({ autoVpnOnDownload: val })
                       }}
                     />
-
-                    <CleanCheckbox
-                      checked={localSettings.requireVpnForDownload ?? false}
-                      label={t('requireVpnLabel')}
-                      description={t('requireVpnDesc')}
-                      onChange={() => {
-                        const val = !(localSettings.requireVpnForDownload ?? false)
-                        set('requireVpnForDownload', val)
-                        updateSettings({ requireVpnForDownload: val })
-                      }}
-                    />
                   </div>
 
                   {/* Detected VPNs List / Card */}

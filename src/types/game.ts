@@ -101,7 +101,6 @@ export interface AppSettings {
   autoExtractArchive?: boolean
   autoDeleteArchive?: boolean
   autoVpnOnDownload?: boolean
-  requireVpnForDownload?: boolean
   selectedVpnProvider?: string
   realDebridKey?: string
   torboxKey?: string

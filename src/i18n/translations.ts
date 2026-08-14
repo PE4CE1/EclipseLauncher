@@ -214,8 +214,6 @@ export const translations = {
     vpnSecurityDesc: 'Eclipse Launcher automatically detects installed VPN clients and connects before any download starts.',
     autoVpnLabel: 'Automatically connect VPN before download',
     autoVpnDesc: 'Automatically launches and connects your VPN before any torrent or direct download begins.',
-    requireVpnLabel: 'Download Killswitch (Require active VPN)',
-    requireVpnDesc: 'Blocks downloads completely if no VPN is active to protect your real IP address.',
     detectedVpnsHeader: 'Detected VPN Clients',
     vpnConnected: 'Connected & Active',
     vpnRunning: 'Running in background',
@@ -227,9 +225,11 @@ export const translations = {
     noVpnActive: 'No VPN Active',
     vpnConnectedSuccess: 'VPN connected:',
     vpnClientOpened: 'VPN client opened. Please click Connect inside the VPN window!',
+    vpnWaitingPrompt: 'Please click Connect in the opened VPN client – download starts automatically once connected!',
+    vpnConnectTimeout: 'Download paused: VPN was not connected in time. Please connect your VPN first.',
+    vpnConnectedStartingDownload: 'VPN successfully connected! Starting download...',
     vpnConnectFailed: 'VPN connection failed',
     vpnProtectionConnecting: '🛡️ VPN Protection: Connecting to VPN automatically...',
-    vpnBlockedKillswitch: '🛡️ Download blocked: VPN protection (Killswitch) is active, but no VPN is connected!',
 
     // downloadStore
     readyToPlay: '{name} is ready to play!',
@@ -447,8 +447,6 @@ export const translations = {
     vpnSecurityDesc: 'Eclipse Launcher erkennt automatisch installierte VPN-Clients (CyberGhost, NordVPN, Proton, Mullvad etc.) und verbindet diese vor jedem Download.',
     autoVpnLabel: 'Auto-VPN vor Download aktivieren',
     autoVpnDesc: 'Startet und verbindet automatisch das ausgewählte VPN auf deinem System, bevor ein BitTorrent- oder Direktdownload startet.',
-    requireVpnLabel: 'Download-Killswitch (Nur mit aktivem VPN laden)',
-    requireVpnDesc: 'Blockiert den Start von Downloads komplett, wenn kein VPN aktiv ist, um deine echte IP-Adresse zu 100% zu schützen.',
     detectedVpnsHeader: 'Erkannte VPN-Clients',
     vpnConnected: 'Verbunden & Aktiv',
     vpnRunning: 'Läuft im Hintergrund',
@@ -460,9 +458,11 @@ export const translations = {
     noVpnActive: 'Kein VPN aktiv',
     vpnConnectedSuccess: 'VPN verbunden:',
     vpnClientOpened: 'VPN-Client geöffnet. Bitte im VPN-Fenster auf Verbinden klicken!',
+    vpnWaitingPrompt: 'Bitte im geöffneten VPN-Fenster auf Verbinden klicken – Download startet automatisch sobald verbunden!',
+    vpnConnectTimeout: 'Download pausiert: VPN wurde nicht rechtzeitig verbunden. Bitte aktiviere dein VPN.',
+    vpnConnectedStartingDownload: 'VPN erfolgreich verbunden! Starte Download...',
     vpnConnectFailed: 'VPN-Verbindung fehlgeschlagen',
     vpnProtectionConnecting: '🛡️ VPN-Schutz: Verbinde automatisch mit VPN...',
-    vpnBlockedKillswitch: '🛡️ Download blockiert: VPN-Schutz (Killswitch) ist aktiv, aber kein VPN verbunden!',
 
     // downloadStore
     readyToPlay: '{name} ist bereit zum Spielen!',
