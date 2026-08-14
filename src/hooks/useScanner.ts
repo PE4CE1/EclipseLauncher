@@ -4,6 +4,37 @@ import { useUIStore } from '../store/uiStore'
 import { findSteamIdByName } from '../services/steamService'
 import type { InstalledGame } from '../types/game'
 
+const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
+
+function deduplicateInstalledGames(games: InstalledGame[]): InstalledGame[] {
+  const map = new Map<string, InstalledGame>()
+  for (const game of games) {
+    if (!game || !game.name) continue
+    const normName = normalize(game.name)
+    const key = game.appId ? `app_${game.appId}` : `name_${normName}`
+    
+    if (map.has(key) || map.has(`name_${normName}`)) {
+      const existing = map.get(key) || map.get(`name_${normName}`)!
+      const merged: InstalledGame = {
+        ...existing,
+        ...game,
+        appId: existing.appId || game.appId,
+        installed: existing.installed || game.installed,
+        installPath: existing.installPath || game.installPath,
+        launchUrl: existing.launchUrl || game.launchUrl,
+        playTimeMinutes: Math.max(existing.playTimeMinutes || 0, game.playTimeMinutes || 0),
+        lastPlayed: Math.max(existing.lastPlayed || 0, game.lastPlayed || 0),
+      }
+      map.set(key, merged)
+      map.set(`name_${normName}`, merged)
+    } else {
+      map.set(key, game)
+      map.set(`name_${normName}`, game)
+    }
+  }
+  return Array.from(new Set(map.values()))
+}
+
 export function useScanner() {
   const { setInstalledGames, setIsScanning, setScanMessage } = useGameStore()
   const { showNotification } = useUIStore()
@@ -25,10 +56,7 @@ export function useScanner() {
     try {
       const result = await window.electronAPI.scanGames()
       if (result.success) {
-        // First, set games immediately so the UI can load and Splash screen can close!
-        let initialGames = Array.from(
-          new Map(result.games.map(game => [game.id || game.name, game])).values()
-        )
+        let initialGames = deduplicateInstalledGames(result.games)
         const { scanUninstalledSteam } = useGameStore.getState().settings
         if (!scanUninstalledSteam) {
           initialGames = initialGames.filter(g => g.installed !== false)
@@ -36,14 +64,14 @@ export function useScanner() {
         
         const existingGames = useGameStore.getState().installedGames
         const mergeGames = (gamesToMerge: any[]) => gamesToMerge.map(g => {
-          const ext = existingGames.find(e => (e.id && e.id === g.id) || e.name === g.name)
+          const ext = existingGames.find(e => (e.id && e.id === g.id) || normalize(e.name) === normalize(g.name))
           if (ext) {
             return { ...g, playTimeMinutes: ext.playTimeMinutes, lastPlayed: ext.lastPlayed }
           }
           return g
         })
         
-        setInstalledGames(mergeGames(initialGames))
+        setInstalledGames(deduplicateInstalledGames(mergeGames(initialGames)))
         
         // Hide scanning UI for the background fetch
         setIsScanning(false)
@@ -52,13 +80,11 @@ export function useScanner() {
         // Fetch names in the background WITHOUT blocking the function return
         enrichWithSteamIds(result.games, (msg) => setScanMessage(msg), options?.signal)
           .then((enriched) => {
-            let uniqueGames = Array.from(
-              new Map(enriched.map(game => [game.id || game.name, game])).values()
-            )
+            let uniqueGames = deduplicateInstalledGames(enriched)
             if (!useGameStore.getState().settings.scanUninstalledSteam) {
               uniqueGames = uniqueGames.filter(g => g.installed !== false)
             }
-            setInstalledGames(mergeGames(uniqueGames))
+            setInstalledGames(deduplicateInstalledGames(mergeGames(uniqueGames)))
             showNotification(`Found ${uniqueGames.length} games`, 'success')
             setScanMessage('')
           })

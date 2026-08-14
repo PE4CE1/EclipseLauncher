@@ -11,6 +11,8 @@ import steamLogoImg from '../../assets/steam-logo.png'
 
 type TabId = 'all' | 'installed' | 'favorites' | 'custom'
 
+const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
+
 // Global instant asset resolution memory cache to eliminate repeat probes during scrolling
 const coverCache = new Map<string, { url: string; isVertical: boolean }>()
 
@@ -501,11 +503,37 @@ export function LibraryView() {
   const [search, setSearch] = useState('')
   const [killingGameId, setKillingGameId] = useState<string | null>(null)
 
-  // Combine library + installed games (memoized)
-  const allGames = useMemo<Array<LibraryGame | (InstalledGame & { isInstalled: boolean })>>(() => [
-    ...installedGames.map(g => ({ ...g, isInstalled: g.installed ?? true })),
-    ...library.filter(g => !installedGames.some(ig => ig.name === g.name)),
-  ], [installedGames, library])
+  // Combine library + installed games (memoized with deduplication)
+  const allGames = useMemo<Array<LibraryGame | (InstalledGame & { isInstalled: boolean })>>(() => {
+    const map = new Map<string, LibraryGame | (InstalledGame & { isInstalled: boolean })>()
+
+    // 1. Installed games take priority
+    for (const ig of installedGames) {
+      if (!ig || !ig.name) continue
+      const normName = normalize(ig.name)
+      const key = ig.appId ? `steam_${ig.appId}` : `name_${normName}`
+      const val = { ...ig, isInstalled: ig.installed !== false }
+      map.set(key, val)
+      map.set(`name_${normName}`, val)
+    }
+
+    // 2. Library games merged without duplicates
+    for (const lg of library) {
+      if (!lg || !lg.name) continue
+      const normName = normalize(lg.name)
+      const steamKey = lg.steamId ? `steam_${lg.steamId}` : null
+      const nameKey = `name_${normName}`
+
+      if ((steamKey && map.has(steamKey)) || map.has(nameKey)) {
+        continue
+      }
+
+      map.set(nameKey, lg)
+      if (steamKey) map.set(steamKey, lg)
+    }
+
+    return Array.from(new Set(map.values()))
+  }, [installedGames, library])
 
   const tabs = useMemo(() => [
     { id: 'all' as TabId,       label: 'All',       count: allGames.length },
@@ -584,8 +612,6 @@ export function LibraryView() {
       if (changed) setInstalledGames([...installedGames])
     })
   }, [installedGames, setInstalledGames])
-
-  const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
 
   return (
     <div className="h-full flex flex-col overflow-hidden">

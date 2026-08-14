@@ -4,6 +4,48 @@ import type { InstalledGame, LibraryGame, AppSettings } from '../types/game'
 
 const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
 
+export function deduplicateLibrary(games: LibraryGame[]): LibraryGame[] {
+  if (!Array.isArray(games)) return []
+  const seen = new Map<string, LibraryGame>()
+
+  for (const game of games) {
+    if (!game || !game.name) continue
+    const normName = normalize(game.name)
+    const steamKey = game.steamId ? `steam_${game.steamId}` : null
+
+    let matchedKey: string | null = null
+    if (steamKey && seen.has(steamKey)) {
+      matchedKey = steamKey
+    } else if (seen.has(normName)) {
+      matchedKey = normName
+    }
+
+    if (matchedKey) {
+      const existing = seen.get(matchedKey)!
+      const merged: LibraryGame = {
+        ...existing,
+        ...game,
+        id: existing.id || game.id,
+        steamId: existing.steamId || game.steamId,
+        installed: existing.installed || game.installed,
+        installPath: existing.installPath || game.installPath,
+        launchUrl: existing.launchUrl || game.launchUrl,
+        playTimeMinutes: Math.max(existing.playTimeMinutes || 0, game.playTimeMinutes || 0),
+        lastPlayed: Math.max(existing.lastPlayed || 0, game.lastPlayed || 0),
+        isFavorite: existing.isFavorite || game.isFavorite,
+      }
+      seen.set(matchedKey, merged)
+      seen.set(normName, merged)
+      if (steamKey) seen.set(steamKey, merged)
+    } else {
+      seen.set(normName, game)
+      if (steamKey) seen.set(steamKey, game)
+    }
+  }
+
+  return Array.from(new Set(seen.values()))
+}
+
 interface GameStore {
   // Installed games from scanner
   installedGames: InstalledGame[]
@@ -48,11 +90,35 @@ export const useGameStore = create<GameStore>()(
 
       library: [],
       addToLibrary: (game) =>
-        set((state) => ({
-          library: state.library.some((g) => g.id === game.id)
-            ? state.library
-            : [game, ...state.library],
-        })),
+        set((state) => {
+          const normGameName = normalize(game.name)
+          const existingIdx = state.library.findIndex(
+            (g) =>
+              g.id === game.id ||
+              (game.steamId && g.steamId === game.steamId) ||
+              (normGameName && normalize(g.name) === normGameName)
+          )
+
+          if (existingIdx >= 0) {
+            const existing = state.library[existingIdx]
+            const updated = [...state.library]
+            updated[existingIdx] = {
+              ...existing,
+              ...game,
+              id: existing.id || game.id,
+              steamId: existing.steamId || game.steamId,
+              installed: existing.installed || game.installed,
+              installPath: existing.installPath || game.installPath,
+              launchUrl: existing.launchUrl || game.launchUrl,
+              playTimeMinutes: Math.max(existing.playTimeMinutes || 0, game.playTimeMinutes || 0),
+              lastPlayed: Math.max(existing.lastPlayed || 0, game.lastPlayed || 0),
+              isFavorite: existing.isFavorite || game.isFavorite,
+            }
+            return { library: deduplicateLibrary(updated) }
+          }
+
+          return { library: deduplicateLibrary([game, ...state.library]) }
+        }),
       removeFromLibrary: (id) =>
         set((state) => ({ library: state.library.filter((g) => g.id !== id) })),
       toggleFavorite: (id) =>
@@ -155,6 +221,11 @@ export const useGameStore = create<GameStore>()(
         favoriteIds: state.favoriteIds,
         settings: state.settings,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state && Array.isArray(state.library)) {
+          state.library = deduplicateLibrary(state.library)
+        }
+      },
     }
   )
 )
