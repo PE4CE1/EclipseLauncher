@@ -32,10 +32,14 @@ function appidToYear(appid: number): number {
 }
 
 let cachedDB: GameDBEntry[] | null = null;
-let dbPromise: Promise<GameDBEntry[]> | null = null;
+let cachedDevs: string[] = [];
+let cachedPubs: string[] = [];
+let dbPromise: Promise<{ db: GameDBEntry[]; devs: string[]; pubs: string[] }> | null = null;
 
 export function useGamesDB() {
   const [db, setDb] = useState<GameDBEntry[]>(cachedDB || []);
+  const [devs, setDevs] = useState<string[]>(cachedDevs);
+  const [pubs, setPubs] = useState<string[]>(cachedPubs);
   const [isLoading, setIsLoading] = useState(!cachedDB);
 
   useEffect(() => {
@@ -46,34 +50,60 @@ export function useGamesDB() {
         getTopLiveCCU()
       ])
         .then(([data, liveCCU]) => {
-          // Remove exact duplicates by ID which cause React key collisions and sorting bugs
           const seen = new Set<number>();
-          const uniqueData = data.filter((g: any) => {
-            if (seen.has(g.id)) return false;
+          const devSet = new Set<string>();
+          const pubSet = new Set<string>();
+
+          const uniqueData: GameDBEntry[] = [];
+          for (let i = 0; i < data.length; i++) {
+            const g = data[i];
+            if (seen.has(g.id)) continue;
             seen.add(g.id);
-            return true;
-          });
-          // Add synthetic year and LIVE CCU overrides for top 100
-          cachedDB = uniqueData.map((g: any) => ({ 
-            ...g, 
-            year: appidToYear(g.id),
-            ccu: liveCCU[g.id] !== undefined ? liveCCU[g.id] : g.ccu
-          }));
-          return cachedDB as GameDBEntry[];
+
+            const entry: GameDBEntry = {
+              ...g,
+              year: appidToYear(g.id),
+              ccu: liveCCU[g.id] !== undefined ? liveCCU[g.id] : g.ccu
+            };
+            uniqueData.push(entry);
+
+            if (g.developer) {
+              const dParts = g.developer.split(',');
+              for (let j = 0; j < dParts.length; j++) {
+                const trimmed = dParts[j].trim();
+                if (trimmed) devSet.add(trimmed);
+              }
+            }
+            if (g.publisher) {
+              const pParts = g.publisher.split(',');
+              for (let j = 0; j < pParts.length; j++) {
+                const trimmed = pParts[j].trim();
+                if (trimmed) pubSet.add(trimmed);
+              }
+            }
+          }
+
+          cachedDB = uniqueData;
+          cachedDevs = Array.from(devSet).sort();
+          cachedPubs = Array.from(pubSet).sort();
+
+          return { db: cachedDB, devs: cachedDevs, pubs: cachedPubs };
         })
         .catch(err => {
           console.error("Failed to load games DB:", err);
-          return [];
+          return { db: [], devs: [], pubs: [] };
         });
     }
     
     if (dbPromise) {
-      dbPromise.then(data => {
-        if (data) setDb(data);
+      dbPromise.then(res => {
+        if (res.db) setDb(res.db);
+        if (res.devs) setDevs(res.devs);
+        if (res.pubs) setPubs(res.pubs);
         setIsLoading(false);
       });
     }
   }, []);
 
-  return { db, isLoading };
+  return { db, devs, pubs, isLoading };
 }

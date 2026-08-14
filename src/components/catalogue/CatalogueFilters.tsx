@@ -90,7 +90,7 @@ function Accordion({
   const [expanded, setExpanded] = useState(defaultExpanded)
   
   return (
-    <div className="bg-hub-surface/40 border border-white/5 rounded-xl overflow-hidden backdrop-blur-md">
+    <div className="bg-hub-surface/60 border border-white/5 rounded-xl overflow-hidden">
       <button 
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
@@ -98,25 +98,23 @@ function Accordion({
         <div className="flex items-center gap-2.5">
           <ChevronDown size={16} className={`text-white/50 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
           {dotColor && <div className={`w-2 h-2 rounded-full ${dotColor}`} />}
-          <span className="font-bold text-white text-sm">{title}</span>
-          {count !== undefined && (
-            <span className="bg-white/10 text-white/70 text-[10px] font-bold px-1.5 py-0.5 rounded">
-              {count.toLocaleString('de-DE')}
-            </span>
-          )}
+          <span className="text-sm font-bold text-white">{title}</span>
         </div>
+        {count !== undefined && (
+          <span className="text-xs text-white/40">{count}</span>
+        )}
       </button>
+
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden border-t border-white/5 px-4 pb-4"
           >
-            <div className="px-4 pb-4 border-t border-white/5">
-              {children}
-            </div>
+            {children}
           </motion.div>
         )}
       </AnimatePresence>
@@ -188,28 +186,12 @@ export function CatalogueFilters() {
   const store = useCatalogueStore()
   const [sortOpen, setSortOpen] = useState(false)
   
-  const { db } = useGamesDB()
+  const { devs: availableDevs, pubs: availablePubs } = useGamesDB()
   const sources = useSourceStore(state => state.sources)
 
   const availableSources = useMemo(() => 
     sources.filter(s => s.data && s.data.length > 0).map(s => s.name), 
   [sources])
-  
-  const availableDevs = useMemo(() => {
-    const set = new Set<string>()
-    db.forEach(g => {
-      if (g.developer) g.developer.split(',').forEach(d => set.add(d.trim()))
-    })
-    return Array.from(set).filter(Boolean).sort()
-  }, [db])
-
-  const availablePubs = useMemo(() => {
-    const set = new Set<string>()
-    db.forEach(g => {
-      if (g.publisher) g.publisher.split(',').forEach(p => set.add(p.trim()))
-    })
-    return Array.from(set).filter(Boolean).sort()
-  }, [db])
 
   return (
     <div className="w-[320px] flex-shrink-0 border-l border-white/5 bg-transparent overflow-y-auto flex flex-col p-6 gap-6 custom-scrollbar">
