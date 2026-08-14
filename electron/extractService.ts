@@ -70,6 +70,25 @@ export function findMainGameExecutable(dir: string, gameName?: string): string |
   return bestExe ? (bestExe as any).path : null
 }
 
+export function get7zaPath(): string {
+  const candidatePaths = [
+    _7z.path7za,
+    _7z.path7za?.replace('app.asar', 'app.asar.unpacked'),
+    path.join(process.cwd(), 'node_modules', '7zip-bin', 'win', process.arch, '7za.exe'),
+    path.join(__dirname, '..', 'node_modules', '7zip-bin', 'win', process.arch, '7za.exe'),
+    path.join(__dirname, 'win', process.arch, '7za.exe'),
+    path.join(process.resourcesPath || '', 'app.asar.unpacked', 'node_modules', '7zip-bin', 'win', process.arch, '7za.exe'),
+    path.join(process.resourcesPath || '', '7zip-bin', 'win', process.arch, '7za.exe'),
+  ].filter(Boolean) as string[]
+
+  for (const p of candidatePaths) {
+    try {
+      if (fs.existsSync(p)) return p
+    } catch {}
+  }
+  return _7z.path7za || '7za'
+}
+
 export async function extractArchive(
   archivePath: string, 
   targetDir: string, 
@@ -77,7 +96,7 @@ export async function extractArchive(
   autoDelete?: boolean
 ): Promise<{ targetDir: string; mainExe: string | null }> {
   return new Promise((resolve, reject) => {
-    const sevenZipPath = _7z.path7za
+    const sevenZipPath = get7zaPath()
 
     if (!fs.existsSync(archivePath)) {
       return reject(new Error('Archive not found: ' + archivePath))
@@ -90,6 +109,7 @@ export async function extractArchive(
     // 7z extraction command: x (extract with full paths), -y (assume yes), -o (output dir)
     const args = ['x', archivePath, '-y', `-o${targetDir}`]
 
+    console.log(`[ExtractService] Using 7z binary at: ${sevenZipPath}`)
     console.log(`[ExtractService] Extracting ${archivePath} to ${targetDir}`)
     const child = execFile(sevenZipPath, args, { maxBuffer: 1024 * 1024 * 100 })
 
@@ -113,6 +133,25 @@ export async function extractArchive(
 
     child.on('error', (err) => {
       console.error('[ExtractService] 7z process error:', err)
+      // Fallback for zip files via PowerShell if 7za failed
+      if (archivePath.toLowerCase().endsWith('.zip') && process.platform === 'win32') {
+        console.log('[ExtractService] Trying PowerShell Expand-Archive fallback...')
+        const psCommand = `Expand-Archive -Path '${archivePath.replace(/'/g, "''")}' -DestinationPath '${targetDir.replace(/'/g, "''")}' -Force`
+        const encoded = Buffer.from(psCommand, 'utf16le').toString('base64')
+        const { exec } = require('child_process')
+        exec(`powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${encoded}`, (psErr: any) => {
+          if (psErr) {
+            return reject(psErr)
+          }
+          if (onProgress) onProgress(100)
+          const mainExe = findMainGameExecutable(targetDir)
+          if (autoDelete) {
+            try { fs.unlinkSync(archivePath) } catch (e) {}
+          }
+          resolve({ targetDir, mainExe })
+        })
+        return
+      }
       reject(err)
     })
 

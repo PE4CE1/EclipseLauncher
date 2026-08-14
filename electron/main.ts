@@ -598,21 +598,26 @@ ipcMain.handle('overlay:save-positions', (_event, positions: Record<string, unkn
 })
 
 
-// ─── Cloudflare Bypass Fetch ──────────────────────────────────────────────────
+// ─── Cloudflare Turnstile Bypass Source Fetcher ──────────────────────────────
 ipcMain.handle('source:fetch-cf', async (_event, rawUrl: string) => {
-  const url = rawUrl.replace('hydralinks.cloud/sources/', 'hydralinks.pages.dev/sources/')
+  const targetUrl = rawUrl.trim()
   return new Promise((resolve) => {
     let resolved = false
-    const hiddenWin = new BrowserWindow({
+    let hiddenWin: BrowserWindow | null = new BrowserWindow({
       show: false,
-      width: 800,
-      height: 600,
-      webPreferences: { nodeIntegration: false, contextIsolation: true }
+      width: 1000,
+      height: 800,
+      webPreferences: { 
+        nodeIntegration: false, 
+        contextIsolation: true,
+        sandbox: true 
+      }
     })
 
     const cleanup = () => {
       if (hiddenWin && !hiddenWin.isDestroyed()) {
         try { hiddenWin.destroy() } catch {}
+        hiddenWin = null
       }
     }
 
@@ -622,25 +627,38 @@ ipcMain.handle('source:fetch-cf', async (_event, rawUrl: string) => {
         cleanup()
         resolve(null)
       }
-    }, 10000)
+    }, 20000)
 
-    hiddenWin.webContents.on('did-finish-load', async () => {
-      try {
-        const text = await hiddenWin.webContents.executeJavaScript('document.querySelector("pre")?.textContent || document.body.innerText')
-        if (text && (text.includes('"downloads"') || text.includes('downloads'))) {
-          if (!resolved) {
+    let pollInterval: NodeJS.Timeout | null = null
+
+    const startPolling = () => {
+      if (pollInterval) return
+      pollInterval = setInterval(async () => {
+        if (resolved || !hiddenWin || hiddenWin.isDestroyed()) {
+          if (pollInterval) clearInterval(pollInterval)
+          return
+        }
+        try {
+          const content = await hiddenWin.webContents.executeJavaScript('document.querySelector("pre")?.textContent || document.body.innerText').catch(() => '')
+          if (content && (content.startsWith('{') || content.includes('"downloads"')) && content.length > 50) {
             resolved = true
+            if (pollInterval) clearInterval(pollInterval)
             clearTimeout(timer)
             cleanup()
-            resolve(text)
+            resolve(content)
           }
-        }
-      } catch {}
+        } catch {}
+      }, 500)
+    }
+
+    hiddenWin.webContents.on('did-finish-load', () => {
+      startPolling()
     })
 
-    hiddenWin.loadURL(url).catch(() => {
+    hiddenWin.loadURL(targetUrl).catch(() => {
       if (!resolved) {
         resolved = true
+        if (pollInterval) clearInterval(pollInterval)
         clearTimeout(timer)
         cleanup()
         resolve(null)

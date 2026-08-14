@@ -273,8 +273,14 @@ class HttpDownloader {
           }
         })
 
-        res.on('error', (err) => {
+        res.on('error', (err: any) => {
           console.error('[HttpDownloader] Response error:', err)
+          if (this.retryCount < 3 && this.status !== 'paused') {
+            this.retryCount++
+            console.log(`[HttpDownloader] Auto-resuming download after socket drop (retry ${this.retryCount}/3)...`)
+            setTimeout(() => this.download(), 1500)
+            return
+          }
           this.status = 'error'
           this.errorMessage = err.message
         })
