@@ -1,0 +1,279 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base Resets ─────────────────────────────────────────────────────────── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #040405;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
+  background-attachment: fixed;
+  color: #fafafa;
+}
+
+::selection {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+/* Electron draggable region */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ─── Glass morphism ──────────────────────────────────────────────────────── */
+.glass {
+  background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.glass-heavy {
+  background: rgba(10, 10, 12, 0.6);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ─── Gradient Text ───────────────────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #ffffff, #a1a1aa, #71717a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Game Card specific styles removed in favor of Tailwind classes ─── */
+
+/* ─── Skeleton Loading ────────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, #0a0a0c 25%, #121214 50%, #0a0a0c 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite linear;
+  border-radius: 8px;
+}
+
+/* ─── Sidebar ─────────────────────────────────────────────────────────────── */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #71717a;
+  font-size: 13px;
+  font-weight: 500;
+  position: relative;
+}
+.sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: #fafafa;
+}
+.sidebar-item.active {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  font-weight: 600;
+}
+.sidebar-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 40%;
+  background: #ffffff;
+  border-radius: 0 4px 4px 0;
+}
+
+/* ─── Badge ───────────────────────────────────────────────────────────────── */
+.badge-steam {
+  background: rgba(102, 192, 244, 0.15);
+  color: #66c0f4;
+  border: 1px solid rgba(102, 192, 244, 0.2);
+}
+.badge-epic {
+  background: rgba(0, 116, 228, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(0, 116, 228, 0.2);
+}
+.badge-custom {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+.badge-installed {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────────────────── */
+.btn-primary {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 600;
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  font-size: 13px;
+}
+.btn-primary:hover {
+  background: #e4e4e7;
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.15);
+  transform: scale(1.02);
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.06);
+  color: #9ca3af;
+  font-weight: 500;
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f9fafb;
+}
+
+/* ─── Input ───────────────────────────────────────────────────────────────── */
+.input-dark {
+  background: #0a0a0c;
+  border: 1px solid #27272a;
+  color: #fafafa;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+  outline: none;
+}
+.input-dark:focus {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 1);
+}
+.input-dark::placeholder {
+  color: #71717a;
+}
+
+/* ─── Modal Overlay ───────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Hero gradient ───────────────────────────────────────────────────────── */
+.hero-gradient {
+  background: linear-gradient(
+    to right,
+    rgba(4, 4, 5, 0.95) 0%,
+    rgba(4, 4, 5, 0.5) 30%,
+    transparent 60%
+  ),
+  linear-gradient(
+    to top,
+    #040405 0%,
+    rgba(4, 4, 5, 0.3) 25%,
+    transparent 50%
+  );
+}
+
+/* ─── Notification Toast ──────────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 100;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 260px;
+  max-width: 380px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+/* ─── Carousel ────────────────────────────────────────────────────────────── */
+.carousel-container {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-top: 24px;
+  padding-bottom: 24px;
+  margin-top: -24px;
+  margin-bottom: -24px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.carousel-container::-webkit-scrollbar {
+  display: none;
+}
+.carousel-item {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* ─── Star Rating ─────────────────────────────────────────────────────────── */
+.star-filled {
+  color: #f59e0b;
+}
+.star-empty {
+  color: #374151;
+}

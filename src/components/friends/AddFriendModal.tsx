@@ -1,0 +1,148 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { X, Copy, Check, Loader2 } from 'lucide-react';
+import { useTranslation } from '../../hooks/useTranslation';
+import { useUIStore } from '../../store/uiStore';
+import { useGameStore } from '../../store/gameStore';
+import { fetchSteamUserProfile } from '../../services/steamService';
+import type { EclipseFriend } from '../../types/game';
+
+export const AddFriendModal: React.FC = () => {
+  const { t } = useTranslation();
+  const { isAddFriendOpen, setIsAddFriendOpen } = useUIStore();
+  const { settings, updateSettings } = useGameStore();
+  const [friendCodeInput, setFriendCodeInput] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Generate friend code if it doesn't exist
+  useEffect(() => {
+    if (isAddFriendOpen && !settings.friendCode) {
+      const newCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+      updateSettings({ friendCode: newCode });
+    }
+  }, [isAddFriendOpen, settings.friendCode, updateSettings]);
+
+  if (!isAddFriendOpen) return null;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(settings.friendCode || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleAddFriend = async () => {
+    if (!friendCodeInput.trim()) return;
+    setError('');
+    setLoading(true);
+
+    try {
+      const profile = await fetchSteamUserProfile(friendCodeInput);
+      
+      if (!profile || !profile.steamId64) {
+        setError('Friend not found. Invalid code or Steam profile.');
+        setLoading(false);
+        return;
+      }
+
+      const currentFriends = settings.eclipseFriends || [];
+      if (currentFriends.some(f => f.id === profile.steamId64)) {
+        setError('You are already friends!');
+        setLoading(false);
+        return;
+      }
+
+      let status: 'online' | 'offline' | 'ingame' = 'offline';
+      if (profile.onlineState === 'in-game') status = 'ingame';
+      else if (profile.onlineState === 'online') status = 'online';
+
+      const newFriend: EclipseFriend = {
+        id: profile.steamId64,
+        username: profile.username,
+        avatarUrl: profile.avatarFull,
+        status: status,
+        steamProfileUrl: `https://steamcommunity.com/profiles/${profile.steamId64}`,
+        level: profile.steamLevel,
+        steamRecentGames: profile.steamRecentGames,
+        steamFavoriteBadge: profile.steamFavoriteBadge
+      };
+
+      updateSettings({
+        eclipseFriends: [...currentFriends, newFriend]
+      });
+
+      setFriendCodeInput('');
+      setIsAddFriendOpen(false);
+    } catch (err) {
+      setError('An error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-lg bg-[#181a1f] border border-white/5 rounded-xl shadow-2xl overflow-hidden"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-white/5 bg-[#1b1d24]">
+          <h2 className="text-base font-bold text-white">{t('addFriendTitle')}</h2>
+          <button 
+            onClick={() => setIsAddFriendOpen(false)}
+            className="text-white/50 hover:text-white transition-colors p-1"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6">
+          <div className="bg-[#111317] border border-white/5 rounded-lg p-4 flex items-center justify-between mb-8 group hover:border-white/20 transition-colors">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-white/70">{t('yourFriendCode')}:</span>
+              <span className="text-sm font-mono text-white tracking-wider font-bold">{settings.friendCode || '...'}</span>
+            </div>
+            <button 
+              onClick={handleCopy}
+              className="text-white/40 hover:text-white transition-colors"
+              title="Copy code"
+            >
+              {copied ? <Check size={18} className="text-green-400" /> : <Copy size={18} />}
+            </button>
+          </div>
+
+          <div className="mb-2">
+            <label className="block text-sm font-semibold text-white/70 mb-2">{t('friendCodeLabel')}</label>
+            <div className="flex items-center gap-3 w-full">
+              <input
+                type="text"
+                value={friendCodeInput}
+                onChange={(e) => setFriendCodeInput(e.target.value)}
+                placeholder={t('friendCodePlaceholder')}
+                className="flex-[2] bg-[#111317] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm outline-none focus:border-indigo-500 transition-colors"
+                onKeyDown={(e) => e.key === 'Enter' && handleAddFriend()}
+              />
+              <button 
+                onClick={handleAddFriend}
+                disabled={loading || !friendCodeInput.trim()}
+                className="flex-1 bg-[#a3a3a3] text-black font-bold px-4 py-2.5 rounded-lg text-sm hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center min-w-[100px]"
+              >
+                {loading ? <Loader2 size={16} className="animate-spin" /> : t('add')}
+              </button>
+              <button className="flex-1 bg-transparent border border-white/20 text-white font-semibold px-4 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors min-w-[110px] whitespace-nowrap overflow-hidden text-ellipsis">
+                {t('viewProfile')}
+              </button>
+            </div>
+            {error && <p className="text-red-400 text-xs mt-3">{error}</p>}
+            <p className="text-white/30 text-[11px] mt-6 leading-tight">
+              {t('friendCodeHint')}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};

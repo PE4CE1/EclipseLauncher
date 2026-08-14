@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Production build outputs
+dist/
+dist-electron/
+release/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temp
+.tempmediaStorage/
+.user_uploaded/
