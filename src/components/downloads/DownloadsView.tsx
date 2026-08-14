@@ -280,10 +280,43 @@ export function DownloadsView() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                      <CheckCircle2 size={16} />
-                    </div>
+                  <div className="flex items-center gap-2">
+                    {dl.installPath && (
+                      <button
+                        onClick={() => {
+                          if (window.electronAPI?.openPath) {
+                            window.electronAPI.openPath(dl.installPath!)
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                        title={language === 'de' ? 'Ordner im Explorer öffnen' : 'Open folder in Explorer'}
+                      >
+                        <FolderOpen size={13} />
+                        <span>{language === 'de' ? 'Ordner' : 'Folder'}</span>
+                      </button>
+                    )}
+
+                    {dl.mainExe && (
+                      <button
+                        onClick={() => {
+                          if (window.electronAPI?.launchGame) {
+                            window.electronAPI.launchGame(dl.mainExe!)
+                          }
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-white text-black hover:bg-gray-200 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                      >
+                        <Play size={12} className="fill-current" />
+                        <span>{language === 'de' ? 'Spielen' : 'Play'}</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => handleCancel(dl.infoHash)}
+                      className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white border border-white/10 flex items-center justify-center transition-colors"
+                      title={language === 'de' ? 'Aus Liste entfernen' : 'Remove from list'}
+                    >
+                      <X size={14} />
+                    </button>
                   </div>
                 </div>
               ))}

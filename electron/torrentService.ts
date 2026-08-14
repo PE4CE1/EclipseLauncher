@@ -8,9 +8,20 @@ async function getClient() {
   if (!client) {
     const webtorrentModule = await import('webtorrent');
     const WebTorrent = webtorrentModule.default || webtorrentModule;
-    client = new (WebTorrent as any)();
+    client = new (WebTorrent as any)({
+      dht: true,
+      tracker: {
+        announce: [
+          'udp://tracker.opentrackr.org:1337/announce',
+          'udp://open.tracker.cl:1337/announce',
+          'udp://tracker.openbittorrent.com:6969/announce',
+          'udp://opentracker.i2p.rocks:6969/announce',
+          'udp://tracker.torrent.eu.org:451/announce'
+        ]
+      }
+    });
     client.on('error', (err: any) => {
-      console.error('WebTorrent Error:', err);
+      console.error('[WebTorrent] Client Error:', err);
     });
   }
   return client;
@@ -30,15 +41,21 @@ export type TorrentPayload = {
   timeRemaining: number
   downloaded: number
   length: number
-  status: 'downloading' | 'paused' | 'done' | 'extracting'
+  status: 'downloading' | 'paused' | 'done' | 'extracting' | 'error'
   peers?: number
+  mainExe?: string | null
+  installPath?: string
 }
 
 export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.BrowserWindow) {
   
   // Start Download
-  ipcMain.handle('torrent:start', async (_event, magnetURI: string, downloadPath?: string, autoExtract?: boolean) => {
+  ipcMain.handle('torrent:start', async (_event, magnetURI: string, downloadPath?: string, autoExtract = true, autoDelete = false) => {
     const targetPath = downloadPath || defaultDownloadPath;
+    if (!fs.existsSync(targetPath)) {
+      fs.mkdirSync(targetPath, { recursive: true });
+    }
+
     const c = await getClient();
     
     // Check if it already exists
@@ -71,7 +88,8 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
           timeRemaining: Infinity,
           downloaded: 0,
           length: 0,
-          status: torrent.paused ? 'paused' : 'downloading'
+          status: torrent.paused ? 'paused' : 'downloading',
+          peers: torrent.numPeers || 0
         });
         return;
       }
@@ -85,7 +103,8 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
         downloaded: torrent.downloaded,
         length: torrent.length,
         status: torrent.done ? 'done' : (torrent.paused ? 'paused' : 'downloading'),
-        peers: torrent.numPeers || 0
+        peers: torrent.numPeers || 0,
+        installPath: targetPath
       };
       mainWindow.webContents.send('torrent:progress', payload);
       
@@ -95,12 +114,15 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
     }, 1000);
 
     torrent.on('done', async () => {
-      let isExtracting = false;
+      let mainExe: string | null = null;
+      let gameInstallPath = targetPath;
 
       if (autoExtract && torrent.files) {
-        const archiveFile = torrent.files.find((f: any) => f.name.endsWith('.zip') || f.name.endsWith('.rar') || f.name.endsWith('.7z'));
+        const archiveFile = torrent.files.find((f: any) => 
+          f.name.endsWith('.zip') || f.name.endsWith('.rar') || f.name.endsWith('.7z')
+        );
+
         if (archiveFile) {
-          isExtracting = true;
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('torrent:progress', {
               infoHash: torrent.infoHash || infoHash,
@@ -116,13 +138,35 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
           }
 
           const archivePath = path.join(targetPath, archiveFile.path);
-          const extractTarget = path.join(targetPath, archiveFile.name.substring(0, archiveFile.name.lastIndexOf('.')));
+          const cleanGameDir = path.join(targetPath, torrent.name.replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim());
+          gameInstallPath = cleanGameDir;
           
           try {
             const { extractArchive } = require('./extractService');
-            await extractArchive(archivePath, extractTarget);
+            const res = await extractArchive(
+              archivePath, 
+              cleanGameDir, 
+              (extractPercent: number) => {
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                  mainWindow.webContents.send('torrent:progress', {
+                    infoHash: torrent.infoHash || infoHash,
+                    name: torrent.name || 'Unknown Game',
+                    progress: extractPercent / 100,
+                    downloadSpeed: 0,
+                    timeRemaining: 0,
+                    downloaded: torrent.length || 0,
+                    length: torrent.length || 0,
+                    status: 'extracting',
+                    peers: torrent.numPeers || 0,
+                    installPath: cleanGameDir
+                  });
+                }
+              },
+              autoDelete
+            );
+            mainExe = res.mainExe;
           } catch (e) {
-            console.error('Torrent auto-extract error:', e);
+            console.error('[WebTorrent] Auto-extract error:', e);
           }
         }
       }
@@ -137,7 +181,26 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
           downloaded: torrent.length || 0,
           length: torrent.length || 0,
           status: 'done',
-          peers: torrent.numPeers || 0
+          peers: torrent.numPeers || 0,
+          mainExe,
+          installPath: gameInstallPath
+        });
+      }
+    });
+
+    torrent.on('error', (err: any) => {
+      console.error('[WebTorrent] Torrent download error:', err);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('torrent:progress', {
+          infoHash: torrent.infoHash || infoHash,
+          name: torrent.name || 'Unknown Game',
+          progress: 0,
+          downloadSpeed: 0,
+          timeRemaining: 0,
+          downloaded: 0,
+          length: 0,
+          status: 'error',
+          peers: 0
         });
       }
     });

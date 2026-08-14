@@ -6,13 +6,13 @@ import crypto from 'crypto'
 import https from 'https'
 import http from 'http'
 import { URL } from 'url'
+import { resolveDownloadLink } from './linkResolverService'
+import { extractArchive } from './extractService'
 
 const defaultDownloadPath = path.join(app.getPath('userData'), 'Downloads')
 if (!fs.existsSync(defaultDownloadPath)) {
   fs.mkdirSync(defaultDownloadPath, { recursive: true })
 }
-
-import { BrowserWindow, session } from 'electron'
 
 export type HttpDownloadPayload = {
   infoHash: string
@@ -23,6 +23,8 @@ export type HttpDownloadPayload = {
   downloaded: number
   length: number
   status: 'downloading' | 'paused' | 'extracting' | 'done' | 'error'
+  mainExe?: string | null
+  installPath?: string
 }
 
 class HttpDownloader {
@@ -30,31 +32,42 @@ class HttpDownloader {
   public url: string
   public name: string
   public targetPath: string
+  public targetDir: string
   public downloaded: number = 0
   public length: number = 0
   public status: 'downloading' | 'paused' | 'extracting' | 'done' | 'error' = 'downloading'
-  public autoExtract: boolean = false
+  public autoExtract: boolean = true
+  public autoDelete: boolean = false
+  public mainExe: string | null = null
   
   private req: any = null
   private fileStream: fs.WriteStream | null = null
   private lastTime: number = Date.now()
   private lastDownloaded: number = 0
   public downloadSpeed: number = 0
+  private onProgressCallback: ((payload: HttpDownloadPayload) => void) | null = null
 
-  constructor(url: string, name: string, targetDir: string, autoExtract: boolean) {
+  constructor(id: string, url: string, name: string, targetDir: string, autoExtract: boolean, autoDelete: boolean) {
+    this.id = id
     this.url = url
     this.name = name
-    this.id = crypto.createHash('md5').update(url).digest('hex')
-    this.targetPath = path.join(targetDir, name.replace(/[^a-zA-Z0-9.\-_ ]/g, ''))
+    this.targetDir = targetDir
     this.autoExtract = autoExtract
+    this.autoDelete = autoDelete
+
+    // Clean filename
+    const cleanName = name.replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim() || 'game_download'
+    const ext = url.includes('.rar') ? '.rar' : url.includes('.7z') ? '.7z' : '.zip'
+    this.targetPath = path.join(targetDir, `${cleanName}${ext}`)
   }
 
   public start(onProgress: (payload: HttpDownloadPayload) => void) {
+    this.onProgressCallback = onProgress
     this.status = 'downloading'
     this.download()
 
     const interval = setInterval(() => {
-      if (this.status === 'done' || this.status === 'paused') {
+      if (this.status === 'done' || this.status === 'paused' || this.status === 'error') {
         clearInterval(interval)
       }
       
@@ -62,13 +75,15 @@ class HttpDownloader {
       const timeDiff = (now - this.lastTime) / 1000
       if (timeDiff > 0) {
         const bytesDiff = this.downloaded - this.lastDownloaded
-        this.downloadSpeed = bytesDiff / timeDiff
+        this.downloadSpeed = Math.max(0, bytesDiff / timeDiff)
       }
       this.lastTime = now
       this.lastDownloaded = this.downloaded
 
-      const timeRemaining = this.downloadSpeed > 0 ? (this.length - this.downloaded) / this.downloadSpeed : Infinity
-      const progress = this.length > 0 ? this.downloaded / this.length : 0
+      const timeRemaining = this.downloadSpeed > 0 && this.length > this.downloaded 
+        ? (this.length - this.downloaded) / this.downloadSpeed 
+        : Infinity
+      const progress = this.length > 0 ? Math.min(1, this.downloaded / this.length) : 0
 
       onProgress({
         infoHash: this.id,
@@ -78,240 +93,261 @@ class HttpDownloader {
         timeRemaining,
         downloaded: this.downloaded,
         length: this.length,
-        status: this.status
+        status: this.status,
+        mainExe: this.mainExe,
+        installPath: this.targetDir
       })
     }, 1000)
   }
 
   private download() {
-    const parsedUrl = new URL(this.url)
-    const client = parsedUrl.protocol === 'https:' ? https : http
+    try {
+      const parsedUrl = new URL(this.url)
+      const client = parsedUrl.protocol === 'https:' ? https : http
 
-    const options = {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      const headers: Record<string, string> = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': '*/*',
       }
-    }
 
-    this.req = client.get(this.url, options, (res) => {
-      if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 303 || res.statusCode === 307 || res.statusCode === 308) {
-        if (res.headers.location) {
-          this.url = res.headers.location
-          this.download()
-          return
+      // Check existing partial file for Resume support
+      if (fs.existsSync(this.targetPath)) {
+        const stats = fs.statSync(this.targetPath)
+        if (stats.size > 0) {
+          this.downloaded = stats.size
+          headers['Range'] = `bytes=${stats.size}-`
         }
       }
 
-      this.length = parseInt(res.headers['content-length'] || '0', 10)
-      this.fileStream = fs.createWriteStream(this.targetPath)
-      
-      res.on('data', (chunk) => {
-        if (this.status === 'paused') {
-          res.destroy()
+      this.req = client.get(this.url, { headers }, (res) => {
+        // Handle 3xx Redirects
+        if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 303 || res.statusCode === 307 || res.statusCode === 308) {
+          if (res.headers.location) {
+            let nextUrl = res.headers.location
+            if (!nextUrl.startsWith('http')) {
+              nextUrl = new URL(nextUrl, this.url).toString()
+            }
+            this.url = nextUrl
+            this.download()
+            return
+          }
+        }
+
+        if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 400)) {
+          console.error(`[HttpDownloader] Server responded with status ${res.statusCode}`)
+          this.status = 'error'
           return
         }
-        this.downloaded += chunk.length
-        this.fileStream?.write(chunk)
-      })
 
-      res.on('end', async () => {
-        this.fileStream?.end()
-        if (this.status !== 'paused') {
+        const totalContentLength = parseInt(res.headers['content-length'] || '0', 10)
+        if (res.statusCode === 206) {
+          // Partial content resumed
+          this.length = this.downloaded + totalContentLength
+          this.fileStream = fs.createWriteStream(this.targetPath, { flags: 'a' })
+        } else {
+          this.length = totalContentLength
+          this.downloaded = 0
+          this.fileStream = fs.createWriteStream(this.targetPath)
+        }
+
+        res.on('data', (chunk) => {
+          if (this.status === 'paused') {
+            res.destroy()
+            return
+          }
+          this.downloaded += chunk.length
+          this.fileStream?.write(chunk)
+        })
+
+        res.on('end', async () => {
+          this.fileStream?.end()
+          if (this.status === 'paused') return
+
           this.downloadSpeed = 0
           this.downloaded = this.length
 
-          // Check for auto-extract if it's a zip/rar file
+          // Auto-Extract Phase
           if (this.autoExtract && (this.targetPath.endsWith('.zip') || this.targetPath.endsWith('.rar') || this.targetPath.endsWith('.7z'))) {
             this.status = 'extracting'
-            const { extractArchive } = require('./extractService')
+            if (this.onProgressCallback) {
+              this.onProgressCallback({
+                infoHash: this.id,
+                name: this.name,
+                progress: 1,
+                downloadSpeed: 0,
+                timeRemaining: 0,
+                downloaded: this.length,
+                length: this.length,
+                status: 'extracting',
+                installPath: this.targetDir
+              })
+            }
+
             try {
-              const targetExtractPath = this.targetPath.substring(0, this.targetPath.lastIndexOf('.'))
-              await extractArchive(this.targetPath, targetExtractPath)
+              const cleanGameDir = path.join(this.targetDir, this.name.replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim())
+              const result = await extractArchive(
+                this.targetPath, 
+                cleanGameDir, 
+                (extractPercent) => {
+                  if (this.onProgressCallback) {
+                    this.onProgressCallback({
+                      infoHash: this.id,
+                      name: this.name,
+                      progress: extractPercent / 100,
+                      downloadSpeed: 0,
+                      timeRemaining: 0,
+                      downloaded: this.length,
+                      length: this.length,
+                      status: 'extracting',
+                      installPath: cleanGameDir
+                    })
+                  }
+                },
+                this.autoDelete
+              )
+
+              this.mainExe = result.mainExe
               this.status = 'done'
-            } catch (e) {
-              console.error('Extraction error:', e)
-              this.status = 'error'
+              console.log(`[HttpDownloader] Finished & extracted game to: ${result.targetDir}, Main Exe: ${result.mainExe}`)
+            } catch (extractErr) {
+              console.error('[HttpDownloader] Extraction error:', extractErr)
+              this.status = 'done' // Mark as done even if extraction failed so user can inspect file
             }
           } else {
             this.status = 'done'
           }
-        }
+
+          if (this.onProgressCallback) {
+            this.onProgressCallback({
+              infoHash: this.id,
+              name: this.name,
+              progress: 1,
+              downloadSpeed: 0,
+              timeRemaining: 0,
+              downloaded: this.length,
+              length: this.length,
+              status: this.status,
+              mainExe: this.mainExe,
+              installPath: this.targetDir
+            })
+          }
+        })
+
+        res.on('error', (err) => {
+          console.error('[HttpDownloader] Response error:', err)
+          this.status = 'error'
+        })
       })
-      
-      res.on('error', (err: any) => {
-        console.error('HTTP Download Response Error:', err)
+
+      this.req.on('error', (err: any) => {
+        console.error('[HttpDownloader] Request error:', err)
+        this.status = 'error'
+      })
+
+      this.req.setTimeout(25000, () => {
+        console.warn('[HttpDownloader] Connection timeout')
+        this.req.destroy()
         this.status = 'paused'
       })
-    })
+    } catch (e) {
+      console.error('[HttpDownloader] Unexpected download error:', e)
+      this.status = 'error'
+    }
+  }
 
-    this.req.on('error', (err: any) => {
-      console.error('HTTP Download Request Error:', err)
-      this.status = 'paused'
-    })
-    
-    // Set a timeout to prevent hanging connections
-    this.req.setTimeout(15000, () => {
-      console.error('HTTP Download Request Timeout')
-      this.req.destroy()
-      this.status = 'paused'
-    })
+  public pause() {
+    this.status = 'paused'
+    if (this.req) this.req.destroy()
+    if (this.fileStream) this.fileStream.close()
+  }
+
+  public resume() {
+    if (this.status === 'paused') {
+      this.status = 'downloading'
+      this.download()
+    }
   }
 
   public cancel() {
     this.status = 'paused'
     if (this.req) this.req.destroy()
-    if (this.fileStream) this.fileStream.close()
+    if (this.fileStream) {
+      this.fileStream.close()
+    }
+    // Delete partial file if cancelled
+    try {
+      if (fs.existsSync(this.targetPath)) {
+        fs.unlinkSync(this.targetPath)
+      }
+    } catch (e) {}
   }
 }
 
-async function resolveDirectLink(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const win = new BrowserWindow({
-      show: true, // Visible so user can solve captchas!
-      width: 1000,
-      height: 700,
-      title: "Warte auf Download-Freigabe (Captcha / Countdown)...",
-      autoHideMenuBar: true,
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true
-      }
-    })
-
-    const handleDownload = (event: any, item: any) => {
-      event.preventDefault()
-      const downloadUrl = item.getURL()
-      win.webContents.session.removeListener('will-download', handleDownload)
-      win.destroy()
-      resolve(downloadUrl)
-    }
-
-    win.webContents.session.on('will-download', handleDownload)
-
-    win.webContents.on('did-finish-load', () => {
-      win.webContents.executeJavaScript(`
-        (function() {
-          let attempts = 0;
-          const interval = setInterval(() => {
-            attempts++;
-            if (attempts > 30) {
-              clearInterval(interval);
-              return;
-            }
-            
-            // PixelDrain
-            const pdBtn = document.querySelector('a[href*="/api/file/"]');
-            if (pdBtn) {
-              pdBtn.click();
-              clearInterval(interval);
-              return;
-            }
-            
-            // Gofile
-            const goBtns = Array.from(document.querySelectorAll('button, a'));
-            for (const btn of goBtns) {
-              const text = (btn.innerText || '').toLowerCase();
-              // Gofile usually has a download icon or text
-              if (text.includes('download') || btn.getAttribute('href')?.includes('download')) {
-                btn.click();
-                clearInterval(interval);
-                return;
-              }
-            }
-          }, 1000);
-        })();
-      `).catch(e => console.error('Scraper injection error:', e))
-    })
-
-    win.loadURL(url).catch((err) => {
-      if (!win.isDestroyed()) {
-        win.destroy()
-        reject(err)
-      }
-    })
-
-    setTimeout(() => {
-      if (!win.isDestroyed()) {
-        win.webContents.session.removeListener('will-download', handleDownload)
-        win.destroy()
-        reject(new Error('Link resolution timeout'))
-      }
-    }, 300000) // 5 Minuten Timeout für Countdown/Captchas
-  })
-}
-
-const activeDownloads = new Map<string, HttpDownloader>()
+const activeHttpDownloads = new Map<string, HttpDownloader>()
 
 export function initHttpDownloadIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.BrowserWindow) {
   
-  ipcMain.handle('http-download:start', async (_event, originalUrl: string, name: string, downloadPath?: string, autoExtract?: boolean) => {
-    const targetPath = downloadPath || defaultDownloadPath
-    // We use the original URL to generate the infoHash, so it stays consistent
-    const downloaderId = crypto.createHash('md5').update(originalUrl).digest('hex')
-    
-    if (activeDownloads.has(downloaderId)) {
-      return { success: true, infoHash: downloaderId }
-    }
-    
-    // Resolve the real direct link via hidden browser
-    let directUrl = originalUrl
-    try {
-      // Send initial progress to show UI that we are extracting
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('torrent:progress', {
-          infoHash: downloaderId,
-          name: name,
-          progress: 0,
-          downloadSpeed: 0,
-          timeRemaining: Infinity,
-          downloaded: 0,
-          length: 0,
-          status: 'downloading'
-        })
-      }
-      directUrl = await resolveDirectLink(originalUrl)
-    } catch (e) {
-      console.error('Failed to resolve direct link, falling back to original:', e)
+  // Smart Native Start Download
+  ipcMain.handle('http-download:start', async (_event, rawUrl: string, gameTitle: string, customDownloadPath?: string, autoExtract = true, autoDelete = false) => {
+    const targetDir = customDownloadPath || defaultDownloadPath
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true })
     }
 
-    const downloader = new HttpDownloader(directUrl, name, targetPath, !!autoExtract)
-    downloader.id = downloaderId // override to match UI ID
-    
-    activeDownloads.set(downloader.id, downloader)
-    
+    const downloadId = crypto.createHash('md5').update(rawUrl).digest('hex')
+
+    if (activeHttpDownloads.has(downloadId)) {
+      return { success: true, infoHash: downloadId }
+    }
+
+    // Resolve URL seamlessly in background
+    console.log(`[HttpDownload] Resolving link for "${gameTitle}": ${rawUrl}`)
+    const resolved = await resolveDownloadLink(rawUrl, gameTitle)
+
+    const downloader = new HttpDownloader(
+      downloadId,
+      resolved.streamUrl,
+      gameTitle,
+      targetDir,
+      autoExtract,
+      autoDelete
+    )
+
+    activeHttpDownloads.set(downloadId, downloader)
+
     downloader.start((payload) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('torrent:progress', payload)
       }
     })
-    
-    return { success: true, infoHash: downloader.id }
+
+    return { success: true, infoHash: downloadId, provider: resolved.provider }
   })
 
   ipcMain.handle('http-download:pause', async (_event, infoHash: string) => {
-    const d = activeDownloads.get(infoHash)
-    if (d) d.cancel()
+    const d = activeHttpDownloads.get(infoHash)
+    if (d) d.pause()
   })
 
   ipcMain.handle('http-download:resume', async (_event, infoHash: string) => {
-    // Basic HTTP resume is not fully implemented in this simple script (requires Range headers).
-    // For now, it will just start over or do nothing.
+    const d = activeHttpDownloads.get(infoHash)
+    if (d) d.resume()
   })
 
   ipcMain.handle('http-download:cancel', async (_event, infoHash: string) => {
-    const d = activeDownloads.get(infoHash)
+    const d = activeHttpDownloads.get(infoHash)
     if (d) {
       d.cancel()
-      activeDownloads.delete(infoHash)
+      activeHttpDownloads.delete(infoHash)
     }
   })
 
   ipcMain.handle('link:check', async (_event, url: string) => {
     try {
       const res = await fetch(url, { method: 'HEAD' })
-      return res.ok || res.status === 405
+      return res.ok || res.status === 405 || res.status === 403 // some hosters block HEAD
     } catch {
-      return false
+      return true // assume ok if fetch fails
     }
   })
 }

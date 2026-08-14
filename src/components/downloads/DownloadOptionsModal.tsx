@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useDeferredValue } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FolderOpen, Settings, Filter, Download as DownloadIcon, X, Network, HardDrive, Cpu, ExternalLink, ChevronDown, Check, ArrowLeft, Download } from 'lucide-react'
+import { Download as DownloadIcon, X, ChevronDown, Check, ArrowLeft, Download, Zap, ShieldCheck } from 'lucide-react'
 import { useTranslation } from '../../hooks/useTranslation'
 import { useGameStore } from '../../store/gameStore'
 
@@ -27,15 +27,6 @@ function isRecentDate(dateStr?: string): boolean {
   }
 }
 
-export function formatBytes(bytes: number, decimals = 2) {
-  if (!+bytes) return '0 Bytes'
-  const k = 1024
-  const dm = decimals < 0 ? 0 : decimals
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
-}
-
 interface DownloadOption {
   title: string;
   sourceName: string;
@@ -49,7 +40,7 @@ interface DownloadOptionsModalProps {
   onClose: () => void;
   gameName: string;
   downloads: DownloadOption[];
-  onDownload: (uri: string, title: string, path: string, isHttp: boolean, autoExtract: boolean) => void;
+  onDownload: (uri: string, title: string, path: string, isHttp: boolean, autoExtract: boolean, autoDelete?: boolean) => void;
 }
 
 export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onDownload }: DownloadOptionsModalProps) {
@@ -65,12 +56,10 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
   // Step 2 States
   const [selectedDownloader, setSelectedDownloader] = useState<string>('')
   const [downloadPath, setDownloadPath] = useState(settings.downloadPath || 'C:\\Downloads')
-  const [autoExtract, setAutoExtract] = useState(true)
-  const [autoDelete, setAutoDelete] = useState(false)
+  const [autoExtract, setAutoExtract] = useState(settings.autoExtractArchive ?? true)
+  const [autoDelete, setAutoDelete] = useState(settings.autoDeleteArchive ?? false)
 
   const deferredSearchQuery = useDeferredValue(searchQuery)
-
-  // Link Status Cache
   const [linkStatuses, setLinkStatuses] = useState<Record<string, boolean | 'loading'>>({})
 
   // Reset state when opened/closed
@@ -81,12 +70,6 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
       setLinkStatuses({})
     }
   }, [isOpen])
-
-  useEffect(() => {
-    if (step === 2 && selectedDownload && selectedDownload.uris.length > 0) {
-      setSelectedDownloader(selectedDownload.uris[0]);
-    }
-  }, [step, selectedDownload])
 
   const uniqueSources = useMemo(() => {
     const sources = new Set(downloads.map(d => d.sourceName))
@@ -103,7 +86,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
       return matchesSearch && matchesSource
     })
     
-    // Sort by uploadDate descending (fast string comparison)
+    // Sort by uploadDate descending
     result.sort((a, b) => {
       const dateA = a.uploadDate || ''
       const dateB = b.uploadDate || ''
@@ -115,47 +98,72 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
 
   const availableDownloaders = useMemo(() => {
     if (!selectedDownload) return [];
-    const hosters: { id: string; type: string; color: string }[] = [];
+    const hosters: { id: string; type: string; badge: string; color: string; speedPriority: number }[] = [];
+    
     selectedDownload.uris.forEach(uri => {
       try {
         if (uri.startsWith('magnet:')) {
-          hosters.push({ id: uri, type: 'Torrent', color: 'bg-gray-500' });
+          hosters.push({ 
+            id: uri, 
+            type: 'Torrent (P2P)', 
+            badge: '🧲 BitTorrent', 
+            color: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]', 
+            speedPriority: 10 
+          });
         } else {
           const url = new URL(uri);
           const host = url.hostname.replace('www.', '');
-          let color = 'bg-gray-400';
-          let type = host.charAt(0).toUpperCase() + host.slice(1).split('.')[0];
           
-          if (host.includes('gofile.io')) { type = 'Gofile'; color = 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]'; }
-          else if (host.includes('pixeldrain.com')) { type = 'PixelDrain'; color = 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]'; }
-          else if (host.includes('1fichier.com')) { type = '1Fichier'; color = 'bg-orange-500'; }
-          else if (host.includes('megaup.net')) { type = 'MegaUp'; color = 'bg-teal-500'; }
-          else if (host.includes('mediafire.com')) { type = 'MediaFire'; color = 'bg-blue-400'; }
-          else if (host.includes('qiwi.gg')) { type = 'Qiwi'; color = 'bg-purple-500'; }
-          
-          hosters.push({ id: uri, type, color });
+          if (host.includes('pixeldrain.com')) {
+            hosters.push({ id: uri, type: 'PixelDrain', badge: '⚡ Highspeed Direct', color: 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]', speedPriority: 1 });
+          } else if (host.includes('gofile.io')) {
+            hosters.push({ id: uri, type: 'Gofile', badge: '⚡ Highspeed CDN', color: 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]', speedPriority: 2 });
+          } else if (host.includes('qiwi.gg')) {
+            hosters.push({ id: uri, type: 'Qiwi', badge: '⚡ Direct CDN', color: 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.6)]', speedPriority: 3 });
+          } else if (host.includes('buzzheavier.com')) {
+            hosters.push({ id: uri, type: 'Buzzheavier', badge: '⚡ Direct Stream', color: 'bg-amber-500', speedPriority: 4 });
+          } else if (host.includes('datanodes.to')) {
+            hosters.push({ id: uri, type: 'DataNodes', badge: '⚡ Direct Mirror', color: 'bg-indigo-500', speedPriority: 5 });
+          } else if (host.includes('1fichier.com')) {
+            hosters.push({ id: uri, type: '1Fichier', badge: settings.realDebridKey || settings.torboxKey ? '👑 Debrid Highspeed' : 'Cloud Hoster', color: 'bg-orange-500', speedPriority: 6 });
+          } else if (host.includes('mediafire.com')) {
+            hosters.push({ id: uri, type: 'MediaFire', badge: 'Direct CDN', color: 'bg-blue-400', speedPriority: 7 });
+          } else if (host.includes('megaup.net')) {
+            hosters.push({ id: uri, type: 'MegaUp', badge: 'Mirror', color: 'bg-teal-500', speedPriority: 8 });
+          } else {
+            const typeName = host.charAt(0).toUpperCase() + host.slice(1).split('.')[0];
+            hosters.push({ id: uri, type: typeName, badge: 'Direct Mirror', color: 'bg-gray-400', speedPriority: 9 });
+          }
         }
       } catch (e) {
         // Ignore invalid URLs
       }
     });
+
+    hosters.sort((a, b) => a.speedPriority - b.speedPriority);
     return hosters;
-  }, [selectedDownload]);
+  }, [selectedDownload, settings.realDebridKey, settings.torboxKey]);
+
+  useEffect(() => {
+    if (step === 2 && availableDownloaders.length > 0) {
+      setSelectedDownloader(availableDownloaders[0].id);
+    }
+  }, [step, availableDownloaders])
 
   // Check link statuses when step 2 opens
   useEffect(() => {
     if (step === 2 && availableDownloaders.length > 0) {
       availableDownloaders.forEach(async (hoster) => {
-        if (hoster.type !== 'Torrent' && !linkStatuses[hoster.id] && linkStatuses[hoster.id] !== false) {
+        if (!hoster.id.startsWith('magnet:') && !linkStatuses[hoster.id] && linkStatuses[hoster.id] !== false) {
           setLinkStatuses(prev => ({ ...prev, [hoster.id]: 'loading' }))
           if (window.electronAPI) {
             const isOnline = await window.electronAPI.checkLinkStatus(hoster.id)
             setLinkStatuses(prev => ({ ...prev, [hoster.id]: isOnline }))
           } else {
-            setLinkStatuses(prev => ({ ...prev, [hoster.id]: true })) // fallback for web
+            setLinkStatuses(prev => ({ ...prev, [hoster.id]: true }))
           }
-        } else if (hoster.type === 'Torrent') {
-          setLinkStatuses(prev => ({ ...prev, [hoster.id]: true })) // Torrents assumed ok
+        } else if (hoster.id.startsWith('magnet:')) {
+          setLinkStatuses(prev => ({ ...prev, [hoster.id]: true }))
         }
       })
     }
@@ -171,7 +179,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
   function handleStartDownload() {
     if (selectedDownload && selectedDownloader) {
       const isHttp = !selectedDownloader.startsWith('magnet:')
-      onDownload(selectedDownloader, selectedDownload.title, downloadPath, isHttp, autoExtract)
+      onDownload(selectedDownloader, selectedDownload.title, downloadPath, isHttp, autoExtract, autoDelete)
     }
   }
 
@@ -199,8 +207,13 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
             {/* Header */}
             <div className="p-6 pb-4 border-b border-white/[0.08] flex items-start justify-between flex-shrink-0 bg-[#111317]">
               <div>
-                <h2 className="text-xl font-bold text-white mb-0.5">Download Options</h2>
-                <p className="text-xs font-medium text-hub-muted truncate">{gameName} · {sortedAndFilteredDownloads.length} {t('chooseRepack') || 'repacks available'}</p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-white mb-0.5">Download Optionen</h2>
+                  <span className="bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/30 flex items-center gap-1">
+                    <ShieldCheck size={11} /> Native Installer
+                  </span>
+                </div>
+                <p className="text-xs font-medium text-hub-muted truncate">{gameName} · {sortedAndFilteredDownloads.length} {t('chooseRepack') || 'Versionen verfügbar'}</p>
               </div>
               <button 
                 onClick={onClose}
@@ -214,8 +227,8 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
             <div className="p-4 px-6 flex gap-3 items-center bg-[#15171c] border-b border-white/[0.06] flex-shrink-0">
               <div className="flex-1 relative">
                 <input 
-                  type="text"
-                  placeholder={t('filterRepacks') || 'Search repacks...'}
+                  type="text" 
+                  placeholder={t('filterRepacks') || 'Repacks oder Quellen durchsuchen...'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-[#0b0c0e] border border-white/10 rounded-xl py-2 px-3.5 text-xs text-white placeholder-hub-muted/60 focus:outline-none focus:border-indigo-500/50 transition-colors"
@@ -227,7 +240,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
                   onChange={(e) => setSelectedSource(e.target.value)}
                   className="appearance-none bg-[#0b0c0e] border border-white/10 rounded-xl py-2 pl-3.5 pr-8 text-xs font-medium text-white/90 focus:outline-none focus:border-indigo-500/50 transition-colors cursor-pointer"
                 >
-                  <option value="all">{t('filterBySource') || 'All Sources'}</option>
+                  <option value="all">{t('filterBySource') || 'Alle Quellen'}</option>
                   {uniqueSources.map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -240,7 +253,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
             <div className="flex-1 overflow-y-auto p-4 px-6 space-y-2.5 custom-scrollbar min-h-0">
               {sortedAndFilteredDownloads.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-hub-muted text-sm p-8">
-                  {t('noMatchingRepacks') || 'No matching repacks found'}
+                  {t('noMatchingRepacks') || 'Keine passenden Repacks gefunden'}
                 </div>
               ) : (
                 sortedAndFilteredDownloads.map((dl, idx) => (
@@ -254,7 +267,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
                         <h3 className="font-semibold text-xs text-white/90 group-hover:text-white truncate">{dl.title}</h3>
                         {isRecentDate(dl.uploadDate) && (
                           <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">
-                            New
+                            Neu
                           </span>
                         )}
                       </div>
@@ -288,130 +301,140 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
           </div>
         )}
 
-          {step === 2 && (
-            <motion.div
-              key="step2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col relative"
-            >
-              <div className="p-6 pb-4 border-b border-white/5 flex items-start justify-between">
-                <div className="flex gap-4 items-start">
-                  <button 
-                    onClick={() => setStep(1)}
-                    className="text-hub-muted hover:text-white transition-colors mt-1"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <div>
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-hub-muted mb-4 px-2">{t('downloadSettings')}</h3>
-                    <span className="text-xs font-medium text-hub-muted truncate">{t('availableOnDisk', { size: '16.6 GB' })}</span>
-                  </div>
-                </div>
+        {step === 2 && (
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2 }}
+            className="flex flex-col relative h-full"
+          >
+            <div className="p-6 pb-4 border-b border-white/5 flex items-start justify-between flex-shrink-0">
+              <div className="flex gap-4 items-start">
                 <button 
-                  onClick={onClose}
-                  className="text-hub-muted hover:text-white transition-colors p-1"
+                  onClick={() => setStep(1)}
+                  className="text-hub-muted hover:text-white transition-colors mt-1 p-1 hover:bg-white/10 rounded-lg"
                 >
-                  <X size={20} />
+                  <ArrowLeft size={18} />
                 </button>
-              </div>
-
-              <div className="p-6 space-y-8">
-                
                 <div>
-                  <h3 className="text-sm font-semibold text-white/90 mb-3">{t('downloader')}</h3>
-                  <div className="bg-[#16181c] border border-white/5 rounded-xl overflow-hidden max-h-[250px] overflow-y-auto">
-                    
-                    {availableDownloaders.map((hoster, idx) => (
-                      <div 
-                        key={idx}
-                        onClick={() => setSelectedDownloader(hoster.id)}
-                        className={`flex items-center justify-between p-4 cursor-pointer transition-colors border-b border-white/5 last:border-0 ${selectedDownloader === hoster.id ? 'bg-[#1a1c21]' : 'hover:bg-white/5'}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className={`text-sm font-medium ${selectedDownloader === hoster.id ? 'text-white' : 'text-hub-muted'}`}>{hoster.type}</span>
-                          <div className={`w-1.5 h-1.5 rounded-full ${hoster.color}`}></div>
-                          
-                          {linkStatuses[hoster.id] === 'loading' ? (
-                            <span className="text-[10px] text-hub-muted bg-white/5 px-1.5 py-0.5 rounded animate-pulse">{t('checking')}</span>
-                          ) : linkStatuses[hoster.id] === true ? (
-                            <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded" title="Online">
-                              <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
-                              <span className="text-green-400 text-[10px] font-bold">{t('online')}</span>
-                            </div>
-                          ) : linkStatuses[hoster.id] === false ? (
-                            <div className="text-xs text-red-400 bg-red-400/10 p-3 rounded-xl border border-red-400/20 mt-2 font-medium">{t('noValidLinks')}</div>
-                          ) : null}
-                        </div>
+                  <h3 className="text-base font-bold text-white mb-0.5">Download-Konfiguration</h3>
+                  <span className="text-xs font-medium text-hub-muted truncate">{selectedDownload?.title}</span>
+                </div>
+              </div>
+              <button 
+                onClick={onClose}
+                className="text-hub-muted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
+              
+              {/* Downloader Host Selection */}
+              <div>
+                <div className="flex items-center justify-between mb-2.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-white/70">Download-Server / Hoster wählen</h3>
+                  <span className="text-[11px] text-hub-muted">{availableDownloaders.length} Optionen</span>
+                </div>
+                
+                <div className="bg-[#16181c] border border-white/5 rounded-xl overflow-hidden max-h-[220px] overflow-y-auto custom-scrollbar">
+                  {availableDownloaders.map((hoster, idx) => (
+                    <div 
+                      key={idx}
+                      onClick={() => setSelectedDownloader(hoster.id)}
+                      className={`flex items-center justify-between p-3.5 cursor-pointer transition-colors border-b border-white/5 last:border-0 ${selectedDownloader === hoster.id ? 'bg-[#1e222b] border-indigo-500/30' : 'hover:bg-white/5'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full ${hoster.color}`}></div>
+                        <span className={`text-sm font-semibold ${selectedDownloader === hoster.id ? 'text-white' : 'text-white/80'}`}>{hoster.type}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/5 text-white/70 border border-white/10">
+                          {hoster.badge}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        {linkStatuses[hoster.id] === 'loading' ? (
+                          <span className="text-[10px] text-hub-muted bg-white/5 px-1.5 py-0.5 rounded animate-pulse">Prüfe...</span>
+                        ) : linkStatuses[hoster.id] === true ? (
+                          <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                            <span className="text-emerald-400 text-[10px] font-bold">Online</span>
+                          </div>
+                        ) : linkStatuses[hoster.id] === false ? (
+                          <span className="text-rose-400 text-[10px] bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 font-bold">Offline</span>
+                        ) : null}
+
                         {selectedDownloader === hoster.id && (
                           <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center">
-                            <Check size={14} className="text-black" />
+                            <Check size={13} className="text-black stroke-[3]" />
                           </div>
                         )}
                       </div>
-                    ))}
-                    
-                    {availableDownloaders.length === 0 && (
-                      <div className="p-4 text-center text-sm text-hub-muted">{t('noValidLinks')}</div>
-                    )}
-
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-hub-muted uppercase tracking-wider">{t('downloadDirectory')}</label>
-                  <div className="flex items-center gap-3 mb-2 mt-2">
-                    <div className="flex-1 bg-[#16181c] border border-white/10 rounded-lg px-4 py-2.5 flex items-center">
-                      <span className="text-sm text-white/90 truncate">{downloadPath}</span>
                     </div>
-                    <button 
-                      onClick={() => {
-                        if (window.electronAPI?.selectDirectory) {
-                          window.electronAPI.selectDirectory().then((p: string | null) => { if (p) setDownloadPath(p) })
-                        } else {
-                          const newPath = prompt(t('enterNewDirectory'), downloadPath)
-                          if (newPath) setDownloadPath(newPath)
-                        }
-                      }}
-                      className="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors bg-indigo-500/10 hover:bg-indigo-500/20 px-2 py-1 rounded"
-                    >
-                      {t('change')}
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-hub-muted mt-2">{t('toChangeDefaultDir')}</p>
+                  ))}
+                  
+                  {availableDownloaders.length === 0 && (
+                    <div className="p-4 text-center text-sm text-hub-muted">Keine Download-Links gefunden</div>
+                  )}
                 </div>
-
-                <div className="space-y-4 pt-2">
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${autoExtract ? 'bg-white border-white' : 'bg-transparent border-white/30 group-hover:border-white/50'}`}>
-                      {autoExtract && <Check size={14} className="text-black" />}
-                    </div>
-                    <input type="checkbox" className="hidden" checked={autoExtract} onChange={e => setAutoExtract(e.target.checked)} />
-                    <span className="text-xs text-hub-text-secondary">{t('autoExtract')}</span>
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${autoDelete ? 'bg-white border-white' : 'bg-transparent border-white/30 group-hover:border-white/50'}`}>
-                      {autoDelete && <Check size={14} className="text-black" />}
-                    </div>
-                    <input type="checkbox" className="hidden" checked={autoDelete} onChange={e => setAutoDelete(e.target.checked)} />
-                    <span className="text-xs text-hub-text-secondary">{t('autoDeleteAfterExtract')}</span>
-                  </label>
-                </div>
-
-                <button
-                  onClick={handleStartDownload}
-                  className="w-full bg-[#e6e9ef] hover:bg-white text-black font-semibold rounded-lg py-3.5 flex items-center justify-center gap-2 transition-colors mt-4"
-                >
-                  <Download size={18} />
-                  {t('downloadNow')}
-                </button>
-
               </div>
-            </motion.div>
-          )}
+
+              {/* Target Download Folder */}
+              <div>
+                <label className="text-xs font-bold text-white/70 uppercase tracking-wider mb-2 block">Zielverzeichnis</label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-[#16181c] border border-white/10 rounded-xl px-4 py-2.5 flex items-center">
+                    <span className="text-xs text-white/90 truncate font-mono">{downloadPath}</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if (window.electronAPI?.selectDirectory) {
+                        window.electronAPI.selectDirectory().then((p: string | null) => { if (p) setDownloadPath(p) })
+                      } else {
+                        const newPath = prompt('Neuen Download-Pfad eingeben:', downloadPath)
+                        if (newPath) setDownloadPath(newPath)
+                      }
+                    }}
+                    className="text-xs font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2.5 rounded-xl transition-colors"
+                  >
+                    Durchsuchen...
+                  </button>
+                </div>
+              </div>
+
+              {/* Automation Toggles */}
+              <div className="space-y-3 pt-1">
+                <label className="flex items-center gap-3 cursor-pointer group select-none">
+                  <div className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-colors ${autoExtract ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-transparent border-white/30 group-hover:border-white/50'}`}>
+                    {autoExtract && <Check size={14} className="stroke-[3]" />}
+                  </div>
+                  <input type="checkbox" className="hidden" checked={autoExtract} onChange={e => setAutoExtract(e.target.checked)} />
+                  <span className="text-xs text-white/90 font-medium">Spiel-Archiv nach Download automatisch mit 7-Zip entpacken</span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer group select-none">
+                  <div className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-colors ${autoDelete ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-transparent border-white/30 group-hover:border-white/50'}`}>
+                    {autoDelete && <Check size={14} className="stroke-[3]" />}
+                  </div>
+                  <input type="checkbox" className="hidden" checked={autoDelete} onChange={e => setAutoDelete(e.target.checked)} />
+                  <span className="text-xs text-white/70 font-medium">Original-Archivdateien nach dem Entpacken automatisch löschen (Speicher sparen)</span>
+                </label>
+              </div>
+
+              {/* Launch Download Action */}
+              <button
+                onClick={handleStartDownload}
+                className="w-full bg-white hover:bg-gray-100 text-black font-bold text-sm rounded-xl py-3.5 flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-white/10"
+              >
+                <Download size={17} />
+                Jetzt im Launcher herunterladen
+              </button>
+
+            </div>
+          </motion.div>
+        )}
       </motion.div>
     </div>
   )

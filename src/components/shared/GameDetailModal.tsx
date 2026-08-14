@@ -132,30 +132,39 @@ export function GameDetailModal() {
     }
   }
 
-  function handleDownload(uri: string, title: string, downloadPath: string, isHttp: boolean, autoExtract: boolean) {
+  function handleDownload(uri: string, title: string, downloadPath: string, isHttp: boolean, autoExtract: boolean, autoDelete = false) {
+    const gameTitle = game?.name || title
     if (window.electronAPI) {
-      const downloadPromise = isHttp 
-        ? window.electronAPI.startHttpDownload(uri, game?.name || title, downloadPath, autoExtract)
-        : window.electronAPI.startDownload(uri, downloadPath, autoExtract)
+      const downloadPromise = window.electronAPI.startNativeDownload
+        ? window.electronAPI.startNativeDownload(uri, gameTitle, downloadPath, autoExtract, autoDelete)
+        : (isHttp 
+            ? window.electronAPI.startHttpDownload(uri, gameTitle, downloadPath, autoExtract, autoDelete)
+            : window.electronAPI.startDownload(uri, downloadPath, autoExtract, autoDelete))
         
-      downloadPromise.then((res) => {
-        if (res.success && res.infoHash) {
+      downloadPromise.then((res: any) => {
+        if (res && res.success && res.infoHash) {
           useDownloadStore.getState().addDownload({
             infoHash: res.infoHash,
-            name: game?.name || title,
+            name: gameTitle,
             progress: 0,
             downloadSpeed: 0,
             timeRemaining: Infinity,
             downloaded: 0,
             length: 0,
             status: 'downloading',
-            coverUrl: getCoverUrl(steamId as number)
+            coverUrl: steamId ? getCoverUrl(steamId as number) : undefined,
+            installPath: downloadPath
           });
           useUIStore.getState().setActiveView('downloads');
           setIsDownloadOptionsOpen(false);
           setIsGameModalOpen(false);
-          showNotification('Download gestartet', 'success');
+          showNotification(`Download gestartet: ${gameTitle}`, 'success');
+        } else {
+          showNotification('Fehler beim Starten des Downloads', 'error');
         }
+      }).catch((err: any) => {
+        console.error('Download start error:', err);
+        showNotification('Download-Fehler: ' + (err?.message || 'Unbekannt'), 'error');
       });
     } else {
       window.open(uri);

@@ -130,8 +130,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 
 
-  // Torrent Engine
-  startDownload: (magnetURI: string, downloadPath?: string, autoExtract?: boolean) => ipcRenderer.invoke('torrent:start', magnetURI, downloadPath, autoExtract),
+  // Native Download Engine
+  startDownload: (magnetURI: string, downloadPath?: string, autoExtract = true, autoDelete = false) => 
+    ipcRenderer.invoke('torrent:start', magnetURI, downloadPath, autoExtract, autoDelete),
+  startHttpDownload: (url: string, name: string, downloadPath?: string, autoExtract = true, autoDelete = false) => 
+    ipcRenderer.invoke('http-download:start', url, name, downloadPath, autoExtract, autoDelete),
+  startNativeDownload: (url: string, gameTitle: string, downloadPath?: string, autoExtract = true, autoDelete = false) => {
+    if (url.startsWith('magnet:')) {
+      return ipcRenderer.invoke('torrent:start', url, downloadPath, autoExtract, autoDelete)
+    }
+    return ipcRenderer.invoke('http-download:start', url, gameTitle, downloadPath, autoExtract, autoDelete)
+  },
+  testDebridKey: (provider: string, apiKey: string) => ipcRenderer.invoke('debrid:test-key', { provider, apiKey }),
+  checkLinkStatus: (url: string) => ipcRenderer.invoke('link:check', url),
   pauseDownload: (infoHash: string) => Promise.all([
     ipcRenderer.invoke('torrent:pause', infoHash).catch(() => {}),
     ipcRenderer.invoke('http-download:pause', infoHash).catch(() => {})
@@ -171,10 +182,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('show-friend-profile-modal', handler)
     return () => ipcRenderer.removeListener('show-friend-profile-modal', handler)
   },
-
-  // HTTP Download Engine & Link check
-  startHttpDownload: (url: string, name: string, downloadPath?: string, autoExtract?: boolean) => ipcRenderer.invoke('http-download:start', url, name, downloadPath, autoExtract),
-  checkLinkStatus: (url: string) => ipcRenderer.invoke('link:check', url),
 
   // Auto Updater
   checkUpdate: () => ipcRenderer.invoke('updater:check'),

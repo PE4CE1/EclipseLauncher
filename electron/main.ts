@@ -641,6 +641,39 @@ ipcMain.handle('rl:set-api-key', (_event, key: string) => {
 // ─── App Lifecycle ────────────────────────────────────────────────────────────
 ipcMain.handle('system:open-url', (_event, url: string) => shell.openExternal(url))
 ipcMain.handle('open-url', (_event, url: string) => shell.openExternal(url))
+ipcMain.handle('system:open-path', (_event, fullPath: string) => {
+  if (fs.existsSync(fullPath)) {
+    return shell.openPath(fullPath)
+  }
+  return shell.openPath(path.dirname(fullPath))
+})
+
+ipcMain.handle('debrid:test-key', async (_event, { provider, apiKey }: { provider: string; apiKey: string }) => {
+  try {
+    if (provider === 'realDebrid') {
+      const res = await fetch('https://api.real-debrid.com/rest/1.0/user', {
+        headers: { 'Authorization': `Bearer ${apiKey}` }
+      })
+      if (res.ok) {
+        const user = await res.json()
+        return { success: true, username: user.username, type: user.type, expiration: user.expiration }
+      }
+      return { success: false, error: 'Ungültiger Real-Debrid API Key' }
+    } else if (provider === 'torbox') {
+      const res = await fetch('https://api.torbox.app/v1/api/user/me', {
+        headers: { 'Authorization': `Bearer ${apiKey}` }
+      })
+      if (res.ok) {
+        const user = await res.json()
+        return { success: true, username: user?.data?.email || 'TorBox User' }
+      }
+      return { success: false, error: 'Ungültiger TorBox API Key' }
+    }
+    return { success: false, error: 'Unbekannter Provider' }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
+})
 
 ipcMain.handle('system:create-desktop-shortcut', () => {
   try {

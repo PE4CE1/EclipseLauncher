@@ -98,6 +98,11 @@ export interface AppSettings {
   startMinimized: boolean
   launchInLibrary: boolean
   downloadPath: string
+  autoExtractArchive?: boolean
+  autoDeleteArchive?: boolean
+  realDebridKey?: string
+  torboxKey?: string
+  allDebridKey?: string
   hardwareAcceleration?: boolean
   desktopNotifications?: boolean
   soundEffects?: boolean
@@ -201,17 +206,17 @@ export interface ElectronAPI {
 
 
 
-  // Torrent Engine
-  startDownload: (magnetURI: string, downloadPath?: string, autoExtract?: boolean) => Promise<{ success: boolean; infoHash?: string; error?: string }>
+  // Native Download Engine
+  startDownload: (magnetURI: string, downloadPath?: string, autoExtract?: boolean, autoDelete?: boolean) => Promise<{ success: boolean; infoHash?: string; error?: string }>
+  startHttpDownload: (url: string, name: string, downloadPath?: string, autoExtract?: boolean, autoDelete?: boolean) => Promise<{ success: boolean; infoHash?: string; provider?: string; error?: string }>
+  startNativeDownload: (url: string, gameTitle: string, downloadPath?: string, autoExtract?: boolean, autoDelete?: boolean) => Promise<{ success: boolean; infoHash?: string; provider?: string; error?: string }>
+  testDebridKey: (provider: string, apiKey: string) => Promise<{ success: boolean; username?: string; type?: string; expiration?: string; error?: string }>
+  checkLinkStatus: (url: string) => Promise<boolean>
   pauseDownload: (infoHash: string) => Promise<void>
   resumeDownload: (infoHash: string) => Promise<void>
   cancelDownload: (infoHash: string) => Promise<void>
   onTorrentProgress: (callback: (payload: any) => void) => () => void
   selectDirectory: () => Promise<string | null>
-  
-  // HTTP Downloads
-  startHttpDownload: (url: string, name: string, downloadPath?: string, autoExtract?: boolean) => Promise<{ success: boolean; infoHash?: string; error?: string }>
-  checkLinkStatus: (url: string) => Promise<boolean>
 
   // Cloudflare bypass
   fetchSourceCF: (url: string) => Promise<string | null>

@@ -11,6 +11,8 @@ export type TorrentPayload = {
   status: 'downloading' | 'paused' | 'extracting' | 'done' | 'error'
   coverUrl?: string
   peers?: number
+  mainExe?: string | null
+  installPath?: string
 }
 
 interface DownloadStore {
@@ -21,7 +23,6 @@ interface DownloadStore {
 }
 
 import { useGameStore } from './gameStore'
-import { useUIStore } from './uiStore'
 import { translations, Language } from '../i18n/translations'
 import { sendAppNotification } from '../services/notificationService'
 
@@ -31,7 +32,7 @@ export const useDownloadStore = create<DownloadStore>((set) => {
       set((state) => {
         const currentPayload = state.downloads[payload.infoHash]
         
-        // If it just finished downloading/extracting
+        // If it just finished downloading and extracting
         if (currentPayload && currentPayload.status !== 'done' && payload.status === 'done') {
           const gameId = `custom-${Date.now()}`
           useGameStore.getState().addToLibrary({
@@ -39,6 +40,9 @@ export const useDownloadStore = create<DownloadStore>((set) => {
             name: payload.name,
             platform: 'custom',
             installed: true,
+            installPath: payload.installPath || currentPayload.installPath,
+            launchUrl: payload.mainExe || payload.installPath || currentPayload.installPath,
+            coverImage: currentPayload.coverUrl,
             addedAt: Date.now(),
             isFavorite: false
           })

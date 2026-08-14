@@ -346,81 +346,203 @@ export function SettingsView() {
 
           {activeSettingsTab === 'downloads' && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-8">
+              
+              {/* ─── Download Location & Unpack Automation ─── */}
               <section>
-                <h2 className="text-lg font-bold text-white mb-4 tracking-tight">{t('downloadBehavior')}</h2>
+                <h2 className="text-lg font-bold text-white mb-1 tracking-tight">{language === 'de' ? 'Download- & Speicherort' : 'Download Directory & Storage'}</h2>
+                <p className="text-xs text-white/50 mb-4">{language === 'de' ? 'Standardordner für heruntergeladene Spiele und Entpack-Optionen' : 'Default directory for downloaded games and unpacking behavior'}</p>
                 
                 <div className="space-y-5">
                   <div>
-                    <label className="block text-xs font-semibold text-white/70 uppercase tracking-wider mb-2">{t('maxDownloadSpeed')}</label>
-                    <input 
-                      type="number" 
-                      placeholder="Unlimited (0)" 
-                      value={downloadOptions.speedLimit}
-                      onChange={e => setDownloadOptions(prev => ({ ...prev, speedLimit: e.target.value }))}
-                      className="w-full max-w-xs bg-hub-elevated border border-white/10 rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:border-white/30 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-white/70 uppercase tracking-wider mb-2">{t('networkAdapter')}</label>
-                    <select 
-                      value={downloadOptions.adapter}
-                      onChange={e => setDownloadOptions(prev => ({ ...prev, adapter: e.target.value }))}
-                      className="w-full max-w-xs bg-hub-elevated border border-white/10 rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:border-white/30 appearance-none transition-all"
-                    >
-                      <option>{t('allAdapters')}</option>
-                      <option>{t('ethernet')}</option>
-                      <option>{t('wifi')}</option>
-                    </select>
+                    <label className="block text-xs font-semibold text-white/70 uppercase tracking-wider mb-2">{language === 'de' ? 'Standard Download-Verzeichnis' : 'Default Download Folder'}</label>
+                    <div className="flex items-center gap-3 max-w-xl">
+                      <input 
+                        type="text" 
+                        readOnly
+                        value={localSettings.downloadPath || 'C:\\Downloads'} 
+                        className="flex-1 bg-hub-elevated border border-white/10 rounded-lg py-2 px-4 text-xs font-mono text-white focus:outline-none"
+                      />
+                      <button 
+                        onClick={handleBrowsePath}
+                        className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-all border border-white/10 flex items-center gap-2 cursor-pointer flex-shrink-0"
+                      >
+                        <Folder size={14} />
+                        {language === 'de' ? 'Durchsuchen...' : 'Browse...'}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-3.5 pt-2">
-                    {[
-                      { key: 'seedAfter', label: t('seedAfter') },
-                      { key: 'unpackAuto', label: t('unpackAuto') },
-                      { key: 'showMBps', label: t('showMBps') },
-                      { key: 'deleteArchive', label: t('deleteArchive') },
-                      { key: 'createShortcut', label: t('createShortcut') },
-                    ].map(opt => (
-                      <CleanCheckbox
-                        key={opt.key}
-                        checked={downloadOptions[opt.key as keyof typeof downloadOptions] as boolean}
-                        label={opt.label}
-                        onChange={() => setDownloadOptions(prev => ({ ...prev, [opt.key]: !prev[opt.key as keyof typeof downloadOptions] }))}
-                      />
-                    ))}
+                    <CleanCheckbox
+                      checked={localSettings.autoExtractArchive ?? true}
+                      label={language === 'de' ? 'Archive nach Download automatisch mit 7-Zip entpacken' : 'Automatically extract archives with 7-Zip after download'}
+                      description={language === 'de' ? 'Entpackt .zip, .rar und .7z Dateien direkt in einen sauberen Spielordner und erkennt die Haupt-Executable.' : 'Unpacks game archives automatically and detects the primary game executable.'}
+                      onChange={() => {
+                        const val = !(localSettings.autoExtractArchive ?? true)
+                        set('autoExtractArchive', val)
+                        updateSettings({ autoExtractArchive: val })
+                      }}
+                    />
+
+                    <CleanCheckbox
+                      checked={localSettings.autoDeleteArchive ?? false}
+                      label={language === 'de' ? 'Archivdateien nach erfolgreichem Entpacken löschen' : 'Delete archive files after successful extraction'}
+                      description={language === 'de' ? 'Spart Festplattenspeicher, indem die heruntergeladenen .zip/.rar/.7z Archive nach dem Entpacken entfernt werden.' : 'Saves disk space by deleting original compressed files after extraction.'}
+                      onChange={() => {
+                        const val = !(localSettings.autoDeleteArchive ?? false)
+                        set('autoDeleteArchive', val)
+                        updateSettings({ autoDeleteArchive: val })
+                      }}
+                    />
                   </div>
                 </div>
               </section>
 
               <hr className="border-white/[0.08]" />
 
+              {/* ─── Debrid Services Integration ─── */}
               <section>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold text-white tracking-tight">{t('downloadSourcesManagement')}</h2>
-                  <div className="flex gap-2">
-                    <button onClick={() => syncAll()} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-all border border-white/10">
+                <div className="flex items-center justify-between mb-1">
+                  <h2 className="text-lg font-bold text-white tracking-tight">{language === 'de' ? 'Debrid Highspeed-Dienste' : 'Debrid Highspeed Services'}</h2>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    Optional
+                  </span>
+                </div>
+                <p className="text-xs text-white/50 mb-4">
+                  {language === 'de' 
+                    ? 'Verbinde Real-Debrid oder TorBox, um Host-Links (1fichier, Rapidgator etc.) mit ungedrosselter Gigabit-Geschwindigkeit direkt im Launcher herunterzuladen.' 
+                    : 'Connect Real-Debrid or TorBox to download hoster links (1fichier, Rapidgator, etc.) at unthrottled maximum speeds.'}
+                </p>
+
+                <div className="space-y-4 max-w-xl">
+                  {/* Real-Debrid */}
+                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-white">Real-Debrid API Key</span>
+                      </div>
+                      <a 
+                        href="#" 
+                        onClick={(e) => { e.preventDefault(); if (window.electronAPI?.openUrl) window.electronAPI.openUrl('https://real-debrid.com/apitoken') }}
+                        className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                      >
+                        {language === 'de' ? 'API Key abrufen ↗' : 'Get API Key ↗'}
+                      </a>
+                    </div>
+                    <div className="flex gap-2">
+                      <input 
+                        type="password" 
+                        placeholder="Hier Real-Debrid API Token einfügen..."
+                        value={localSettings.realDebridKey || ''}
+                        onChange={e => {
+                          set('realDebridKey', e.target.value)
+                          updateSettings({ realDebridKey: e.target.value })
+                        }}
+                        className="flex-1 bg-hub-base border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-white/30"
+                      />
+                      <button 
+                        onClick={async () => {
+                          if (!localSettings.realDebridKey?.trim()) {
+                            showNotification(language === 'de' ? 'Bitte gib zuerst einen Real-Debrid Key ein.' : 'Please enter a Real-Debrid key first.', 'info')
+                            return
+                          }
+                          if (window.electronAPI?.testDebridKey) {
+                            const res = await window.electronAPI.testDebridKey('realDebrid', localSettings.realDebridKey.trim())
+                            if (res.success) {
+                              showNotification(language === 'de' ? `Real-Debrid verbunden: ${res.username} (${res.type})` : `Connected as ${res.username}`, 'success')
+                            } else {
+                              showNotification(res.error || 'Ungültiger Real-Debrid Key', 'error')
+                            }
+                          }
+                        }}
+                        className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-all border border-white/10 flex-shrink-0 cursor-pointer"
+                      >
+                        {language === 'de' ? 'Prüfen' : 'Test'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* TorBox */}
+                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-white">TorBox API Key</span>
+                      </div>
+                      <a 
+                        href="#" 
+                        onClick={(e) => { e.preventDefault(); if (window.electronAPI?.openUrl) window.electronAPI.openUrl('https://torbox.app/settings') }}
+                        className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                      >
+                        {language === 'de' ? 'API Key abrufen ↗' : 'Get API Key ↗'}
+                      </a>
+                    </div>
+                    <div className="flex gap-2">
+                      <input 
+                        type="password" 
+                        placeholder="Hier TorBox API Token einfügen..."
+                        value={localSettings.torboxKey || ''}
+                        onChange={e => {
+                          set('torboxKey', e.target.value)
+                          updateSettings({ torboxKey: e.target.value })
+                        }}
+                        className="flex-1 bg-hub-base border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-white/30"
+                      />
+                      <button 
+                        onClick={async () => {
+                          if (!localSettings.torboxKey?.trim()) {
+                            showNotification(language === 'de' ? 'Bitte gib zuerst einen TorBox Key ein.' : 'Please enter a TorBox key first.', 'info')
+                            return
+                          }
+                          if (window.electronAPI?.testDebridKey) {
+                            const res = await window.electronAPI.testDebridKey('torbox', localSettings.torboxKey.trim())
+                            if (res.success) {
+                              showNotification(language === 'de' ? `TorBox verbunden: ${res.username}` : `Connected as ${res.username}`, 'success')
+                            } else {
+                              showNotification(res.error || 'Ungültiger TorBox Key', 'error')
+                            }
+                          }
+                        }}
+                        className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-all border border-white/10 flex-shrink-0 cursor-pointer"
+                      >
+                        {language === 'de' ? 'Prüfen' : 'Test'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <hr className="border-white/[0.08]" />
+
+              {/* ─── Hydra Sources Management ─── */}
+              <section>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h2 className="text-lg font-bold text-white tracking-tight">{t('downloadSourcesManagement')}</h2>
+                    <p className="text-xs text-hub-muted mt-0.5">
+                      {language === 'de' 
+                        ? 'Hydra-Quellen (JSON) aus https://library.hydra.wiki/sources/ für automatische Repack- und Direct-Download-Optionen.' 
+                        : 'Hydra sources (JSON) from https://library.hydra.wiki/sources/ for repacks and direct downloads.'}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button onClick={() => syncAll()} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-all border border-white/10 cursor-pointer">
                       {t('syncSources')}
                     </button>
-                    <button onClick={() => removeAllSources()} className="px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg text-xs font-semibold transition-all">
+                    <button onClick={() => removeAllSources()} className="px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg text-xs font-semibold transition-all cursor-pointer">
                       {t('removeAllSources')}
                     </button>
                   </div>
                 </div>
-                
-                <p className="text-xs text-hub-muted mb-6">
-                  {t('sourceDescription')}
-                </p>
 
-                <div className="space-y-4">
+                <div className="space-y-3 mt-4">
                   {sources.map(source => (
-                    <div key={source.url} className="bg-[#0f1015] border border-white/10 rounded-xl p-4 flex flex-col gap-3">
+                    <div key={source.url} className="bg-[#0f1015] border border-white/10 rounded-xl p-3.5 flex flex-col gap-2.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <h3 className="font-semibold text-white text-sm">{source.name}</h3>
                           <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
-                            source.status === 'up_to_date' ? 'bg-white/10 text-white border-white/20' :
-                            source.status === 'syncing' ? 'bg-white/10 text-white border-white/20' :
+                            source.status === 'up_to_date' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' :
+                            source.status === 'syncing' ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' :
                             source.status === 'error' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
                             'bg-white/5 text-white/50 border-white/10'
                           }`}>
@@ -429,19 +551,19 @@ export function SettingsView() {
                              source.status === 'error' ? t('error') : t('pending')}
                           </span>
                         </div>
-                        <span className="text-xs text-hub-muted">{source.optionsCount} {t('downloadOptions')}</span>
+                        <span className="text-xs text-hub-muted font-medium">{source.optionsCount} {t('downloadOptions')}</span>
                       </div>
                       <div className="flex gap-2">
                         <input 
                           type="text" 
                           readOnly 
                           value={source.url} 
-                          className="flex-1 bg-hub-base border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white/70 focus:outline-none"
+                          className="flex-1 bg-hub-base border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white/70 font-mono focus:outline-none"
                         />
-                        <button onClick={() => syncSource(source.url)} className="p-1.5 text-white/70 hover:text-white bg-white/5 rounded-lg border border-white/10 hover:bg-white/10">
+                        <button onClick={() => syncSource(source.url)} className="p-1.5 text-white/70 hover:text-white bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 cursor-pointer">
                           <RefreshCw size={14} className={source.status === 'syncing' ? 'animate-spin' : ''} />
                         </button>
-                        <button onClick={() => removeSource(source.url)} className="p-1.5 text-red-400 hover:text-red-300 bg-red-500/10 rounded-lg border border-red-500/20 hover:bg-red-500/20">
+                        <button onClick={() => removeSource(source.url)} className="p-1.5 text-red-400 hover:text-red-300 bg-red-500/10 rounded-lg border border-red-500/20 hover:bg-red-500/20 cursor-pointer">
                           <Trash size={14} />
                         </button>
                       </div>
@@ -454,16 +576,16 @@ export function SettingsView() {
                         type="text" 
                         value={newSourceUrl}
                         onChange={e => setNewSourceUrl(e.target.value)}
-                        placeholder="https://example.com/source.json"
+                        placeholder="https://wkeynhk.online/steamgg.json"
                         className="flex-1 bg-hub-base border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-white/30"
                         autoFocus
                         onKeyDown={e => e.key === 'Enter' && handleAddSource()}
                       />
-                      <button onClick={handleAddSource} className="px-4 py-1.5 bg-white text-black hover:bg-white/90 rounded-lg text-xs font-semibold shadow-sm">{t('add')}</button>
-                      <button onClick={() => setShowAddSource(false)} className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold border border-white/10">{t('cancel')}</button>
+                      <button onClick={handleAddSource} className="px-4 py-1.5 bg-white text-black hover:bg-white/90 rounded-lg text-xs font-semibold shadow-sm cursor-pointer">{t('add')}</button>
+                      <button onClick={() => setShowAddSource(false)} className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold border border-white/10 cursor-pointer">{t('cancel')}</button>
                     </div>
                   ) : (
-                    <button onClick={() => setShowAddSource(true)} className="w-full py-3 bg-hub-surface hover:bg-white/[0.04] border border-white/10 border-dashed rounded-xl flex items-center justify-center gap-2 text-xs font-medium text-hub-muted hover:text-white transition-colors">
+                    <button onClick={() => setShowAddSource(true)} className="w-full py-3 bg-hub-surface hover:bg-white/[0.04] border border-white/10 border-dashed rounded-xl flex items-center justify-center gap-2 text-xs font-medium text-hub-muted hover:text-white transition-colors cursor-pointer">
                       <Plus size={15} />
                       {t('addSource')}
                     </button>
