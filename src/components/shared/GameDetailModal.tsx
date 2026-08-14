@@ -143,6 +143,20 @@ export function GameDetailModal() {
         
       downloadPromise.then((res: any) => {
         if (res && res.success) {
+          const cover = (game as any)?.coverImage || (game as any)?.headerImage || (steamId ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${steamId}/header.jpg` : undefined)
+          if (res.infoHash && cover) {
+            useDownloadStore.getState().updateDownload({
+              infoHash: res.infoHash,
+              name: gameTitle,
+              progress: 0,
+              downloadSpeed: 0,
+              timeRemaining: 0,
+              downloaded: 0,
+              length: 0,
+              status: 'downloading',
+              coverUrl: cover
+            })
+          }
           useUIStore.getState().setActiveView('downloads');
           setIsDownloadOptionsOpen(false);
           setIsGameModalOpen(false);

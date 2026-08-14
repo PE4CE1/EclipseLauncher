@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion'
 import { 
   Play, Pause, X, CheckCircle2, ArchiveRestore, AlertCircle, 
-  Download, ArrowDown, HardDrive, Check, Sparkles, FolderOpen 
+  Download, ArrowDown, Check, Sparkles, FolderOpen, Gamepad2
 } from 'lucide-react'
-import { useDownloadStore } from '../../store/downloadStore'
+import { useDownloadStore, TorrentPayload } from '../../store/downloadStore'
 import { useTranslation } from '../../hooks/useTranslation'
 import { useGameStore } from '../../store/gameStore'
 
@@ -16,10 +16,13 @@ function formatBytes(bytes: number, decimals = 1) {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
 }
 
+const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
+
 export function DownloadsView() {
   const downloads = useDownloadStore(state => state.downloads)
   const allDownloads = Object.values(downloads)
   const { t, language } = useTranslation()
+  const { library, installedGames } = useGameStore()
 
   function formatTime(ms: number) {
     if (!ms || ms === Infinity) return t('calculating') || 'Berechne...'
@@ -35,6 +38,15 @@ export function DownloadsView() {
   const completedDownloads = allDownloads.filter(d => d.status === 'done')
 
   const totalSpeed = activeDownloads.reduce((acc, dl) => acc + (dl.downloadSpeed || 0), 0)
+
+  // Find best cover art for a download item
+  function getDownloadCover(dl: TorrentPayload): string | null {
+    if (dl.coverUrl) return dl.coverUrl
+    const norm = normalize(dl.name)
+    const libMatch = library.find(g => normalize(g.name) === norm || norm.includes(normalize(g.name)) || normalize(g.name).includes(norm))
+    if (libMatch?.coverImage) return libMatch.coverImage
+    return null
+  }
 
   async function handlePauseResume(infoHash: string, isPaused: boolean) {
     if (!window.electronAPI) return
@@ -52,277 +64,298 @@ export function DownloadsView() {
   }
 
   return (
-    <div className="h-full overflow-y-auto px-10 py-8 bg-transparent text-hub-text">
+    <div className="h-full overflow-y-auto px-8 py-7 bg-transparent text-hub-text select-none">
       {/* ─── Left-Aligned Content Container ─── */}
-      <div className="w-full max-w-5xl space-y-9 pb-24">
+      <div className="w-full max-w-5xl space-y-8 pb-24">
         
-        {/* ─── Top Header & Live Telemetry Bar ─── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/[0.08]">
+        {/* ─── Header & Telemetry Bar ─── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-white/[0.06]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-white shadow-sm">
-              <Download size={20} />
+            <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white shadow-sm">
+              <Download size={18} />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">{t('downloads')}</h1>
-              <p className="text-xs text-white/50 mt-0.5">
-                {language === 'de' ? 'Aktive Spiel-Downloads, Entpackvorgänge und Historie' : 'Active game downloads, extractions and history'}
+              <h1 className="text-lg font-bold text-white tracking-tight">{t('downloads')}</h1>
+              <p className="text-[11px] text-white/40 mt-0.5">
+                {language === 'de' ? 'Aktive Downloads & Installationen' : 'Active downloads & installations'}
               </p>
             </div>
           </div>
 
           {/* Quick Stats Pills */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-hub-surface/60 border border-white/10 text-xs">
-              <ArrowDown size={13} className={totalSpeed > 0 ? "text-emerald-400 animate-bounce" : "text-white/40"} />
-              <span className="text-white/50">{t('speed')}</span>
-              <span className="font-bold text-white">{formatBytes(totalSpeed)}/s</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0d12]/80 border border-white/[0.06] text-xs">
+              <ArrowDown size={12} className={totalSpeed > 0 ? "text-emerald-400 animate-bounce" : "text-white/30"} />
+              <span className="text-white/40">{t('speed')}</span>
+              <span className="font-semibold text-white">{formatBytes(totalSpeed)}/s</span>
             </div>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-hub-surface/60 border border-white/10 text-xs">
-              <span className="w-2 h-2 rounded-full bg-indigo-400" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0c0d12]/80 border border-white/[0.06] text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               <span className="font-semibold text-white">{activeDownloads.length}</span>
-              <span className="text-white/50">{t('active')}</span>
+              <span className="text-white/40">{t('active')}</span>
             </div>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-hub-surface/60 border border-white/10 text-xs">
-              <Check size={13} className="text-emerald-400" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0c0d12]/80 border border-white/[0.06] text-xs">
+              <Check size={12} className="text-emerald-400" />
               <span className="font-semibold text-white">{completedDownloads.length}</span>
-              <span className="text-white/50">{t('done')}</span>
+              <span className="text-white/40">{t('done')}</span>
             </div>
           </div>
         </div>
 
         {/* ─── ACTIVE DOWNLOADS SECTION ─── */}
-        <section className="space-y-4">
+        <section className="space-y-3.5">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold tracking-wider uppercase text-white/60">
+            <h2 className="text-[11px] font-bold tracking-wider uppercase text-white/50">
               {t('activeDownloads')}
             </h2>
             {activeDownloads.length > 0 && (
-              <span className="text-xs text-white/40 font-medium">
+              <span className="text-[11px] text-white/30 font-medium">
                 {activeDownloads.length} {activeDownloads.length === 1 ? t('tasksSingular') : t('tasksPlural')}
               </span>
             )}
           </div>
 
           {activeDownloads.length === 0 ? (
-            <div className="bg-hub-surface/40 border border-white/10 rounded-2xl p-7 flex items-center gap-5">
-              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/30 flex-shrink-0">
-                <Download size={22} />
+            <div className="bg-[#0b0c10]/60 border border-white/[0.06] rounded-2xl p-6 flex items-center gap-4.5">
+              <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/20 flex-shrink-0">
+                <Download size={18} />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-white/90">
+                <h3 className="text-xs font-semibold text-white/80">
                   {t('noActiveDownloads')}
                 </h3>
-                <p className="text-xs text-white/40 mt-1 max-w-xl leading-relaxed">
+                <p className="text-[11px] text-white/30 mt-0.5 max-w-xl">
                   {t('noActiveDownloadsDesc')}
                 </p>
               </div>
             </div>
           ) : (
-            <div className="space-y-3.5">
-              {activeDownloads.map((dl) => (
-                <div 
-                  key={dl.infoHash} 
-                  className="group bg-hub-surface/60 backdrop-blur-xl border border-white/10 hover:border-white/20 rounded-2xl p-4.5 flex flex-col gap-3.5 transition-all duration-200 shadow-lg"
-                >
-                  <div className="flex items-center gap-4">
+            <div className="space-y-3">
+              {activeDownloads.map((dl) => {
+                const cover = getDownloadCover(dl)
+                return (
+                  <div 
+                    key={dl.infoHash} 
+                    className="group bg-[#0b0c10]/90 backdrop-blur-xl border border-white/[0.07] hover:border-white/[0.14] rounded-2xl p-3.5 px-4 flex items-center gap-4 transition-all duration-200 shadow-xl"
+                  >
                     {/* Game Cover Thumbnail */}
-                    <div className="w-20 h-16 rounded-xl bg-hub-elevated overflow-hidden flex-shrink-0 relative shadow-md border border-white/10">
-                      {dl.coverUrl ? (
-                        <img src={dl.coverUrl} alt={dl.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <div className="w-20 h-14 rounded-xl bg-[#14161f] overflow-hidden flex-shrink-0 relative border border-white/[0.08] shadow-sm">
+                      {cover ? (
+                        <img 
+                          src={cover} 
+                          alt={dl.name} 
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                        />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-white/5 text-white/40 font-bold text-lg">
-                          {dl.name.charAt(0)}
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-white/[0.05] to-transparent text-white/30">
+                          <Gamepad2 size={18} className="text-white/40 mb-0.5" />
+                          <span className="text-[9px] font-bold tracking-wider text-white/40">{dl.name.slice(0, 4)}</span>
                         </div>
                       )}
                     </div>
                     
-                    {/* Game Details & Progress */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <div className={`w-2 h-2 rounded-full ${
-                          dl.status === 'downloading' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' :
-                          dl.status === 'paused' ? 'bg-amber-400' :
-                          dl.status === 'extracting' ? 'bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.8)] animate-pulse' :
-                          'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.8)]'
-                        }`} />
-                        <h3 className="font-bold text-white truncate text-sm">{dl.name}</h3>
-                        
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ml-1 ${
-                          dl.status === 'downloading' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' :
-                          dl.status === 'paused' ? 'bg-amber-500/10 text-amber-300 border-amber-500/20' :
-                          dl.status === 'extracting' ? 'bg-purple-500/10 text-purple-300 border-purple-500/20' :
-                          'bg-red-500/10 text-red-300 border-red-500/20'
-                        }`}>
-                          {dl.status === 'downloading' && t('downloading')}
-                          {dl.status === 'paused' && t('paused')}
-                          {dl.status === 'extracting' && t('extracting')}
-                          {dl.status === 'error' && t('error')}
-                        </span>
-
-                        {dl.peers !== undefined && dl.status === 'downloading' && (
-                          <span className="text-[10px] text-white/50 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded ml-1">
-                            {dl.peers} {t('peers')}
+                    {/* Main Information & Progress */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      
+                      {/* Title & Status Pills */}
+                      <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <h3 className="font-bold text-white truncate text-xs tracking-tight">{dl.name}</h3>
+                          
+                          {/* Status Badge */}
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border flex-shrink-0 ${
+                            dl.status === 'downloading' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                            dl.status === 'paused' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                            dl.status === 'extracting' ? 'bg-purple-500/10 text-purple-300 border-purple-500/20 animate-pulse' :
+                            'bg-red-500/10 text-red-400 border-red-500/20'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              dl.status === 'downloading' ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] animate-pulse' :
+                              dl.status === 'paused' ? 'bg-amber-400' :
+                              dl.status === 'extracting' ? 'bg-purple-400' :
+                              'bg-red-400'
+                            }`} />
+                            {dl.status === 'downloading' && (dl.length === 0 ? (language === 'de' ? 'Verbinde...' : 'Connecting...') : t('downloading'))}
+                            {dl.status === 'paused' && t('paused')}
+                            {dl.status === 'extracting' && t('extracting')}
+                            {dl.status === 'error' && t('error')}
                           </span>
-                        )}
+
+                          {/* Peers count (if applicable) */}
+                          {dl.peers !== undefined && dl.peers > 0 && dl.status === 'downloading' && (
+                            <span className="text-[10px] text-white/40 bg-white/[0.04] border border-white/[0.06] px-1.5 py-0.5 rounded-md flex-shrink-0">
+                              {dl.peers} {t('peers')}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Percentage */}
+                        <span className="font-mono font-bold text-white text-xs flex-shrink-0">
+                          {(dl.progress * 100).toFixed(0)}%
+                        </span>
                       </div>
                       
-                      {/* Progress Bar */}
-                      <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden my-2 relative">
+                      {/* Ultra-Clean Progress Bar */}
+                      <div className="h-1 w-full bg-white/[0.08] rounded-full overflow-hidden my-1.5 relative">
                         <motion.div 
                           className={`absolute left-0 top-0 bottom-0 rounded-full ${
                             dl.status === 'error' ? 'bg-red-500' :
-                            dl.status === 'extracting' ? 'bg-purple-500' :
-                            'bg-white'
+                            dl.status === 'extracting' ? 'bg-gradient-to-r from-purple-500 to-indigo-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]' :
+                            'bg-gradient-to-r from-emerald-400 to-teal-400 shadow-[0_0_8px_rgba(52,211,153,0.4)]'
                           }`}
                           initial={{ width: 0 }}
                           animate={{ width: `${Math.max(0.5, dl.progress * 100)}%` }}
-                          transition={{ ease: "linear", duration: 0.5 }}
+                          transition={{ ease: "linear", duration: 0.3 }}
                         />
                       </div>
                       
                       {/* Telemetry Stats */}
-                      <div className="flex justify-between items-center text-xs font-medium mt-1.5">
+                      <div className="flex justify-between items-center text-[11px] font-medium text-white/40 mt-0.5">
                         {dl.status === 'extracting' ? (
-                          <div className="flex items-center gap-2 text-purple-300 text-xs">
-                            <ArchiveRestore size={14} className="animate-pulse" />
+                          <div className="flex items-center gap-1.5 text-purple-300 text-[11px]">
+                            <ArchiveRestore size={13} className="animate-pulse" />
                             <span>{t('extractingGameArchive')}</span>
                           </div>
                         ) : dl.status === 'error' ? (
-                          <div className="flex items-center gap-2 text-red-400 text-xs">
-                            <AlertCircle size={14} />
+                          <div className="flex items-center gap-1.5 text-red-400 text-[11px]">
+                            <AlertCircle size={13} />
                             <span>{t('downloadErrorOccurred')}</span>
                           </div>
                         ) : dl.length === 0 ? (
-                          <div className="flex items-center gap-2 text-indigo-300 text-xs">
-                            <Sparkles size={14} className="animate-spin text-indigo-400" />
-                            <span>{dl.peers && dl.peers > 0 ? (language === 'de' ? `Verbinde mit ${dl.peers} Peers...` : `Connecting to ${dl.peers} peers...`) : (language === 'de' ? 'Suche Peers im Netzwerk & lade Metadaten...' : 'Searching for peers & metadata...')}</span>
+                          <div className="flex items-center gap-1.5 text-indigo-300 text-[11px]">
+                            <Sparkles size={13} className="animate-spin text-indigo-400" />
+                            <span>{dl.peers && dl.peers > 0 ? (language === 'de' ? `Verbinde mit ${dl.peers} Peers...` : `Connecting to ${dl.peers} peers...`) : (language === 'de' ? 'Suche Peers im Netzwerk...' : 'Searching peers...')}</span>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-3.5 text-white/50 text-xs">
+                          <div className="flex items-center gap-2.5">
                             <span>{formatBytes(dl.downloaded)} / {formatBytes(dl.length)}</span>
-                            <span className="text-white/80 font-semibold">{formatBytes(dl.downloadSpeed)}/s</span>
-                            <span>{t('eta')} {formatTime(dl.timeRemaining)}</span>
+                            <span className="text-white/20">•</span>
+                            <span className="text-white font-semibold">{formatBytes(dl.downloadSpeed)}/s</span>
+                            <span className="text-white/20">•</span>
+                            <span>ETA {formatTime(dl.timeRemaining)}</span>
                           </div>
                         )}
-                        <span className="font-bold text-white text-xs">{(dl.progress * 100).toFixed(0)}%</span>
                       </div>
                     </div>
                     
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2 ml-3">
+                    {/* Minimalist Action Buttons */}
+                    <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
                       {dl.status !== 'extracting' && dl.status !== 'error' && (
                         <button 
                           onClick={() => handlePauseResume(dl.infoHash, dl.status === 'paused')}
-                          className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white transition-all cursor-pointer"
+                          className="w-7 h-7 rounded-lg bg-white/[0.05] hover:bg-white/10 hover:text-white border border-white/[0.08] flex items-center justify-center text-white/60 transition-all cursor-pointer"
                           title={dl.status === 'paused' ? t('resume') || 'Fortsetzen' : t('paused')}
                         >
-                          {dl.status === 'paused' ? <Play size={13} className="fill-current text-white" /> : <Pause size={13} className="fill-current text-white" />}
+                          {dl.status === 'paused' ? <Play size={12} className="fill-current text-white" /> : <Pause size={12} className="fill-current text-white" />}
                         </button>
                       )}
                       <button 
                         onClick={() => handleCancel(dl.infoHash)}
-                        className="w-8 h-8 rounded-xl bg-white/5 hover:bg-red-500/20 hover:text-red-400 border border-white/10 flex items-center justify-center text-white/60 transition-all cursor-pointer"
+                        className="w-7 h-7 rounded-lg bg-white/[0.05] hover:bg-red-500/20 hover:border-red-500/30 hover:text-red-400 border border-white/[0.08] flex items-center justify-center text-white/40 transition-all cursor-pointer"
                         title={t('cancel')}
                       >
-                        <X size={14} />
+                        <X size={13} />
                       </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </section>
 
         {/* ─── COMPLETED DOWNLOADS SECTION ─── */}
-        <section className="space-y-4 pt-4">
+        <section className="space-y-3.5 pt-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold tracking-wider uppercase text-white/60">
+            <h2 className="text-[11px] font-bold tracking-wider uppercase text-white/50">
               {t('completedDownloadsHeader') || t('completed')}
             </h2>
             {completedDownloads.length > 0 && (
-              <span className="text-xs text-white/40 font-medium">
+              <span className="text-[11px] text-white/30 font-medium">
                 {completedDownloads.length} {t('gamesCount')}
               </span>
             )}
           </div>
 
           {completedDownloads.length === 0 ? (
-            <div className="bg-hub-surface/30 border border-white/5 rounded-2xl p-6 flex items-center gap-4 text-white/40 text-xs">
-              <CheckCircle2 size={16} className="text-white/30 flex-shrink-0" />
+            <div className="bg-[#0b0c10]/40 border border-white/[0.05] rounded-2xl p-5 flex items-center gap-3.5 text-white/30 text-xs">
+              <CheckCircle2 size={15} className="text-white/20 flex-shrink-0" />
               <span>{t('noCompletedDownloadsDesc') || t('noCompletedDownloads')}</span>
             </div>
           ) : (
-            <div className="space-y-3">
-              {completedDownloads.map((dl) => (
-                <div 
-                  key={dl.infoHash} 
-                  className="group bg-hub-surface/40 hover:bg-hub-surface/70 border border-white/10 hover:border-white/20 rounded-2xl p-3.5 px-4 flex items-center justify-between gap-4 transition-all duration-200"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-11 rounded-xl bg-hub-elevated overflow-hidden flex-shrink-0 relative border border-white/10">
-                      {dl.coverUrl ? (
-                        <img src={dl.coverUrl} alt={dl.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-white/5 text-white/40 font-bold text-sm">
-                          {dl.name.charAt(0)}
+            <div className="space-y-2.5">
+              {completedDownloads.map((dl) => {
+                const cover = getDownloadCover(dl)
+                return (
+                  <div 
+                    key={dl.infoHash} 
+                    className="group bg-[#0b0c10]/60 hover:bg-[#0b0c10]/90 border border-white/[0.06] hover:border-white/[0.12] rounded-xl p-3 px-3.5 flex items-center justify-between gap-4 transition-all duration-200"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-14 h-10 rounded-lg bg-[#14161f] overflow-hidden flex-shrink-0 relative border border-white/[0.08]">
+                        {cover ? (
+                          <img src={cover} alt={dl.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-white/[0.04] text-white/40 font-bold text-xs">
+                            {dl.name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-white text-xs truncate">{dl.name}</h3>
+                        <div className="flex items-center gap-2 text-[11px] text-white/30 mt-0.5">
+                          <span>{formatBytes(dl.length)}</span>
+                          <span>•</span>
+                          <span className="text-emerald-400 font-medium flex items-center gap-1">
+                            <Check size={10} strokeWidth={3} /> {t('readyToPlayStatus')}
+                          </span>
                         </div>
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-white text-sm">{dl.name}</h3>
-                      <div className="flex items-center gap-2 text-xs text-white/40 mt-0.5">
-                        <span>{formatBytes(dl.length)}</span>
-                        <span>•</span>
-                        <span className="text-emerald-400 font-medium flex items-center gap-1">
-                          <Check size={11} strokeWidth={3} /> {t('readyToPlayStatus')}
-                        </span>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    {dl.installPath && (
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {dl.installPath && (
+                        <button
+                          onClick={() => {
+                            if (window.electronAPI?.openPath) {
+                              window.electronAPI.openPath(dl.installPath!)
+                            }
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/10 text-white/60 hover:text-white border border-white/[0.08] text-[11px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title={t('openFolder')}
+                        >
+                          <FolderOpen size={12} />
+                          <span>{t('openFolder')}</span>
+                        </button>
+                      )}
+
+                      {dl.mainExe && (
+                        <button
+                          onClick={() => {
+                            if (window.electronAPI?.launchGame) {
+                              window.electronAPI.launchGame(dl.mainExe!)
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-white text-black hover:bg-gray-100 text-[11px] font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+                        >
+                          <Play size={11} className="fill-current" />
+                          <span>{t('play')}</span>
+                        </button>
+                      )}
+
                       <button
-                        onClick={() => {
-                          if (window.electronAPI?.openPath) {
-                            window.electronAPI.openPath(dl.installPath!)
-                          }
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-                        title={t('openFolder')}
+                        onClick={() => handleCancel(dl.infoHash)}
+                        className="w-7 h-7 rounded-lg bg-white/[0.04] hover:bg-white/10 text-white/30 hover:text-white border border-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
+                        title={t('removeFromList')}
                       >
-                        <FolderOpen size={13} />
-                        <span>{t('openFolder')}</span>
+                        <X size={12} />
                       </button>
-                    )}
-
-                    {dl.mainExe && (
-                      <button
-                        onClick={() => {
-                          if (window.electronAPI?.launchGame) {
-                            window.electronAPI.launchGame(dl.mainExe!)
-                          }
-                        }}
-                        className="px-3.5 py-1.5 rounded-xl bg-white text-black hover:bg-gray-200 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
-                      >
-                        <Play size={12} className="fill-current" />
-                        <span>{t('play')}</span>
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => handleCancel(dl.infoHash)}
-                      className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white border border-white/10 flex items-center justify-center transition-colors cursor-pointer"
-                      title={t('removeFromList')}
-                    >
-                      <X size={14} />
-                    </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </section>
