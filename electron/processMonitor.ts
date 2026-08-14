@@ -12,8 +12,16 @@ interface ActiveDetectedGame {
   startTime: number
 }
 
-// Helper to read user Discord RPC and Overlay settings
+// Helper to read user Discord RPC and Overlay settings with in-memory caching
+let cachedSettings: any = null
+let lastSettingsRead = 0
+
 function getAppSettings() {
+  const now = Date.now()
+  if (cachedSettings && (now - lastSettingsRead < 15000)) {
+    return cachedSettings
+  }
+
   const defaultPositions = {
     performance: { xPct: 0.02, yPct: 0.03 },
     robloxTimer: { xPct: 0.75, yPct: 0.03 },
@@ -27,7 +35,7 @@ function getAppSettings() {
     const settingsPath = path.join(app.getPath('userData'), 'settings.json')
     if (fs.existsSync(settingsPath)) {
       const s = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
-      return {
+      cachedSettings = {
         discordEnabled: s.discordRpc ?? true,
         showDownloads: s.discordRpcShowDownloads ?? true,
         showIdle: s.discordRpcIdle ?? true,
@@ -46,9 +54,12 @@ function getAppSettings() {
         crosshairConfig: s.crosshairConfig ?? null,
         overlayPositions: s.overlayPositions ?? defaultPositions,
       }
+      lastSettingsRead = now
+      return cachedSettings
     }
   } catch (e) {}
-  return {
+
+  cachedSettings = {
     discordEnabled: true, showDownloads: true, showIdle: true,
     overlayPerformance: false, overlayCrosshair: false, overlayRobloxTimer: false, overlayRLHud: false, overlayRLSteam: false, rlPlaylist: '2v2' as const, trnApiKey: '',
     steamProfileUrl: '', rlScoreboardKeyKb: 'Tab', rlScoreboardKeyCtrl: 'Select', rlSteamAvatarScale: 85,
@@ -56,6 +67,8 @@ function getAppSettings() {
     crosshairConfig: null,
     overlayPositions: defaultPositions,
   }
+  lastSettingsRead = now
+  return cachedSettings
 }
 
 
@@ -380,9 +393,12 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           return
         }
 
-        // Priority 2: Check for external downloads (Steam & Epic Games) if setting is enabled
-        const steamDownload = appSettings.showDownloads ? checkSteamActiveDownloads() : null
-        const epicDownload = appSettings.showDownloads ? checkEpicActiveDownloads() : null
+        // Priority 2: Check for external downloads (Steam & Epic Games) ONLY if their client processes are running
+        const isSteamRunning = runningExes.has('steam.exe')
+        const isEpicRunning = runningExes.has('epicgameslauncher.exe')
+        
+        const steamDownload = (appSettings.showDownloads && isSteamRunning) ? checkSteamActiveDownloads() : null
+        const epicDownload = (appSettings.showDownloads && isEpicRunning) ? checkEpicActiveDownloads() : null
         const activeExtDownload = steamDownload || epicDownload
 
         if (activeExtDownload && appSettings.showDownloads) {
@@ -396,7 +412,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
         }
       }
     })
-  }, 3500)
+  }, 6000)
 }
 
 export function getCurrentDetectedGame() {

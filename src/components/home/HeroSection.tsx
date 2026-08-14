@@ -59,17 +59,14 @@ export function HeroSection({ games }: HeroSectionProps) {
 
   return (
     <div className="relative w-full h-[480px] overflow-hidden flex-shrink-0 bg-[#040405]">
-      {/* Background images with transitions */}
+      {/* Background images with smooth crossfade */}
       <AnimatePresence mode="sync">
         <motion.div
           key={currentAppId}
-          initial={{ opacity: 0, scale: 1.02 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ 
-            opacity: { duration: 1.2, ease: 'easeOut' },
-            scale: { duration: 8, ease: 'linear' }
-          }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
           className="absolute inset-0 origin-center"
         >
           <SmartImage 

@@ -135,11 +135,13 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onMouseEnter={handleMouseEnter}
-        className="relative aspect-[2/3] rounded-xl border border-white/5 bg-transparent transition-all duration-300 ease-out group-hover:shadow-[0_20px_40px_-10px_rgba(255,255,255,0.1)] group-hover:border-white/20 will-change-transform"
-        style={{
-          transform: `perspective(1000px) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg) scale3d(${isHovered ? 1.02 : 1}, ${isHovered ? 1.02 : 1}, 1)`,
+        className={`relative aspect-[2/3] rounded-xl border border-white/5 bg-transparent transition-all duration-300 ease-out group-hover:shadow-[0_20px_40px_-10px_rgba(255,255,255,0.1)] group-hover:border-white/20 ${
+          isHovered ? 'will-change-transform' : ''
+        }`}
+        style={isHovered ? {
+          transform: `perspective(1000px) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg) scale3d(1.02, 1.02, 1)`,
           transformStyle: 'preserve-3d',
-        }}
+        } : undefined}
       >
         <div className="absolute inset-0 overflow-hidden rounded-xl bg-hub-elevated [transform:translateZ(0)]">
           {!hasError ? (
