@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useDeferredValue } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Download as DownloadIcon, X, ChevronDown, Check, ArrowLeft, Download, Zap, ShieldCheck, RefreshCw } from 'lucide-react'
+import { Download as DownloadIcon, X, ChevronDown, Check, ArrowLeft, Zap, ShieldCheck, RefreshCw } from 'lucide-react'
 import { useTranslation } from '../../hooks/useTranslation'
 import { useGameStore } from '../../store/gameStore'
 
@@ -43,9 +43,10 @@ interface DownloadOptionsModalProps {
   onDownload: (uri: string, title: string, path: string, isHttp: boolean, autoExtract: boolean, autoDelete?: boolean) => void;
 }
 
-export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onDownload }: DownloadOptionsModalProps) {
+export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = [], onDownload }: DownloadOptionsModalProps) {
   const [step, setStep] = useState<1 | 2>(1)
   const [selectedDownload, setSelectedDownload] = useState<DownloadOption | null>(null)
+  const [isStarting, setIsStarting] = useState(false)
   const { t, language } = useTranslation()
   
   const [searchQuery, setSearchQuery] = useState('')
@@ -68,6 +69,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
       setStep(1)
       setSelectedDownload(null)
       setLinkStatuses({})
+      setIsStarting(false)
 
       if (!settings.downloadPath && window.electronAPI?.getDefaultDownloadPath) {
         window.electronAPI.getDefaultDownloadPath().then((p: string) => {
@@ -79,16 +81,25 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
     }
   }, [isOpen, settings.downloadPath])
 
+  useEffect(() => {
+    if (!isOpen) {
+      setIsStarting(false)
+    }
+  }, [isOpen, step])
+
+  const safeDownloads = Array.isArray(downloads) ? downloads : []
+
   const uniqueSources = useMemo(() => {
-    const sources = new Set(downloads.map(d => d.sourceName))
+    const sources = new Set(safeDownloads.map(d => d?.sourceName).filter(Boolean))
     return Array.from(sources)
-  }, [downloads])
+  }, [safeDownloads])
 
   // Optimized sorting & filtering
   const sortedAndFilteredDownloads = useMemo(() => {
     const query = deferredSearchQuery.trim().toLowerCase()
     
-    let result = downloads.filter(d => {
+    let result = safeDownloads.filter(d => {
+      if (!d || !d.title) return false
       const matchesSearch = !query || d.title.toLowerCase().includes(query)
       const matchesSource = selectedSource === 'all' || d.sourceName === selectedSource
       return matchesSearch && matchesSource
@@ -101,14 +112,15 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
     })
     
     return result;
-  }, [downloads, deferredSearchQuery, selectedSource])
+  }, [safeDownloads, deferredSearchQuery, selectedSource])
 
   const availableDownloaders = useMemo(() => {
-    if (!selectedDownload) return [];
+    if (!selectedDownload || !Array.isArray(selectedDownload.uris)) return [];
     const hosters: { id: string; type: string; badge: string; color: string; speedPriority: number }[] = [];
     
     selectedDownload.uris.forEach(uri => {
       try {
+        if (!uri) return;
         if (uri.startsWith('magnet:')) {
           hosters.push({ 
             id: uri, 
@@ -177,14 +189,6 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
   }, [step, availableDownloaders])
 
   if (!isOpen) return null
-
-  const [isStarting, setIsStarting] = useState(false)
-
-  useEffect(() => {
-    if (isOpen) {
-      setIsStarting(false)
-    }
-  }, [isOpen, step])
 
   function handleSelectRepack(dl: DownloadOption) {
     setSelectedDownload(dl)
@@ -457,7 +461,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
                   </>
                 ) : (
                   <>
-                    <Download size={17} />
+                    <DownloadIcon size={17} />
                     {t('downloadNow')}
                   </>
                 )}
