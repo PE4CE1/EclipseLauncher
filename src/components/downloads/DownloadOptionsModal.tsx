@@ -135,12 +135,14 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = []
           
           if (host.includes('pixeldrain.com')) {
             hosters.push({ id: uri, type: 'PixelDrain', badge: '⚡ Highspeed Direct', color: 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]', speedPriority: 1 });
-          } else if (host.includes('gofile.io')) {
-            hosters.push({ id: uri, type: 'Gofile', badge: '⚡ Highspeed CDN', color: 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]', speedPriority: 2 });
+          } else if (host.includes('vik1ngfile') || host.includes('vikingfile')) {
+            hosters.push({ id: uri, type: 'ViKiNG FiLE', badge: '⚡ Direct Highspeed', color: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]', speedPriority: 1 });
+          } else if (host.includes('buzzheavier.com')) {
+            hosters.push({ id: uri, type: 'Buzzheavier', badge: '⚡ Direct Stream', color: 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]', speedPriority: 2 });
           } else if (host.includes('qiwi.gg')) {
             hosters.push({ id: uri, type: 'Qiwi', badge: '⚡ Direct CDN', color: 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.6)]', speedPriority: 3 });
-          } else if (host.includes('buzzheavier.com')) {
-            hosters.push({ id: uri, type: 'Buzzheavier', badge: '⚡ Direct Stream', color: 'bg-amber-500', speedPriority: 4 });
+          } else if (host.includes('gofile.io')) {
+            hosters.push({ id: uri, type: 'Gofile', badge: settings.realDebridKey || settings.torboxKey ? '👑 Debrid Highspeed' : '⚡ CDN Hoster', color: 'bg-green-500', speedPriority: 4 });
           } else if (host.includes('datanodes.to')) {
             hosters.push({ id: uri, type: 'DataNodes', badge: '⚡ Direct Mirror', color: 'bg-indigo-500', speedPriority: 5 });
           } else if (host.includes('1fichier.com')) {

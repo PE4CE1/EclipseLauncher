@@ -4,6 +4,20 @@ import { app } from 'electron'
 
 let client: any = null;
 
+const TOP_TRACKERS = [
+  'udp://tracker.opentrackr.org:1337/announce',
+  'udp://open.stealth.si:80/announce',
+  'udp://open.tracker.cl:1337/announce',
+  'udp://tracker.openbittorrent.com:6969/announce',
+  'udp://opentracker.i2p.rocks:6969/announce',
+  'udp://tracker.torrent.eu.org:451/announce',
+  'udp://explodie.org:6969/announce',
+  'udp://tracker.tiny-vps.com:6969/announce',
+  'udp://p4p.arenabg.com:1337/announce',
+  'udp://tracker.moeking.me:6969/announce',
+  'https://tracker.tamersunion.org:443/announce'
+]
+
 async function getClient() {
   if (!client) {
     try {
@@ -15,13 +29,7 @@ async function getClient() {
       client = new WebTorrent({
         dht: true,
         tracker: {
-          announce: [
-            'udp://tracker.opentrackr.org:1337/announce',
-            'udp://open.tracker.cl:1337/announce',
-            'udp://tracker.openbittorrent.com:6969/announce',
-            'udp://opentracker.i2p.rocks:6969/announce',
-            'udp://tracker.torrent.eu.org:451/announce'
-          ]
+          announce: TOP_TRACKERS
         }
       });
 
@@ -62,9 +70,9 @@ export type TorrentPayload = {
 export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.BrowserWindow) {
   
   // Start Download
-  ipcMain.handle('torrent:start', async (_event, magnetURI: string, downloadPath?: string, autoExtract = true, autoDelete = false) => {
+  ipcMain.handle('torrent:start', async (_event, magnetURI: string, gameTitle?: string, downloadPath?: string, autoExtract = true, autoDelete = false) => {
     try {
-      const targetPath = downloadPath || getDefaultDownloadPath();
+      const targetPath = (downloadPath && path.isAbsolute(downloadPath)) ? downloadPath : getDefaultDownloadPath();
       if (!fs.existsSync(targetPath)) {
         fs.mkdirSync(targetPath, { recursive: true });
       }
@@ -81,9 +89,36 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
         }
       }
 
-      console.log(`[WebTorrent] Starting torrent download in: ${targetPath}`);
-      const torrent = c.add(magnetURI, { path: targetPath }) as any;
-      const infoHash = torrent.infoHash || extractedHash || 'unknown';
+      // Inject top announce trackers into magnet URI if missing
+      let enhancedMagnet = magnetURI.trim()
+      if (enhancedMagnet.startsWith('magnet:')) {
+        TOP_TRACKERS.forEach(tr => {
+          if (!enhancedMagnet.includes(encodeURIComponent(tr)) && !enhancedMagnet.includes(tr)) {
+            enhancedMagnet += `&tr=${encodeURIComponent(tr)}`
+          }
+        })
+      }
+
+      console.log(`[WebTorrent] Starting torrent download for "${gameTitle || 'Game'}" in: ${targetPath}`);
+      const torrent = c.add(enhancedMagnet, { path: targetPath }) as any;
+      const infoHash = torrent.infoHash || extractedHash || `torrent-${Date.now()}`;
+      const effectiveName = gameTitle || torrent.name || 'Game Torrent';
+
+      // Send initial progress immediately so the UI displays the downloading card right away
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('torrent:progress', {
+          infoHash: infoHash,
+          name: effectiveName,
+          progress: 0,
+          downloadSpeed: 0,
+          timeRemaining: Infinity,
+          downloaded: 0,
+          length: 0,
+          status: 'downloading',
+          peers: 0,
+          installPath: targetPath
+        });
+      }
 
       // Interval to send progress updates to the renderer
       const interval = setInterval(() => {
@@ -96,7 +131,7 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
         if (!torrent.ready && !torrent.metadata) {
           mainWindow.webContents.send('torrent:progress', {
             infoHash: infoHash,
-            name: torrent.name || 'Fetching Metadata...',
+            name: torrent.name || effectiveName,
             progress: 0,
             downloadSpeed: 0,
             timeRemaining: Infinity,
@@ -111,7 +146,7 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
 
         const payload: TorrentPayload = {
           infoHash: torrent.infoHash || infoHash,
-          name: torrent.name || 'Game Torrent',
+          name: torrent.name || effectiveName,
           progress: torrent.progress,
           downloadSpeed: torrent.downloadSpeed,
           timeRemaining: torrent.timeRemaining,
@@ -141,7 +176,7 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
             if (mainWindow && !mainWindow.isDestroyed()) {
               mainWindow.webContents.send('torrent:progress', {
                 infoHash: torrent.infoHash || infoHash,
-                name: torrent.name || 'Game Torrent',
+                name: torrent.name || effectiveName,
                 progress: 1,
                 downloadSpeed: 0,
                 timeRemaining: 0,
@@ -154,7 +189,7 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
             }
 
             const archivePath = path.join(targetPath, archiveFile.path);
-            const cleanGameDir = path.join(targetPath, (torrent.name || 'Game').replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim());
+            const cleanGameDir = path.join(targetPath, (effectiveName).replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim());
             gameInstallPath = cleanGameDir;
             
             try {
@@ -166,7 +201,7 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
                   if (mainWindow && !mainWindow.isDestroyed()) {
                     mainWindow.webContents.send('torrent:progress', {
                       infoHash: torrent.infoHash || infoHash,
-                      name: torrent.name || 'Game Torrent',
+                      name: torrent.name || effectiveName,
                       progress: extractPercent / 100,
                       downloadSpeed: 0,
                       timeRemaining: 0,
@@ -190,7 +225,7 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('torrent:progress', {
             infoHash: torrent.infoHash || infoHash,
-            name: torrent.name || 'Game Torrent',
+            name: torrent.name || effectiveName,
             progress: 1,
             downloadSpeed: 0,
             timeRemaining: 0,
@@ -209,7 +244,7 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('torrent:progress', {
             infoHash: torrent.infoHash || infoHash,
-            name: torrent.name || 'Game Torrent',
+            name: effectiveName,
             progress: 0,
             downloadSpeed: 0,
             timeRemaining: 0,

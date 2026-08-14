@@ -168,6 +168,72 @@ async function resolveMediafire(url: string): Promise<string | null> {
 }
 
 /**
+ * Resolves ViKiNG FiLE (vik1ngfile.site / vikingfile.com) direct high-speed stream
+ */
+async function resolveVikingFile(url: string, timeoutMs = 8000): Promise<string | null> {
+  return new Promise((resolve) => {
+    let resolved = false
+    let hiddenWin: BrowserWindow | null = new BrowserWindow({
+      show: false,
+      width: 800,
+      height: 600,
+      webPreferences: { nodeIntegration: false, contextIsolation: true }
+    })
+
+    const cleanup = () => {
+      if (hiddenWin && !hiddenWin.isDestroyed()) {
+        try { hiddenWin.destroy() } catch {}
+        hiddenWin = null
+      }
+    }
+
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true
+        cleanup()
+        resolve(null)
+      }
+    }, timeoutMs)
+
+    let pollInterval: NodeJS.Timeout | null = null
+
+    hiddenWin.webContents.on('did-finish-load', () => {
+      pollInterval = setInterval(async () => {
+        if (resolved || !hiddenWin || hiddenWin.isDestroyed()) {
+          if (pollInterval) clearInterval(pollInterval)
+          return
+        }
+        try {
+          const href = await hiddenWin.webContents.executeJavaScript(`
+            (() => {
+              const el = document.getElementById('download-link');
+              return el ? el.href : '';
+            })()
+          `).catch(() => '')
+          if (href && href.startsWith('http') && !href.includes('#')) {
+            resolved = true
+            if (pollInterval) clearInterval(pollInterval)
+            clearTimeout(timer)
+            cleanup()
+            resolve(href)
+          }
+        } catch {}
+      }, 500)
+    })
+
+    hiddenWin.loadURL(url).catch(() => {
+      if (!resolved) {
+        resolved = true
+        if (pollInterval) clearInterval(pollInterval)
+        clearTimeout(timer)
+        cleanup()
+        resolve(null)
+      }
+    })
+  })
+}
+
+/**
  * Resolves Qiwi direct download link
  */
 async function resolveQiwi(url: string): Promise<string | null> {
@@ -370,7 +436,22 @@ export async function resolveDownloadLink(rawUrl: string, gameTitle: string): Pr
     }
   }
 
-  // 4. Gofile API Resolver
+  // 4. ViKiNG FiLE Direct Stream Resolver
+  if (trimmedUrl.includes('vik1ngfile') || trimmedUrl.includes('vikingfile')) {
+    console.log(`[LinkResolver] Resolving VikingFile link: ${trimmedUrl}`)
+    const vikingStream = await resolveVikingFile(trimmedUrl, 8000)
+    if (vikingStream) {
+      return {
+        type: 'http',
+        streamUrl: vikingStream,
+        fileName: `${gameTitle}.zip`,
+        isDirect: true,
+        provider: 'ViKiNG FiLE Direct'
+      }
+    }
+  }
+
+  // 5. Gofile API Resolver
   const gofile = await resolveGofile(trimmedUrl)
   if (gofile) {
     return {
@@ -383,7 +464,7 @@ export async function resolveDownloadLink(rawUrl: string, gameTitle: string): Pr
     }
   }
 
-  // 5. Buzzheavier Resolver
+  // 6. Buzzheavier Resolver
   const buzz = resolveBuzzheavier(trimmedUrl)
   if (buzz) {
     return {
@@ -396,7 +477,7 @@ export async function resolveDownloadLink(rawUrl: string, gameTitle: string): Pr
     }
   }
 
-  // 6. Mediafire Resolver
+  // 7. Mediafire Resolver
   const mediafire = await resolveMediafire(trimmedUrl)
   if (mediafire) {
     return {
@@ -408,7 +489,7 @@ export async function resolveDownloadLink(rawUrl: string, gameTitle: string): Pr
     }
   }
 
-  // 7. Qiwi Direct Resolver
+  // 8. Qiwi Direct Resolver
   const qiwi = await resolveQiwi(trimmedUrl)
   if (qiwi) {
     return {

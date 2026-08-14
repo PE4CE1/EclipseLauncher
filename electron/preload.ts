@@ -131,13 +131,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 
   // Native Download Engine
-  startDownload: (magnetURI: string, downloadPath?: string, autoExtract = true, autoDelete = false) => 
-    ipcRenderer.invoke('torrent:start', magnetURI, downloadPath, autoExtract, autoDelete),
+  startDownload: (magnetURI: string, gameTitle?: string, downloadPath?: string, autoExtract = true, autoDelete = false) => 
+    ipcRenderer.invoke('torrent:start', magnetURI, gameTitle, downloadPath, autoExtract, autoDelete),
   startHttpDownload: (url: string, name: string, downloadPath?: string, autoExtract = true, autoDelete = false) => 
     ipcRenderer.invoke('http-download:start', url, name, downloadPath, autoExtract, autoDelete),
   startNativeDownload: (url: string, gameTitle: string, downloadPath?: string, autoExtract = true, autoDelete = false) => {
     if (url.startsWith('magnet:')) {
-      return ipcRenderer.invoke('torrent:start', url, downloadPath, autoExtract, autoDelete)
+      return ipcRenderer.invoke('torrent:start', url, gameTitle, downloadPath, autoExtract, autoDelete)
     }
     return ipcRenderer.invoke('http-download:start', url, gameTitle, downloadPath, autoExtract, autoDelete)
   },
