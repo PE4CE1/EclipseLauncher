@@ -21,6 +21,28 @@ interface GitHubRelease {
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
   {
+    id: 113,
+    tag_name: 'v1.1.3',
+    name: 'v1.1.3 - Safe Download & VPN Security Update',
+    published_at: '2026-08-15T00:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.1.3',
+    body: `### 🛡️ VPN-Erkennung & Auto-Connect
+* **Smarte VPN-Erkennung:** Eclipse Launcher erkennt automatisch installierte VPN-Clients (CyberGhost, NordVPN, ProtonVPN, Mullvad, Surfshark, ExpressVPN, WireGuard, WARP, OpenVPN u.v.m.).
+* **Auto-VPN vor Download:** Beim Starten eines Downloads verbindet der Launcher automatisch das VPN bzw. wartet zuverlässig auf den aktiven Tunnel, bevor Daten fließen.
+* **1-Click VPN Connect:** Schnelles Verbinden und Status-Abfrage direkt in den Download-Einstellungen.
+
+### ⚡ Downloads & Highspeed-Quellen
+* **BitTorrent & P2P-Downloader:** Volle Unterstützung für Magnet-Links und P2P-Downloads inklusive Echtzeit-Geschwindigkeit, Peer-Statistiken und ETA.
+* **Multihoster & Direct-Streams:** Umfassende Unterstützung für PixelDrain, Buzzheavier, Qiwi, Gofile, ViKiNG FiLE, DataNodes und Debrid-Dienste.
+* **Neues Download-Badge:** Minimalistisches, schwarzes Badge mit Live-%-Anzeige und automatischem Entpack-Status in der Sidebar.
+
+### 🤍 Minimalistisches Design & Bugfixes
+* **Monochrome Scan-Meldung:** Neuer, minimalistischer Glassmorphic-Scan-Indikator in purem Weiß.
+* **Cleane Sidebar:** Aufgeräumte Spielliste ohne ablenkende Punkte für maximale Übersicht.
+* **100% Lokalisierung:** Vollständige und fehlerfreie Übersetzung aller neuen Features auf Deutsch und Englisch.`,
+    prerelease: false
+  },
+  {
     id: 112,
     tag_name: 'v1.1.2',
     name: 'v1.1.2 - Quality of Life & Rockstar Update',
@@ -183,10 +205,10 @@ export function EclipseInfoView() {
   const [releases, setReleases] = useState<GitHubRelease[]>(FALLBACK_RELEASES)
   const [isLoading, setIsLoading] = useState(false)
   const [expandedReleases, setExpandedReleases] = useState<Record<string, boolean>>({
-    'v1.1.2': true,
+    'v1.1.3': true,
   })
 
-  const currentVersion = 'v1.1.2'
+  const currentVersion = 'v1.1.3'
 
   // Fetch live releases from GitHub
   useEffect(() => {
@@ -225,7 +247,7 @@ export function EclipseInfoView() {
       )
     } else {
       showNotification(
-        language === 'de' ? 'Du verwendest die aktuellste Version (v1.1.2).' : 'You are running the latest version (v1.1.2).',
+        language === 'de' ? 'Du verwendest die aktuellste Version (v1.1.3).' : 'You are running the latest version (v1.1.3).',
         'success'
       )
     }

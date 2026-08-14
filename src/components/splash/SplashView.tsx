@@ -217,7 +217,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
             </span>
             <span className="text-white/20 text-[10px]">•</span>
             <span className="text-[10px] font-medium tracking-wider text-white/40 font-mono">
-              v1.1.2
+              v1.1.3
             </span>
           </motion.div>
         </div>

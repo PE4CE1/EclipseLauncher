@@ -1,6 +1,6 @@
 {
   "name": "eclipse-launcher",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "author": "Eclipse",
   "description": "Eclipse Game Launcher",
   "main": "dist-electron/main.js",
