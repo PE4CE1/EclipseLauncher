@@ -142,25 +142,13 @@ export function GameDetailModal() {
             : window.electronAPI.startDownload(uri, downloadPath, autoExtract, autoDelete))
         
       downloadPromise.then((res: any) => {
-        if (res && res.success && res.infoHash) {
-          useDownloadStore.getState().addDownload({
-            infoHash: res.infoHash,
-            name: gameTitle,
-            progress: 0,
-            downloadSpeed: 0,
-            timeRemaining: Infinity,
-            downloaded: 0,
-            length: 0,
-            status: 'downloading',
-            coverUrl: steamId ? getCoverUrl(steamId as number) : undefined,
-            installPath: downloadPath
-          });
+        if (res && res.success) {
           useUIStore.getState().setActiveView('downloads');
           setIsDownloadOptionsOpen(false);
           setIsGameModalOpen(false);
-          showNotification(t('downloadStarted', { name: gameTitle }) || `Download started: ${gameTitle}`, 'success');
+          showNotification(t('downloadStarted', { name: gameTitle }) || `Download gestartet: ${gameTitle}`, 'success');
         } else {
-          showNotification(t('downloadFailed') || 'Fehler beim Starten des Downloads', 'error');
+          showNotification(res?.error || t('downloadFailed') || 'Fehler beim Starten des Downloads', 'error');
         }
       }).catch((err: any) => {
         console.error('Download start error:', err);

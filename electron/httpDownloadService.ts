@@ -151,7 +151,14 @@ class HttpDownloader {
         }
 
         const contentType = (res.headers['content-type'] || '').toLowerCase()
-        const totalContentLength = parseInt(res.headers['content-length'] || '0', 10)
+        let totalContentLength = parseInt(res.headers['content-length'] || '0', 10)
+        
+        if (!totalContentLength && res.headers['content-range']) {
+          const rangeMatch = String(res.headers['content-range']).match(/\/(\d+)/)
+          if (rangeMatch) {
+            totalContentLength = parseInt(rangeMatch[1], 10)
+          }
+        }
 
         // Validation: If server returned HTML page under 500KB, it's not the game binary!
         if (contentType.includes('text/html') && totalContentLength > 0 && totalContentLength < 500000 && this.retryCount === 0) {
@@ -166,13 +173,13 @@ class HttpDownloader {
           } else {
             console.error('[HttpDownloader] Could not resolve binary stream from landing page')
             this.status = 'error'
-            this.errorMessage = 'Server lieferte Webseite statt Download-Datei'
+            this.errorMessage = 'Dieser Hoster erfordert ein Debrid-Konto oder den Browser-Download'
             return
           }
         }
 
         if (res.statusCode === 206) {
-          this.length = this.downloaded + totalContentLength
+          this.length = totalContentLength > 0 ? this.downloaded + totalContentLength : this.length
           this.fileStream = fs.createWriteStream(this.targetPath, { flags: 'a' })
         } else {
           this.length = totalContentLength
@@ -186,6 +193,9 @@ class HttpDownloader {
             return
           }
           this.downloaded += chunk.length
+          if (this.length > 0 && this.downloaded > this.length) {
+            this.length = this.downloaded
+          }
           this.fileStream?.write(chunk)
         })
 

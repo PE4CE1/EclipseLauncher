@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Sidebar } from './components/layout/Sidebar'
 import { TitleBar } from './components/layout/TitleBar'
@@ -16,6 +16,7 @@ import { GameDetailModal } from './components/shared/GameDetailModal'
 import { Notification } from './components/shared/Notification'
 import { FriendsWindow } from './components/friends/FriendsWindow'
 import { AddFriendModal } from './components/friends/AddFriendModal'
+import { SplashView } from './components/splash/SplashView'
 import { useUIStore } from './store/uiStore'
 import { useGameStore } from './store/gameStore'
 import { useDownloadStore } from './store/downloadStore'
@@ -60,6 +61,7 @@ function ViewRouter() {
 }
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true)
   const isGameModalOpen = useUIStore(state => state.isGameModalOpen)
   const settings = useGameStore(state => state.settings)
   const { scan } = useScanner()
@@ -234,6 +236,11 @@ export default function App() {
 
       {/* Cinematic Easter Egg Eclipse Animation */}
       <EclipseCinemaModal />
+
+      {/* Startup Splash Screen */}
+      <AnimatePresence>
+        {showSplash && <SplashView onComplete={() => setShowSplash(false)} />}
+      </AnimatePresence>
     </div>
   )
 }

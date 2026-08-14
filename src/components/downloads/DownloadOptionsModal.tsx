@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useDeferredValue } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Download as DownloadIcon, X, ChevronDown, Check, ArrowLeft, Download, Zap, ShieldCheck } from 'lucide-react'
+import { Download as DownloadIcon, X, ChevronDown, Check, ArrowLeft, Download, Zap, ShieldCheck, RefreshCw } from 'lucide-react'
 import { useTranslation } from '../../hooks/useTranslation'
 import { useGameStore } from '../../store/gameStore'
 
@@ -178,13 +178,23 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
 
   if (!isOpen) return null
 
+  const [isStarting, setIsStarting] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsStarting(false)
+    }
+  }, [isOpen, step])
+
   function handleSelectRepack(dl: DownloadOption) {
     setSelectedDownload(dl)
     setStep(2)
   }
 
   function handleStartDownload() {
+    if (isStarting) return
     if (selectedDownload && selectedDownloader) {
+      setIsStarting(true)
       const isHttp = !selectedDownloader.startsWith('magnet:')
       onDownload(selectedDownloader, selectedDownload.title, downloadPath, isHttp, autoExtract, autoDelete)
     }
@@ -432,11 +442,25 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads, onD
 
               {/* Launch Download Action */}
               <button
+                disabled={isStarting || !selectedDownloader}
                 onClick={handleStartDownload}
-                className="w-full bg-white hover:bg-gray-100 text-black font-bold text-sm rounded-xl py-3.5 flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-white/10 cursor-pointer"
+                className={`w-full font-bold text-sm rounded-xl py-3.5 flex items-center justify-center gap-2 transition-all shadow-lg ${
+                  isStarting 
+                    ? 'bg-white/50 text-black cursor-not-allowed' 
+                    : 'bg-white hover:bg-gray-100 text-black cursor-pointer hover:shadow-white/10'
+                }`}
               >
-                <Download size={17} />
-                {t('downloadNow')}
+                {isStarting ? (
+                  <>
+                    <RefreshCw size={17} className="animate-spin" />
+                    {t('startingDownload')}
+                  </>
+                ) : (
+                  <>
+                    <Download size={17} />
+                    {t('downloadNow')}
+                  </>
+                )}
               </button>
 
             </div>

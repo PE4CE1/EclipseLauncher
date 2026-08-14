@@ -168,6 +168,7 @@ export const translations = {
     downloadStarted: 'Download started: {name}',
     downloadError: 'Download error: {error}',
     downloadFailed: 'Failed to start download',
+    startingDownload: 'Starting download...',
 
     // DownloadsView
     extractingFiles: 'Extracting files to destination... Please wait.',
@@ -378,6 +379,7 @@ export const translations = {
     downloadStarted: 'Download gestartet: {name}',
     downloadError: 'Download-Fehler: {error}',
     downloadFailed: 'Fehler beim Starten des Downloads',
+    startingDownload: 'Download wird gestartet...',
 
     // DownloadsView
     extractingFiles: 'Entpacke Dateien in Zielverzeichnis... Bitte warten.',
