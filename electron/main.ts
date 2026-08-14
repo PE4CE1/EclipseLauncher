@@ -641,12 +641,6 @@ ipcMain.handle('rl:set-api-key', (_event, key: string) => {
 // ─── App Lifecycle ────────────────────────────────────────────────────────────
 ipcMain.handle('system:open-url', (_event, url: string) => shell.openExternal(url))
 ipcMain.handle('open-url', (_event, url: string) => shell.openExternal(url))
-ipcMain.handle('system:open-path', (_event, fullPath: string) => {
-  if (fs.existsSync(fullPath)) {
-    return shell.openPath(fullPath)
-  }
-  return shell.openPath(path.dirname(fullPath))
-})
 
 ipcMain.handle('debrid:test-key', async (_event, { provider, apiKey }: { provider: string; apiKey: string }) => {
   try {
