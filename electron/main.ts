@@ -48,11 +48,6 @@ function getSavedSettings(): Record<string, any> {
 const startupSettings = getSavedSettings()
 if (startupSettings.hardwareAcceleration === false) {
   app.disableHardwareAcceleration()
-} else {
-  // Enable high-performance GPU hardware acceleration (60fps - 120fps+ support)
-  app.commandLine.appendSwitch('enable-gpu-rasterization')
-  app.commandLine.appendSwitch('ignore-gpu-blocklist')
-  app.commandLine.appendSwitch('high-dpi-support', '1')
 }
 
 let mainWindow: BrowserWindow | null = null

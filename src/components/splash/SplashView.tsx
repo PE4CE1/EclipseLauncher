@@ -26,12 +26,20 @@ export function SplashView({ onComplete }: SplashViewProps) {
     language === 'de' ? 'Initialisiere Eclipse Engine...' : 'Initializing Eclipse Engine...'
   )
   const [isDone, setIsDone] = useState(false)
+  const completedRef = useRef(false)
   
+  const finish = () => {
+    if (!completedRef.current) {
+      completedRef.current = true
+      onComplete()
+    }
+  }
+
   // Local state for the settings when manual start is used
   const [loadSteam, setLoadSteam] = useState(settings.scanUninstalledSteam ?? true)
   const [autoScanSplash, setAutoScanSplash] = useState(settings.autoScanSplash ?? true)
 
-  // Minimal, subtle ambient stars (organically scattered)
+  // Minimal, subtle ambient stars
   const stars = useMemo(() => [
     { id: 1, left: '12%', top: '14%', size: 1.5, opacity: 0.3, duration: '3.2s', delay: '0.2s' },
     { id: 2, left: '84%', top: '11%', size: 1,   opacity: 0.2, duration: '4.1s', delay: '1.1s' },
@@ -45,9 +53,19 @@ export function SplashView({ onComplete }: SplashViewProps) {
     { id: 10, left: '68%', top: '91%', size: 1.5, opacity: 0.3, duration: '4.0s', delay: '1.8s' },
   ], [])
 
+  // Universal safety watchdog: NEVER hang on black screen
+  useEffect(() => {
+    const watchdog = setTimeout(() => {
+      finish()
+    }, 4500)
+    return () => clearTimeout(watchdog)
+  }, [])
+
   useEffect(() => {
     useGameStore.persist.onFinishHydration(() => setHasHydrated(true))
-    setHasHydrated(useGameStore.persist.hasHydrated())
+    if (useGameStore.persist.hasHydrated()) {
+      setHasHydrated(true)
+    }
   }, [])
 
   // Sync external scan message with progress milestones
@@ -68,26 +86,33 @@ export function SplashView({ onComplete }: SplashViewProps) {
     let mounted = true
     abortControllerRef.current = new AbortController()
 
-    setStatusText(language === 'de' ? 'Scanne Spiel-Manifeste...' : 'Scanning game manifests...')
-    setProgress(35)
-    
-    await new Promise(resolve => setTimeout(resolve, 350))
-    if (!mounted) return
+    try {
+      setStatusText(language === 'de' ? 'Scanne Spiel-Manifeste...' : 'Scanning game manifests...')
+      setProgress(35)
+      
+      await new Promise(resolve => setTimeout(resolve, 250))
+      if (!mounted) return
 
-    setProgress(65)
-    setStatusText(language === 'de' ? 'Synchronisiere Bibliotheken...' : 'Synchronizing libraries...')
+      setProgress(65)
+      setStatusText(language === 'de' ? 'Synchronisiere Bibliotheken...' : 'Synchronizing libraries...')
 
-    await scan({ signal: abortControllerRef.current.signal })
-    if (!mounted) return
+      const scanTask = scan({ signal: abortControllerRef.current.signal }).catch(() => {})
+      const timeoutTask = new Promise(resolve => setTimeout(resolve, 2500))
+      await Promise.race([scanTask, timeoutTask])
+      
+      if (!mounted) return
 
-    setProgress(100)
-    setStatusText(language === 'de' ? 'Bereit • Willkommen' : 'Ready • Welcome')
-    setIsDone(true)
+      setProgress(100)
+      setStatusText(language === 'de' ? 'Bereit • Willkommen' : 'Ready • Welcome')
+      setIsDone(true)
 
-    // Brief smooth hold for completion
-    await new Promise(resolve => setTimeout(resolve, 400))
-    if (mounted) {
-      onComplete()
+      await new Promise(resolve => setTimeout(resolve, 300))
+    } catch (e) {
+      console.warn('[Splash] Scan error:', e)
+    } finally {
+      if (mounted) {
+        finish()
+      }
     }
 
     return () => {
@@ -95,29 +120,25 @@ export function SplashView({ onComplete }: SplashViewProps) {
     }
   }
 
-  // Start automatically if setting is enabled and hydrated
+  // Start automatically
   useEffect(() => {
-    if (hasHydrated && settings.autoScanSplash) {
-      const cleanup = doScan()
-      return () => {
-        if (abortControllerRef.current) abortControllerRef.current.abort()
+    if (hasHydrated) {
+      if (settings.autoScanSplash !== false) {
+        doScan()
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasHydrated])
 
   const handleManualStart = async () => {
     setUserClickedStart(true)
-    
     updateSettings({
       scanUninstalledSteam: loadSteam,
       autoScanSplash: autoScanSplash,
     })
-    
     await doScan()
   }
 
-  const isScanningActive = !hasHydrated || settings.autoScanSplash || userClickedStart
+  const isScanningActive = settings.autoScanSplash !== false || userClickedStart
 
   return (
     <motion.div 
@@ -128,10 +149,8 @@ export function SplashView({ onComplete }: SplashViewProps) {
     >
       {/* ─── Ambient Space Backdrop ─── */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Soft neutral glow centered behind logo */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[380px] bg-white/[0.03] rounded-full blur-[80px]" />
         
-        {/* Subtle twinkling stars */}
         {stars.map((star) => (
           <div
             key={star.id}
@@ -200,100 +219,69 @@ export function SplashView({ onComplete }: SplashViewProps) {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="flex items-center justify-center gap-2 mt-1.5"
           >
-            <span className="text-[10px] font-semibold tracking-[0.25em] text-white/40 uppercase">
-              Launcher
+            <span className="text-[10px] font-bold text-white/40 tracking-[0.2em] uppercase">
+              Unified Game Library
             </span>
-            <span className="text-white/20 text-[10px]">•</span>
-            <span className="text-[10px] font-medium tracking-wider text-white/40 font-mono">
+            <span className="text-[10px] font-bold text-white/30">•</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white/5 border border-white/10 text-white/60 font-mono">
               v1.1.2
             </span>
           </motion.div>
         </div>
 
-        {/* ─── State 1: Scanning Progress ─── */}
         {isScanningActive ? (
-          <div className="w-full flex flex-col items-center">
-            
-            {/* Smooth Spring Progress Track */}
-            <div className="w-full h-1 rounded-full bg-white/10 relative overflow-hidden mb-3">
+          /* ─── State A: Clean Progress Bar & Live Status ─── */
+          <div className="w-full space-y-3.5">
+            {/* Minimalist Progress Track */}
+            <div className="w-full h-1 bg-white/[0.08] rounded-full overflow-hidden relative">
               <motion.div 
-                className="h-full rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)]"
-                initial={{ width: '0%' }}
+                className="absolute left-0 top-0 bottom-0 bg-white rounded-full"
                 animate={{ width: `${progress}%` }}
-                transition={{ type: 'spring', stiffness: 50, damping: 15 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
               />
             </div>
 
-            {/* Status Information Row */}
-            <div className="w-full flex items-center justify-between px-0.5">
-              <div className="flex items-center gap-2 max-w-[80%]">
-                {isDone ? (
-                  <Check size={13} className="text-white flex-shrink-0" />
-                ) : (
-                  <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse flex-shrink-0" />
-                )}
-                <span className="text-xs font-medium text-white/60 truncate">
-                  {statusText}
-                </span>
-              </div>
-              <span className="text-xs font-mono font-medium text-white/40">
+            {/* Status Text & Percentage */}
+            <div className="flex items-center justify-between text-xs px-0.5">
+              <span className="text-white/60 font-medium tracking-wide truncate max-w-[240px]">
+                {statusText}
+              </span>
+              <span className="text-white/40 font-mono text-[11px] font-semibold flex-shrink-0">
                 {progress}%
               </span>
             </div>
           </div>
         ) : (
-          /* ─── State 2: Clean Minimalist Start Options ─── */
-          <div className="w-full space-y-3">
-            <label className="flex items-center p-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 cursor-pointer transition-colors">
-              <div className={`w-5 h-5 rounded flex items-center justify-center mr-3.5 transition-colors ${
-                loadSteam ? 'bg-white' : 'bg-transparent border border-white/25'
-              }`}>
-                {loadSteam && <Check size={13} className="text-black stroke-[3]" />}
-              </div>
-              <input 
-                type="checkbox" 
-                className="hidden" 
-                checked={loadSteam} 
-                onChange={(e) => setLoadSteam(e.target.checked)} 
-              />
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-white">
-                  {language === 'de' ? 'Steam-Bibliothek laden' : 'Load Steam Library'}
-                </p>
-                <p className="text-[11px] text-white/40">
-                  {language === 'de' ? 'Nicht installierte Spiele einschließen' : 'Include uninstalled games'}
-                </p>
-              </div>
-            </label>
+          /* ─── State B: Manual Launch Screen ─── */
+          <div className="w-full space-y-5">
+            <div className="bg-hub-surface/40 border border-white/10 rounded-xl p-3.5 space-y-2.5">
+              <label className="flex items-center gap-2.5 text-xs text-white/80 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  checked={loadSteam} 
+                  onChange={e => setLoadSteam(e.target.checked)}
+                  className="rounded border-white/20 bg-white/5 text-indigo-500 focus:ring-0"
+                />
+                <span>{language === 'de' ? 'Nicht installierte Steam-Spiele laden' : 'Load uninstalled Steam games'}</span>
+              </label>
 
-            <label className="flex items-center p-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 cursor-pointer transition-colors">
-              <div className={`w-5 h-5 rounded flex items-center justify-center mr-3.5 transition-colors ${
-                autoScanSplash ? 'bg-white' : 'bg-transparent border border-white/25'
-              }`}>
-                {autoScanSplash && <Check size={13} className="text-black stroke-[3]" />}
-              </div>
-              <input 
-                type="checkbox" 
-                className="hidden" 
-                checked={autoScanSplash} 
-                onChange={(e) => setAutoScanSplash(e.target.checked)} 
-              />
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-white">
-                  {language === 'de' ? 'Automatisch starten' : 'Always Auto-Start'}
-                </p>
-                <p className="text-[11px] text-white/40">
-                  {language === 'de' ? 'Diesen Screen beim nächsten Start überspringen' : 'Skip this screen on next launch'}
-                </p>
-              </div>
-            </label>
+              <label className="flex items-center gap-2.5 text-xs text-white/80 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  checked={autoScanSplash} 
+                  onChange={e => setAutoScanSplash(e.target.checked)}
+                  className="rounded border-white/20 bg-white/5 text-indigo-500 focus:ring-0"
+                />
+                <span>{language === 'de' ? 'Zukünftig automatisch starten' : 'Always scan automatically'}</span>
+              </label>
+            </div>
 
             <button
               onClick={handleManualStart}
-              className="w-full mt-2 py-3 bg-white hover:bg-white/90 text-black rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] active:scale-[0.99] cursor-pointer"
+              className="w-full py-2.5 bg-white text-black font-bold text-xs rounded-xl flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
             >
-              <Play size={13} className="fill-black text-black" />
-              {language === 'de' ? 'Eclipse starten' : 'Launch Eclipse'}
+              <Play size={14} className="fill-current" />
+              <span>{language === 'de' ? 'Eclipse starten' : 'Launch Eclipse'}</span>
             </button>
           </div>
         )}
