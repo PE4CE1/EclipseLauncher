@@ -194,6 +194,11 @@ export function DownloadsView() {
                             <AlertCircle size={14} />
                             <span>{t('downloadErrorOccurred')}</span>
                           </div>
+                        ) : dl.length === 0 ? (
+                          <div className="flex items-center gap-2 text-indigo-300 text-xs">
+                            <Sparkles size={14} className="animate-spin text-indigo-400" />
+                            <span>{dl.peers && dl.peers > 0 ? (language === 'de' ? `Verbinde mit ${dl.peers} Peers...` : `Connecting to ${dl.peers} peers...`) : (language === 'de' ? 'Suche Peers im Netzwerk & lade Metadaten...' : 'Searching for peers & metadata...')}</span>
+                          </div>
                         ) : (
                           <div className="flex items-center gap-3.5 text-white/50 text-xs">
                             <span>{formatBytes(dl.downloaded)} / {formatBytes(dl.length)}</span>
