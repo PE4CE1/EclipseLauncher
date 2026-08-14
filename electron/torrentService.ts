@@ -73,6 +73,18 @@ export type TorrentPayload = {
 
 const activeIntervals = new Map<string, NodeJS.Timeout>();
 
+function findExistingTorrent(c: any, hash: string | null): any {
+  if (!hash || !c || !Array.isArray(c.torrents)) return null;
+  const cleanHash = hash.toLowerCase();
+  return c.torrents.find((t: any) => 
+    t && typeof t.on === 'function' && !t.destroyed && (
+      (t.infoHash && typeof t.infoHash === 'string' && t.infoHash.toLowerCase() === cleanHash) ||
+      (t._infoHash && typeof t._infoHash === 'string' && t._infoHash.toLowerCase() === cleanHash) ||
+      (t.magnetURI && typeof t.magnetURI === 'string' && t.magnetURI.toLowerCase().includes(cleanHash))
+    )
+  ) || null;
+}
+
 export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.BrowserWindow) {
   
   function sendProgress(payload: TorrentPayload) {
@@ -89,6 +101,11 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
     autoExtract = true, 
     autoDelete = false
   ) {
+    if (!torrent || typeof torrent.on !== 'function') {
+      console.warn('[WebTorrent] trackTorrent: invalid torrent instance');
+      return;
+    }
+
     if (activeIntervals.has(infoHash)) {
       clearInterval(activeIntervals.get(infoHash)!);
       activeIntervals.delete(infoHash);
@@ -252,8 +269,8 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
       }
 
       let torrent: any;
-      const existing = extractedHash ? c.get(extractedHash) : null;
-      if (existing && !existing.destroyed) {
+      const existing = findExistingTorrent(c, extractedHash);
+      if (existing) {
         console.log(`[WebTorrent] Resuming existing torrent for: ${extractedHash}`);
         torrent = existing;
         if (torrent.paused) torrent.resume();
@@ -263,7 +280,7 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
           torrent = c.add(enhancedMagnet, { path: targetPath });
         } catch (addErr: any) {
           console.warn('[WebTorrent] Add error, checking existing:', addErr.message);
-          const found = extractedHash ? c.get(extractedHash) : null;
+          const found = findExistingTorrent(c, extractedHash);
           if (found) {
             torrent = found;
             if (torrent.paused) torrent.resume();
@@ -273,10 +290,12 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
         }
       }
 
-      const infoHash = torrent.infoHash || extractedHash || `torrent-${Date.now()}`;
-      const effectiveName = gameTitle || torrent.name || 'Game Torrent';
+      const infoHash = (torrent && torrent.infoHash) || extractedHash || `torrent-${Date.now()}`;
+      const effectiveName = gameTitle || (torrent && torrent.name) || 'Game Torrent';
 
-      trackTorrent(torrent, infoHash, effectiveName, targetPath, autoExtract, autoDelete);
+      if (torrent && typeof torrent.on === 'function') {
+        trackTorrent(torrent, infoHash, effectiveName, targetPath, autoExtract, autoDelete);
+      }
 
       return { success: true, infoHash: infoHash };
     } catch (error: any) {
@@ -289,8 +308,8 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
   ipcMain.handle('torrent:pause', async (_event, infoHash: string) => {
     try {
       const c = await getClient();
-      const torrent = c.get(infoHash) as any;
-      if (torrent && !torrent.paused) {
+      const torrent = findExistingTorrent(c, infoHash);
+      if (torrent && !torrent.paused && typeof torrent.pause === 'function') {
         torrent.pause();
         sendProgress({
           infoHash,
@@ -311,8 +330,8 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
   ipcMain.handle('torrent:resume', async (_event, infoHash: string) => {
     try {
       const c = await getClient();
-      const torrent = c.get(infoHash) as any;
-      if (torrent && torrent.paused) {
+      const torrent = findExistingTorrent(c, infoHash);
+      if (torrent && torrent.paused && typeof torrent.resume === 'function') {
         torrent.resume();
         sendProgress({
           infoHash,
@@ -337,7 +356,7 @@ export function initTorrentIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.B
         activeIntervals.delete(infoHash);
       }
       const c = await getClient();
-      const torrent = c.get(infoHash) as any;
+      const torrent = findExistingTorrent(c, infoHash);
       if (torrent && typeof torrent.destroy === 'function') {
         torrent.destroy();
       }
