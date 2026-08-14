@@ -79,7 +79,11 @@ html, body, #root {
   background-clip: text;
 }
 
-/* ─── Game Card specific styles removed in favor of Tailwind classes ─── */
+/* ─── Game Card Optimization ─── */
+.game-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 176px 264px;
+}
 
 /* ─── Skeleton Loading ────────────────────────────────────────────────────── */
 .skeleton {

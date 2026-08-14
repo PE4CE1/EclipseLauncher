@@ -17,33 +17,34 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
   const { library, addToLibrary, removeFromLibrary, installedGames } = useGameStore()
   const cardRef = React.useRef<HTMLDivElement>(null)
   
-  const [rotation, setRotation] = useState({ x: 0, y: 0 })
-  const [mousePos, setMousePos] = useState({ x: 50, y: 50 })
-  const [isHovered, setIsHovered] = useState(false)
-
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return
-    const rect = cardRef.current.getBoundingClientRect()
+    const el = cardRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
     const centerX = rect.width / 2
     const centerY = rect.height / 2
     
-    // Calculate rotation (max ~8 degrees)
-    const rotateX = ((y - centerY) / centerY) * -8
-    const rotateY = ((x - centerX) / centerX) * 8
+    // Calculate rotation directly
+    const rotateX = ((y - centerY) / centerY) * -7
+    const rotateY = ((x - centerX) / centerX) * 7
+    const px = (x / rect.width) * 100
+    const py = (y / rect.height) * 100
     
-    setRotation({ x: rotateX, y: rotateY })
-    setMousePos({ x: (x / rect.width) * 100, y: (y / rect.height) * 100 })
+    el.style.setProperty('--rx', `${rotateX}deg`)
+    el.style.setProperty('--ry', `${rotateY}deg`)
+    el.style.setProperty('--mx', `${px}%`)
+    el.style.setProperty('--my', `${py}%`)
   }
 
   const handleMouseLeave = () => {
-    setRotation({ x: 0, y: 0 })
-    setIsHovered(false)
-  }
-
-  const handleMouseEnter = () => {
-    setIsHovered(true)
+    const el = cardRef.current
+    if (!el) return
+    el.style.setProperty('--rx', '0deg')
+    el.style.setProperty('--ry', '0deg')
+    el.style.setProperty('--mx', '50%')
+    el.style.setProperty('--my', '50%')
   }
   
   const appId = game.steamId || (game as any).id || (game as any).appid || (game as any).app_id
@@ -134,14 +135,11 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        onMouseEnter={handleMouseEnter}
-        className={`relative aspect-[2/3] rounded-xl border border-white/5 bg-transparent transition-all duration-300 ease-out group-hover:shadow-[0_20px_40px_-10px_rgba(255,255,255,0.1)] group-hover:border-white/20 ${
-          isHovered ? 'will-change-transform' : ''
-        }`}
-        style={isHovered ? {
-          transform: `perspective(1000px) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg) scale3d(1.02, 1.02, 1)`,
+        className="relative aspect-[2/3] rounded-xl border border-white/5 bg-transparent transition-all duration-200 ease-out group-hover:shadow-[0_20px_40px_-10px_rgba(255,255,255,0.1)] group-hover:border-white/20 group-hover:scale-[1.02]"
+        style={{
+          transform: 'perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg))',
           transformStyle: 'preserve-3d',
-        } : undefined}
+        }}
       >
         <div className="absolute inset-0 overflow-hidden rounded-xl bg-hub-elevated [transform:translateZ(0)]">
           {!hasError ? (
@@ -150,11 +148,13 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
                 <img
                   src={imgSrc}
                   alt=""
-                  className="absolute inset-0 w-full h-full object-cover filter blur-xl scale-150 opacity-40 brightness-75 pointer-events-none"
+                  loading="lazy"
+                  decoding="async"
+                  className="absolute inset-0 w-full h-full object-cover filter blur-md scale-125 opacity-40 brightness-75 pointer-events-none"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/40 pointer-events-none" />
                 <div className="absolute top-3 inset-x-0 flex justify-center pointer-events-none z-10">
-                  <span className="text-[9px] font-semibold tracking-widest uppercase text-white/50 bg-black/50 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 shadow-sm">
+                  <span className="text-[9px] font-semibold tracking-widest uppercase text-white/50 bg-black/70 px-2 py-0.5 rounded-full border border-white/10 shadow-sm">
                     PREVIEW
                   </span>
                 </div>
@@ -163,6 +163,8 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
                     src={imgSrc}
                     onError={handleImageError}
                     alt={game.name}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -172,36 +174,40 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
                 src={imgSrc}
                 onError={handleImageError}
                 alt={game.name}
-                className="w-full h-full object-cover z-10 relative transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-cover z-10 relative transition-transform duration-300 ease-out group-hover:scale-[1.03]"
               />
             )
           ) : (
             <img
               src={getPlaceholderCover(game.name)}
               alt={game.name}
-              className="w-full h-full object-cover z-10 relative transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover z-10 relative transition-transform duration-300 ease-out group-hover:scale-[1.03]"
             />
           )}
 
           {/* Subtle glass overlay */}
-          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.03] transition-colors duration-500 z-20 pointer-events-none opacity-0 group-hover:opacity-100" />
+          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.03] transition-colors duration-300 z-20 pointer-events-none opacity-0 group-hover:opacity-100" />
           
           {/* Dynamic Parallax Glare */}
           <div 
-            className="absolute inset-0 z-30 pointer-events-none rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+            className="absolute inset-0 z-30 pointer-events-none rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
             style={{
-              background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, rgba(255,255,255,0.12) 0%, transparent 60%)`
+              background: 'radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12) 0%, transparent 60%)'
             }}
           />
 
           {/* Hover overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-40">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-40">
           <button
             id={`card-add-${appId}`}
             onClick={handleLibraryToggle}
             className={`w-full py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all group/btn ${
               isInLibrary
-                ? 'bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 backdrop-blur-md'
+                ? 'bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 border border-white/10'
                 : 'bg-white text-black hover:bg-gray-200'
             }`}
           >

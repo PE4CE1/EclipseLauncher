@@ -22,33 +22,34 @@ function useDebounce<T>(value: T, delay: number): T {
 function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }) {
   const { openGameDetails } = useUIStore()
   const cardRef2 = useRef<HTMLDivElement>(null)
-  
-  const [rotation, setRotation] = useState({ x: 0, y: 0 })
-  const [mousePos, setMousePos] = useState({ x: 50, y: 50 })
-  const [isHovered, setIsHovered] = useState(false)
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef2.current) return
-    const rect = cardRef2.current.getBoundingClientRect()
+    const el = cardRef2.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
     const centerX = rect.width / 2
     const centerY = rect.height / 2
     
-    const rotateX = ((y - centerY) / centerY) * -8
-    const rotateY = ((x - centerX) / centerX) * 8
+    const rotateX = ((y - centerY) / centerY) * -7
+    const rotateY = ((x - centerX) / centerX) * 7
+    const px = (x / rect.width) * 100
+    const py = (y / rect.height) * 100
     
-    setRotation({ x: rotateX, y: rotateY })
-    setMousePos({ x: (x / rect.width) * 100, y: (y / rect.height) * 100 })
+    el.style.setProperty('--rx', `${rotateX}deg`)
+    el.style.setProperty('--ry', `${rotateY}deg`)
+    el.style.setProperty('--mx', `${px}%`)
+    el.style.setProperty('--my', `${py}%`)
   }
 
   const handleMouseLeave = () => {
-    setRotation({ x: 0, y: 0 })
-    setIsHovered(false)
-  }
-
-  const handleMouseEnter = () => {
-    setIsHovered(true)
+    const el = cardRef2.current
+    if (!el) return
+    el.style.setProperty('--rx', '0deg')
+    el.style.setProperty('--ry', '0deg')
+    el.style.setProperty('--mx', '50%')
+    el.style.setProperty('--my', '50%')
   }
   
   const appId = item.id || (item as any).appid || (item as any).app_id
@@ -90,21 +91,18 @@ function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }
       className="game-card group"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.025, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ delay: index * 0.02, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
       onClick={() => { if (appId) handleOpenGamePreview(appId) }}
     >
       <div 
         ref={cardRef2}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        onMouseEnter={handleMouseEnter}
-        className={`relative aspect-[2/3] rounded-xl border border-white/5 bg-transparent transition-all duration-300 ease-out group-hover:shadow-[0_20px_40px_-10px_rgba(255,255,255,0.1)] group-hover:border-white/20 ${
-          isHovered ? 'will-change-transform' : ''
-        }`}
-        style={isHovered ? {
-          transform: `perspective(1000px) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg) scale3d(1.02, 1.02, 1)`,
+        className="relative aspect-[2/3] rounded-xl border border-white/5 bg-transparent transition-all duration-200 ease-out group-hover:shadow-[0_20px_40px_-10px_rgba(255,255,255,0.1)] group-hover:border-white/20 group-hover:scale-[1.02]"
+        style={{
+          transform: 'perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg))',
           transformStyle: 'preserve-3d',
-        } : undefined}
+        }}
       >
         <div className="absolute inset-0 overflow-hidden rounded-xl bg-hub-elevated [transform:translateZ(0)]">
           {!hasError ? (
@@ -112,7 +110,9 @@ function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }
               src={imgSrc}
               onError={handleImageError}
               alt={item.name}
-              className="w-full h-full object-cover z-10 relative transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover z-10 relative transition-transform duration-300 ease-out group-hover:scale-[1.03]"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 text-white font-bold p-4 text-center z-10 relative rounded-xl">
@@ -121,13 +121,13 @@ function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }
           )}
 
           {/* Subtle glass overlay */}
-          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.03] transition-colors duration-500 z-20 pointer-events-none opacity-0 group-hover:opacity-100" />
+          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.03] transition-colors duration-300 z-20 pointer-events-none opacity-0 group-hover:opacity-100" />
           
           {/* Dynamic Parallax Glare */}
           <div 
-            className="absolute inset-0 z-30 pointer-events-none rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+            className="absolute inset-0 z-30 pointer-events-none rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
             style={{
-              background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, rgba(255,255,255,0.12) 0%, transparent 60%)`
+              background: 'radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12) 0%, transparent 60%)'
             }}
           />
 
@@ -139,8 +139,8 @@ function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }
           )}
 
           {/* Hover overlay */}
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-40">
-            <div className="glass rounded-lg px-3 py-1.5 text-xs font-semibold text-white">
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-40">
+            <div className="bg-black/70 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-semibold text-white shadow-lg">
               View Details
             </div>
           </div>
