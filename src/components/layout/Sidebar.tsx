@@ -219,20 +219,26 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* ─── Scan Progress ─────────────────────────────────────────────── */}
+      {/* ─── Scan Progress (Minimalist White Design) ─── */}
       <AnimatePresence>
         {isScanning && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mx-3 mb-2"
+            initial={{ opacity: 0, y: -4, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -4, height: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="mx-3 mb-2.5 overflow-hidden"
           >
-            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-indigo-400">
-                <Loader2 size={12} className="animate-spin" />
-                <span className="text-xs truncate">{scanMessage || t('scanning')}</span>
+            <div className="bg-white/[0.04] border border-white/[0.08] backdrop-blur-md rounded-xl p-2.5 px-3 flex items-center gap-2.5 shadow-sm">
+              <div className="w-5 h-5 rounded-lg bg-white/[0.06] border border-white/[0.1] flex items-center justify-center flex-shrink-0">
+                <Loader2 size={11} className="text-white animate-spin" />
               </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-medium text-white/90 truncate block tracking-tight">
+                  {scanMessage || t('scanning')}
+                </span>
+              </div>
+              <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-pulse flex-shrink-0" />
             </div>
           </motion.div>
         )}

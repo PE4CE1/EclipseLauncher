@@ -46,8 +46,10 @@ export function useScanner() {
       return
     }
 
+    const lang = useGameStore.getState().settings.language === 'de' ? 'de' : 'en'
+
     setIsScanning(true)
-    setScanMessage('Starting game scan…')
+    setScanMessage(lang === 'de' ? 'Scanne Spiele-Bibliothek…' : 'Scanning game library…')
 
     const unsubscribe = window.electronAPI.onScanProgress((progress) => {
       setScanMessage(progress.message)
@@ -75,7 +77,7 @@ export function useScanner() {
         
         // Hide scanning UI for the background fetch
         setIsScanning(false)
-        setScanMessage('Resolving Steam metadata…')
+        setScanMessage(lang === 'de' ? 'Lade Steam-Metadaten…' : 'Resolving Steam metadata…')
 
         // Fetch names in the background WITHOUT blocking the function return
         enrichWithSteamIds(result.games, (msg) => setScanMessage(msg), options?.signal)
@@ -85,22 +87,22 @@ export function useScanner() {
               uniqueGames = uniqueGames.filter(g => g.installed !== false)
             }
             setInstalledGames(deduplicateInstalledGames(mergeGames(uniqueGames)))
-            showNotification(`Found ${uniqueGames.length} games`, 'success')
+            showNotification(lang === 'de' ? `${uniqueGames.length} Spiele gefunden` : `Found ${uniqueGames.length} games`, 'success')
             setScanMessage('')
           })
           .catch(err => console.error('[useScanner] Background enrich failed', err))
       } else {
         setIsScanning(false)
         setScanMessage('')
-        showNotification(result.error || 'Scan failed', 'error')
+        showNotification(result.error || (lang === 'de' ? 'Scan fehlgeschlagen' : 'Scan failed'), 'error')
       }
     } catch (err) {
-      showNotification('Scan encountered an error', 'error')
+      showNotification(lang === 'de' ? 'Fehler beim Scannen der Spiele' : 'Scan encountered an error', 'error')
       console.error('[useScanner]', err)
       setIsScanning(false)
       setScanMessage('')
     } finally {
-      unsubscribe()
+      unsubscribe?.()
     }
   }, [setInstalledGames, setIsScanning, setScanMessage, showNotification])
 
