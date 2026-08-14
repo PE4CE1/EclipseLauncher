@@ -222,8 +222,8 @@ export function Sidebar() {
               </span>
             )}
             {id === 'downloads' && activeDownloadCount > 0 && (
-              <span className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white text-black shadow-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#0b0c10] border border-white/20 text-white shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 {hasExtracting 
                   ? (activeDownloadCount > 1 ? `${activeDownloadCount} • Extr.` : 'Extr.')
                   : (activeDownloadCount > 1 ? `${activeDownloadCount} • ${avgDownloadProgress}%` : `${avgDownloadProgress}%`)}
@@ -328,24 +328,12 @@ export function Sidebar() {
                       {game.name}
                     </span>
                     
-                    {isPlaying ? (
+                    {isPlaying && (
                       <div className="flex gap-0.5 items-end h-3 flex-shrink-0">
                         <motion.div animate={{ height: ["4px", "12px"] }} transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.0 }} className="w-1 bg-green-400 rounded-sm opacity-90" />
                         <motion.div animate={{ height: ["3px", "10px"] }} transition={{ duration: 0.7, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.2 }} className="w-1 bg-green-400 rounded-sm opacity-90" />
                         <motion.div animate={{ height: ["5px", "11px"] }} transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.4 }} className="w-1 bg-green-400 rounded-sm opacity-90" />
                       </div>
-                    ) : (
-                      <div
-                        title={
-                          game.platform === 'steam' ? 'Steam' :
-                          game.platform === 'epic' ? 'Epic Games' : 'Local / Custom'
-                        }
-                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 opacity-80 group-hover:opacity-100 transition-opacity ${
-                          game.platform === 'steam'  ? 'bg-blue-400 shadow-[0_0_4px_rgba(96,165,250,0.5)]' :
-                          game.platform === 'epic'   ? 'bg-cyan-400 shadow-[0_0_4px_rgba(34,211,238,0.5)]' :
-                          'bg-white/40'
-                        }`}
-                      />
                     )}
                   </motion.button>
                 )
