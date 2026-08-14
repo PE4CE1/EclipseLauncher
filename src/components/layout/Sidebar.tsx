@@ -86,7 +86,16 @@ export function Sidebar() {
   const totalLibraryCount = installedGames.length + library.filter(g => !installedGames.some(ig => ig.name === g.name)).length
   const { scan } = useScanner()
   const downloads = useDownloadStore(state => state.downloads)
-  const activeDownloadCount = Object.values(downloads).filter(d => d.status !== 'done').length
+  const activeDownloads = Object.values(downloads).filter(d => d.status !== 'done')
+  const activeDownloadCount = activeDownloads.length
+  
+  // Calculate average download percentage
+  const avgDownloadProgress = activeDownloadCount > 0
+    ? Math.round(
+        (activeDownloads.reduce((acc, d) => acc + (d.progress || 0), 0) / activeDownloadCount) * 100
+      )
+    : 0
+  const hasExtracting = activeDownloads.some(d => d.status === 'extracting')
   const { t } = useTranslation()
 
   const NAV_ITEMS: NavItem[] = [
@@ -161,10 +170,12 @@ export function Sidebar() {
               >
                 <div className="flex items-center gap-3">
                   <Bell size={16} className="text-white/70" />
-                  <span>{t('notificationsTab')}</span>
+                  {t('notificationsTab')}
                 </div>
                 {(updateStatus === 'available' || updateStatus === 'downloaded') && (
-                  <div className="w-2 h-2 bg-red-500 rounded-full" />
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-full">
+                    UPDATE
+                  </span>
                 )}
               </button>
               
@@ -211,8 +222,11 @@ export function Sidebar() {
               </span>
             )}
             {id === 'downloads' && activeDownloadCount > 0 && (
-              <span className="ml-auto text-[10px] bg-indigo-500 text-white rounded-full px-1.5 py-0.5">
-                {activeDownloadCount}
+              <span className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white text-black shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {hasExtracting 
+                  ? (activeDownloadCount > 1 ? `${activeDownloadCount} • Extr.` : 'Extr.')
+                  : (activeDownloadCount > 1 ? `${activeDownloadCount} • ${avgDownloadProgress}%` : `${avgDownloadProgress}%`)}
               </span>
             )}
           </button>
@@ -322,9 +336,14 @@ export function Sidebar() {
                       </div>
                     ) : (
                       <div
-                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                          game.platform === 'steam'  ? 'bg-blue-400' :
-                          game.platform === 'epic'   ? 'bg-cyan-400' : 'bg-purple-400'
+                        title={
+                          game.platform === 'steam' ? 'Steam' :
+                          game.platform === 'epic' ? 'Epic Games' : 'Local / Custom'
+                        }
+                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 opacity-80 group-hover:opacity-100 transition-opacity ${
+                          game.platform === 'steam'  ? 'bg-blue-400 shadow-[0_0_4px_rgba(96,165,250,0.5)]' :
+                          game.platform === 'epic'   ? 'bg-cyan-400 shadow-[0_0_4px_rgba(34,211,238,0.5)]' :
+                          'bg-white/40'
                         }`}
                       />
                     )}
