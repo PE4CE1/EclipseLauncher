@@ -225,7 +225,7 @@ export interface ElectronAPI {
   // VPN Management
   detectInstalledVpns?: () => Promise<Array<{ id: string; name: string; path?: string; cli?: string; isRunning: boolean; isConnected: boolean; isWindowsNative?: boolean; nativeName?: string }>>
   getVpnStatus?: () => Promise<{ isConnected: boolean; vpnName?: string; adapterName?: string }>
-  connectVpn?: (vpnId?: string) => Promise<{ success: boolean; message?: string }>
+  connectVpn?: (vpnId?: string) => Promise<{ success: boolean; vpnName?: string; isCLI?: boolean; isNative?: boolean; error?: string; message?: string }>
   disconnectVpn?: (vpnId?: string) => Promise<{ success: boolean; message?: string }>
 
   // Cloudflare bypass

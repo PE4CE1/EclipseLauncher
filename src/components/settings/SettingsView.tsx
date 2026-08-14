@@ -449,7 +449,7 @@ export function SettingsView() {
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={18} className="text-white" />
                     <h2 className="text-lg font-bold text-white tracking-tight">
-                      {language === 'de' ? 'VPN & Download-Sicherheit' : 'VPN & Safe Download Protection'}
+                      {t('vpnSecurityTitle')}
                     </h2>
                   </div>
 
@@ -461,8 +461,8 @@ export function SettingsView() {
                     }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${vpnStatus.isConnected ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]' : 'bg-white/30'}`} />
                       {vpnStatus.isConnected 
-                        ? (language === 'de' ? `VPN Aktiv: ${vpnStatus.vpnName || 'Verbunden'}` : `VPN Active: ${vpnStatus.vpnName || 'Connected'}`) 
-                        : (language === 'de' ? 'Kein VPN aktiv' : 'No VPN Active')}
+                        ? `${t('vpnActive')} ${vpnStatus.vpnName || 'Connected'}` 
+                        : t('noVpnActive')}
                     </span>
 
                     <button
@@ -476,17 +476,15 @@ export function SettingsView() {
                 </div>
 
                 <p className="text-xs text-white/50 mb-4">
-                  {language === 'de' 
-                    ? 'Eclipse Launcher erkennt automatisch installierte VPN-Clients (CyberGhost, NordVPN, Proton, Mullvad etc.) und verbindet diese vor jedem Download.' 
-                    : 'Eclipse Launcher automatically detects installed VPN clients and connects before any download starts.'}
+                  {t('vpnSecurityDesc')}
                 </p>
 
                 <div className="space-y-4 max-w-xl">
                   <div className="space-y-3">
                     <CleanCheckbox
                       checked={localSettings.autoVpnOnDownload ?? false}
-                      label={language === 'de' ? 'Auto-VPN vor Download aktivieren' : 'Automatically connect VPN before download'}
-                      description={language === 'de' ? 'Startet und verbindet automatisch das ausgewählte VPN auf deinem System, bevor ein BitTorrent- oder Direktdownload startet.' : 'Automatically launches and connects your VPN before any torrent or direct download begins.'}
+                      label={t('autoVpnLabel')}
+                      description={t('autoVpnDesc')}
                       onChange={() => {
                         const val = !(localSettings.autoVpnOnDownload ?? false)
                         set('autoVpnOnDownload', val)
@@ -496,8 +494,8 @@ export function SettingsView() {
 
                     <CleanCheckbox
                       checked={localSettings.requireVpnForDownload ?? false}
-                      label={language === 'de' ? 'Download-Killswitch (Nur mit aktivem VPN laden)' : 'Download Killswitch (Require active VPN)'}
-                      description={language === 'de' ? 'Blockiert den Start von Downloads komplett, wenn kein VPN aktiv ist, um deine echte IP-Adresse zu 100% zu schützen.' : 'Blocks downloads completely if no VPN is active to protect your real IP address.'}
+                      label={t('requireVpnLabel')}
+                      description={t('requireVpnDesc')}
                       onChange={() => {
                         const val = !(localSettings.requireVpnForDownload ?? false)
                         set('requireVpnForDownload', val)
@@ -510,7 +508,7 @@ export function SettingsView() {
                   <div className="bg-[#0f1015] border border-white/10 rounded-xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-xs text-white/80 uppercase tracking-wider">
-                        {language === 'de' ? 'Erkannte VPN-Clients' : 'Detected VPN Clients'}
+                        {t('detectedVpnsHeader')}
                       </span>
                       <span className="text-[11px] text-white/40 font-mono">
                         {detectedVpns.length} {language === 'de' ? 'gefunden' : 'found'}
@@ -519,7 +517,7 @@ export function SettingsView() {
 
                     {detectedVpns.length === 0 ? (
                       <div className="p-3 bg-white/[0.02] border border-white/[0.05] rounded-lg text-center text-xs text-white/40">
-                        {language === 'de' ? 'Kein bekannter VPN-Client installiert. Installiere CyberGhost, NordVPN, ProtonVPN etc.' : 'No known VPN client found. Install NordVPN, CyberGhost, ProtonVPN, etc.'}
+                        {t('noVpnFound')}
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -543,7 +541,7 @@ export function SettingsView() {
                                 <div>
                                   <span className="text-xs font-bold text-white block">{vpn.name}</span>
                                   <span className="text-[10px] text-white/40">
-                                    {vpn.isConnected ? (language === 'de' ? 'Verbunden & Aktiv' : 'Connected & Active') : (vpn.isRunning ? (language === 'de' ? 'Läuft im Hintergrund' : 'Running in background') : (language === 'de' ? 'Installiert' : 'Installed'))}
+                                    {vpn.isConnected ? t('vpnConnected') : (vpn.isRunning ? t('vpnRunning') : t('vpnInstalled'))}
                                   </span>
                                 </div>
                               </div>
@@ -571,9 +569,13 @@ export function SettingsView() {
                             try {
                               const res = await window.electronAPI?.connectVpn?.(localSettings.selectedVpnProvider)
                               if (res?.success) {
-                                showNotification(res.message || 'VPN verbunden!', 'success')
+                                if (res.isCLI || res.isNative) {
+                                  showNotification(`${t('vpnConnectedSuccess')} ${res.vpnName || ''}`, 'success')
+                                } else {
+                                  showNotification(`${res.vpnName || 'VPN'}: ${t('vpnClientOpened')}`, 'info')
+                                }
                               } else {
-                                showNotification(res?.message || 'VPN Verbindung fehlgeschlagen', 'error')
+                                showNotification(t('vpnConnectFailed'), 'error')
                               }
                               await refreshVpns()
                             } finally {
@@ -583,7 +585,7 @@ export function SettingsView() {
                           className="flex-1 py-2 px-3 bg-white text-black hover:bg-gray-200 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                         >
                           <ShieldCheck size={13} />
-                          <span>{isConnectingVpn ? (language === 'de' ? 'Verbinde...' : 'Connecting...') : (language === 'de' ? 'VPN jetzt verbinden' : 'Connect VPN Now')}</span>
+                          <span>{isConnectingVpn ? t('connectingVpn') : t('connectVpnNow')}</span>
                         </button>
                       </div>
                     )}

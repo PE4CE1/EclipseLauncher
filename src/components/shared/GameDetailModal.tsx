@@ -143,7 +143,7 @@ export function GameDetailModal() {
         
         // If Auto-VPN is enabled and not connected, connect automatically
         if (appSettings.autoVpnOnDownload && !vpnStatus.isConnected && window.electronAPI.connectVpn) {
-          showNotification(language === 'de' ? '🛡️ VPN-Schutz: Verbinde automatisch mit VPN...' : '🛡️ VPN Protection: Connecting to VPN automatically...', 'info')
+          showNotification(t('vpnProtectionConnecting'), 'info')
           await window.electronAPI.connectVpn(appSettings.selectedVpnProvider)
           // Wait briefly for tunnel to establish
           await new Promise(r => setTimeout(r, 2000))
@@ -153,7 +153,7 @@ export function GameDetailModal() {
         if (appSettings.requireVpnForDownload) {
           const recheck = await window.electronAPI.getVpnStatus()
           if (!recheck.isConnected) {
-            showNotification(language === 'de' ? '🛡️ Download blockiert: VPN-Schutz (Killswitch) ist aktiv, aber kein VPN verbunden!' : '🛡️ Download blocked: VPN protection is active, but no VPN is connected!', 'error')
+            showNotification(t('vpnBlockedKillswitch'), 'error')
             return
           }
         }

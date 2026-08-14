@@ -256,18 +256,18 @@ export async function detectInstalledVpns(): Promise<DetectedVpn[]> {
 }
 
 // Connect to a detected VPN
-export async function connectVpn(vpnId?: string): Promise<{ success: boolean; message?: string }> {
+export async function connectVpn(vpnId?: string): Promise<{ success: boolean; vpnName?: string; isCLI?: boolean; isNative?: boolean; error?: string }> {
   const vpns = await detectInstalledVpns()
   const target = vpnId ? vpns.find(v => v.id === vpnId) : vpns[0]
 
   if (!target) {
-    return { success: false, message: 'Kein installiertes VPN gefunden.' }
+    return { success: false, error: 'NO_VPN_FOUND' }
   }
 
   try {
     if (target.isWindowsNative && target.nativeName) {
       execSync(`rasdial "${target.nativeName}"`, { timeout: 8000 })
-      return { success: true, message: `Windows VPN "${target.nativeName}" verbunden.` }
+      return { success: true, vpnName: target.name, isNative: true }
     }
 
     if (target.cli) {
@@ -276,18 +276,18 @@ export async function connectVpn(vpnId?: string): Promise<{ success: boolean; me
       })
       // Wait for adapter
       await new Promise(r => setTimeout(r, 2500))
-      return { success: true, message: `${target.name} Verbindung gestartet.` }
+      return { success: true, vpnName: target.name, isCLI: true }
     }
 
     if (target.path && fs.existsSync(target.path)) {
       shell.openPath(target.path)
-      return { success: true, message: `${target.name} wurde gestartet.` }
+      return { success: true, vpnName: target.name, isCLI: false }
     }
 
-    return { success: true, message: `${target.name} aktiviert.` }
+    return { success: true, vpnName: target.name }
   } catch (e: any) {
     console.error('[VpnService] Connect error:', e)
-    return { success: false, message: e.message || 'Verbindung fehlgeschlagen' }
+    return { success: false, error: e.message || 'CONNECT_FAILED', vpnName: target.name }
   }
 }
 
