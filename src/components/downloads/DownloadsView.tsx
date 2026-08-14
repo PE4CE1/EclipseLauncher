@@ -118,18 +118,16 @@ export function DownloadsView() {
           </div>
 
           {activeDownloads.length === 0 ? (
-            <div className="bg-[#0b0c10]/60 border border-white/[0.06] rounded-2xl p-6 flex items-center gap-4.5">
-              <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/20 flex-shrink-0">
-                <Download size={18} />
+            <div className="bg-[#0b0c10]/40 border border-dashed border-white/[0.08] rounded-2xl py-9 px-6 flex flex-col items-center justify-center text-center">
+              <div className="w-10 h-10 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/30 mb-2.5 shadow-inner">
+                <Download size={17} />
               </div>
-              <div>
-                <h3 className="text-xs font-semibold text-white/80">
-                  {t('noActiveDownloads')}
-                </h3>
-                <p className="text-[11px] text-white/30 mt-0.5 max-w-xl">
-                  {t('noActiveDownloadsDesc')}
-                </p>
-              </div>
+              <h3 className="text-xs font-semibold text-white/80 mb-0.5">
+                {t('noActiveDownloads')}
+              </h3>
+              <p className="text-[11px] text-white/35 max-w-sm leading-relaxed">
+                {t('noActiveDownloadsDesc')}
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -280,9 +278,13 @@ export function DownloadsView() {
           </div>
 
           {completedDownloads.length === 0 ? (
-            <div className="bg-[#0b0c10]/40 border border-white/[0.05] rounded-2xl p-5 flex items-center gap-3.5 text-white/30 text-xs">
-              <CheckCircle2 size={15} className="text-white/20 flex-shrink-0" />
-              <span>{t('noCompletedDownloadsDesc') || t('noCompletedDownloads')}</span>
+            <div className="bg-[#0b0c10]/25 border border-dashed border-white/[0.06] rounded-2xl py-7 px-6 flex flex-col items-center justify-center text-center">
+              <div className="w-9 h-9 rounded-2xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center text-white/20 mb-2">
+                <CheckCircle2 size={16} />
+              </div>
+              <p className="text-[11px] text-white/35">
+                {t('noCompletedDownloadsDesc') || t('noCompletedDownloads')}
+              </p>
             </div>
           ) : (
             <div className="space-y-2.5">

@@ -232,7 +232,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = []
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-bold text-white mb-0.5">{t('downloadOptions')}</h2>
-                  <span className="bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/30 flex items-center gap-1">
+                  <span className="bg-white/[0.08] text-white/90 text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/15 flex items-center gap-1">
                     <ShieldCheck size={11} /> {t('nativeInstaller')}
                   </span>
                 </div>
@@ -254,14 +254,14 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = []
                   placeholder={t('filterRepacks')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#0b0c0e] border border-white/10 rounded-xl py-2 px-3.5 text-xs text-white placeholder-hub-muted/60 focus:outline-none focus:border-indigo-500/50 transition-colors"
+                  className="w-full bg-[#0b0c0e] border border-white/10 rounded-xl py-2 px-3.5 text-xs text-white placeholder-hub-muted/60 focus:outline-none focus:border-white/30 transition-colors"
                 />
               </div>
               <div className="relative flex-shrink-0">
                 <select
                   value={selectedSource}
                   onChange={(e) => setSelectedSource(e.target.value)}
-                  className="appearance-none bg-[#0b0c0e] border border-white/10 rounded-xl py-2 pl-3.5 pr-8 text-xs font-medium text-white/90 focus:outline-none focus:border-indigo-500/50 transition-colors cursor-pointer"
+                  className="appearance-none bg-[#0b0c0e] border border-white/10 rounded-xl py-2 pl-3.5 pr-8 text-xs font-medium text-white/90 focus:outline-none focus:border-white/30 transition-colors cursor-pointer"
                 >
                   <option value="all">{t('filterBySource')}</option>
                   {uniqueSources.map(s => (
@@ -283,7 +283,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = []
                   <div 
                     key={idx} 
                     onClick={() => handleSelectRepack(dl)}
-                    className="group relative bg-[#16181d] hover:bg-[#1c1f26] border border-white/[0.06] hover:border-indigo-500/40 rounded-xl p-3.5 cursor-pointer transition-all duration-150 flex items-center justify-between shadow-sm"
+                    className="group relative bg-[#14161c] hover:bg-[#1a1d24] border border-white/[0.06] hover:border-white/20 rounded-xl p-3.5 cursor-pointer transition-all duration-150 flex items-center justify-between shadow-sm"
                   >
                     <div className="flex-1 min-w-0 pr-3">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -297,7 +297,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = []
                       
                       <div className="text-[11px] text-hub-muted/70 flex items-center gap-2 font-medium flex-wrap">
                         {dl.fileSize && (
-                          <span className="text-indigo-300/90 font-semibold px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20">
+                          <span className="text-white/90 font-semibold px-2 py-0.5 rounded bg-white/[0.06] border border-white/10">
                             {dl.fileSize}
                           </span>
                         )}
@@ -314,7 +314,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = []
                       </div>
                     </div>
 
-                    <div className="w-8 h-8 rounded-lg bg-white/[0.04] group-hover:bg-indigo-600 text-hub-muted group-hover:text-white flex items-center justify-center transition-all flex-shrink-0 border border-white/[0.06] group-hover:border-indigo-500 shadow-sm">
+                    <div className="w-8 h-8 rounded-lg bg-white/[0.04] group-hover:bg-white text-white/50 group-hover:text-black flex items-center justify-center transition-all flex-shrink-0 border border-white/[0.06] group-hover:border-white shadow-sm">
                       <DownloadIcon size={14} />
                     </div>
                   </div>
@@ -368,7 +368,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = []
                     <div 
                       key={idx}
                       onClick={() => setSelectedDownloader(hoster.id)}
-                      className={`flex items-center justify-between p-3.5 cursor-pointer transition-colors border-b border-white/5 last:border-0 ${selectedDownloader === hoster.id ? 'bg-[#1e222b] border-indigo-500/30' : 'hover:bg-white/5'}`}
+                      className={`flex items-center justify-between p-3.5 cursor-pointer transition-colors border-b border-white/5 last:border-0 ${selectedDownloader === hoster.id ? 'bg-white/[0.08] border-white/20' : 'hover:bg-white/5'}`}
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-2 h-2 rounded-full ${hoster.color}`}></div>
@@ -430,7 +430,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = []
               {/* Automation Toggles */}
               <div className="space-y-3 pt-1">
                 <label className="flex items-center gap-3 cursor-pointer group select-none">
-                  <div className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-colors ${autoExtract ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-transparent border-white/30 group-hover:border-white/50'}`}>
+                  <div className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-colors ${autoExtract ? 'bg-white border-white text-black' : 'bg-transparent border-white/30 group-hover:border-white/50'}`}>
                     {autoExtract && <Check size={14} className="stroke-[3]" />}
                   </div>
                   <input type="checkbox" className="hidden" checked={autoExtract} onChange={e => setAutoExtract(e.target.checked)} />
@@ -438,7 +438,7 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = []
                 </label>
 
                 <label className="flex items-center gap-3 cursor-pointer group select-none">
-                  <div className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-colors ${autoDelete ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-transparent border-white/30 group-hover:border-white/50'}`}>
+                  <div className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-colors ${autoDelete ? 'bg-white border-white text-black' : 'bg-transparent border-white/30 group-hover:border-white/50'}`}>
                     {autoDelete && <Check size={14} className="stroke-[3]" />}
                   </div>
                   <input type="checkbox" className="hidden" checked={autoDelete} onChange={e => setAutoDelete(e.target.checked)} />
