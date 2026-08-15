@@ -871,17 +871,21 @@ export function GameDetailModal() {
                           <ExternalLink size={10} className="text-white/40" />
                         </a>
 
-                        <a 
-                          href={`https://store.steampowered.com/app/${steamId}/`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-2 py-1 rounded-md bg-[#1b2838]/80 hover:bg-[#1b2838] text-[#66c0f4] border border-[#66c0f4]/30 text-[10px] font-bold transition-all flex items-center gap-1"
-                          title="View on Steam Store"
+                        <button 
+                          onClick={() => {
+                            if (window.electronAPI?.openUrl) {
+                              window.electronAPI.openUrl(`steam://store/${steamId}`)
+                            } else {
+                              window.location.href = `steam://store/${steamId}`
+                            }
+                          }}
+                          className="px-2 py-1 rounded-md bg-[#1b2838]/80 hover:bg-[#1b2838] text-[#66c0f4] border border-[#66c0f4]/30 text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                          title="In Steam App öffnen"
                         >
                           <img src={steamLogoImg} alt="Steam" className="w-3 h-3 object-contain" />
                           <span>{t('storePage')}</span>
                           <ExternalLink size={10} className="text-[#66c0f4]/60" />
-                        </a>
+                        </button>
                       </div>
                     )}
                   </div>
