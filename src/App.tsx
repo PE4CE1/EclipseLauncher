@@ -66,6 +66,38 @@ export default function App() {
   const settings = useGameStore(state => state.settings)
   const { scan } = useScanner()
 
+  // Sync disk playtime and setup game process listeners
+  useEffect(() => {
+    if (window.electronAPI?.getPlaytime) {
+      window.electronAPI.getPlaytime().then((db) => {
+        if (db) useGameStore.getState().syncPlaytimeFromDisk(db)
+      }).catch(() => {})
+    }
+
+    const unsubStart = window.electronAPI?.onGameStarted?.((data) => {
+      if (data?.name) {
+        useGameStore.getState().startPlaySession(data.name, data.name)
+      }
+    })
+
+    const unsubStop = window.electronAPI?.onGameStopped?.(() => {
+      useGameStore.getState().stopPlaySession()
+    })
+
+    const interval = setInterval(() => {
+      const state = useGameStore.getState()
+      if (state.activeGame) {
+        state.tickPlaySession()
+      }
+    }, 15000)
+
+    return () => {
+      unsubStart?.()
+      unsubStop?.()
+      clearInterval(interval)
+    }
+  }, [])
+
   // Background library scan and startup preferences
   useEffect(() => {
     const currentSettings = useGameStore.getState().settings

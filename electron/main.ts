@@ -13,7 +13,8 @@ import { initTorrentIPC } from './torrentService'
 import { initHttpDownloadIPC } from './httpDownloadService'
 import { initUpdater } from './updaterService'
 import { initDiscordRPC, setDiscordActivity, clearDiscordActivity, setDiscordIdleActivity } from './discordRPC'
-import { startProcessMonitor, registerGameExe, getCurrentDetectedGame } from './processMonitor'
+import { startProcessMonitor, registerGameExe, getCurrentDetectedGame, resetCurrentDetectedGame } from './processMonitor'
+import { loadPlaytimeDb, savePlaytimeDb, addPlaytimeRecord } from './playtimeService'
 import { initOverlayManager, openOverlayEditMode, exitEditMode, getOverlayWindow } from './overlayManager'
 import { setRLPlaylist, setRLApiKey, destroyRLScraper } from './rlService'
 import { fetchSteamAvatar } from './steamService'
@@ -411,33 +412,54 @@ ipcMain.handle('games:launch', async (_event, launchUrl: string) => {
 })
 
 ipcMain.handle('games:stop', async () => {
-  if (runningGameProcess) {
-    try {
-      runningGameProcess.kill()
+  try {
+    if (runningGameProcess) {
+      try {
+        runningGameProcess.kill()
+      } catch {}
       runningGameProcess = null
-      return { success: true }
-    } catch (err: any) {
-      return { success: false, error: err.message }
     }
-  }
-  
-  // Try to kill via processMonitor detected game
-  const detectedGame = getCurrentDetectedGame()
-  if (detectedGame && detectedGame.exeName) {
-    return new Promise((resolve) => {
+    
+    // Kill via processMonitor detected game
+    const detectedGame = getCurrentDetectedGame()
+    if (detectedGame && detectedGame.exeName) {
       exec(`taskkill /F /IM "${detectedGame.exeName}"`, (err: any) => {
-        if (err) {
-          console.error('[ProcessMonitor] Kill error:', err.message)
-          resolve({ success: false, error: err.message })
-        } else {
-          console.log(`[ProcessMonitor] Killed ${detectedGame.exeName}`)
-          resolve({ success: true })
-        }
+        if (err) console.warn('[ProcessMonitor] Taskkill error:', err.message)
       })
-    })
-  }
+    }
 
-  return { success: true }
+    resetCurrentDetectedGame()
+    mainWindow?.webContents.send('games:stopped')
+    return { success: true }
+  } catch (err: any) {
+    mainWindow?.webContents.send('games:stopped')
+    return { success: false, error: err.message }
+  }
+})
+
+// ─── Playtime Persistence IPC ───────────────────────────────────────────────
+ipcMain.handle('playtime:get', async () => {
+  try {
+    return loadPlaytimeDb()
+  } catch (e: any) {
+    return {}
+  }
+})
+
+ipcMain.handle('playtime:save', async (_event, db: any) => {
+  try {
+    return savePlaytimeDb(db)
+  } catch (e: any) {
+    return false
+  }
+})
+
+ipcMain.handle('playtime:add', async (_event, payload: { gameIdOrName: string; name?: string; minutes: number; steamId?: number }) => {
+  try {
+    return addPlaytimeRecord(payload.gameIdOrName, payload.name || payload.gameIdOrName, payload.minutes, payload.steamId)
+  } catch (e: any) {
+    return {}
+  }
 })
 
 // ─── File Dialog ─────────────────────────────────────────────────────────────

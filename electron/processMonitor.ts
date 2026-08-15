@@ -5,6 +5,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { showOverlay, hideOverlay, getOverlayWindow } from './overlayManager'
 import { startRLService, stopRLService } from './rlService'
+import { addPlaytimeRecord } from './playtimeService'
 
 interface ActiveDetectedGame {
   name: string
@@ -378,6 +379,13 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
         // No game active
         if (currentGame) {
           console.log(`[ProcessMonitor] Detected game stopped: ${currentGame.name}`)
+          try {
+            const elapsedMins = Math.max(0.1, (Date.now() - (currentGame.startTime || Date.now())) / 60000)
+            addPlaytimeRecord(currentGame.name, currentGame.name, elapsedMins)
+          } catch (e) {
+            console.error('[ProcessMonitor] Failed to record playtime on stop:', e)
+          }
+
           // Stop RL service if it was running
           if (rlServiceActive) {
             rlServiceActive = false
@@ -417,5 +425,21 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
 
 export function getCurrentDetectedGame() {
   return currentGame
+}
+
+export function resetCurrentDetectedGame() {
+  if (currentGame) {
+    console.log(`[ProcessMonitor] Manually resetting detected game: ${currentGame.name}`)
+    try {
+      const elapsedMins = Math.max(0.1, (Date.now() - (currentGame.startTime || Date.now())) / 60000)
+      addPlaytimeRecord(currentGame.name, currentGame.name, elapsedMins)
+    } catch {}
+    if (rlServiceActive) {
+      rlServiceActive = false
+      stopRLService()
+    }
+    currentGame = null
+    hideOverlay()
+  }
 }
 

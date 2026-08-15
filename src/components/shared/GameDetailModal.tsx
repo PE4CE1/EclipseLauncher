@@ -371,10 +371,15 @@ export function GameDetailModal() {
                               if (isKilling) return
                               if (isCurrentlyPlaying) {
                                 setIsKilling(true)
-                                if (window.electronAPI?.stopGame) {
-                                  await window.electronAPI.stopGame()
-                                } else {
+                                try {
+                                  if (window.electronAPI?.stopGame) {
+                                    await window.electronAPI.stopGame()
+                                  }
+                                } catch (e) {
+                                  console.error('[GameDetailModal] Stop game error:', e)
+                                } finally {
                                   stopPlaySession()
+                                  setIsKilling(false)
                                 }
                               } else {
                                 launchGame(installed.launchUrl, installed.name)

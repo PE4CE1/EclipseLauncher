@@ -64,13 +64,25 @@ export function useScanner() {
           initialGames = initialGames.filter(g => g.installed !== false)
         }
         
+        const diskPlaytime: Record<string, any> = window.electronAPI?.getPlaytime ? await window.electronAPI.getPlaytime().catch(() => ({})) : {}
         const existingGames = useGameStore.getState().installedGames
         const mergeGames = (gamesToMerge: any[]) => gamesToMerge.map(g => {
-          const ext = existingGames.find(e => (e.id && e.id === g.id) || normalize(e.name) === normalize(g.name))
-          if (ext) {
-            return { ...g, playTimeMinutes: ext.playTimeMinutes, lastPlayed: ext.lastPlayed }
-          }
-          return g
+          const norm = normalize(g.name)
+          const disk = diskPlaytime ? (diskPlaytime[norm] || (g.steamId ? diskPlaytime[`steam_${g.steamId}`] : null) || diskPlaytime[g.id]) : null
+          const ext = existingGames.find(e => (e.id && e.id === g.id) || normalize(e.name) === norm)
+          
+          const maxPlaytime = Math.max(
+            g.playTimeMinutes || 0,
+            ext?.playTimeMinutes || 0,
+            disk?.playTimeMinutes || 0
+          )
+          const maxLastPlayed = Math.max(
+            g.lastPlayed || 0,
+            ext?.lastPlayed || 0,
+            disk?.lastPlayed || 0
+          )
+
+          return { ...g, playTimeMinutes: maxPlaytime, lastPlayed: maxLastPlayed || undefined }
         })
         
         setInstalledGames(deduplicateInstalledGames(mergeGames(initialGames)))

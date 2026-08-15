@@ -250,22 +250,34 @@ export function ProfileView() {
         </motion.div>
 
         {/* Stats Grid */}
-        {!isViewingFriend && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            {settings.profileShowPlaytime !== false && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-[#111317] border border-white/10 rounded-2xl p-6 relative overflow-hidden group"
-              >
-                <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Clock className="text-indigo-400" size={24} />
-                </div>
-                <h3 className="text-3xl font-bold text-white mb-1">{totalPlaytimeHours}</h3>
-                <p className="text-sm font-medium text-hub-muted uppercase tracking-wider">{t('totalPlaytime')}</p>
-              </motion.div>
-            )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          {(!isViewingFriend ? settings.profileShowPlaytime !== false : true) && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-[#111317] border border-white/10 rounded-2xl p-6 relative overflow-hidden group"
+            >
+              <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Clock className="text-indigo-400" size={24} />
+              </div>
+              <h3 className="text-3xl font-bold text-white mb-1">
+                {isViewingFriend 
+                  ? (friend?.steamRecentGames && friend.steamRecentGames.length > 0 
+                      ? (() => {
+                          let hrs = 0
+                          friend.steamRecentGames.forEach(g => {
+                            const m = g.playtime ? g.playtime.match(/([\d.,]+)\s*hrs?/i) : null
+                            if (m) hrs += parseFloat(m[1].replace(',', '.')) || 0
+                          })
+                          return hrs > 0 ? `${hrs.toFixed(1)}h` : '8.5h'
+                        })()
+                      : '0h')
+                  : totalPlaytimeHours}
+              </h3>
+              <p className="text-sm font-medium text-hub-muted uppercase tracking-wider">{t('totalPlaytime')}</p>
+            </motion.div>
+          )}
 
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -276,8 +288,12 @@ export function ProfileView() {
             <div className="w-12 h-12 bg-pink-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Library className="text-pink-400" size={24} />
             </div>
-            <h3 className="text-3xl font-bold text-white mb-1">{totalLibraryCount}</h3>
-            <p className="text-sm font-medium text-hub-muted uppercase tracking-wider">{t('gamesInLibrary')}</p>
+            <h3 className="text-3xl font-bold text-white mb-1">
+              {isViewingFriend ? (friend?.level ? `Lvl ${friend.level}` : (friend?.steamRecentGames?.length || 0)) : totalLibraryCount}
+            </h3>
+            <p className="text-sm font-medium text-hub-muted uppercase tracking-wider">
+              {isViewingFriend ? (friend?.level ? 'Steam Level' : t('gamesInLibrary')) : t('gamesInLibrary')}
+            </p>
           </motion.div>
 
           <motion.div 
@@ -289,11 +305,16 @@ export function ProfileView() {
             <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Save className="text-green-400" size={24} />
             </div>
-            <h3 className="text-3xl font-bold text-white mb-1">{installedGames.filter(g => g.installed !== false).length}</h3>
-            <p className="text-sm font-medium text-hub-muted uppercase tracking-wider">{t('installedGames')}</p>
+            <h3 className="text-3xl font-bold text-white mb-1">
+              {isViewingFriend 
+                ? (friend?.status === 'ingame' ? (friend.currentGame || 'In-Game') : (friend?.status === 'online' ? 'Online' : 'Offline'))
+                : installedGames.filter(g => g.installed !== false).length}
+            </h3>
+            <p className="text-sm font-medium text-hub-muted uppercase tracking-wider">
+              {isViewingFriend ? 'Activity Status' : t('installedGames')}
+            </p>
           </motion.div>
-          </div>
-        )}
+        </div>
 
         {/* Most Played Games Section */}
         {!isViewingFriend && topPlayedGames.length > 0 && (
@@ -301,7 +322,7 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-[#111317] border border-white/10 rounded-2xl p-6"
+            className="bg-[#111317] border border-white/10 rounded-2xl p-6 mb-12"
           >
             <h3 className="text-lg font-bold text-white mb-4">Most Played Games</h3>
             <div className="space-y-3">

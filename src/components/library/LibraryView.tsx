@@ -583,12 +583,16 @@ export function LibraryView() {
 
   const handleStopGame = useCallback(async (gameId: string) => {
     setKillingGameId(gameId)
-    if (window.electronAPI?.stopGame) {
-      await window.electronAPI.stopGame()
-    } else {
+    try {
+      if (window.electronAPI?.stopGame) {
+        await window.electronAPI.stopGame()
+      }
+    } catch (e) {
+      console.error('[LibraryView] Stop game error:', e)
+    } finally {
       stopPlaySession()
+      setKillingGameId(null)
     }
-    setKillingGameId(null)
   }, [stopPlaySession])
 
   // Self-heal: attempt to resolve missing steam IDs once without loops

@@ -71,6 +71,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('games:stopped', handler)
   },
 
+  // Playtime persistence
+  getPlaytime: () => ipcRenderer.invoke('playtime:get'),
+  savePlaytime: (db: any) => ipcRenderer.invoke('playtime:save', db),
+  addPlaytime: (gameIdOrName: string, minutes: number, name?: string, steamId?: number) =>
+    ipcRenderer.invoke('playtime:add', { gameIdOrName, name, minutes, steamId }),
+
   // Overlay
   onOverlayUpdate: (callback: (data: any) => void) => {
     const handler = (_: any, data: any) => callback(data)

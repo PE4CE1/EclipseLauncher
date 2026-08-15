@@ -187,6 +187,9 @@ export interface ElectronAPI {
   stopGame: () => Promise<{ success: boolean; error?: string }>
   onGameStopped: (callback: () => void) => () => void
   onGameStarted?: (callback: (data: { name: string; startTime: number }) => void) => () => void
+  getPlaytime?: () => Promise<Record<string, { name: string; playTimeMinutes: number; lastPlayed: number; steamId?: number }>>
+  savePlaytime?: (db: any) => Promise<boolean>
+  addPlaytime?: (gameIdOrName: string, minutes: number, name?: string, steamId?: number) => Promise<any>
   onOverlayUpdate: (cb: (data: any) => void) => () => void
   onOverlayEditStart: (cb: (gameData: any) => void) => () => void
   onOverlayEditEnd: (cb: () => void) => () => void
