@@ -847,35 +847,6 @@ ipcMain.handle('rl:fetch-steam-avatar', async (_, url: string) => {
   return await fetchSteamAvatar(url)
 })
 
-// Friends window IPC
-ipcMain.handle('open-friends-window', () => {
-  createFriendsWindow()
-})
-
-ipcMain.handle('close-friends-window', () => {
-  if (friendsWindow) {
-    friendsWindow.close()
-  }
-})
-
-ipcMain.handle('open-add-friend-modal', () => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.show()
-    mainWindow.focus()
-    mainWindow.webContents.send('show-add-friend-modal')
-  }
-})
-
-ipcMain.handle('open-friend-profile-modal', (_, friendId: string) => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.show()
-    mainWindow.focus()
-    mainWindow.webContents.send('show-friend-profile-modal', friendId)
-  }
-})
-
 app.whenReady().then(() => {
   // Check for old versions and silently uninstall them
   try {
