@@ -339,7 +339,7 @@ export function GameDetailModal() {
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
             
             {/* Cinematic Hero Backdrop */}
-            <div className="relative w-full h-[40vh] min-h-[290px] max-h-[380px] flex-shrink-0 overflow-hidden bg-black">
+            <div className="relative w-full h-[46vh] min-h-[320px] max-h-[450px] flex-shrink-0 overflow-hidden bg-black">
               <SmartImage 
                 appId={steamId ?? undefined} 
                 type="hero" 
@@ -367,11 +367,11 @@ export function GameDetailModal() {
                   
                   {/* Official Game Logo Artwork with Seamless Plain Text Fallback */}
                   {steamId && logoState !== 'error' ? (
-                    <div className="relative min-h-[64px] flex items-end">
+                    <div className="relative min-h-[80px] flex items-end">
                       <img
                         src={getLogoUrl(steamId)}
                         alt={game?.name}
-                        className={`max-h-24 md:max-h-28 max-w-sm object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] filter contrast-105 transition-opacity duration-300 ${
+                        className={`max-h-28 md:max-h-36 lg:max-h-44 max-w-md lg:max-w-xl object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] filter contrast-105 transition-opacity duration-300 ${
                           logoState === 'loaded' ? 'opacity-100' : 'opacity-0 h-0 w-0'
                         }`}
                         onLoad={() => setLogoState('loaded')}
@@ -386,13 +386,13 @@ export function GameDetailModal() {
                         }}
                       />
                       {logoState !== 'loaded' && (
-                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-none drop-shadow-md">
+                        <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-none drop-shadow-md">
                           {game?.name}
                         </h1>
                       )}
                     </div>
                   ) : (
-                    <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-none drop-shadow-md">
+                    <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-none drop-shadow-md">
                       {game?.name}
                     </h1>
                   )}
@@ -975,15 +975,6 @@ export function GameDetailModal() {
                   />
                 )}
                 <div className="absolute inset-0 bg-black/40 pointer-events-none" />
-
-                {/* Top-Right "X" Close Button */}
-                <button 
-                  onClick={() => setLightboxIndex(null)}
-                  className="absolute top-6 right-6 w-12 h-12 rounded-full bg-black/70 hover:bg-white/20 text-white flex items-center justify-center transition-all z-50 border border-white/20 shadow-2xl hover:scale-105"
-                  title="Close (ESC)"
-                >
-                  <X size={22} />
-                </button>
 
                 <div className="relative z-10 flex-1 w-full max-w-7xl flex items-center justify-center min-h-0 pb-20">
                   {mediaItems[lightboxIndex]?.type === 'video' ? (
