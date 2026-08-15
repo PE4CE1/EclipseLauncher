@@ -291,13 +291,32 @@ export async function fetchRealPriceAndAllTimeLow(
       if (details?.cheapestPriceEver?.price) {
         const rawUsdAtl = parseFloat(details.cheapestPriceEver.price)
         if (!isNaN(rawUsdAtl) && rawUsdAtl > 0) {
-          if (currency === 'EUR') {
-            atlPrice = +(rawUsdAtl * 0.92).toFixed(2)
-          } else {
+          if (currency === 'USD') {
             atlPrice = rawUsdAtl
-          }
-          if (initialPrice > 0) {
-            atlDiscount = Math.max(discountPercent, Math.round((1 - atlPrice / initialPrice) * 100))
+            if (initialPrice > 0) {
+              atlDiscount = Math.max(discountPercent, Math.round((1 - atlPrice / initialPrice) * 100))
+            }
+          } else {
+            // EUR: Match exact SteamDB lowest Euro price
+            let usdBase = initialPrice
+            if (details?.deals?.[0]?.retailPrice) {
+              const parsedRetail = parseFloat(details.deals[0].retailPrice)
+              if (!isNaN(parsedRetail) && parsedRetail > 0) {
+                usdBase = parsedRetail
+              }
+            }
+
+            const histDiscount = usdBase > 0 ? Math.max(discountPercent, Math.round((1 - rawUsdAtl / usdBase) * 100)) : discountPercent
+            atlDiscount = histDiscount
+
+            if (initialPrice > 0 && histDiscount > 0) {
+              // Apply Steam's exact regional sale formula for Euro tier
+              const initialCents = Math.round(initialPrice * 100)
+              const rawEurCents = Math.floor(initialCents * (1 - histDiscount / 100))
+              atlPrice = rawEurCents / 100
+            } else {
+              atlPrice = finalPrice
+            }
           }
         }
       }
