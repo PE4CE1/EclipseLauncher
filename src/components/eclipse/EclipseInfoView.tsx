@@ -21,6 +21,23 @@ interface GitHubRelease {
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
   {
+    id: 114,
+    tag_name: 'v1.1.4',
+    name: 'v1.1.4 - Live Pricing, All-Time Low & Frosted UI Update',
+    published_at: '2026-08-15T18:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.1.4',
+    body: `### 🏷️ Echte Live-Preise, Deals & All-Time Low
+* **Live Steam Pricing & Deals:** Anzeige des aktuellen Preises direkt von Steam. Spiele im Angebot erhalten ein markantes Rabatt-Badge (z. B. -50%), durchgestrichene UVP und den Angebotspreis.
+* **Originaler SteamDB All-Time Low:** Ermittelt den exakten historischen Tiefstpreis des Spiels inklusive realem Bestpreis-Rabatt.
+* **1-Click Währungs-Umschalter (€ / $):** Umschalten zwischen Euro (€) und US-Dollar ($) mit automatischer Speicherung der Präferenz.
+
+### 🎨 Frosted-Glass & UI-Polish
+* **Library Frosted-Glass Header:** Fixierter Header in der Bibliothek mit weichem Glas-Unschärfeeffekt, unter dem Spielecover flüssig hindurchgleiten.
+* **Tiefschwarze Suchleisten:** Sattes Tiefschwarz ohne Farbstiche für Suchfelder im gesamten Launcher.
+* **Monochrome View-Icons:** Cleane weiße Raster- und Listenansicht-Schalter.`,
+    prerelease: false
+  },
+  {
     id: 113,
     tag_name: 'v1.1.3',
     name: 'v1.1.3 - Safe Download & VPN Security Update',
@@ -205,10 +222,10 @@ export function EclipseInfoView() {
   const [releases, setReleases] = useState<GitHubRelease[]>(FALLBACK_RELEASES)
   const [isLoading, setIsLoading] = useState(false)
   const [expandedReleases, setExpandedReleases] = useState<Record<string, boolean>>({
-    'v1.1.3': true,
+    'v1.1.4': true,
   })
 
-  const currentVersion = 'v1.1.3'
+  const currentVersion = 'v1.1.4'
 
   // Fetch live releases from GitHub
   useEffect(() => {
@@ -247,7 +264,7 @@ export function EclipseInfoView() {
       )
     } else {
       showNotification(
-        language === 'de' ? 'Du verwendest die aktuellste Version (v1.1.3).' : 'You are running the latest version (v1.1.3).',
+        language === 'de' ? 'Du verwendest die aktuellste Version (v1.1.4).' : 'You are running the latest version (v1.1.4).',
         'success'
       )
     }
