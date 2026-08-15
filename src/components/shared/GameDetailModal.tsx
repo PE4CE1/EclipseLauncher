@@ -350,7 +350,7 @@ export function GameDetailModal() {
               <div className="absolute inset-0 bg-gradient-to-t from-[#07080a] via-[#07080a]/60 to-transparent" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#07080a]/90 via-[#07080a]/30 to-transparent" />
 
-              {/* Floating Back Button in Hero Header */}
+              {/* Floating Header Actions: Back on Left, Steam & SteamDB on Right */}
               <div className="absolute top-6 left-6 md:left-10 xl:left-14 z-20">
                 <button
                   onClick={() => setIsGameModalOpen(false)}
@@ -360,6 +360,42 @@ export function GameDetailModal() {
                   <span>Back</span>
                 </button>
               </div>
+
+              {steamId && (
+                <div className="absolute top-6 right-6 md:right-10 xl:right-14 z-20 flex items-center gap-2.5">
+                  <button
+                    onClick={() => {
+                      if (window.electronAPI?.openUrl) {
+                        window.electronAPI.openUrl(`https://steamdb.info/app/${steamId}/`)
+                      } else {
+                        window.open(`https://steamdb.info/app/${steamId}/`, '_blank')
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-black/60 hover:bg-black/80 text-white/80 hover:text-white border border-white/10 backdrop-blur-md transition-all text-xs font-semibold shadow-xl group cursor-pointer"
+                    title="Open SteamDB in Browser"
+                  >
+                    <span className="text-blue-400 font-black text-xs">DB</span>
+                    <span>SteamDB</span>
+                    <ExternalLink size={12} className="text-white/40 group-hover:text-white/80 transition-colors" />
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (window.electronAPI?.openUrl) {
+                        window.electronAPI.openUrl(`steam://store/${steamId}`)
+                      } else {
+                        window.location.href = `steam://store/${steamId}`
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1b2838]/80 hover:bg-[#1b2838] text-[#66c0f4] border border-[#66c0f4]/30 backdrop-blur-md transition-all text-xs font-bold shadow-xl group cursor-pointer"
+                    title="In Steam Desktop App öffnen"
+                  >
+                    <img src={steamLogoImg} alt="Steam" className="w-3.5 h-3.5 object-contain" />
+                    <span>Steam</span>
+                    <ExternalLink size={12} className="text-[#66c0f4]/60 group-hover:text-[#66c0f4] transition-colors" />
+                  </button>
+                </div>
+              )}
 
               {/* Title & Actions Bar */}
               <div className="absolute bottom-6 left-6 md:left-10 xl:left-14 right-6 md:right-10 xl:right-14 flex flex-col md:flex-row md:items-end justify-between gap-6 z-10">
@@ -859,17 +895,21 @@ export function GameDetailModal() {
                     
                     {steamId && (
                       <div className="flex items-center gap-1.5">
-                        <a 
-                          href={`https://steamdb.info/app/${steamId}/`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.08] text-[10px] font-bold transition-all flex items-center gap-1"
-                          title="View on SteamDB"
+                        <button 
+                          onClick={() => {
+                            if (window.electronAPI?.openUrl) {
+                              window.electronAPI.openUrl(`https://steamdb.info/app/${steamId}/`)
+                            } else {
+                              window.open(`https://steamdb.info/app/${steamId}/`, '_blank')
+                            }
+                          }}
+                          className="px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.08] text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                          title="Open SteamDB in Browser"
                         >
                           <span className="text-blue-400 font-black">DB</span>
                           <span>SteamDB</span>
                           <ExternalLink size={10} className="text-white/40" />
-                        </a>
+                        </button>
 
                         <button 
                           onClick={() => {
