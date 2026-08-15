@@ -181,11 +181,7 @@ export function Sidebar() {
               
               <button 
                 onClick={() => {
-                  if (window.electronAPI) {
-                    window.electronAPI.openFriendsWindow()
-                  } else {
-                    setIsFriendsOpen(!isFriendsOpen)
-                  }
+                  setIsFriendsOpen(!isFriendsOpen)
                   setIsProfileDropdownOpen(false)
                 }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-white/5 transition-colors text-left"

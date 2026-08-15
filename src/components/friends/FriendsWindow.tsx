@@ -136,13 +136,9 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
           </div>
           <button 
             onClick={() => {
-              if (isStandalone && (window as any).electronAPI) {
-                (window as any).electronAPI.openAddFriendModal()
-              } else {
-                setIsAddFriendOpen(true)
-              }
+              setIsAddFriendOpen(true)
             }}
-            className="flex items-center gap-1.5 px-4 py-2 bg-white text-black rounded-lg text-sm font-bold hover:bg-white/90 transition-colors shadow-md"
+            className="flex items-center gap-1.5 px-4 py-2 bg-white text-black rounded-lg text-sm font-bold hover:bg-white/90 transition-colors shadow-md cursor-pointer"
           >
             <Plus size={16} /> {t('add')}
           </button>
@@ -167,7 +163,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
             <div className="mb-4">
           <button 
             onClick={() => setIsOnlineExpanded(!isOnlineExpanded)}
-            className="flex items-center gap-1.5 w-full text-left text-[11px] font-bold text-white/50 uppercase tracking-wider hover:text-white/80 transition-colors mb-2"
+            className="flex items-center gap-1.5 w-full text-left text-[11px] font-bold text-white/50 uppercase tracking-wider hover:text-white/80 transition-colors mb-2 cursor-pointer"
           >
             {isOnlineExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             {t('online').toUpperCase()} ({onlineFriends.length})
@@ -196,11 +192,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
                         <FriendCard 
                           friend={friend} 
                           onClick={() => {
-                            if (isStandalone && (window as any).electronAPI) {
-                              (window as any).electronAPI.openFriendProfileModal(friend.id)
-                            } else {
-                              openFriendProfile(friend.id)
-                            }
+                            openFriendProfile(friend.id)
                           }} 
                           onRemove={() => handleRemoveFriend(friend.id)}
                           t={t} 
@@ -234,11 +226,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
                     <FriendCard 
                       friend={friend} 
                       onClick={() => {
-                        if (isStandalone && (window as any).electronAPI) {
-                          (window as any).electronAPI.openFriendProfileModal(friend.id)
-                        } else {
-                          openFriendProfile(friend.id)
-                        }
+                        openFriendProfile(friend.id)
                       }} 
                       onRemove={() => handleRemoveFriend(friend.id)}
                       t={t} 

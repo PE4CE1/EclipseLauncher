@@ -180,6 +180,7 @@ export const useUIStore = create<UIStore>((set) => ({
       canGoForward: false,
       isGameModalOpen: false,
       isFriendProfileOpen: false,
+      isFriendsOpen: false,
     }
   }),
   closeFriendProfile: () => set({ isFriendProfileOpen: false, selectedFriendId: null }),
