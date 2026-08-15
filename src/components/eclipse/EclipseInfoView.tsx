@@ -21,6 +21,18 @@ interface GitHubRelease {
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
   {
+    id: 1141,
+    tag_name: 'v1.1.4.1',
+    name: 'v1.1.4.1 - Standalone Desktop Friends Window & IPC Hotfix',
+    published_at: '2026-08-15T21:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.1.4.1',
+    body: `### 🪟 Echtes externes Freunde-Fenster
+* **Multi-Monitor Desktop Window:** Das Freunde-Fenster ist wieder ein vollkommen unabhängiges, rahmenloses Desktop-Fenster, das frei über mehrere Monitoren verschoben werden kann.
+* **Add-Friend & Profil-Klicks:** „+ Add“-Button und Klicks auf Freundeskarten funktionieren jetzt nahtlos zwischen Desktop-Fenster und Launcher.
+* **IPC Stabilitäts-Fix:** Behebt doppelten IPC-Handler-Fehler beim App-Start.`,
+    prerelease: false
+  },
+  {
     id: 114,
     tag_name: 'v1.1.4',
     name: 'v1.1.4 - Live Pricing, All-Time Low & Frosted UI Update',
@@ -222,10 +234,10 @@ export function EclipseInfoView() {
   const [releases, setReleases] = useState<GitHubRelease[]>(FALLBACK_RELEASES)
   const [isLoading, setIsLoading] = useState(false)
   const [expandedReleases, setExpandedReleases] = useState<Record<string, boolean>>({
-    'v1.1.4': true,
+    'v1.1.4.1': true,
   })
 
-  const currentVersion = 'v1.1.4'
+  const currentVersion = 'v1.1.4.1'
 
   // Fetch live releases from GitHub
   useEffect(() => {
