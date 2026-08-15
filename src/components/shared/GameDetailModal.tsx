@@ -4,7 +4,7 @@ import {
   Check, Plus, Play, X, Loader2, Trash2,
   Folder, Clock, Users, Tag, Star, Gamepad2, Monitor,
   Cpu, Globe, ExternalLink, ShieldCheck, CheckCircle2,
-  Layers, Sparkles, Flame, Trophy
+  Layers, Sparkles, Flame, Trophy, ChevronLeft
 } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { useGameStore } from '../../store/gameStore'
@@ -349,6 +349,17 @@ export function GameDetailModal() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#07080a] via-[#07080a]/60 to-transparent" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#07080a]/90 via-[#07080a]/30 to-transparent" />
+
+              {/* Floating Back Button in Hero Header */}
+              <div className="absolute top-6 left-6 md:left-10 xl:left-14 z-20">
+                <button
+                  onClick={() => setIsGameModalOpen(false)}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-black/60 hover:bg-black/80 text-white/80 hover:text-white border border-white/10 backdrop-blur-md transition-all text-xs font-semibold shadow-xl group cursor-pointer"
+                >
+                  <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+                  <span>Back</span>
+                </button>
+              </div>
 
               {/* Title & Actions Bar */}
               <div className="absolute bottom-6 left-6 md:left-10 xl:left-14 right-6 md:right-10 xl:right-14 flex flex-col md:flex-row md:items-end justify-between gap-6 z-10">
