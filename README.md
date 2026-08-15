@@ -1,3 +1,4 @@
+<img width="1919" height="1079" alt="Screenshot 2026-08-15 195927" src="https://github.com/user-attachments/assets/22fbea14-a9a9-468c-b147-5eb58d201dc9" />
 # 🌑 Eclipse Launcher
 
 > A clean, fast, and unified launcher for all your PC games — built by gamers, for gamers.
@@ -37,7 +38,7 @@ It brings your entire game collection — from Steam, Epic, to standalone `.exe`
 - Fast startup and low memory footprint compared to traditional launchers.
 - Convenient navigation history with full support for mouse side-buttons (Back/Forward).
 
----
+<img width="1919" height="1079" alt="Screenshot 2026-08-15 200015" src="https://github.com/user-attachments/assets/35da278a-7b2f-47a0-b197-608b8f4b6efa" />
 
 ## 👤 About the Developer
 
@@ -70,7 +71,7 @@ Because this is a solo project, your feedback matters a lot. If you find bugs, h
 
 - [ ] Custom community theme support
 - [ ] Direct cloud save backup integration
-- [ ] Game tagging and custom category filters
+- [✓] Game tagging and custom category filters
 - [ ] Achievement sync support for additional platforms
 
 ---
@@ -84,3 +85,4 @@ Found a bug or have an idea?
 ---
 
 <p center>Crafted with ❤️ by PE4CE1</p>
+<img width="1919" height="1079" alt="Screenshot 2026-08-15 195905" src="https://github.com/user-attachments/assets/f1732f08-12fb-4075-9014-3237be50313f" />
