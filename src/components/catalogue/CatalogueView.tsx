@@ -411,7 +411,7 @@ export function CatalogueView() {
                 value={localQuery}
                 onChange={e => { setLocalQuery(e.target.value); setSearchQuery(e.target.value) }}
                 placeholder="Search the entire Steam catalogue…"
-                className="w-full bg-[#10131c] border border-white/15 rounded-full pl-10 pr-10 py-2 text-sm h-10 text-white placeholder-hub-muted/70 focus:outline-none focus:border-white/30 focus:bg-[#141824] transition-all shadow-inner"
+                className="w-full bg-[#0a0c13]/90 border border-white/15 rounded-full pl-10 pr-10 py-2 text-sm h-10 text-white placeholder-hub-muted/70 focus:outline-none focus:border-white/30 focus:bg-[#0e111a] transition-all shadow-inner"
                 autoComplete="off"
               />
               {localQuery && localQuery === debouncedQuery && (

@@ -620,7 +620,7 @@ export function LibraryView() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-6 pt-5 pb-4 border-b border-hub-border/40 flex-shrink-0">
+      <div className="px-6 pt-5 pb-4 border-b border-white/[0.08] bg-[#07080a]/90 backdrop-blur-xl flex-shrink-0 sticky top-0 z-20 shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-bold text-hub-text">My Library</h2>
@@ -665,7 +665,7 @@ export function LibraryView() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search library…"
-                className="w-full bg-hub-elevated/50 border border-white/10 rounded-full pl-9 pr-8 py-1.5 text-sm h-8 text-white placeholder-hub-muted/70 focus:outline-none focus:border-white/20 focus:bg-hub-elevated transition-all"
+                className="w-full bg-[#0a0c13]/90 border border-white/15 rounded-full pl-9 pr-8 py-1.5 text-sm h-8 text-white placeholder-hub-muted/70 focus:outline-none focus:border-white/30 focus:bg-[#0e111a] transition-all shadow-inner"
               />
               {search && (
                 <button
@@ -683,7 +683,7 @@ export function LibraryView() {
             <button
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-md transition-all ${
-                viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-hub-muted hover:text-white'
+                viewMode === 'grid' ? 'bg-white/20 text-white shadow-sm' : 'text-hub-muted hover:text-white'
               }`}
               title="Grid View (Large Covers)"
             >
@@ -692,7 +692,7 @@ export function LibraryView() {
             <button
               onClick={() => setViewMode('list')}
               className={`p-1.5 rounded-md transition-all ${
-                viewMode === 'list' ? 'bg-indigo-600 text-white shadow-sm' : 'text-hub-muted hover:text-white'
+                viewMode === 'list' ? 'bg-white/20 text-white shadow-sm' : 'text-hub-muted hover:text-white'
               }`}
               title="List View"
             >
