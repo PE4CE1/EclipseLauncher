@@ -175,26 +175,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('torrent:progress', handler)
   },
 
+  // Friends Window (Standalone Desktop Window)
+  openFriendsWindow: () => ipcRenderer.invoke('open-friends-window'),
+  closeFriendsWindow: () => ipcRenderer.invoke('close-friends-window'),
+  openAddFriendModal: () => ipcRenderer.invoke('open-add-friend-modal'),
+  openFriendProfileModal: (friendId: string) => ipcRenderer.invoke('open-friend-profile-modal', friendId),
+  onShowAddFriendModal: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('show-add-friend-modal', handler)
+    return () => ipcRenderer.removeListener('show-add-friend-modal', handler)
+  },
+  onShowFriendProfileModal: (callback: (friendId: string) => void) => {
+    const handler = (_: any, friendId: string) => callback(friendId)
+    ipcRenderer.on('show-friend-profile-modal', handler)
+    return () => ipcRenderer.removeListener('show-friend-profile-modal', handler)
+  },
+
   // Cloudflare bypass fetch
   fetchSourceCF: (url: string) => ipcRenderer.invoke('source:fetch-cf', url),
 
   // Generic CORS bypass fetch
   utilFetch: (url: string, options?: any) => ipcRenderer.invoke('util:fetch', url, options),
-
-  // ─── Friends Window ──────────────────────────────────────────────────────────
-  openFriendsWindow: () => ipcRenderer.invoke('open-friends-window'),
-  closeFriendsWindow: () => ipcRenderer.invoke('close-friends-window'),
-  openAddFriendModal: () => ipcRenderer.invoke('open-add-friend-modal'),
-  onShowAddFriendModal: (callback: () => void) => {
-    ipcRenderer.on('show-add-friend-modal', callback)
-    return () => ipcRenderer.removeListener('show-add-friend-modal', callback)
-  },
-  openFriendProfileModal: (friendId: string) => ipcRenderer.invoke('open-friend-profile-modal', friendId),
-  onShowFriendProfileModal: (callback: (friendId: string) => void) => {
-    const handler = (_event: any, friendId: string) => callback(friendId)
-    ipcRenderer.on('show-friend-profile-modal', handler)
-    return () => ipcRenderer.removeListener('show-friend-profile-modal', handler)
-  },
 
   // Auto Updater
   checkUpdate: () => ipcRenderer.invoke('updater:check'),

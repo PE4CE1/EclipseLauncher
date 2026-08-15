@@ -109,6 +109,20 @@ export default function App() {
     }
   }, [])
 
+  // Listen to standalone Friends Window events
+  useEffect(() => {
+    const unsubAdd = (window as any).electronAPI?.onShowAddFriendModal?.(() => {
+      useUIStore.getState().setIsAddFriendOpen(true)
+    })
+    const unsubProfile = (window as any).electronAPI?.onShowFriendProfileModal?.((friendId: string) => {
+      useUIStore.getState().openFriendProfile(friendId)
+    })
+    return () => {
+      unsubAdd?.()
+      unsubProfile?.()
+    }
+  }, [])
+
   // Auto-updater listener
   useEffect(() => {
     if (!window.electronAPI?.onUpdaterEvent) return;

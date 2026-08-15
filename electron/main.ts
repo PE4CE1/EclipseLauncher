@@ -105,48 +105,6 @@ function createSystemTray() {
   })
 }
 
-function createFriendsWindow() {
-  if (friendsWindow) {
-    friendsWindow.focus()
-    return
-  }
-
-  friendsWindow = new BrowserWindow({
-    width: 320,
-    height: 520,
-    minWidth: 320,
-    minHeight: 520,
-    resizable: false,
-    frame: false,
-    transparent: true,
-    titleBarStyle: 'hidden',
-    backgroundColor: '#00000000',
-    show: false,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-      webSecurity: false,
-    },
-    icon: fs.existsSync(getAppIconPath()) ? getAppIconPath() : undefined,
-  })
-
-  if (isDev && DEV_SERVER_URL) {
-    friendsWindow.loadURL(`${DEV_SERVER_URL}#friends`)
-  } else {
-    friendsWindow.loadURL(`file://${path.join(__dirname, '../dist/index.html')}#friends`)
-  }
-
-  friendsWindow.once('ready-to-show', () => {
-    friendsWindow?.show()
-  })
-
-  friendsWindow.on('closed', () => {
-    friendsWindow = null
-  })
-}
-
 function createWindow() {
   const settings = getSavedSettings()
 
@@ -263,6 +221,89 @@ function createWindow() {
   // Start background process monitoring for running games on Windows
   startProcessMonitor(() => mainWindow)
 }
+
+function createFriendsWindow() {
+  if (friendsWindow && !friendsWindow.isDestroyed()) {
+    if (friendsWindow.isMinimized()) friendsWindow.restore()
+    friendsWindow.show()
+    friendsWindow.focus()
+    return
+  }
+
+  friendsWindow = new BrowserWindow({
+    width: 340,
+    height: 540,
+    minWidth: 320,
+    minHeight: 500,
+    resizable: true,
+    frame: false,
+    transparent: true,
+    titleBarStyle: 'hidden',
+    backgroundColor: '#00000000',
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+      webSecurity: false,
+    },
+    icon: fs.existsSync(getAppIconPath()) ? getAppIconPath() : undefined,
+  })
+
+  const devUrl = process.env['VITE_DEV_SERVER_URL']
+  const indexPath = path.join(__dirname, '../dist/index.html')
+
+  if (devUrl) {
+    friendsWindow.loadURL(`${devUrl}#friends`)
+  } else if (fs.existsSync(indexPath)) {
+    friendsWindow.loadURL(`file://${indexPath}#friends`)
+  } else {
+    friendsWindow.loadURL('http://127.0.0.1:5173/#friends')
+  }
+
+  friendsWindow.once('ready-to-show', () => {
+    friendsWindow?.show()
+    friendsWindow?.focus()
+  })
+
+  friendsWindow.on('closed', () => {
+    friendsWindow = null
+  })
+}
+
+// ─── Friends Window IPC Handlers ──────────────────────────────────────────────
+ipcMain.handle('open-friends-window', () => {
+  createFriendsWindow()
+  return { success: true }
+})
+
+ipcMain.handle('close-friends-window', () => {
+  if (friendsWindow && !friendsWindow.isDestroyed()) {
+    friendsWindow.close()
+  }
+  return { success: true }
+})
+
+ipcMain.handle('open-add-friend-modal', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
+    mainWindow.webContents.send('show-add-friend-modal')
+  }
+  return { success: true }
+})
+
+ipcMain.handle('open-friend-profile-modal', (_event, friendId: string) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
+    mainWindow.webContents.send('show-friend-profile-modal', friendId)
+  }
+  return { success: true }
+})
 
 app.on('before-quit', () => {
   isQuitting = true

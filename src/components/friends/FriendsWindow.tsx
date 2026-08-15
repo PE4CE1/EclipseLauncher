@@ -70,13 +70,13 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
 
   const handleClose = () => {
     setIsFriendsOpen(false);
-    if (isStandalone && (window as any).electronAPI) {
+    if ((window as any).electronAPI?.closeFriendsWindow) {
       (window as any).electronAPI.closeFriendsWindow();
     }
   };
 
   const containerProps = isStandalone ? {
-    className: "w-full h-full bg-[#0a0a0c] flex flex-col overflow-hidden rounded-xl border border-white/5",
+    className: "w-full h-full bg-[#0a0a0c] flex flex-col overflow-hidden rounded-xl border border-white/10 shadow-2xl",
   } : {
     drag: true,
     dragConstraints: { left: 0, right: window.innerWidth - 320, top: 0, bottom: window.innerHeight - 500 },
@@ -93,11 +93,11 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
     <AnimatePresence>
       {isFriendsOpen && (
         <motion.div {...(containerProps as any)}>
-          {/* Header (Drag Handle) */}
-          <div className="drag-handle flex items-center justify-between px-4 py-3 bg-[#0a0a0c] cursor-move border-b border-white/5" style={{ WebkitAppRegion: 'drag' } as any}>
+          {/* Header (Drag Handle across desktop screens) */}
+          <div className="drag-handle flex items-center justify-between px-4 py-3 bg-[#0a0a0c] cursor-move border-b border-white/5 select-none" style={{ WebkitAppRegion: 'drag' } as any}>
             <h3 className="text-sm font-bold text-white tracking-wide">{t('friends')}</h3>
             <div className="flex items-center gap-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
-              <button className="text-white/50 hover:text-white transition-colors p-1" onClick={handleClose}>
+              <button className="text-white/50 hover:text-white transition-colors p-1 cursor-pointer" onClick={handleClose}>
                 <X size={16} />
               </button>
             </div>
@@ -123,7 +123,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
         </div>
 
         {/* Search & Add */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-6" style={{ WebkitAppRegion: 'no-drag' } as any}>
           <div className="relative flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
             <input 
@@ -136,7 +136,11 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
           </div>
           <button 
             onClick={() => {
-              setIsAddFriendOpen(true)
+              if ((window as any).electronAPI?.openAddFriendModal) {
+                (window as any).electronAPI.openAddFriendModal()
+              } else {
+                setIsAddFriendOpen(true)
+              }
             }}
             className="flex items-center gap-1.5 px-4 py-2 bg-white text-black rounded-lg text-sm font-bold hover:bg-white/90 transition-colors shadow-md cursor-pointer"
           >
@@ -160,7 +164,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
           </div>
         ) : (
           <>
-            <div className="mb-4">
+            <div className="mb-4" style={{ WebkitAppRegion: 'no-drag' } as any}>
           <button 
             onClick={() => setIsOnlineExpanded(!isOnlineExpanded)}
             className="flex items-center gap-1.5 w-full text-left text-[11px] font-bold text-white/50 uppercase tracking-wider hover:text-white/80 transition-colors mb-2 cursor-pointer"
@@ -192,7 +196,11 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
                         <FriendCard 
                           friend={friend} 
                           onClick={() => {
-                            openFriendProfile(friend.id)
+                            if ((window as any).electronAPI?.openFriendProfileModal) {
+                              (window as any).electronAPI.openFriendProfileModal(friend.id)
+                            } else {
+                              openFriendProfile(friend.id)
+                            }
                           }} 
                           onRemove={() => handleRemoveFriend(friend.id)}
                           t={t} 
@@ -208,7 +216,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
 
         {/* Offline Section */}
         {filteredOffline.length > 0 && (
-          <div>
+          <div style={{ WebkitAppRegion: 'no-drag' } as any}>
             <div className="flex items-center gap-1.5 w-full text-left text-[11px] font-bold text-white/50 uppercase tracking-wider mb-2 pl-1 mt-4">
               {t('offline').toUpperCase()} ({offlineFriends.length})
             </div>
@@ -226,7 +234,11 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
                     <FriendCard 
                       friend={friend} 
                       onClick={() => {
-                        openFriendProfile(friend.id)
+                        if ((window as any).electronAPI?.openFriendProfileModal) {
+                          (window as any).electronAPI.openFriendProfileModal(friend.id)
+                        } else {
+                          openFriendProfile(friend.id)
+                        }
                       }} 
                       onRemove={() => handleRemoveFriend(friend.id)}
                       t={t} 
