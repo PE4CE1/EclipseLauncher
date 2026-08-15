@@ -960,17 +960,19 @@ export function GameDetailModal() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6"
+                className="fixed inset-0 z-[100] bg-[#050608]/98 flex flex-col items-center justify-center p-6 select-none"
                 onClick={() => setLightboxIndex(null)}
               >
+                {/* Top-Right "X" Close Button */}
                 <button 
                   onClick={() => setLightboxIndex(null)}
-                  className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors z-10"
+                  className="absolute top-6 right-6 w-12 h-12 rounded-full bg-black/70 hover:bg-white/20 text-white flex items-center justify-center transition-all z-50 border border-white/20 shadow-2xl hover:scale-105"
+                  title="Close (ESC)"
                 >
-                  <X size={20} />
+                  <X size={22} />
                 </button>
 
-                <div className="relative flex-1 w-full flex items-center justify-center min-h-0 pb-20">
+                <div className="relative flex-1 w-full max-w-7xl flex items-center justify-center min-h-0 pb-20">
                   {mediaItems[lightboxIndex]?.type === 'video' ? (
                     <CustomVideoPlayer 
                       src={mediaItems[lightboxIndex].url}
