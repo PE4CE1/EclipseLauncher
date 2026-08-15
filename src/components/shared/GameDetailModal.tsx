@@ -329,7 +329,7 @@ export function GameDetailModal() {
     <AnimatePresence>
       {isGameModalOpen && (steamId || selectedGameName) && (
         <motion.div 
-          className="absolute inset-0 z-50 flex flex-col bg-[#07080a] text-white select-none overflow-hidden"
+          className="absolute inset-0 z-20 flex flex-col bg-[#07080a] text-white select-none overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

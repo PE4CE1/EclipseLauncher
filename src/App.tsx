@@ -33,14 +33,14 @@ function ViewRouter() {
   const { activeView } = useUIStore()
 
   const views: Record<string, JSX.Element> = {
-    home:      <HomeView />,
-    catalogue: <CatalogueView />,
-    library:   <LibraryView />,
-    downloads: <DownloadsView />,
-    settings:  <SettingsView />,
-    profile:   <ProfileView />,
-    notifications: <NotificationsView />,
-    'eclipse-info': <EclipseInfoView />,
+    home:          <HomeView />,
+    catalogue:     <div className="h-full pt-16"><CatalogueView /></div>,
+    library:       <div className="h-full pt-16"><LibraryView /></div>,
+    downloads:     <div className="h-full pt-16"><DownloadsView /></div>,
+    settings:      <div className="h-full pt-16"><SettingsView /></div>,
+    profile:       <div className="h-full pt-16"><ProfileView /></div>,
+    notifications: <div className="h-full pt-16"><NotificationsView /></div>,
+    'eclipse-info':<div className="h-full pt-16"><EclipseInfoView /></div>,
   }
 
   return (
@@ -248,12 +248,15 @@ export default function App() {
         <Sidebar />
 
         {/* Content area */}
-        <div className="flex flex-col flex-1 overflow-hidden relative">
-          <TopBar />
-          <main className={`flex-1 overflow-hidden relative ${isGameModalOpen ? '-mt-16' : ''}`}>
+        <div className="flex-1 overflow-hidden relative">
+          {/* Main views and GameDetailModal (both extend from top y=0 behind TopBar) */}
+          <main className="h-full w-full overflow-hidden relative">
             <ViewRouter />
             <GameDetailModal />
           </main>
+
+          {/* Frosted Glass TopBar: Floats on Top of EVERYTHING */}
+          <TopBar />
         </div>
       </div>
 

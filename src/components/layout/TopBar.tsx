@@ -59,7 +59,7 @@ export function TopBar() {
   }
 
   return (
-    <header className={`h-16 flex-shrink-0 flex items-center justify-between px-6 sticky top-0 z-40 bg-[#07080a]/60 backdrop-blur-xl border-b border-white/[0.06] transition-all duration-300 pointer-events-auto ${
+    <header className={`absolute top-0 left-0 right-0 h-16 z-50 flex items-center justify-between px-6 bg-[#07080a]/60 backdrop-blur-xl border-b border-white/[0.06] transition-all duration-300 pointer-events-auto ${
       isEclipseCinemaActive ? 'opacity-0 pointer-events-none' : 'opacity-100'
     }`}>
       {/* View title or Back button & Navigation History */}
