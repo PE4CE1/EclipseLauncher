@@ -17,8 +17,10 @@ import {
   getLivePlayerCount,
   getSteamReviewSummary,
   getSteamDBSummary,
+  fetchRealPriceAndAllTimeLow,
   SteamReviewSummary,
-  SteamDBSummary
+  SteamDBSummary,
+  RealPriceInfo
 } from '../../services/steamService'
 import { useDownloadStore } from '../../store/downloadStore'
 import { DownloadOptionsModal } from '../downloads/DownloadOptionsModal'
@@ -29,7 +31,7 @@ import steamLogoImg from '../../assets/steam-logo.png'
 import type { LibraryGame } from '../../types/game'
 
 export function GameDetailModal() {
-  const { selectedGameId, selectedGameName, isGameModalOpen, setIsGameModalOpen, showNotification } = useUIStore()
+  const { selectedGameId, selectedGameName, isGameModalOpen, setIsGameModalOpen, showNotification, currency, toggleCurrency } = useUIStore()
   const { library, addToLibrary, removeFromLibrary, installedGames, activeGame, stopPlaySession } = useGameStore()
   const { sources } = useSourceStore()
   const { launchGame } = useScanner()
@@ -41,6 +43,7 @@ export function GameDetailModal() {
   const [playerCount, setPlayerCount] = useState<number | null>(null)
   const [reviewsSummary, setReviewsSummary] = useState<SteamReviewSummary | null>(null)
   const [steamDBSummary, setSteamDBSummary] = useState<SteamDBSummary | null>(null)
+  const [priceInfo, setPriceInfo] = useState<RealPriceInfo | null>(null)
   const [selectedMediaIdx, setSelectedMediaIdx] = useState(0)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [reqTab, setReqTab] = useState<'minimum' | 'recommended'>('minimum')
@@ -56,18 +59,20 @@ export function GameDetailModal() {
     setLogoState('loading')
   }, [steamId, selectedGameName])
 
-  // Fetch SteamDB & Steam Insights with active language
+  // Fetch SteamDB, Steam Insights & Real Pricing with All-Time Low
   useEffect(() => {
     if (steamId) {
       getLivePlayerCount(steamId as number).then(setPlayerCount)
       getSteamReviewSummary(steamId as number, language === 'de' ? 'german' : 'english').then(setReviewsSummary)
       getSteamDBSummary(steamId as number).then(setSteamDBSummary)
+      fetchRealPriceAndAllTimeLow(steamId as number, currency).then(setPriceInfo)
     } else {
       setPlayerCount(null)
       setReviewsSummary(null)
       setSteamDBSummary(null)
+      setPriceInfo(null)
     }
-  }, [steamId, language])
+  }, [steamId, language, currency])
 
   // Map detail to our game structure
   const game = detail ? {
@@ -593,21 +598,59 @@ export function GameDetailModal() {
                   </div>
                 </div>
 
-                {/* 3. Pricing */}
+                {/* 3. Pricing & Real Deals */}
                 <div className="pt-3 lg:pt-0 lg:px-4">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t('priceAndDeals')}</span>
-                    {hasDiscount ? (
-                      <span className="text-[10px] font-extrabold bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">
-                        -{discountPercent}%
+                    
+                    {/* Active Discount Pill & Interactive Currency Switcher */}
+                    <div className="flex items-center gap-1.5">
+                      {(priceInfo?.hasDiscount || hasDiscount) && (
+                        <span className="text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                          -{priceInfo?.discountPercent || discountPercent}%
+                        </span>
+                      )}
+
+                      {/* Currency Switcher */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleCurrency()
+                        }}
+                        className="px-1.5 py-0.5 rounded bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-[10px] font-bold text-white/80 hover:text-white transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                        title={currency === 'EUR' ? 'Auf USD ($) umschalten' : 'Auf Euro (€) umschalten'}
+                      >
+                        <span className={currency === 'EUR' ? 'text-emerald-400 font-black' : 'text-white/40'}>€</span>
+                        <span className="text-white/20">/</span>
+                        <span className={currency === 'USD' ? 'text-emerald-400 font-black' : 'text-white/40'}>$</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Current Price & Strikethrough if on sale */}
+                  <div className="flex items-baseline gap-2">
+                    <div className="text-xl font-black text-white tracking-tight truncate">
+                      {priceInfo?.isFree ? t('freeToPlay') : (priceInfo?.finalFormatted || currentPriceFormatted)}
+                    </div>
+                    {priceInfo?.hasDiscount && priceInfo?.initialFormatted && (
+                      <span className="text-xs text-white/40 line-through font-semibold">
+                        {priceInfo.initialFormatted}
                       </span>
-                    ) : null}
+                    )}
                   </div>
-                  <div className="text-xl font-black text-white tracking-tight truncate">
-                    {currentPriceFormatted}
-                  </div>
+
+                  {/* Real All-Time Low */}
                   <div className="text-[11px] text-white/40 mt-0.5 truncate">
-                    {t('allTimeLow')}: <span className="text-white/70 font-semibold">{historicalLowFormatted || 'N/A'}</span>
+                    {priceInfo?.isFree ? (
+                      <span className="text-emerald-400/80 font-medium">Free To Play</span>
+                    ) : (
+                      <>
+                        {t('allTimeLow')}: <span className="text-white/80 font-bold">{priceInfo?.allTimeLowFormatted || historicalLowFormatted || 'N/A'}</span>{' '}
+                        {priceInfo?.allTimeLowDiscountPercent ? (
+                          <span className="text-emerald-400/90 font-bold">(-{priceInfo.allTimeLowDiscountPercent}%)</span>
+                        ) : null}
+                      </>
+                    )}
                   </div>
                 </div>
 

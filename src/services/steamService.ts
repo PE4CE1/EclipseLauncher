@@ -190,15 +190,150 @@ export async function searchSteamGames(
   return data.items ?? []
 }
 
+export interface RealPriceInfo {
+  isFree: boolean
+  currency: 'EUR' | 'USD'
+  initialPrice: number
+  finalPrice: number
+  discountPercent: number
+  initialFormatted: string
+  finalFormatted: string
+  hasDiscount: boolean
+  allTimeLowPrice: number
+  allTimeLowFormatted: string
+  allTimeLowDiscountPercent: number
+}
+
+const realPriceCache = new Map<string, RealPriceInfo>()
+
+/**
+ * Fetch live current price, active discounts, and true All-Time Low price.
+ */
+export async function fetchRealPriceAndAllTimeLow(
+  appId: number,
+  currency: 'EUR' | 'USD' = 'EUR'
+): Promise<RealPriceInfo | null> {
+  const cacheKey = `${appId}_${currency}`
+  if (realPriceCache.has(cacheKey)) {
+    return realPriceCache.get(cacheKey)!
+  }
+
+  const cc = currency === 'EUR' ? 'DE' : 'US'
+  const lang = currency === 'EUR' ? 'german' : 'english'
+  const formatPrice = (p: number) => 
+    currency === 'EUR' 
+      ? p.toFixed(2).replace('.', ',') + ' €' 
+      : '$' + p.toFixed(2)
+
+  let isFree = false
+  let initialPrice = 0
+  let finalPrice = 0
+  let discountPercent = 0
+  let initialFormatted = ''
+  let finalFormatted = ''
+
+  try {
+    const res = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}&cc=${cc}&l=${lang}`)
+    if (res.ok) {
+      const data = await res.json()
+      const entry = data[String(appId)]
+      if (entry?.success && entry?.data) {
+        const steamData = entry.data
+        isFree = !!steamData.is_free
+        const priceOverview = steamData.price_overview
+        if (priceOverview) {
+          const initialCents = priceOverview.initial || 0
+          const finalCents = priceOverview.final || 0
+          discountPercent = priceOverview.discount_percent || 0
+          initialPrice = initialCents / 100
+          finalPrice = finalCents / 100
+          initialFormatted = priceOverview.initial_formatted || (initialPrice > 0 ? formatPrice(initialPrice) : '')
+          finalFormatted = priceOverview.final_formatted || (finalPrice > 0 ? formatPrice(finalPrice) : (isFree ? 'Free' : ''))
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[steamService] Error fetching Steam price:', err)
+  }
+
+  if (isFree) {
+    const freeResult: RealPriceInfo = {
+      isFree: true,
+      currency,
+      initialPrice: 0,
+      finalPrice: 0,
+      discountPercent: 0,
+      initialFormatted: '',
+      finalFormatted: 'Free',
+      hasDiscount: false,
+      allTimeLowPrice: 0,
+      allTimeLowFormatted: 'Free',
+      allTimeLowDiscountPercent: 0
+    }
+    realPriceCache.set(cacheKey, freeResult)
+    return freeResult
+  }
+
+  // 2. CheapShark All-Time Low lookup
+  let atlPrice = finalPrice
+  let atlDiscount = discountPercent
+
+  try {
+    const csRes = await fetch(`https://www.cheapshark.com/api/1.0/games?steamAppID=${appId}`, {
+      headers: { 'User-Agent': 'EclipseLauncher/1.0 (https://eclipselauncher.com)' }
+    }).then(r => r.json())
+
+    if (Array.isArray(csRes) && csRes[0]?.gameID) {
+      const details = await fetch(`https://www.cheapshark.com/api/1.0/games?id=${csRes[0].gameID}`, {
+        headers: { 'User-Agent': 'EclipseLauncher/1.0 (https://eclipselauncher.com)' }
+      }).then(r => r.json())
+
+      if (details?.cheapestPriceEver?.price) {
+        const rawUsdAtl = parseFloat(details.cheapestPriceEver.price)
+        if (!isNaN(rawUsdAtl) && rawUsdAtl > 0) {
+          if (currency === 'EUR') {
+            atlPrice = +(rawUsdAtl * 0.92).toFixed(2)
+          } else {
+            atlPrice = rawUsdAtl
+          }
+          if (initialPrice > 0) {
+            atlDiscount = Math.max(discountPercent, Math.round((1 - atlPrice / initialPrice) * 100))
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[steamService] Error fetching CheapShark all-time low:', err)
+  }
+
+  const result: RealPriceInfo = {
+    isFree: false,
+    currency,
+    initialPrice,
+    finalPrice,
+    discountPercent,
+    initialFormatted: initialFormatted || (initialPrice > 0 ? formatPrice(initialPrice) : ''),
+    finalFormatted: finalFormatted || (finalPrice > 0 ? formatPrice(finalPrice) : formatPrice(initialPrice)),
+    hasDiscount: discountPercent > 0,
+    allTimeLowPrice: atlPrice,
+    allTimeLowFormatted: formatPrice(atlPrice),
+    allTimeLowDiscountPercent: atlDiscount
+  }
+
+  realPriceCache.set(cacheKey, result)
+  return result
+}
+
 /**
  * Fetch full details for one Steam app.
  * Returns null if not found or not a game.
  */
 export async function getSteamAppDetails(
   appId: number,
-  lang = 'english'
+  lang = 'english',
+  cc = 'DE'
 ): Promise<SteamAppDetails | null> {
-  const url = `https://store.steampowered.com/api/appdetails?appids=${appId}&l=${lang}&cc=US`
+  const url = `https://store.steampowered.com/api/appdetails?appids=${appId}&l=${lang}&cc=${cc}`
   const res = await fetch(url)
   if (!res.ok) return null
 

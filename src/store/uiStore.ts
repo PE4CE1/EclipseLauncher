@@ -56,6 +56,10 @@ interface UIStore {
   sidebarCollapsed: boolean
   setSidebarCollapsed: (v: boolean) => void
 
+  currency: 'EUR' | 'USD'
+  setCurrency: (c: 'EUR' | 'USD') => void
+  toggleCurrency: () => void
+
   notification: { title?: string; message: string; type: 'success' | 'error' | 'info'; duration?: number } | null
   showNotification: (message: string, type?: 'success' | 'error' | 'info', title?: string, duration?: number) => void
   clearNotification: () => void
@@ -70,6 +74,16 @@ let notificationTimer: any = null
 export const useUIStore = create<UIStore>((set) => ({
   activeView: 'home',
   activeSettingsTab: 'general',
+  currency: (localStorage.getItem('eclipse_currency') as 'EUR' | 'USD') || 'EUR',
+  setCurrency: (c) => {
+    localStorage.setItem('eclipse_currency', c)
+    set({ currency: c })
+  },
+  toggleCurrency: () => set((state) => {
+    const next = state.currency === 'EUR' ? 'USD' : 'EUR'
+    localStorage.setItem('eclipse_currency', next)
+    return { currency: next }
+  }),
   setActiveSettingsTab: (tab) => set({ activeSettingsTab: tab }),
   history: ['home'],
   historyIndex: 0,
