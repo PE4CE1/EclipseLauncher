@@ -248,12 +248,12 @@ export default function App() {
         <Sidebar />
 
         {/* Content area */}
-        <div className="flex flex-col flex-1 overflow-hidden relative">
+        <div className="flex flex-col flex-1 overflow-hidden">
           <TopBar />
           <main className="flex-1 overflow-hidden relative">
             <ViewRouter />
+            <GameDetailModal />
           </main>
-          <GameDetailModal />
         </div>
       </div>
 

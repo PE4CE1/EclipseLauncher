@@ -59,8 +59,8 @@ export function TopBar() {
   }
 
   return (
-    <header className={`h-16 flex-shrink-0 flex items-center justify-between px-6 bg-transparent sticky top-0 z-50 backdrop-blur-md transition-opacity duration-300 ${
-      isEclipseCinemaActive || isGameModalOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+    <header className={`h-16 flex-shrink-0 flex items-center justify-between px-6 bg-transparent sticky top-0 z-30 backdrop-blur-md transition-opacity duration-300 ${
+      isEclipseCinemaActive ? 'opacity-0 pointer-events-none' : 'opacity-100'
     }`}>
       {/* View title or Back button & Navigation History */}
       <div className="flex items-center gap-3">
@@ -94,9 +94,9 @@ export function TopBar() {
         {isGameModalOpen ? (
           <button 
             onClick={() => setIsGameModalOpen(false)}
-            className="flex items-center gap-2 text-hub-text hover:text-white transition-colors"
+            className="text-lg font-bold text-hub-text hover:text-white transition-colors cursor-pointer"
           >
-            <span className="font-bold tracking-wider">{selectedGameName || "Back"}</span>
+            Back
           </button>
         ) : (
           <h1 className="text-lg font-bold text-hub-text">
