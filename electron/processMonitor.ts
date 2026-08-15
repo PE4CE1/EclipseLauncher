@@ -380,7 +380,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
         if (currentGame) {
           console.log(`[ProcessMonitor] Detected game stopped: ${currentGame.name}`)
           try {
-            const elapsedMins = Math.max(0.1, (Date.now() - (currentGame.startTime || Date.now())) / 60000)
+            const elapsedMins = Math.max(1, Math.round((Date.now() - (currentGame.startTime || Date.now())) / 60000))
             addPlaytimeRecord(currentGame.name, currentGame.name, elapsedMins)
           } catch (e) {
             console.error('[ProcessMonitor] Failed to record playtime on stop:', e)
@@ -431,7 +431,7 @@ export function resetCurrentDetectedGame() {
   if (currentGame) {
     console.log(`[ProcessMonitor] Manually resetting detected game: ${currentGame.name}`)
     try {
-      const elapsedMins = Math.max(0.1, (Date.now() - (currentGame.startTime || Date.now())) / 60000)
+      const elapsedMins = Math.max(1, Math.round((Date.now() - (currentGame.startTime || Date.now())) / 60000))
       addPlaytimeRecord(currentGame.name, currentGame.name, elapsedMins)
     } catch {}
     if (rlServiceActive) {

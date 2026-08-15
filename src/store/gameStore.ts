@@ -162,7 +162,7 @@ export const useGameStore = create<GameStore>()(
           if (!state.activeGame) return { activeGame: null }
           const now = Date.now()
           const last = state.activeGame.lastTick || state.activeGame.startTime
-          const deltaMins = Math.max(0, Math.round(((now - last) / 60000) * 10) / 10)
+          const deltaMins = Math.max(0, Math.round((now - last) / 60000))
           const gameId = state.activeGame.id
           const gameName = state.activeGame.name
 
@@ -172,11 +172,11 @@ export const useGameStore = create<GameStore>()(
 
           const installedGames = state.installedGames.map((g) => {
             const matches = g.id === gameId || normalize(g.name) === normalize(gameName) || g.appId === gameId
-            return matches ? { ...g, playTimeMinutes: Math.round(((g.playTimeMinutes || 0) + deltaMins) * 10) / 10, lastPlayed: now } : g
+            return matches ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
           })
           const library = state.library.map((g) => {
             const matches = g.id === gameId || normalize(g.name) === normalize(gameName) || String(g.steamId) === gameId
-            return matches ? { ...g, playTimeMinutes: Math.round(((g.playTimeMinutes || 0) + deltaMins) * 10) / 10, lastPlayed: now } : g
+            return matches ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
           })
 
           return { activeGame: null, installedGames, library }
@@ -187,24 +187,23 @@ export const useGameStore = create<GameStore>()(
           if (!state.activeGame) return state
           const now = Date.now()
           const last = state.activeGame.lastTick || state.activeGame.startTime
-          const deltaMins = (now - last) / 60000
-          if (deltaMins < 0.25) return state // Tick every ~15-30s
+          const deltaMins = Math.floor((now - last) / 60000)
+          if (deltaMins < 1) return state // Tick each full minute
 
           const gameId = state.activeGame.id
           const gameName = state.activeGame.name
-          const roundedDelta = Math.round(deltaMins * 10) / 10
 
-          if (roundedDelta > 0 && window.electronAPI?.addPlaytime) {
-            window.electronAPI.addPlaytime(gameId, roundedDelta, gameName).catch(() => {})
+          if (window.electronAPI?.addPlaytime) {
+            window.electronAPI.addPlaytime(gameId, deltaMins, gameName).catch(() => {})
           }
 
           const installedGames = state.installedGames.map((g) => {
             const matches = g.id === gameId || normalize(g.name) === normalize(gameName) || g.appId === gameId
-            return matches ? { ...g, playTimeMinutes: Math.round(((g.playTimeMinutes || 0) + roundedDelta) * 10) / 10, lastPlayed: now } : g
+            return matches ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
           })
           const library = state.library.map((g) => {
             const matches = g.id === gameId || normalize(g.name) === normalize(gameName) || String(g.steamId) === gameId
-            return matches ? { ...g, playTimeMinutes: Math.round(((g.playTimeMinutes || 0) + roundedDelta) * 10) / 10, lastPlayed: now } : g
+            return matches ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
           })
 
           return {
@@ -217,16 +216,17 @@ export const useGameStore = create<GameStore>()(
       addPlayTime: (gameIdOrName, minutes, name) =>
         set((state) => {
           const cleanName = name || gameIdOrName
+          const wholeMins = Math.max(0, Math.round(minutes))
           if (window.electronAPI?.addPlaytime) {
-            window.electronAPI.addPlaytime(gameIdOrName, minutes, cleanName).catch(() => {})
+            window.electronAPI.addPlaytime(gameIdOrName, wholeMins, cleanName).catch(() => {})
           }
           const installedGames = state.installedGames.map((g) => {
             const matches = g.id === gameIdOrName || normalize(g.name) === normalize(cleanName) || g.appId === gameIdOrName
-            return matches ? { ...g, playTimeMinutes: Math.round(((g.playTimeMinutes || 0) + minutes) * 10) / 10, lastPlayed: Date.now() } : g
+            return matches ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + wholeMins), lastPlayed: Date.now() } : g
           })
           const library = state.library.map((g) => {
             const matches = g.id === gameIdOrName || normalize(g.name) === normalize(cleanName) || String(g.steamId) === gameIdOrName
-            return matches ? { ...g, playTimeMinutes: Math.round(((g.playTimeMinutes || 0) + minutes) * 10) / 10, lastPlayed: Date.now() } : g
+            return matches ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + wholeMins), lastPlayed: Date.now() } : g
           })
           return { installedGames, library }
         }),
@@ -241,11 +241,11 @@ export const useGameStore = create<GameStore>()(
             if (diskEntry && typeof diskEntry.playTimeMinutes === 'number') {
               return {
                 ...g,
-                playTimeMinutes: Math.max(g.playTimeMinutes || 0, diskEntry.playTimeMinutes),
+                playTimeMinutes: Math.round(Math.max(g.playTimeMinutes || 0, diskEntry.playTimeMinutes)),
                 lastPlayed: Math.max(g.lastPlayed || 0, diskEntry.lastPlayed || 0)
               }
             }
-            return g
+            return { ...g, playTimeMinutes: Math.round(g.playTimeMinutes || 0) }
           })
 
           const library = state.library.map(g => {
@@ -254,11 +254,11 @@ export const useGameStore = create<GameStore>()(
             if (diskEntry && typeof diskEntry.playTimeMinutes === 'number') {
               return {
                 ...g,
-                playTimeMinutes: Math.max(g.playTimeMinutes || 0, diskEntry.playTimeMinutes),
+                playTimeMinutes: Math.round(Math.max(g.playTimeMinutes || 0, diskEntry.playTimeMinutes)),
                 lastPlayed: Math.max(g.lastPlayed || 0, diskEntry.lastPlayed || 0)
               }
             }
-            return g
+            return { ...g, playTimeMinutes: Math.round(g.playTimeMinutes || 0) }
           })
 
           return { installedGames, library }

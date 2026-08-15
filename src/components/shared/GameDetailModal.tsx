@@ -96,12 +96,12 @@ export function GameDetailModal() {
     (game && g.name.toLowerCase() === game.name.toLowerCase()) ||
     (selectedGameName && g.name.toLowerCase() === selectedGameName.toLowerCase())
   )
-  const gamePlaytimeMins = Math.max(installed?.playTimeMinutes || 0, libraryItem?.playTimeMinutes || 0)
+  const gamePlaytimeMins = Math.round(Math.max(installed?.playTimeMinutes || 0, libraryItem?.playTimeMinutes || 0))
   const playtimeFormatted = gamePlaytimeMins >= 60 
     ? `${(gamePlaytimeMins / 60).toFixed(1)} hrs played` 
     : gamePlaytimeMins > 0 
       ? `${gamePlaytimeMins} mins played` 
-      : '0 hrs played'
+      : '0 mins played'
 
   function handleLibraryToggle() {
     if (!game || !steamId) return

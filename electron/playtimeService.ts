@@ -63,7 +63,7 @@ export function addPlaytimeRecord(gameIdOrName: string, name: string, minutes: n
     steamId
   }
 
-  existing.playTimeMinutes = Math.max(0, Math.round(((existing.playTimeMinutes || 0) + minutes) * 10) / 10)
+  existing.playTimeMinutes = Math.max(0, Math.round((existing.playTimeMinutes || 0) + minutes))
   existing.lastPlayed = Date.now()
   if (cleanName) existing.name = cleanName
   if (steamId) existing.steamId = steamId

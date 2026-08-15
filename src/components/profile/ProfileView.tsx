@@ -60,7 +60,7 @@ export function ProfileView() {
   const allUserGames = Array.from(allUserGamesMap.values())
 
   // Calculate total playtime
-  const totalPlaytimeMins = allUserGames.reduce((acc, g) => acc + (g.playTimeMinutes || 0), 0)
+  const totalPlaytimeMins = Math.round(allUserGames.reduce((acc, g) => acc + (g.playTimeMinutes || 0), 0))
   const totalPlaytimeHours = totalPlaytimeMins >= 60 
     ? (totalPlaytimeMins / 60).toFixed(1) + 'h' 
     : `${totalPlaytimeMins}m`
@@ -327,7 +327,7 @@ export function ProfileView() {
             <h3 className="text-lg font-bold text-white mb-4">Most Played Games</h3>
             <div className="space-y-3">
               {topPlayedGames.map((game, idx) => {
-                const mins = game.playTimeMinutes || 0
+                const mins = Math.round(game.playTimeMinutes || 0)
                 const hrs = mins >= 60 ? (mins / 60).toFixed(1) + ' hrs' : `${mins} mins`
                 const sId = 'steamId' in game ? game.steamId : undefined
 
