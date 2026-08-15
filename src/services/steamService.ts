@@ -64,6 +64,10 @@ export interface SteamAppDetails {
     final_formatted: string
   }
   categories?: Array<{ id: number; description: string }>
+  supported_languages?: string
+  legal_notice?: string
+  ext_user_account_notice?: string
+  drm_notice?: string
   is_free: boolean
   type: string
   achievements?: {
@@ -435,6 +439,68 @@ export async function getTopLiveCCU(): Promise<Record<number, number>> {
     return map;
   } catch {
     return {};
+  }
+}
+
+export interface SteamReviewSummary {
+  reviewScoreDesc: string
+  totalPositive: number
+  totalNegative: number
+  totalReviews: number
+  positivePercent: number
+}
+
+export interface SteamDBSummary {
+  ccu: number
+  positive: number
+  negative: number
+  owners: string
+  averageForeverMinutes: number
+  tags: Record<string, number>
+}
+
+export async function getSteamReviewSummary(appId: number): Promise<SteamReviewSummary | null> {
+  try {
+    const res = await fetch(`https://store.steampowered.com/appreviews/${appId}?json=1&language=all&purchase_type=all&num_per_page=0`)
+    if (!res.ok) return null
+    const data = await res.json()
+    const summary = data?.query_summary
+    if (summary && typeof summary.total_reviews === 'number') {
+      const pos = summary.total_positive || 0
+      const total = summary.total_reviews || (pos + (summary.total_negative || 0))
+      const pct = total > 0 ? Math.round((pos / total) * 100) : 0
+      return {
+        reviewScoreDesc: summary.review_score_desc || (pct >= 80 ? 'Very Positive' : pct >= 70 ? 'Mostly Positive' : 'Mixed'),
+        totalPositive: pos,
+        totalNegative: summary.total_negative || 0,
+        totalReviews: total,
+        positivePercent: pct,
+      }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+export async function getSteamDBSummary(appId: number): Promise<SteamDBSummary | null> {
+  try {
+    const res = await fetch(`https://steamspy.com/api.php?request=appdetails&appid=${appId}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    if (data && data.appid) {
+      return {
+        ccu: typeof data.ccu === 'number' ? data.ccu : 0,
+        positive: typeof data.positive === 'number' ? data.positive : 0,
+        negative: typeof data.negative === 'number' ? data.negative : 0,
+        owners: data.owners || 'Unknown',
+        averageForeverMinutes: typeof data.average_forever === 'number' ? data.average_forever : 0,
+        tags: typeof data.tags === 'object' && data.tags ? data.tags : {},
+      }
+    }
+    return null
+  } catch {
+    return null
   }
 }
 
