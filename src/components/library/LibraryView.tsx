@@ -618,9 +618,9 @@ export function LibraryView() {
   }, [installedGames, setInstalledGames])
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="px-6 pt-5 pb-4 border-b border-white/[0.08] bg-[#07080a]/90 backdrop-blur-xl flex-shrink-0 sticky top-0 z-20 shadow-lg">
+    <div className="h-full overflow-y-auto overflow-x-hidden relative custom-scrollbar">
+      {/* Header with authentic Frosted Glass Blur */}
+      <div className="sticky top-0 z-20 px-6 pt-5 pb-4 border-b border-white/[0.08] bg-[#07080a]/80 backdrop-blur-xl shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-bold text-hub-text">My Library</h2>
@@ -639,7 +639,7 @@ export function LibraryView() {
         {/* Tabs + Search + View Toggle */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1 bg-hub-surface rounded-lg p-1">
+            <div className="flex items-center gap-1 bg-black/60 border border-white/10 rounded-lg p-1">
               {tabs.map(tab => (
                 <button
                   key={tab.id}
@@ -647,8 +647,8 @@ export function LibraryView() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                     activeTab === tab.id
-                      ? 'bg-hub-elevated text-hub-text shadow-sm'
-                      : 'text-hub-muted hover:text-hub-text'
+                      ? 'bg-white/20 text-white shadow-sm font-semibold'
+                      : 'text-white/60 hover:text-white'
                   }`}
                 >
                   {tab.label}
@@ -658,19 +658,19 @@ export function LibraryView() {
             </div>
 
             <div className="relative w-64">
-              <Search size={13} className="absolute left-4 top-1/2 -translate-y-1/2 text-hub-muted" />
+              <Search size={13} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
               <input
                 id="library-search"
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search library…"
-                className="w-full bg-[#0a0c13]/90 border border-white/15 rounded-full pl-9 pr-8 py-1.5 text-sm h-8 text-white placeholder-hub-muted/70 focus:outline-none focus:border-white/30 focus:bg-[#0e111a] transition-all shadow-inner"
+                className="w-full bg-black/90 border border-white/10 hover:border-white/20 focus:border-white/30 rounded-full pl-9 pr-8 py-1.5 text-sm h-8 text-white placeholder-white/40 focus:outline-none focus:bg-black transition-all shadow-inner"
               />
               {search && (
                 <button
                   onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-hub-muted hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
                 >
                   <X size={12} />
                 </button>
@@ -679,11 +679,11 @@ export function LibraryView() {
           </div>
 
           {/* View Mode Toggle Button */}
-          <div className="flex items-center gap-1 bg-hub-surface border border-hub-border/40 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-black/60 border border-white/10 rounded-lg p-1">
             <button
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-md transition-all ${
-                viewMode === 'grid' ? 'bg-white/20 text-white shadow-sm' : 'text-hub-muted hover:text-white'
+                viewMode === 'grid' ? 'bg-white/20 text-white shadow-sm' : 'text-white/50 hover:text-white'
               }`}
               title="Grid View (Large Covers)"
             >
@@ -692,7 +692,7 @@ export function LibraryView() {
             <button
               onClick={() => setViewMode('list')}
               className={`p-1.5 rounded-md transition-all ${
-                viewMode === 'list' ? 'bg-white/20 text-white shadow-sm' : 'text-hub-muted hover:text-white'
+                viewMode === 'list' ? 'bg-white/20 text-white shadow-sm' : 'text-white/50 hover:text-white'
               }`}
               title="List View"
             >
@@ -703,7 +703,7 @@ export function LibraryView() {
       </div>
 
       {/* Game List / Grid */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="px-6 py-4">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24">
             <Library size={48} className="text-hub-border mb-4" />

@@ -401,17 +401,17 @@ export function CatalogueView() {
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative custom-scrollbar bg-transparent">
         
         {/* Search header */}
-        <div className="sticky top-0 z-20 bg-[#07080a]/90 backdrop-blur-xl border-b border-white/[0.08] px-6 py-4 shadow-lg">
+        <div className="sticky top-0 z-20 bg-[#07080a]/80 backdrop-blur-xl border-b border-white/[0.08] px-6 py-4 shadow-xl">
           <div className="flex items-center gap-4">
             <div className="relative flex-1 max-w-2xl">
-              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-hub-muted" />
+              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
               <input
                 id="catalogue-search"
                 type="text"
                 value={localQuery}
                 onChange={e => { setLocalQuery(e.target.value); setSearchQuery(e.target.value) }}
                 placeholder="Search the entire Steam catalogue…"
-                className="w-full bg-[#0a0c13]/90 border border-white/15 rounded-full pl-10 pr-10 py-2 text-sm h-10 text-white placeholder-hub-muted/70 focus:outline-none focus:border-white/30 focus:bg-[#0e111a] transition-all shadow-inner"
+                className="w-full bg-black/90 border border-white/10 hover:border-white/20 focus:border-white/30 rounded-full pl-10 pr-10 py-2 text-sm h-10 text-white placeholder-white/40 focus:outline-none focus:bg-black transition-all shadow-inner"
                 autoComplete="off"
               />
               {localQuery && localQuery === debouncedQuery && (
