@@ -4,7 +4,7 @@ import {
   Check, Plus, Play, X, Loader2, Trash2,
   Folder, Clock, Users, Tag, Star, Gamepad2, Monitor,
   Cpu, Globe, ExternalLink, ShieldCheck, CheckCircle2,
-  Layers, Sparkles, Flame
+  Layers, Sparkles, Flame, Trophy
 } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { useGameStore } from '../../store/gameStore'
@@ -303,13 +303,20 @@ export function GameDetailModal() {
   const positivePercent = reviewsSummary?.positivePercent || (steamDBSummary ? Math.round((steamDBSummary.positive / ((steamDBSummary.positive + steamDBSummary.negative) || 1)) * 100) : 92)
   const totalReviewsCount = reviewsSummary?.totalReviews || (steamDBSummary ? steamDBSummary.positive + steamDBSummary.negative : null)
 
+  // Clean PC Requirements string without double colons
   const cleanReqString = (htmlStr?: string) => {
     if (!htmlStr) return ''
     return htmlStr
+      .replace(/<li[^>]*>/gi, '')
+      .replace(/<\/li>/gi, '\n')
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<strong>/gi, '')
-      .replace(/<\/strong>/gi, ': ')
+      .replace(/<\/strong>/gi, '')
       .replace(/<[^>]+>/g, '')
+      .replace(/\*:/g, ':')
+      .replace(/::+/g, ':')
+      .replace(/:\s*:/g, ':')
+      .replace(/\n\s*\n+/g, '\n')
       .trim()
   }
 
@@ -603,7 +610,7 @@ export function GameDetailModal() {
               </div>
             </div>
 
-            {/* Unified Sleek Stats Strip (Human-crafted layout, no generic AI boxes) */}
+            {/* Unified Sleek Stats Strip (Human-crafted layout) */}
             <div className="w-full px-6 md:px-10 xl:px-14 py-4">
               <div className="bg-[#0b0c10]/80 backdrop-blur-md border border-white/[0.06] rounded-2xl p-4 md:p-5 grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.06]">
                 
@@ -683,7 +690,7 @@ export function GameDetailModal() {
               </div>
             </div>
 
-            {/* Media Gallery Showcase (Cinema 16:9 Stage + Clean Horizontal Filmstrip Beneath) */}
+            {/* Media Gallery Showcase (Big Left Player + Exactly Aligned Right Thumbnails) */}
             {mediaItems.length > 0 && (
               <div className="w-full px-6 md:px-10 xl:px-14 py-4">
                 <div className="flex items-center justify-between mb-3">
@@ -694,86 +701,95 @@ export function GameDetailModal() {
                   <span className="text-xs text-white/30">{t('clickToExpand')}</span>
                 </div>
 
-                {/* Cinema 16:9 Viewport (Centered, Never Stretched) */}
-                <div 
-                  onClick={() => setLightboxIndex(selectedMediaIdx)}
-                  className="w-full aspect-video max-h-[580px] rounded-2xl overflow-hidden border border-white/[0.08] bg-black relative group cursor-pointer shadow-2xl flex items-center justify-center mb-3"
-                >
-                  {mediaItems[selectedMediaIdx]?.type === 'video' ? (
-                    <CustomVideoPlayer 
-                      src={mediaItems[selectedMediaIdx].url} 
-                      poster={mediaItems[selectedMediaIdx].thumb}
-                    />
-                  ) : (
-                    <img 
-                      src={mediaItems[selectedMediaIdx]?.url} 
-                      alt="Featured screenshot"
-                      className="w-full h-full object-contain bg-black"
-                    />
-                  )}
-                  <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white/80 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {t('clickToExpand')}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+                  
+                  {/* Left (Col 8/9): 16:9 Cinema Viewport */}
+                  <div 
+                    onClick={() => setLightboxIndex(selectedMediaIdx)}
+                    className="lg:col-span-8 xl:col-span-9 aspect-video w-full rounded-2xl overflow-hidden border border-white/[0.08] bg-black relative group cursor-pointer shadow-2xl flex items-center justify-center"
+                  >
+                    {mediaItems[selectedMediaIdx]?.type === 'video' ? (
+                      <CustomVideoPlayer 
+                        src={mediaItems[selectedMediaIdx].url} 
+                        poster={mediaItems[selectedMediaIdx].thumb}
+                      />
+                    ) : (
+                      <img 
+                        src={mediaItems[selectedMediaIdx]?.url} 
+                        alt="Featured screenshot"
+                        className="w-full h-full object-contain bg-black"
+                      />
+                    )}
+                    <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white/80 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {t('clickToExpand')}
+                    </div>
                   </div>
-                </div>
 
-                {/* Horizontal Filmstrip Carousel Directly Beneath */}
-                <div className="flex gap-3 overflow-x-auto py-1 px-0.5 snap-x hide-scrollbar">
-                  {mediaItems.map((item, idx) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setSelectedMediaIdx(idx)}
-                      className={`relative flex-shrink-0 w-36 md:w-48 aspect-video rounded-xl overflow-hidden border transition-all text-left bg-black group snap-start ${
-                        selectedMediaIdx === idx 
-                          ? 'border-white ring-2 ring-white/30 scale-[1.02]' 
-                          : 'border-white/[0.06] opacity-50 hover:opacity-100'
-                      }`}
-                    >
-                      <img src={item.thumb} alt={`Media ${idx}`} className="w-full h-full object-cover" />
-                      {item.type === 'video' && (
-                        <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
-                          <div className="w-7 h-7 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white">
-                            <Play size={10} className="fill-white ml-0.5" />
-                          </div>
-                        </div>
-                      )}
-                      {item.name && (
-                        <span className="absolute bottom-1 left-1.5 right-1.5 text-[9px] font-bold text-white truncate drop-shadow">
-                          {item.name}
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                  {/* Right (Col 4/3): Thumbnails List (Bounded to exact height of left video, never overflows) */}
+                  <div className="lg:col-span-4 xl:col-span-3 relative min-h-[160px]">
+                    <div className="lg:absolute lg:inset-0 overflow-x-auto lg:overflow-y-auto flex lg:flex-col gap-2.5 pr-1 hide-scrollbar">
+                      {mediaItems.map((item, idx) => (
+                        <button
+                          key={item.id}
+                          onClick={() => setSelectedMediaIdx(idx)}
+                          className={`relative flex-shrink-0 w-36 lg:w-full aspect-video rounded-xl overflow-hidden border transition-all text-left bg-black group ${
+                            selectedMediaIdx === idx 
+                              ? 'border-white ring-2 ring-white/30 scale-[0.99]' 
+                              : 'border-white/[0.06] opacity-50 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={item.thumb} alt={`Media ${idx}`} className="w-full h-full object-cover" />
+                          {item.type === 'video' && (
+                            <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+                              <div className="w-7 h-7 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white">
+                                <Play size={10} className="fill-white ml-0.5" />
+                              </div>
+                            </div>
+                          )}
+                          {item.name && (
+                            <span className="absolute bottom-1 left-1.5 right-1.5 text-[9px] font-bold text-white truncate drop-shadow">
+                              {item.name}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                 </div>
               </div>
             )}
 
-            {/* Symmetrical & Balanced Content Layout */}
-            <div className="w-full px-6 md:px-10 xl:px-14 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Symmetrical Two-Column Layout (Matching Top Line on Left & Right) */}
+            <div className="w-full px-6 md:px-10 xl:px-14 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               
-              {/* Left Column (Span 8): Genres, About the Game, Achievements */}
+              {/* Left Column (Span 8): About The Game with integrated Genres */}
               <div className="lg:col-span-8 flex flex-col gap-6">
                 
-                {/* Genres & Tags */}
-                {game?.genres && game.genres.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {game.genres.map(g => (
-                      <span 
-                        key={g.id}
-                        className="px-3 py-1 rounded-lg bg-white/[0.03] border border-white/[0.06] text-white/70 text-xs font-semibold hover:border-white/20 transition-colors"
-                      >
-                        {g.description}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* About this game */}
+                {/* About this game Box */}
                 {game?.aboutTheGame && (
                   <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-6 backdrop-blur-sm">
-                    <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                      <Sparkles size={16} className="text-white/50" />
-                      <span>{t('aboutThisGame')}</span>
-                    </h3>
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-white/[0.05]">
+                      <h3 className="text-base font-bold text-white flex items-center gap-2">
+                        <Sparkles size={16} className="text-white/50" />
+                        <span>{t('aboutThisGame')}</span>
+                      </h3>
+
+                      {/* Genre Tags embedded on the top right of the About Card for clean plane alignment */}
+                      {game?.genres && game.genres.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {game.genres.map(g => (
+                            <span 
+                              key={g.id}
+                              className="px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-white/70 text-xs font-semibold hover:border-white/20 transition-colors"
+                            >
+                              {g.description}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                     <div 
                       className="text-white/70 text-sm leading-relaxed prose prose-invert max-w-none prose-p:my-2 prose-headings:text-white prose-a:text-blue-400"
                       dangerouslySetInnerHTML={{ __html: game.aboutTheGame }}
@@ -781,25 +797,30 @@ export function GameDetailModal() {
                   </div>
                 )}
 
-                {/* Achievements Showcase (Positioned cleanly under About in Left Column) */}
+              </div>
+
+              {/* Right Sidebar (Span 4): Achievements FIRST, then System Requirements, Game Info, Languages */}
+              <div className="lg:col-span-4 flex flex-col gap-6">
+                
+                {/* 1. Achievements Card (Placed at the top of Right Column as requested) */}
                 {game?.achievements && (
-                  <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-6 backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold text-white text-base flex items-center gap-2">
-                        <CheckCircle2 size={16} className="text-blue-400" />
+                  <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-5 backdrop-blur-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
+                        <Trophy size={14} className="text-amber-400" />
                         <span>{t('achievements')}</span>
-                      </h3>
+                      </h4>
                       <span className="text-xs font-mono font-bold text-white/50">
                         0 / {game.achievements.total}
                       </span>
                     </div>
 
-                    <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden mb-5 border border-white/[0.05]">
-                      <div className="h-full bg-blue-500 w-0" />
+                    <div className="w-full h-1 bg-black/40 rounded-full overflow-hidden mb-3.5 border border-white/[0.05]">
+                      <div className="h-full bg-amber-400/80 w-0" />
                     </div>
 
-                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2.5">
-                      {game.achievements.list.slice(0, 16).map((ach, idx) => (
+                    <div className="grid grid-cols-5 gap-2">
+                      {game.achievements.list.slice(0, 10).map((ach, idx) => (
                         <div 
                           key={idx} 
                           title={ach.name}
@@ -812,12 +833,7 @@ export function GameDetailModal() {
                   </div>
                 )}
 
-              </div>
-
-              {/* Right Sidebar (Span 4): System Requirements, Game Information, Languages */}
-              <div className="lg:col-span-4 flex flex-col gap-6">
-                
-                {/* System Requirements Card (Single active tab) */}
+                {/* 2. System Requirements Card (Directly beneath Achievements) */}
                 {game?.pcRequirements && (game.pcRequirements.minimum || game.pcRequirements.recommended) && (
                   <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-5 backdrop-blur-sm">
                     <div className="flex items-center justify-between mb-4">
@@ -868,9 +884,9 @@ export function GameDetailModal() {
                   </div>
                 )}
 
-                {/* Game Information & Steam Details */}
+                {/* 3. Game Information & Steam Details */}
                 <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-5 backdrop-blur-sm space-y-3 text-xs">
-                  <h4 className="font-bold text-white/80 uppercase tracking-wider text-[11px]">Game Information</h4>
+                  <h4 className="font-bold text-white/80 uppercase tracking-wider text-[11px]">{t('gameInformation')}</h4>
                   
                   {steamId && (
                     <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
@@ -895,7 +911,7 @@ export function GameDetailModal() {
 
                   {steamDBSummary?.owners && (
                     <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
-                      <span className="text-white/40">Est. Owners</span>
+                      <span className="text-white/40">{t('estOwners')}</span>
                       <span className="text-white/90 font-medium">{steamDBSummary.owners}</span>
                     </div>
                   )}
@@ -908,7 +924,7 @@ export function GameDetailModal() {
                   )}
                 </div>
 
-                {/* Supported Languages */}
+                {/* 4. Supported Languages */}
                 {game?.supportedLanguages && (
                   <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-5 backdrop-blur-sm text-xs">
                     <h4 className="font-bold text-white/80 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1.5">

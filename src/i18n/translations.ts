@@ -156,6 +156,8 @@ export const translations = {
     clickToExpand: 'Click to expand fullscreen',
     close: 'Close',
     storePage: 'Store Page',
+    gameInformation: 'Game Information',
+    estOwners: 'Est. Owners',
 
     // DownloadOptionsModal & Download Engine
     chooseRepack: 'versions available',
@@ -409,6 +411,8 @@ export const translations = {
     clickToExpand: 'Klicken für Vollbild',
     close: 'Schließen',
     storePage: 'Shop-Seite',
+    gameInformation: 'Spiel-Informationen',
+    estOwners: 'Geschätzte Besitzer',
 
     // DownloadOptionsModal & Download Engine
     chooseRepack: 'Versionen verfügbar',
