@@ -21,31 +21,23 @@ interface GitHubRelease {
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
   {
-    id: 1141,
-    tag_name: 'v1.1.4.1',
-    name: 'v1.1.4.1 - Standalone Desktop Friends Window & IPC Hotfix',
-    published_at: '2026-08-15T21:00:00Z',
-    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.1.4.1',
+    id: 115,
+    tag_name: 'v1.1.5',
+    name: 'v1.1.5 - Standalone Friends Window, Live Pricing & Reworked Details',
+    published_at: '2026-08-15T21:20:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.1.5',
     body: `### 🪟 Echtes externes Freunde-Fenster
-* **Multi-Monitor Desktop Window:** Das Freunde-Fenster ist wieder ein vollkommen unabhängiges, rahmenloses Desktop-Fenster, das frei über mehrere Monitoren verschoben werden kann.
-* **Add-Friend & Profil-Klicks:** „+ Add“-Button und Klicks auf Freundeskarten funktionieren jetzt nahtlos zwischen Desktop-Fenster und Launcher.
-* **IPC Stabilitäts-Fix:** Behebt doppelten IPC-Handler-Fehler beim App-Start.`,
-    prerelease: false
-  },
-  {
-    id: 114,
-    tag_name: 'v1.1.4',
-    name: 'v1.1.4 - Live Pricing, All-Time Low & Frosted UI Update',
-    published_at: '2026-08-15T18:00:00Z',
-    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.1.4',
-    body: `### 🏷️ Echte Live-Preise, Deals & All-Time Low
-* **Live Steam Pricing & Deals:** Anzeige des aktuellen Preises direkt von Steam. Spiele im Angebot erhalten ein markantes Rabatt-Badge (z. B. -50%), durchgestrichene UVP und den Angebotspreis.
-* **Originaler SteamDB All-Time Low:** Ermittelt den exakten historischen Tiefstpreis des Spiels inklusive realem Bestpreis-Rabatt.
-* **1-Click Währungs-Umschalter (€ / $):** Umschalten zwischen Euro (€) und US-Dollar ($) mit automatischer Speicherung der Präferenz.
+* **Multi-Monitor Desktop Window:** Das Freunde-Fenster ist ein vollkommen unabhängiges, rahmenloses Desktop-Fenster, das frei über mehrere Monitore verschoben werden kann.
+* **Add-Friend & Profil-Klicks:** „+ Add“-Button und Klicks auf Freundeskarten funktionieren nahtlos zwischen Desktop-Fenster und Hauptfenster.
 
-### 🎨 Frosted-Glass & UI-Polish
-* **Library Frosted-Glass Header:** Fixierter Header in der Bibliothek mit weichem Glas-Unschärfeeffekt, unter dem Spielecover flüssig hindurchgleiten.
-* **Tiefschwarze Suchleisten:** Sattes Tiefschwarz ohne Farbstiche für Suchfelder im gesamten Launcher.
+### 🏷️ Echte Live-Preise, Deals & All-Time Low
+* **Live Steam Pricing & Deals:** Anzeige des aktuellen Preises direkt von Steam mit Sale-Badges (z. B. -50%), durchgestrichener UVP und Angebotspreisen.
+* **Originaler SteamDB All-Time Low:** Exakter historischer Tiefstpreis des Spiels inklusive realem Bestpreis-Rabatt.
+* **1-Click Währungs-Umschalter (€ / $):** Sofortiges Wechseln zwischen Euro und Dollar.
+
+### 🎨 Frosted-Glass, Dark Mode & UI-Polish
+* **Library Frosted-Glass Header:** Fixierter Bibliotheks-Header mit weichem Glas-Unschärfeeffekt beim Scrollen.
+* **Tiefschwarze OLED-Suchleisten:** Sattes Tiefschwarz ohne Farbstiche im gesamten Launcher.
 * **Monochrome View-Icons:** Cleane weiße Raster- und Listenansicht-Schalter.`,
     prerelease: false
   },
@@ -234,10 +226,10 @@ export function EclipseInfoView() {
   const [releases, setReleases] = useState<GitHubRelease[]>(FALLBACK_RELEASES)
   const [isLoading, setIsLoading] = useState(false)
   const [expandedReleases, setExpandedReleases] = useState<Record<string, boolean>>({
-    'v1.1.4.1': true,
+    'v1.1.5': true,
   })
 
-  const currentVersion = 'v1.1.4.1'
+  const currentVersion = 'v1.1.5'
 
   // Fetch live releases from GitHub
   useEffect(() => {
