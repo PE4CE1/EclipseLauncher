@@ -335,57 +335,7 @@ export function GameDetailModal() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {/* Top Bar Navigation */}
-          <div className="h-14 bg-[#0b0c10]/95 backdrop-blur-xl border-b border-white/[0.06] px-6 md:px-10 flex items-center justify-between z-50 flex-shrink-0">
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => setIsGameModalOpen(false)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.06] transition-all text-xs font-medium"
-              >
-                <X size={14} />
-                <span>{t('close')}</span>
-                <kbd className="px-1.5 py-0.5 text-[9px] bg-black/40 text-white/40 rounded border border-white/10 font-mono">ESC</kbd>
-              </button>
-
-              <div className="h-4 w-[1px] bg-white/10" />
-
-              <div className="flex items-center gap-2 text-xs text-white/40">
-                <span>Games</span>
-                <span>/</span>
-                <span className="text-white/90 font-medium truncate max-w-[280px]">{game?.name}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {steamId && (
-                <>
-                  <a 
-                    href={`https://steamdb.info/app/${steamId}/`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#111317] hover:bg-[#181b20] text-white/70 hover:text-white border border-white/[0.08] text-xs font-semibold transition-all group"
-                  >
-                    <span className="text-blue-400 font-black">DB</span>
-                    <span>SteamDB</span>
-                    <ExternalLink size={11} className="text-white/30 group-hover:text-white/70" />
-                  </a>
-
-                  <a 
-                    href={`https://store.steampowered.com/app/${steamId}/`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1b2838]/60 hover:bg-[#1b2838] text-[#66c0f4] border border-[#66c0f4]/20 text-xs font-semibold transition-all group"
-                  >
-                    <img src={steamLogoImg} alt="Steam" className="w-3.5 h-3.5 object-contain" />
-                    <span>{t('storePage')}</span>
-                    <ExternalLink size={11} className="text-[#66c0f4]/50 group-hover:text-[#66c0f4]" />
-                  </a>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Main Full-Width Scrollable Canvas */}
+          {/* Main Full-Width Scrollable Canvas (Top Bar removed as requested) */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
             
             {/* Cinematic Hero Backdrop */}
@@ -690,7 +640,7 @@ export function GameDetailModal() {
               </div>
             </div>
 
-            {/* Media Gallery Showcase (Big Left Player + Exactly Aligned Right Thumbnails) */}
+            {/* Media Gallery Showcase (Big Left Player + Ambient Blur Background + Aligned Thumbnails) */}
             {mediaItems.length > 0 && (
               <div className="w-full px-6 md:px-10 xl:px-14 py-4">
                 <div className="flex items-center justify-between mb-3">
@@ -703,24 +653,37 @@ export function GameDetailModal() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
                   
-                  {/* Left (Col 8/9): 16:9 Cinema Viewport */}
+                  {/* Left (Col 8/9): 16:9 Cinema Viewport with Ambient Glow Blur */}
                   <div 
                     onClick={() => setLightboxIndex(selectedMediaIdx)}
                     className="lg:col-span-8 xl:col-span-9 aspect-video w-full rounded-2xl overflow-hidden border border-white/[0.08] bg-black relative group cursor-pointer shadow-2xl flex items-center justify-center"
                   >
-                    {mediaItems[selectedMediaIdx]?.type === 'video' ? (
-                      <CustomVideoPlayer 
-                        src={mediaItems[selectedMediaIdx].url} 
-                        poster={mediaItems[selectedMediaIdx].thumb}
-                      />
-                    ) : (
-                      <img 
-                        src={mediaItems[selectedMediaIdx]?.url} 
-                        alt="Featured screenshot"
-                        className="w-full h-full object-contain bg-black"
+                    {/* Ambient Glow Blur Backdrop of current media */}
+                    {mediaItems[selectedMediaIdx] && (
+                      <div 
+                        className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-35 scale-125 pointer-events-none transform-gpu"
+                        style={{ backgroundImage: `url(${mediaItems[selectedMediaIdx].thumb})` }}
                       />
                     )}
-                    <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white/80 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+
+                    {/* Foreground Video or Image */}
+                    <div className="relative z-10 w-full h-full flex items-center justify-center">
+                      {mediaItems[selectedMediaIdx]?.type === 'video' ? (
+                        <CustomVideoPlayer 
+                          src={mediaItems[selectedMediaIdx].url} 
+                          poster={mediaItems[selectedMediaIdx].thumb}
+                        />
+                      ) : (
+                        <img 
+                          src={mediaItems[selectedMediaIdx]?.url} 
+                          alt="Featured screenshot"
+                          className="w-full h-full object-contain"
+                        />
+                      )}
+                    </div>
+
+                    <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white/80 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                       {t('clickToExpand')}
                     </div>
                   </div>
@@ -884,9 +847,39 @@ export function GameDetailModal() {
                   </div>
                 )}
 
-                {/* 3. Game Information & Steam Details */}
+                {/* 3. Game Information & Steam Details (With integrated SteamDB & Store Page buttons) */}
                 <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-5 backdrop-blur-sm space-y-3 text-xs">
-                  <h4 className="font-bold text-white/80 uppercase tracking-wider text-[11px]">{t('gameInformation')}</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-white/80 uppercase tracking-wider text-[11px]">{t('gameInformation')}</h4>
+                    
+                    {steamId && (
+                      <div className="flex items-center gap-1.5">
+                        <a 
+                          href={`https://steamdb.info/app/${steamId}/`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.08] text-[10px] font-bold transition-all flex items-center gap-1"
+                          title="View on SteamDB"
+                        >
+                          <span className="text-blue-400 font-black">DB</span>
+                          <span>SteamDB</span>
+                          <ExternalLink size={10} className="text-white/40" />
+                        </a>
+
+                        <a 
+                          href={`https://store.steampowered.com/app/${steamId}/`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2 py-1 rounded-md bg-[#1b2838]/80 hover:bg-[#1b2838] text-[#66c0f4] border border-[#66c0f4]/30 text-[10px] font-bold transition-all flex items-center gap-1"
+                          title="View on Steam Store"
+                        >
+                          <img src={steamLogoImg} alt="Steam" className="w-3 h-3 object-contain" />
+                          <span>{t('storePage')}</span>
+                          <ExternalLink size={10} className="text-[#66c0f4]/60" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
                   
                   {steamId && (
                     <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
@@ -952,7 +945,7 @@ export function GameDetailModal() {
             onDownload={handleDownload}
           />
 
-          {/* Fullscreen Lightbox Overlay */}
+          {/* Fullscreen Lightbox Overlay with Ambient Glow Blur Background */}
           <AnimatePresence>
             {lightboxIndex !== null && (
               <motion.div 
@@ -960,9 +953,18 @@ export function GameDetailModal() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="fixed inset-0 z-[100] bg-[#050608]/98 flex flex-col items-center justify-center p-6 select-none"
+                className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-3xl flex flex-col items-center justify-center p-6 select-none overflow-hidden"
                 onClick={() => setLightboxIndex(null)}
               >
+                {/* Ambient Blurred Background of current media in Lightbox */}
+                {mediaItems[lightboxIndex] && (
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-35 scale-125 pointer-events-none transform-gpu"
+                    style={{ backgroundImage: `url(${mediaItems[lightboxIndex].thumb})` }}
+                  />
+                )}
+                <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+
                 {/* Top-Right "X" Close Button */}
                 <button 
                   onClick={() => setLightboxIndex(null)}
@@ -972,18 +974,20 @@ export function GameDetailModal() {
                   <X size={22} />
                 </button>
 
-                <div className="relative flex-1 w-full max-w-7xl flex items-center justify-center min-h-0 pb-20">
+                <div className="relative z-10 flex-1 w-full max-w-7xl flex items-center justify-center min-h-0 pb-20">
                   {mediaItems[lightboxIndex]?.type === 'video' ? (
-                    <CustomVideoPlayer 
-                      src={mediaItems[lightboxIndex].url}
-                      poster={mediaItems[lightboxIndex].thumb}
-                    />
+                    <div className="w-full max-w-6xl aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black border border-white/15" onClick={e => e.stopPropagation()}>
+                      <CustomVideoPlayer 
+                        src={mediaItems[lightboxIndex].url}
+                        poster={mediaItems[lightboxIndex].thumb}
+                      />
+                    </div>
                   ) : (
                     <img 
                       key={mediaItems[lightboxIndex]?.url}
                       src={mediaItems[lightboxIndex]?.url} 
                       alt="Fullscreen view" 
-                      className="max-w-full max-h-full rounded-xl shadow-2xl object-contain"
+                      className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain bg-black/80 border border-white/15"
                       onClick={(e) => e.stopPropagation()}
                     />
                   )}
@@ -992,15 +996,15 @@ export function GameDetailModal() {
                     <>
                       <button 
                         onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex - 1 + mediaItems.length) % mediaItems.length) }}
-                        className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                        className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/70 hover:bg-white/20 text-white flex items-center justify-center transition-all border border-white/20 shadow-2xl"
                       >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
                       </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex + 1) % mediaItems.length) }}
-                        className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                        className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/70 hover:bg-white/20 text-white flex items-center justify-center transition-all border border-white/20 shadow-2xl"
                       >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
                       </button>
                     </>
                   )}
@@ -1008,7 +1012,7 @@ export function GameDetailModal() {
 
                 {/* Thumbnail Strip in Lightbox */}
                 {mediaItems.length > 1 && (
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-full px-6">
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-full px-6 z-20">
                     <div className="flex items-center gap-2 overflow-x-auto py-2 px-2 snap-x hide-scrollbar" onClick={(e) => e.stopPropagation()}>
                       {mediaItems.map((item, idx) => (
                         <button
@@ -1016,8 +1020,8 @@ export function GameDetailModal() {
                           onClick={() => setLightboxIndex(idx)}
                           className={`relative flex-shrink-0 w-24 aspect-video rounded-lg overflow-hidden snap-center transition-all bg-black ${
                             idx === lightboxIndex 
-                              ? 'ring-2 ring-white scale-105 shadow-lg' 
-                              : 'opacity-40 hover:opacity-100'
+                              ? 'border-2 border-white scale-105 shadow-xl' 
+                              : 'border border-white/10 opacity-40 hover:opacity-100'
                           }`}
                         >
                           <img src={item.thumb} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
