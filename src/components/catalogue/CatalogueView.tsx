@@ -401,37 +401,37 @@ export function CatalogueView() {
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative custom-scrollbar bg-transparent">
         
         {/* Search header */}
-        <div className="sticky top-0 z-10 bg-[#040405]/98 border-b border-white/5 px-6 py-4">
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-2xl">
-            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-hub-muted" />
-            <input
-              id="catalogue-search"
-              type="text"
-              value={localQuery}
-              onChange={e => { setLocalQuery(e.target.value); setSearchQuery(e.target.value) }}
-              placeholder="Search the entire Steam catalogue…"
-              className="w-full bg-hub-elevated/50 border border-white/10 rounded-full pl-10 pr-10 py-2 text-sm h-10 text-white placeholder-hub-muted/70 focus:outline-none focus:border-white/20 focus:bg-hub-elevated transition-all"
-              autoComplete="off"
-            />
-            {localQuery && localQuery === debouncedQuery && (
-              <button
-                onClick={() => { setLocalQuery(''); setSearchQuery('') }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-hub-muted hover:text-white transition-colors"
-              >
-                <X size={14} />
-              </button>
-            )}
-            {localQuery !== debouncedQuery && (
-              <Loader2 size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-400 animate-spin" />
-            )}
-          </div>
+        <div className="sticky top-0 z-20 bg-[#07080a]/90 backdrop-blur-xl border-b border-white/[0.08] px-6 py-4 shadow-lg">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-2xl">
+              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-hub-muted" />
+              <input
+                id="catalogue-search"
+                type="text"
+                value={localQuery}
+                onChange={e => { setLocalQuery(e.target.value); setSearchQuery(e.target.value) }}
+                placeholder="Search the entire Steam catalogue…"
+                className="w-full bg-[#10131c] border border-white/15 rounded-full pl-10 pr-10 py-2 text-sm h-10 text-white placeholder-hub-muted/70 focus:outline-none focus:border-white/30 focus:bg-[#141824] transition-all shadow-inner"
+                autoComplete="off"
+              />
+              {localQuery && localQuery === debouncedQuery && (
+                <button
+                  onClick={() => { setLocalQuery(''); setSearchQuery('') }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-hub-muted hover:text-white transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
+              {localQuery !== debouncedQuery && (
+                <Loader2 size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-400 animate-spin" />
+              )}
+            </div>
 
-          <div className="text-sm text-hub-muted">
-            {filteredDB.length.toLocaleString()} games found
+            <div className="text-sm text-hub-muted">
+              {filteredDB.length.toLocaleString()} games found
+            </div>
           </div>
         </div>
-      </div>
 
       {/* Grid */}
       <div className="p-6">
