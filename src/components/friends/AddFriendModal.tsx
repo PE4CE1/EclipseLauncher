@@ -5,6 +5,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { useUIStore } from '../../store/uiStore';
 import { useGameStore } from '../../store/gameStore';
 import { fetchSteamUserProfile } from '../../services/steamService';
+import { addFriendByCode, generateEclipseFriendCode, syncMyProfile } from '../../services/firebaseService';
 import type { EclipseFriend } from '../../types/game';
 
 export const AddFriendModal: React.FC = () => {
@@ -16,11 +17,14 @@ export const AddFriendModal: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Generate friend code if it doesn't exist
+  // Generate friend code if it doesn't exist and sync to Firebase
   useEffect(() => {
-    if (isAddFriendOpen && !settings.friendCode) {
-      const newCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-      updateSettings({ friendCode: newCode });
+    if (isAddFriendOpen) {
+      if (!settings.friendCode) {
+        const newCode = generateEclipseFriendCode();
+        updateSettings({ friendCode: newCode });
+      }
+      syncMyProfile();
     }
   }, [isAddFriendOpen, settings.friendCode, updateSettings]);
 
@@ -38,10 +42,20 @@ export const AddFriendModal: React.FC = () => {
     setLoading(true);
 
     try {
+      // 1. Try Firebase Cloud live friendship first
+      const fbResult = await addFriendByCode(friendCodeInput);
+      if (fbResult.success) {
+        setFriendCodeInput('');
+        setIsAddFriendOpen(false);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fallback to Steam Web Profile lookup
       const profile = await fetchSteamUserProfile(friendCodeInput);
       
       if (!profile || !profile.steamId64) {
-        setError('Friend not found. Invalid code or Steam profile.');
+        setError(fbResult.error || 'Friend not found. Invalid code or Steam profile.');
         setLoading(false);
         return;
       }
@@ -74,8 +88,8 @@ export const AddFriendModal: React.FC = () => {
 
       setFriendCodeInput('');
       setIsAddFriendOpen(false);
-    } catch (err) {
-      setError('An error occurred.');
+    } catch (err: any) {
+      setError(err?.message || 'An error occurred.');
     } finally {
       setLoading(false);
     }

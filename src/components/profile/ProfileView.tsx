@@ -4,6 +4,7 @@ import { User, Library, Clock, Save, Edit3, Settings, Trophy, Gamepad2, Award } 
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
 import { useTranslation } from '../../hooks/useTranslation'
+import { syncMyProfile } from '../../services/firebaseService'
 
 export function ProfileView() {
   const { library, installedGames, settings, updateSettings, activeGame } = useGameStore()
@@ -76,11 +77,13 @@ export function ProfileView() {
       window.electronAPI.setSettings({ username: editName, avatarUrl: editAvatar }).then(res => {
         if (res.success) {
           updateSettings({ username: editName, avatarUrl: editAvatar })
+          syncMyProfile()
           setIsEditing(false)
         }
       })
     } else {
       updateSettings({ username: editName, avatarUrl: editAvatar })
+      syncMyProfile()
       setIsEditing(false)
     }
   }

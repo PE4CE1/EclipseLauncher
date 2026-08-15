@@ -4,6 +4,7 @@ import { X, Search, Plus, ChevronRight, ChevronDown, User, MoreVertical, Trash2 
 import { useTranslation } from '../../hooks/useTranslation';
 import { useUIStore } from '../../store/uiStore';
 import { useGameStore } from '../../store/gameStore';
+import { removeFirebaseFriend } from '../../services/firebaseService';
 
 interface FriendsWindowProps {
   isStandalone?: boolean;
@@ -20,7 +21,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
   useEffect(() => {
     if (isFriendsOpen) {
       setIsLoading(true);
-      const timer = setTimeout(() => setIsLoading(false), 800);
+      const timer = setTimeout(() => setIsLoading(false), 400);
       return () => clearTimeout(timer);
     }
   }, [isFriendsOpen]);
@@ -33,9 +34,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
     if (!friend) return;
     
     setRemovedFriend(friend);
-    updateSettings({
-      eclipseFriends: settings.eclipseFriends?.filter(f => f.id !== friendId)
-    });
+    removeFirebaseFriend(friendId);
 
     if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
     undoTimeoutRef.current = setTimeout(() => {
@@ -300,7 +299,9 @@ const FriendCard = ({ friend, onClick, onRemove, t }: { friend: any, onClick: ()
   }, [showMenu]);
 
   const getStatusText = () => {
-    if (friend.status === 'ingame') return 'In-Game';
+    if (friend.status === 'ingame') {
+      return friend.currentGame ? `Playing ${friend.currentGame}` : 'In-Game';
+    }
     if (friend.status === 'online') return t('online');
     return t('offline');
   };

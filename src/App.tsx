@@ -22,6 +22,7 @@ import { useGameStore } from './store/gameStore'
 import { useDownloadStore } from './store/downloadStore'
 import { useScanner } from './hooks/useScanner'
 import { sendAppNotification } from './services/notificationService'
+import { initFirebaseSocial, updateFirebasePresence } from './services/firebaseService'
 
 const pageVariants = {
   initial: { opacity: 0, y: 6, filter: 'blur(3px)' },
@@ -107,6 +108,11 @@ export default function App() {
     if (currentSettings.autoScan !== false) {
       scan().catch((e) => console.warn('[App] Background scan error:', e))
     }
+  }, [])
+
+  // Initialize Firebase Real-Time Social Sync
+  useEffect(() => {
+    initFirebaseSocial()
   }, [])
 
   // Listen to standalone Friends Window events
@@ -250,6 +256,15 @@ export default function App() {
       }
     }
   }, [activeGame, downloads, discordRpcEnabled, discordRpcIdleEnabled, discordRpcShowDownloads, discordRpcPrivacyMode])
+
+  // Live Cloud Presence (Online / In-Game / Game Name)
+  useEffect(() => {
+    if (activeGame) {
+      updateFirebasePresence('ingame', activeGame.name)
+    } else {
+      updateFirebasePresence('online', null)
+    }
+  }, [activeGame])
 
   return (
     <div className="flex flex-col h-screen bg-hub-base select-none overflow-hidden relative">

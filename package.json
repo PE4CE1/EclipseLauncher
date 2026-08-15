@@ -16,6 +16,7 @@
     "discord-rpc": "^4.0.1",
     "electron-squirrel-startup": "^1.0.1",
     "electron-updater": "^6.8.9",
+    "firebase": "^12.17.1",
     "framer-motion": "^11.3.8",
     "lucide-react": "^0.412.0",
     "react": "^18.3.1",
