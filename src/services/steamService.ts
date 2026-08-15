@@ -459,9 +459,42 @@ export interface SteamDBSummary {
   tags: Record<string, number>
 }
 
-export async function getSteamReviewSummary(appId: number): Promise<SteamReviewSummary | null> {
+export const REVIEW_SCORE_TRANSLATIONS: Record<string, { en: string; de: string }> = {
+  'overwhelmingly positive': { en: 'Overwhelmingly Positive', de: 'Äußerst positiv' },
+  'very positive': { en: 'Very Positive', de: 'Sehr positiv' },
+  'positive': { en: 'Positive', de: 'Positiv' },
+  'mostly positive': { en: 'Mostly Positive', de: 'Größtenteils positiv' },
+  'mixed': { en: 'Mixed', de: 'Ausgeglichen' },
+  'mostly negative': { en: 'Mostly Negative', de: 'Größtenteils negativ' },
+  'negative': { en: 'Negative', de: 'Negativ' },
+  'very negative': { en: 'Very Negative', de: 'Sehr negativ' },
+  'overwhelmingly negative': { en: 'Overwhelmingly Negative', de: 'Äußerst negativ' },
+  'äußerst positiv': { en: 'Overwhelmingly Positive', de: 'Äußerst positiv' },
+  'sehr positiv': { en: 'Very Positive', de: 'Sehr positiv' },
+  'größtenteils positiv': { en: 'Mostly Positive', de: 'Größtenteils positiv' },
+  'ausgeglichen': { en: 'Mixed', de: 'Ausgeglichen' },
+  'größtenteils negativ': { en: 'Mostly Negative', de: 'Größtenteils negativ' },
+  'sehr negativ': { en: 'Very Negative', de: 'Sehr negativ' },
+  'äußerst negativ': { en: 'Overwhelmingly Negative', de: 'Äußerst negativ' },
+}
+
+export function formatReviewScoreDesc(rawDesc: string | undefined, positivePercent: number, lang: 'en' | 'de' = 'en'): string {
+  const norm = rawDesc?.toLowerCase().trim() || ''
+  if (norm && REVIEW_SCORE_TRANSLATIONS[norm]) {
+    return REVIEW_SCORE_TRANSLATIONS[norm][lang]
+  }
+  if (positivePercent >= 95) return lang === 'de' ? 'Äußerst positiv' : 'Overwhelmingly Positive'
+  if (positivePercent >= 80) return lang === 'de' ? 'Sehr positiv' : 'Very Positive'
+  if (positivePercent >= 70) return lang === 'de' ? 'Größtenteils positiv' : 'Mostly Positive'
+  if (positivePercent >= 40) return lang === 'de' ? 'Ausgeglichen' : 'Mixed'
+  if (positivePercent >= 20) return lang === 'de' ? 'Größtenteils negativ' : 'Mostly Negative'
+  return lang === 'de' ? 'Sehr negativ' : 'Very Negative'
+}
+
+export async function getSteamReviewSummary(appId: number, lang = 'english'): Promise<SteamReviewSummary | null> {
   try {
-    const res = await fetch(`https://store.steampowered.com/appreviews/${appId}?json=1&language=all&purchase_type=all&num_per_page=0`)
+    const steamLang = lang === 'de' || lang === 'german' ? 'german' : 'english'
+    const res = await fetch(`https://store.steampowered.com/appreviews/${appId}?json=1&language=all&purchase_type=all&num_per_page=0&l=${steamLang}`)
     if (!res.ok) return null
     const data = await res.json()
     const summary = data?.query_summary
@@ -469,8 +502,9 @@ export async function getSteamReviewSummary(appId: number): Promise<SteamReviewS
       const pos = summary.total_positive || 0
       const total = summary.total_reviews || (pos + (summary.total_negative || 0))
       const pct = total > 0 ? Math.round((pos / total) * 100) : 0
+      const isDe = steamLang === 'german'
       return {
-        reviewScoreDesc: summary.review_score_desc || (pct >= 80 ? 'Very Positive' : pct >= 70 ? 'Mostly Positive' : 'Mixed'),
+        reviewScoreDesc: formatReviewScoreDesc(summary.review_score_desc, pct, isDe ? 'de' : 'en'),
         totalPositive: pos,
         totalNegative: summary.total_negative || 0,
         totalReviews: total,

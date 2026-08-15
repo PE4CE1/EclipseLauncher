@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Check, Plus, AlertTriangle, ChevronDown, Play, X, Loader2, Trash2,
-  Folder, Clock, Users, TrendingUp, Tag, Star, Gamepad2, Monitor,
-  Cpu, HardDrive, Globe, ExternalLink, ShieldCheck, CheckCircle2,
-  Layers, Sparkles, Flame, ThumbsUp, ThumbsDown
+  Check, Plus, Play, X, Loader2, Trash2,
+  Folder, Clock, Users, Tag, Star, Gamepad2, Monitor,
+  Cpu, Globe, ExternalLink, ShieldCheck, CheckCircle2,
+  Layers, Sparkles, Flame
 } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { useGameStore } from '../../store/gameStore'
@@ -35,7 +35,7 @@ export function GameDetailModal() {
   const { launchGame } = useScanner()
 
   const [isDownloadOptionsOpen, setIsDownloadOptionsOpen] = useState(false)
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isKilling, setIsKilling] = useState(false)
   const [playerCount, setPlayerCount] = useState<number | null>(null)
@@ -44,24 +44,32 @@ export function GameDetailModal() {
   const [selectedMediaIdx, setSelectedMediaIdx] = useState(0)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [reqTab, setReqTab] = useState<'minimum' | 'recommended'>('minimum')
+  const [logoFailed, setLogoFailed] = useState(false)
 
   const steamId = selectedGameId && selectedGameId > 0 ? selectedGameId : null
   const { data: detail, isLoading } = useSteamGameDetail(steamId)
 
-  // Fetch SteamDB & Steam Insights
+  // Reset logo failure on game change
+  useEffect(() => {
+    setLogoFailed(false)
+    setSelectedMediaIdx(0)
+    setReqTab('minimum')
+  }, [steamId, selectedGameName])
+
+  // Fetch SteamDB & Steam Insights with active language
   useEffect(() => {
     if (steamId) {
       getLivePlayerCount(steamId as number).then(setPlayerCount)
-      getSteamReviewSummary(steamId as number).then(setReviewsSummary)
+      getSteamReviewSummary(steamId as number, language === 'de' ? 'german' : 'english').then(setReviewsSummary)
       getSteamDBSummary(steamId as number).then(setSteamDBSummary)
     } else {
       setPlayerCount(null)
       setReviewsSummary(null)
       setSteamDBSummary(null)
     }
-  }, [steamId])
+  }, [steamId, language])
 
-  // Map detail to our game structure
+  // Map detail to game structure
   const game = detail ? {
     name: detail.name,
     shortDescription: detail.short_description,
@@ -151,7 +159,6 @@ export function GameDetailModal() {
     )
   )
 
-  // Reset isKilling when game stops
   useEffect(() => {
     if (!isCurrentlyPlaying && isKilling) {
       setIsKilling(false)
@@ -264,37 +271,35 @@ export function GameDetailModal() {
     }
   }
 
-  // Feature detection from categories
+  // Feature detection
   const hasFullController = game?.categories?.some(c => c.id === 28 || c.description.toLowerCase().includes('full controller'))
   const hasPartialController = game?.categories?.some(c => c.id === 18 || c.description.toLowerCase().includes('partial controller'))
   const hasSteamCloud = game?.categories?.some(c => c.id === 23 || c.description.toLowerCase().includes('steam cloud'))
   const hasTradingCards = game?.categories?.some(c => c.id === 29 || c.description.toLowerCase().includes('trading cards'))
   const hasCoop = game?.categories?.some(c => c.description.toLowerCase().includes('co-op') || c.description.toLowerCase().includes('multi-player'))
 
-  // Calculate pricing & historical low estimates
-  const currentPriceFormatted = game?.isFree ? 'Free to Play' : (game?.priceOverview?.final_formatted || (game?.priceOverview?.final ? `${(game.priceOverview.final / 100).toFixed(2)} ${game.priceOverview.currency}` : 'Free / Unpriced'))
+  // Pricing calculations
+  const currentPriceFormatted = game?.isFree ? t('freeToPlay') : (game?.priceOverview?.final_formatted || (game?.priceOverview?.final ? `${(game.priceOverview.final / 100).toFixed(2)} ${game.priceOverview.currency}` : t('freeToPlay')))
   const hasDiscount = !!(game?.priceOverview?.discount_percent && game.priceOverview.discount_percent > 0)
   const discountPercent = game?.priceOverview?.discount_percent || 0
   const initialPriceFormatted = game?.priceOverview?.initial ? `${(game.priceOverview.initial / 100).toFixed(2)} ${game.priceOverview.currency}` : null
 
-  // Estimated All-Time Low calculation (SteamDB style)
+  // Estimated All-Time Low
   const historicalLowFormatted = useMemo(() => {
-    if (game?.isFree) return 'Free to Play'
+    if (game?.isFree) return t('freeToPlay')
     if (!game?.priceOverview?.initial) return null
     const base = game.priceOverview.initial / 100
-    // If currently discounted at 75% or more, that is the all-time low
     if (discountPercent >= 75) return `${(game.priceOverview.final / 100).toFixed(2)} ${game.priceOverview.currency} (-${discountPercent}%)`
-    // Standard historical low estimate for classic sales
     const low = (base * 0.25).toFixed(2)
     return `${low} ${game.priceOverview.currency} (-75%)`
-  }, [game?.isFree, game?.priceOverview, discountPercent])
+  }, [game?.isFree, game?.priceOverview, discountPercent, t])
 
-  // Calculated player peak estimates
+  // Player peak calculations
   const liveCount = playerCount !== null ? playerCount : (steamDBSummary?.ccu || null)
   const peak24h = liveCount ? Math.round(liveCount * 1.32) : null
   const allTimePeak = steamDBSummary?.positive ? Math.round(steamDBSummary.positive * 0.38) : (liveCount ? liveCount * 4 : null)
 
-  const reviewScoreText = reviewsSummary?.reviewScoreDesc || 'Very Positive'
+  const reviewScoreText = reviewsSummary?.reviewScoreDesc || (language === 'de' ? 'Sehr positiv' : 'Very Positive')
   const positivePercent = reviewsSummary?.positivePercent || (steamDBSummary ? Math.round((steamDBSummary.positive / ((steamDBSummary.positive + steamDBSummary.negative) || 1)) * 100) : 92)
   const totalReviewsCount = reviewsSummary?.totalReviews || (steamDBSummary ? steamDBSummary.positive + steamDBSummary.negative : null)
 
@@ -308,25 +313,30 @@ export function GameDetailModal() {
       .trim()
   }
 
+  // Determine which system requirement content to display based on active tab
+  const activeReqHtml = reqTab === 'minimum' 
+    ? (game?.pcRequirements?.minimum || game?.pcRequirements?.recommended)
+    : (game?.pcRequirements?.recommended || game?.pcRequirements?.minimum)
+
   return (
     <AnimatePresence>
       {isGameModalOpen && (steamId || selectedGameName) && (
         <motion.div 
-          className="absolute inset-0 z-40 flex flex-col bg-[#08090b] text-white select-none overflow-hidden"
+          className="absolute inset-0 z-40 flex flex-col bg-[#07080a] text-white select-none overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
           {/* Top Bar Navigation */}
-          <div className="h-14 bg-[#0d0f12]/80 backdrop-blur-xl border-b border-white/[0.07] px-6 flex items-center justify-between z-50 flex-shrink-0">
+          <div className="h-14 bg-[#0c0d10]/90 backdrop-blur-xl border-b border-white/[0.06] px-6 md:px-10 flex items-center justify-between z-50 flex-shrink-0">
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => setIsGameModalOpen(false)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.06] transition-all text-xs font-medium"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.06] transition-all text-xs font-medium"
               >
                 <X size={14} />
-                <span>Close</span>
+                <span>{t('close')}</span>
                 <kbd className="px-1.5 py-0.5 text-[9px] bg-black/40 text-white/40 rounded border border-white/10 font-mono">ESC</kbd>
               </button>
 
@@ -335,7 +345,7 @@ export function GameDetailModal() {
               <div className="flex items-center gap-2 text-xs text-white/40">
                 <span>Games</span>
                 <span>/</span>
-                <span className="text-white/90 font-medium truncate max-w-[260px]">{game?.name}</span>
+                <span className="text-white/90 font-medium truncate max-w-[280px]">{game?.name}</span>
               </div>
             </div>
 
@@ -350,7 +360,7 @@ export function GameDetailModal() {
                   >
                     <span className="text-blue-400 font-black">DB</span>
                     <span>SteamDB</span>
-                    <ExternalLink size={12} className="text-white/30 group-hover:text-white/70" />
+                    <ExternalLink size={11} className="text-white/30 group-hover:text-white/70" />
                   </a>
 
                   <a 
@@ -360,58 +370,58 @@ export function GameDetailModal() {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1b2838]/60 hover:bg-[#1b2838] text-[#66c0f4] border border-[#66c0f4]/20 text-xs font-semibold transition-all group"
                   >
                     <img src={steamLogoImg} alt="Steam" className="w-3.5 h-3.5 object-contain" />
-                    <span>Store Page</span>
-                    <ExternalLink size={12} className="text-[#66c0f4]/50 group-hover:text-[#66c0f4]" />
+                    <span>{t('storePage')}</span>
+                    <ExternalLink size={11} className="text-[#66c0f4]/50 group-hover:text-[#66c0f4]" />
                   </a>
                 </>
               )}
             </div>
           </div>
 
-          {/* Main Scrollable Canvas */}
+          {/* Main Full-Width Scrollable Canvas */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
             
             {/* Cinematic Hero Backdrop */}
-            <div className="relative w-full h-[52vh] min-h-[380px] max-h-[500px] flex-shrink-0 overflow-hidden bg-black">
+            <div className="relative w-full h-[48vh] min-h-[350px] max-h-[460px] flex-shrink-0 overflow-hidden bg-black">
               <SmartImage 
                 appId={steamId ?? undefined} 
                 type="hero" 
                 alt={game?.name ?? 'Cover'} 
-                className="w-full h-full object-cover object-center scale-105 filter brightness-90" 
+                className="w-full h-full object-cover object-center scale-105 filter brightness-[0.85]" 
                 fallbackScreenshotUrl={detail?.screenshots?.[0]?.path_full}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#08090b] via-[#08090b]/60 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#08090b]/90 via-[#08090b]/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#07080a] via-[#07080a]/55 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#07080a]/90 via-[#07080a]/30 to-transparent" />
 
-              {/* Title / Logo floating over Backdrop */}
-              <div className="absolute bottom-6 left-8 md:left-12 right-8 flex flex-col md:flex-row md:items-end justify-between gap-6 z-10">
-                <div className="flex flex-col gap-2 max-w-2xl">
-                  {steamId ? (
+              {/* Title / Logo Area (Shows logo if valid, or text title if no logo, avoiding double title) */}
+              <div className="absolute bottom-6 left-6 md:left-10 xl:left-14 right-6 md:right-10 xl:right-14 flex flex-col md:flex-row md:items-end justify-between gap-6 z-10">
+                <div className="flex flex-col gap-2 max-w-3xl">
+                  {steamId && !logoFailed ? (
                     <img
                       src={getLogoUrl(steamId)}
                       alt={game?.name}
-                      className="max-h-28 max-w-sm object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] filter contrast-105"
-                      onError={e => { e.currentTarget.style.display = 'none' }}
+                      className="max-h-24 max-w-sm object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.8)]"
+                      onError={() => setLogoFailed(true)}
                     />
-                  ) : null}
+                  ) : (
+                    <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-lg">
+                      {game?.name}
+                    </h1>
+                  )}
 
-                  <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-lg">
-                    {game?.name}
-                  </h1>
-
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-white/60">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-white/50 pt-1">
                     {game?.releaseDate && (
                       <span className="flex items-center gap-1.5">
-                        <span className="text-white/40">Release:</span>
-                        <span className="text-white font-medium">{game.releaseDate}</span>
+                        <span className="text-white/30">{t('releasedOn')}:</span>
+                        <span className="text-white/80 font-medium">{game.releaseDate}</span>
                       </span>
                     )}
                     {game?.developers?.[0] && (
                       <>
                         <span className="w-1 h-1 rounded-full bg-white/20" />
                         <span className="flex items-center gap-1.5">
-                          <span className="text-white/40">Dev:</span>
-                          <span className="text-white font-medium">{game.developers[0]}</span>
+                          <span className="text-white/30">{t('developer')}:</span>
+                          <span className="text-white/80 font-medium">{game.developers[0]}</span>
                         </span>
                       </>
                     )}
@@ -419,19 +429,19 @@ export function GameDetailModal() {
                       <>
                         <span className="w-1 h-1 rounded-full bg-white/20" />
                         <span className="flex items-center gap-1.5">
-                          <span className="text-white/40">Publisher:</span>
-                          <span className="text-white font-medium">{game.publishers[0]}</span>
+                          <span className="text-white/30">{t('publisher')}:</span>
+                          <span className="text-white/80 font-medium">{game.publishers[0]}</span>
                         </span>
                       </>
                     )}
                   </div>
                 </div>
 
-                {/* Main Action Bar */}
+                {/* Main Action Buttons Bar */}
                 <div className="flex items-center gap-3 flex-wrap">
                   {/* Playtime Badge */}
-                  <div className="px-3 py-2 rounded-xl bg-white/[0.04] backdrop-blur-md border border-white/[0.08] flex items-center gap-2 text-xs font-semibold text-white/90 shadow-sm">
-                    <Clock size={13} className="text-white/50" />
+                  <div className="px-3.5 py-2 rounded-xl bg-white/[0.04] backdrop-blur-md border border-white/[0.07] flex items-center gap-2 text-xs font-semibold text-white/90 shadow-sm">
+                    <Clock size={13} className="text-white/40" />
                     <span>{playtimeFormatted}</span>
                   </div>
 
@@ -450,13 +460,13 @@ export function GameDetailModal() {
                             }}
                             className="px-4 h-10 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
                           >
-                            <Trash2 size={14} /> Remove
+                            <Trash2 size={14} /> {t('removeCompletely')}
                           </button>
                           <button
                             onClick={() => setShowDeleteConfirm(false)}
                             className="px-3 h-10 hover:bg-white/10 text-white/70 rounded-xl text-xs font-medium transition-all"
                           >
-                            Cancel
+                            {t('cancel')}
                           </button>
                         </div>
                       ) : (
@@ -465,10 +475,10 @@ export function GameDetailModal() {
                             if (installed.installed !== false) setShowDeleteConfirm(true)
                           }}
                           disabled={installed.installed === false}
-                          className="h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.04] hover:bg-red-500/10 hover:border-red-500/30 text-white/50 hover:text-red-400 text-xs font-semibold transition-all flex items-center gap-2 group"
+                          className="h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-red-500/10 hover:border-red-500/30 text-white/50 hover:text-red-400 text-xs font-semibold transition-all flex items-center gap-2 group"
                         >
                           <Check size={14} className="group-hover:hidden text-white/40" />
-                          <span className="group-hover:hidden">In Library</span>
+                          <span className="group-hover:hidden">{t('inLibrary')}</span>
                           <span className="hidden group-hover:inline-flex items-center gap-1.5"><Trash2 size={13} /> Remove</span>
                         </button>
                       )}
@@ -512,7 +522,7 @@ export function GameDetailModal() {
                           ) : isCurrentlyPlaying ? (
                             <>
                               <X size={14} />
-                              <span>Cancel / Stop</span>
+                              <span>{t('cancel')}</span>
                             </>
                           ) : (
                             <>
@@ -521,7 +531,7 @@ export function GameDetailModal() {
                               ) : (
                                 <Play size={13} className="fill-current" />
                               )}
-                              <span>{installed.installed === false ? 'Install' : 'Play Now'}</span>
+                              <span>{installed.installed === false ? 'Install' : t('playNow')}</span>
                             </>
                           )}
                         </button>
@@ -533,19 +543,19 @@ export function GameDetailModal() {
                         onClick={handleLibraryToggle}
                         className={`h-10 px-4 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2 ${
                           isInLibrary
-                            ? 'bg-white/[0.04] border-white/[0.08] text-white/50 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30'
-                            : 'bg-white/[0.04] border-white/[0.12] text-white hover:bg-white/[0.08]'
+                            ? 'bg-white/[0.03] border-white/[0.07] text-white/50 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30'
+                            : 'bg-white/[0.03] border-white/[0.12] text-white hover:bg-white/[0.08]'
                         }`}
                       >
                         {isInLibrary ? (
                           <>
                             <Check size={14} className="text-white/40" />
-                            <span>In Library</span>
+                            <span>{t('inLibrary')}</span>
                           </>
                         ) : (
                           <>
                             <Plus size={14} />
-                            <span>Add to Library</span>
+                            <span>{t('addToLibrary')}</span>
                           </>
                         )}
                       </button>
@@ -560,7 +570,7 @@ export function GameDetailModal() {
                         }`}
                       >
                         <Play size={13} className="fill-current" />
-                        <span>Download Options</span>
+                        <span>{t('viewDownloadOptions')}</span>
                         {availableDownloads.length > 0 && (
                           <span className="ml-1 px-1.5 py-0.5 rounded-full bg-black/10 text-[10px] font-bold">
                             {availableDownloads.length}
@@ -573,42 +583,42 @@ export function GameDetailModal() {
               </div>
             </div>
 
-            {/* SteamDB Insights Bento Grid (4 Sleek Glass Cards) */}
-            <div className="max-w-7xl mx-auto w-full px-8 py-6">
+            {/* SteamDB Insights Bento Grid (Full-Width Responsive Cards) */}
+            <div className="w-full px-6 md:px-10 xl:px-14 py-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
-                {/* 1. Live Players & Peaks */}
-                <div className="p-4 rounded-2xl bg-[#0e1014]/70 border border-white/[0.06] backdrop-blur-md flex flex-col justify-between relative overflow-hidden group hover:border-white/10 transition-colors">
+                {/* 1. Live Players & Activity */}
+                <div className="p-4 rounded-2xl bg-[#0c0e12]/80 border border-white/[0.06] backdrop-blur-md flex flex-col justify-between hover:border-white/10 transition-colors">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-white/50">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-white/40">
                       <Users size={14} className="text-emerald-400" />
-                      <span>Player Activity</span>
+                      <span>{t('playerActivity')}</span>
                     </div>
                     {liveCount !== null && (
                       <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Live
+                        {t('live')}
                       </span>
                     )}
                   </div>
                   <div>
                     <div className="text-2xl font-black text-white tracking-tight">
-                      {liveCount !== null ? liveCount.toLocaleString() : 'Active'}
+                      {liveCount !== null ? liveCount.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : t('inGame')}
                     </div>
                     <div className="flex items-center gap-3 mt-1.5 text-[11px] text-white/40">
-                      <span>24h: <strong className="text-white/70 font-semibold">{peak24h ? peak24h.toLocaleString() : 'N/A'}</strong></span>
+                      <span>24h: <strong className="text-white/70 font-semibold">{peak24h ? peak24h.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : 'N/A'}</strong></span>
                       <span>•</span>
-                      <span>Peak: <strong className="text-white/70 font-semibold">{allTimePeak ? allTimePeak.toLocaleString() : 'N/A'}</strong></span>
+                      <span>Peak: <strong className="text-white/70 font-semibold">{allTimePeak ? allTimePeak.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : 'N/A'}</strong></span>
                     </div>
                   </div>
                 </div>
 
                 {/* 2. Price History & Deals */}
-                <div className="p-4 rounded-2xl bg-[#0e1014]/70 border border-white/[0.06] backdrop-blur-md flex flex-col justify-between relative overflow-hidden group hover:border-white/10 transition-colors">
+                <div className="p-4 rounded-2xl bg-[#0c0e12]/80 border border-white/[0.06] backdrop-blur-md flex flex-col justify-between hover:border-white/10 transition-colors">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-white/50">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-white/40">
                       <Tag size={14} className="text-blue-400" />
-                      <span>Price & Deals</span>
+                      <span>{t('priceAndDeals')}</span>
                     </div>
                     {hasDiscount ? (
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30">
@@ -632,7 +642,7 @@ export function GameDetailModal() {
                       )}
                     </div>
                     <div className="text-[11px] text-white/40 mt-1.5 truncate">
-                      <span>All-Time Low: </span>
+                      <span>{t('allTimeLow')}: </span>
                       <strong className="text-white/70 font-semibold">
                         {historicalLowFormatted || 'N/A'}
                       </strong>
@@ -641,11 +651,11 @@ export function GameDetailModal() {
                 </div>
 
                 {/* 3. Community Ratings & Reviews */}
-                <div className="p-4 rounded-2xl bg-[#0e1014]/70 border border-white/[0.06] backdrop-blur-md flex flex-col justify-between relative overflow-hidden group hover:border-white/10 transition-colors">
+                <div className="p-4 rounded-2xl bg-[#0c0e12]/80 border border-white/[0.06] backdrop-blur-md flex flex-col justify-between hover:border-white/10 transition-colors">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-white/50">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-white/40">
                       <Star size={14} className="text-amber-400" />
-                      <span>Steam Reviews</span>
+                      <span>{t('steamReviews')}</span>
                     </div>
                     <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500/10 text-amber-300 border border-amber-500/20">
                       ★ {positivePercent}%
@@ -657,9 +667,9 @@ export function GameDetailModal() {
                     </div>
                     <div className="flex items-center gap-2 mt-1.5 text-[11px] text-white/40">
                       {totalReviewsCount ? (
-                        <span>{totalReviewsCount.toLocaleString()} user reviews</span>
+                        <span>{totalReviewsCount.toLocaleString(language === 'de' ? 'de-DE' : 'en-US')} {t('userReviews')}</span>
                       ) : (
-                        <span>Community verified</span>
+                        <span>{t('communityVerified')}</span>
                       )}
                       {game?.metacritic?.score && (
                         <>
@@ -671,28 +681,28 @@ export function GameDetailModal() {
                   </div>
                 </div>
 
-                {/* 4. Specs & Features */}
-                <div className="p-4 rounded-2xl bg-[#0e1014]/70 border border-white/[0.06] backdrop-blur-md flex flex-col justify-between relative overflow-hidden group hover:border-white/10 transition-colors">
+                {/* 4. Compatibility & Features */}
+                <div className="p-4 rounded-2xl bg-[#0c0e12]/80 border border-white/[0.06] backdrop-blur-md flex flex-col justify-between hover:border-white/10 transition-colors">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-white/50">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-white/40">
                       <Gamepad2 size={14} className="text-purple-400" />
-                      <span>Compatibility</span>
+                      <span>{t('compatibility')}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-white/40">
-                      {game?.platforms?.windows && <span title="Windows" className="text-[11px] font-bold">WIN</span>}
-                      {game?.platforms?.mac && <span title="macOS" className="text-[11px] font-bold">• MAC</span>}
-                      {game?.platforms?.linux && <span title="Linux" className="text-[11px] font-bold">• LIN</span>}
+                    <div className="flex items-center gap-1.5 text-white/40 text-[11px] font-bold">
+                      {game?.platforms?.windows && <span title="Windows">WIN</span>}
+                      {game?.platforms?.mac && <span title="macOS">• MAC</span>}
+                      {game?.platforms?.linux && <span title="Linux">• LIN</span>}
                     </div>
                   </div>
                   <div>
                     <div className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
                       <ShieldCheck size={15} className="text-indigo-400 flex-shrink-0" />
                       <span className="truncate">
-                        {hasFullController ? 'Full Controller Support' : hasPartialController ? 'Partial Controller Support' : 'Keyboard & Mouse'}
+                        {hasFullController ? t('fullControllerSupport') : hasPartialController ? t('partialControllerSupport') : t('keyboardAndMouse')}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mt-1.5 text-[11px] text-white/40">
-                      {hasSteamCloud && <span className="text-white/60">☁️ Cloud Saves</span>}
+                      {hasSteamCloud && <span className="text-white/60">☁️ {t('cloudSaves')}</span>}
                       {hasTradingCards && <span>• Cards</span>}
                       {hasCoop && <span>• Co-Op</span>}
                     </div>
@@ -702,22 +712,22 @@ export function GameDetailModal() {
               </div>
             </div>
 
-            {/* Media Gallery Carousel & Lightbox */}
+            {/* Media Gallery (High-Res Viewer & Snap Carousel) */}
             {mediaItems.length > 0 && (
-              <div className="max-w-7xl mx-auto w-full px-8 py-4">
+              <div className="w-full px-6 md:px-10 xl:px-14 py-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-white/50 flex items-center gap-2">
-                    <Layers size={14} />
-                    <span>Media & Trailers ({mediaItems.length})</span>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-white/40 flex items-center gap-2">
+                    <Layers size={13} />
+                    <span>{t('mediaAndTrailers')} ({mediaItems.length})</span>
                   </h3>
-                  <span className="text-xs text-white/30">Click to expand fullscreen</span>
+                  <span className="text-xs text-white/30">{t('clickToExpand')}</span>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                  {/* Big Featured Player / Viewport */}
+                  {/* Big Featured Player */}
                   <div 
                     onClick={() => setLightboxIndex(selectedMediaIdx)}
-                    className="lg:col-span-3 h-[360px] md:h-[420px] rounded-2xl overflow-hidden border border-white/[0.08] bg-black/60 relative group cursor-pointer shadow-2xl"
+                    className="lg:col-span-3 h-[380px] md:h-[460px] rounded-2xl overflow-hidden border border-white/[0.07] bg-black/60 relative group cursor-pointer shadow-2xl"
                   >
                     {mediaItems[selectedMediaIdx]?.type === 'video' ? (
                       <CustomVideoPlayer 
@@ -732,12 +742,12 @@ export function GameDetailModal() {
                       />
                     )}
                     <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white/80 opacity-0 group-hover:opacity-100 transition-opacity">
-                      Fullscreen View
+                      {t('clickToExpand')}
                     </div>
                   </div>
 
                   {/* Vertical / Scrollable Thumbnails List */}
-                  <div className="flex lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto lg:max-h-[420px] hide-scrollbar">
+                  <div className="flex lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto lg:max-h-[460px] hide-scrollbar">
                     {mediaItems.map((item, idx) => (
                       <button
                         key={item.id}
@@ -768,11 +778,11 @@ export function GameDetailModal() {
               </div>
             )}
 
-            {/* Detailed Content & Specifications Section */}
-            <div className="max-w-7xl mx-auto w-full px-8 py-6 flex flex-col lg:flex-row gap-8">
+            {/* Main Content Layout (Left Column: About & Genres | Right Column: System Requirements & Specs) */}
+            <div className="w-full px-6 md:px-10 xl:px-14 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
               
-              {/* Left Main Column: About, Genres, System Requirements */}
-              <div className="flex-1 flex flex-col gap-8 min-w-0">
+              {/* Left Column (Span 8): Genres, About the Game */}
+              <div className="lg:col-span-8 flex flex-col gap-6">
                 
                 {/* Genres & Tags */}
                 {game?.genres && game.genres.length > 0 && (
@@ -780,7 +790,7 @@ export function GameDetailModal() {
                     {game.genres.map(g => (
                       <span 
                         key={g.id}
-                        className="px-3 py-1 rounded-lg bg-white/[0.04] border border-white/[0.07] text-white/70 text-xs font-semibold hover:border-white/20 transition-colors"
+                        className="px-3 py-1 rounded-lg bg-white/[0.03] border border-white/[0.06] text-white/70 text-xs font-semibold hover:border-white/20 transition-colors"
                       >
                         {g.description}
                       </span>
@@ -790,10 +800,10 @@ export function GameDetailModal() {
 
                 {/* About this game */}
                 {game?.aboutTheGame && (
-                  <div className="rounded-2xl bg-[#0e1014]/60 border border-white/[0.06] p-6 backdrop-blur-sm">
+                  <div className="rounded-2xl bg-[#0c0e12]/70 border border-white/[0.06] p-6 backdrop-blur-sm">
                     <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                      <Sparkles size={16} className="text-white/60" />
-                      <span>About This Game</span>
+                      <Sparkles size={16} className="text-white/50" />
+                      <span>{t('aboutThisGame')}</span>
                     </h3>
                     <div 
                       className="text-white/70 text-sm leading-relaxed prose prose-invert max-w-none prose-p:my-2 prose-headings:text-white prose-a:text-blue-400"
@@ -802,123 +812,130 @@ export function GameDetailModal() {
                   </div>
                 )}
 
-                {/* System Requirements */}
-                {game?.pcRequirements && (game.pcRequirements.minimum || game.pcRequirements.recommended) && (
-                  <div className="rounded-2xl bg-[#0e1014]/60 border border-white/[0.06] p-6 backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-base font-bold text-white flex items-center gap-2">
-                        <Cpu size={16} className="text-white/60" />
-                        <span>System Requirements</span>
-                      </h3>
-                      {game.pcRequirements.recommended && (
-                        <div className="flex items-center p-1 rounded-xl bg-black/40 border border-white/10 text-xs font-semibold">
-                          <button
-                            onClick={() => setReqTab('minimum')}
-                            className={`px-3 py-1 rounded-lg transition-all ${
-                              reqTab === 'minimum' ? 'bg-white text-black font-bold' : 'text-white/50 hover:text-white'
-                            }`}
-                          >
-                            Minimum
-                          </button>
-                          <button
-                            onClick={() => setReqTab('recommended')}
-                            className={`px-3 py-1 rounded-lg transition-all ${
-                              reqTab === 'recommended' ? 'bg-white text-black font-bold' : 'text-white/50 hover:text-white'
-                            }`}
-                          >
-                            Recommended
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                      {/* Minimum specs */}
-                      {game.pcRequirements.minimum && (
-                        <div className="p-4 rounded-xl bg-black/30 border border-white/[0.04]">
-                          <div className="text-xs font-bold uppercase tracking-wider text-white/40 mb-3 flex items-center gap-1.5">
-                            <Monitor size={13} /> Minimum Specs
-                          </div>
-                          <div className="text-xs text-white/70 whitespace-pre-line leading-relaxed font-mono">
-                            {cleanReqString(game.pcRequirements.minimum)}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Recommended specs */}
-                      {game.pcRequirements.recommended && (
-                        <div className="p-4 rounded-xl bg-black/30 border border-white/[0.04]">
-                          <div className="text-xs font-bold uppercase tracking-wider text-emerald-400/70 mb-3 flex items-center gap-1.5">
-                            <Flame size={13} /> Recommended Specs
-                          </div>
-                          <div className="text-xs text-white/70 whitespace-pre-line leading-relaxed font-mono">
-                            {cleanReqString(game.pcRequirements.recommended)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                {/* Supported Languages */}
+                {game?.supportedLanguages && (
+                  <div className="rounded-2xl bg-[#0c0e12]/70 border border-white/[0.06] p-5 backdrop-blur-sm text-xs">
+                    <h4 className="font-bold text-white/80 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1.5">
+                      <Globe size={13} /> {t('supportedLanguages')}
+                    </h4>
+                    <div 
+                      className="text-white/50 leading-relaxed text-[11px] prose-strong:text-white/80"
+                      dangerouslySetInnerHTML={{ __html: game.supportedLanguages }}
+                    />
                   </div>
                 )}
 
               </div>
 
-              {/* Right Sidebar: Game Details, Achievements, Languages */}
-              <div className="w-full lg:w-[360px] flex-shrink-0 flex flex-col gap-6">
+              {/* Right Sidebar (Span 4): System Requirements Toggle & Specs & Achievements */}
+              <div className="lg:col-span-4 flex flex-col gap-6">
                 
-                {/* SteamDB Metadata Box */}
-                <div className="rounded-2xl bg-[#0e1014]/60 border border-white/[0.06] p-5 backdrop-blur-sm space-y-4 text-xs">
+                {/* System Requirements (Placed cleanly on the Right Side) */}
+                {game?.pcRequirements && (game.pcRequirements.minimum || game.pcRequirements.recommended) && (
+                  <div className="rounded-2xl bg-[#0c0e12]/70 border border-white/[0.06] p-5 backdrop-blur-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
+                        <Cpu size={14} className="text-white/50" />
+                        <span>{t('systemRequirements')}</span>
+                      </h4>
+
+                      {/* Minimum / Recommended Tab Switcher */}
+                      {game.pcRequirements.recommended && (
+                        <div className="flex items-center p-0.5 rounded-lg bg-black/40 border border-white/10 text-[11px] font-semibold">
+                          <button
+                            onClick={() => setReqTab('minimum')}
+                            className={`px-2.5 py-1 rounded-md transition-all ${
+                              reqTab === 'minimum' ? 'bg-white text-black font-bold shadow-sm' : 'text-white/50 hover:text-white'
+                            }`}
+                          >
+                            {t('minimum')}
+                          </button>
+                          <button
+                            onClick={() => setReqTab('recommended')}
+                            className={`px-2.5 py-1 rounded-md transition-all ${
+                              reqTab === 'recommended' ? 'bg-white text-black font-bold shadow-sm' : 'text-white/50 hover:text-white'
+                            }`}
+                          >
+                            {t('recommended')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ONLY Display the Active Tab (Minimum or Recommended) */}
+                    <div className="p-3.5 rounded-xl bg-black/30 border border-white/[0.04]">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-2 flex items-center gap-1.5">
+                        {reqTab === 'minimum' ? (
+                          <>
+                            <Monitor size={12} /> {t('minimum')}
+                          </>
+                        ) : (
+                          <>
+                            <Flame size={12} className="text-emerald-400" /> {t('recommended')}
+                          </>
+                        )}
+                      </div>
+                      <div className="text-xs text-white/70 whitespace-pre-line leading-relaxed font-mono text-[11px]">
+                        {cleanReqString(activeReqHtml)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SteamDB Metadata Details */}
+                <div className="rounded-2xl bg-[#0c0e12]/70 border border-white/[0.06] p-5 backdrop-blur-sm space-y-3 text-xs">
                   <h4 className="font-bold text-white/80 uppercase tracking-wider text-[11px]">SteamDB Details</h4>
                   
                   {steamId && (
-                    <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
-                      <span className="text-white/40">Steam AppID</span>
+                    <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
+                      <span className="text-white/40">{t('steamAppId')}</span>
                       <span className="font-mono text-white/80 font-bold">{steamId}</span>
                     </div>
                   )}
 
                   {game?.developers?.[0] && (
-                    <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
-                      <span className="text-white/40">Developer</span>
+                    <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
+                      <span className="text-white/40">{t('developer')}</span>
                       <span className="text-white/90 font-medium truncate max-w-[180px]">{game.developers.join(', ')}</span>
                     </div>
                   )}
 
                   {game?.publishers?.[0] && (
-                    <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
-                      <span className="text-white/40">Publisher</span>
+                    <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
+                      <span className="text-white/40">{t('publisher')}</span>
                       <span className="text-white/90 font-medium truncate max-w-[180px]">{game.publishers.join(', ')}</span>
                     </div>
                   )}
 
                   {steamDBSummary?.owners && (
-                    <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
+                    <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
                       <span className="text-white/40">Est. Owners</span>
                       <span className="text-white/90 font-medium">{steamDBSummary.owners}</span>
                     </div>
                   )}
 
                   {installed?.installPath && (
-                    <div className="flex items-start justify-between py-1.5">
-                      <span className="text-white/40 flex items-center gap-1"><Folder size={12} /> Path</span>
-                      <span className="text-white/70 font-mono text-[10px] break-all max-w-[200px] text-right">{installed.installPath}</span>
+                    <div className="flex items-start justify-between py-1">
+                      <span className="text-white/40 flex items-center gap-1"><Folder size={12} /> {t('installPath')}</span>
+                      <span className="text-white/70 font-mono text-[10px] break-all max-w-[180px] text-right">{installed.installPath}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Achievements Showcase */}
                 {game?.achievements && (
-                  <div className="rounded-2xl bg-[#0e1014]/60 border border-white/[0.06] p-5 backdrop-blur-sm">
+                  <div className="rounded-2xl bg-[#0c0e12]/70 border border-white/[0.06] p-5 backdrop-blur-sm">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
                         <CheckCircle2 size={14} className="text-blue-400" />
-                        <span>Achievements</span>
+                        <span>{t('achievements')}</span>
                       </h4>
                       <span className="text-xs font-mono font-bold text-white/50">
                         0 / {game.achievements.total}
                       </span>
                     </div>
 
-                    <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden mb-4 border border-white/[0.05]">
+                    <div className="w-full h-1 bg-black/40 rounded-full overflow-hidden mb-3.5 border border-white/[0.05]">
                       <div className="h-full bg-blue-500 w-0" />
                     </div>
 
@@ -933,19 +950,6 @@ export function GameDetailModal() {
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {/* Supported Languages */}
-                {game?.supportedLanguages && (
-                  <div className="rounded-2xl bg-[#0e1014]/60 border border-white/[0.06] p-5 backdrop-blur-sm text-xs">
-                    <h4 className="font-bold text-white/80 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1.5">
-                      <Globe size={13} /> Supported Languages
-                    </h4>
-                    <div 
-                      className="text-white/50 leading-relaxed text-[11px] prose-strong:text-white/80"
-                      dangerouslySetInnerHTML={{ __html: game.supportedLanguages }}
-                    />
                   </div>
                 )}
 
