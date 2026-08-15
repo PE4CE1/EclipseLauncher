@@ -12,7 +12,6 @@ import { useSourceStore } from '../../store/sourceStore'
 import { useSteamGameDetail } from '../../hooks/useGames'
 import { getDownloadsForGame } from '../../services/downloadEngine'
 import { useScanner } from '../../hooks/useScanner'
-import { getLogoUrl } from '../../services/assetHelper'
 import {
   getLivePlayerCount,
   getSteamReviewSummary,
@@ -44,14 +43,12 @@ export function GameDetailModal() {
   const [selectedMediaIdx, setSelectedMediaIdx] = useState(0)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [reqTab, setReqTab] = useState<'minimum' | 'recommended'>('minimum')
-  const [logoFailed, setLogoFailed] = useState(false)
 
   const steamId = selectedGameId && selectedGameId > 0 ? selectedGameId : null
   const { data: detail, isLoading } = useSteamGameDetail(steamId)
 
-  // Reset logo failure on game change
+  // Reset state on game change
   useEffect(() => {
-    setLogoFailed(false)
     setSelectedMediaIdx(0)
     setReqTab('minimum')
   }, [steamId, selectedGameName])
@@ -69,7 +66,7 @@ export function GameDetailModal() {
     }
   }, [steamId, language])
 
-  // Map detail to game structure
+  // Map detail to our game structure
   const game = detail ? {
     name: detail.name,
     shortDescription: detail.short_description,
@@ -313,7 +310,7 @@ export function GameDetailModal() {
       .trim()
   }
 
-  // Determine which system requirement content to display based on active tab
+  // Determine active system requirements content based on tab
   const activeReqHtml = reqTab === 'minimum' 
     ? (game?.pcRequirements?.minimum || game?.pcRequirements?.recommended)
     : (game?.pcRequirements?.recommended || game?.pcRequirements?.minimum)
@@ -329,11 +326,11 @@ export function GameDetailModal() {
           transition={{ duration: 0.2 }}
         >
           {/* Top Bar Navigation */}
-          <div className="h-14 bg-[#0c0d10]/90 backdrop-blur-xl border-b border-white/[0.06] px-6 md:px-10 flex items-center justify-between z-50 flex-shrink-0">
+          <div className="h-14 bg-[#0b0c10]/95 backdrop-blur-xl border-b border-white/[0.06] px-6 md:px-10 flex items-center justify-between z-50 flex-shrink-0">
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => setIsGameModalOpen(false)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.06] transition-all text-xs font-medium"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.06] transition-all text-xs font-medium"
               >
                 <X size={14} />
                 <span>{t('close')}</span>
@@ -382,34 +379,26 @@ export function GameDetailModal() {
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
             
             {/* Cinematic Hero Backdrop */}
-            <div className="relative w-full h-[48vh] min-h-[350px] max-h-[460px] flex-shrink-0 overflow-hidden bg-black">
+            <div className="relative w-full h-[40vh] min-h-[280px] max-h-[360px] flex-shrink-0 overflow-hidden bg-black">
               <SmartImage 
                 appId={steamId ?? undefined} 
                 type="hero" 
                 alt={game?.name ?? 'Cover'} 
-                className="w-full h-full object-cover object-center scale-105 filter brightness-[0.85]" 
+                className="w-full h-full object-cover object-center scale-105 filter brightness-[0.80]" 
                 fallbackScreenshotUrl={detail?.screenshots?.[0]?.path_full}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#07080a] via-[#07080a]/55 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#07080a] via-[#07080a]/60 to-transparent" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#07080a]/90 via-[#07080a]/30 to-transparent" />
 
-              {/* Title / Logo Area (Shows logo if valid, or text title if no logo, avoiding double title) */}
+              {/* Title & Actions Bar */}
               <div className="absolute bottom-6 left-6 md:left-10 xl:left-14 right-6 md:right-10 xl:right-14 flex flex-col md:flex-row md:items-end justify-between gap-6 z-10">
                 <div className="flex flex-col gap-2 max-w-3xl">
-                  {steamId && !logoFailed ? (
-                    <img
-                      src={getLogoUrl(steamId)}
-                      alt={game?.name}
-                      className="max-h-24 max-w-sm object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.8)]"
-                      onError={() => setLogoFailed(true)}
-                    />
-                  ) : (
-                    <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-lg">
-                      {game?.name}
-                    </h1>
-                  )}
+                  {/* Clean Single Title Heading */}
+                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight drop-shadow-md">
+                    {game?.name}
+                  </h1>
 
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-white/50 pt-1">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-white/50 pt-0.5">
                     {game?.releaseDate && (
                       <span className="flex items-center gap-1.5">
                         <span className="text-white/30">{t('releasedOn')}:</span>
@@ -583,136 +572,87 @@ export function GameDetailModal() {
               </div>
             </div>
 
-            {/* SteamDB Insights Bento Grid (Full-Width Responsive Cards) */}
-            <div className="w-full px-6 md:px-10 xl:px-14 py-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Unified Sleek Stats Strip (Human-crafted layout, no generic AI boxes) */}
+            <div className="w-full px-6 md:px-10 xl:px-14 py-4">
+              <div className="bg-[#0b0c10]/80 backdrop-blur-md border border-white/[0.06] rounded-2xl p-4 md:p-5 grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.06]">
                 
-                {/* 1. Live Players & Activity */}
-                <div className="p-4 rounded-2xl bg-[#0c0e12]/80 border border-white/[0.06] backdrop-blur-md flex flex-col justify-between hover:border-white/10 transition-colors">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-white/40">
-                      <Users size={14} className="text-emerald-400" />
-                      <span>{t('playerActivity')}</span>
-                    </div>
+                {/* 1. Players Now */}
+                <div className="pt-3 lg:pt-0 lg:px-4 first:pt-0 first:px-0">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t('playerActivity')}</span>
                     {liveCount !== null && (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-400">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         {t('live')}
                       </span>
                     )}
                   </div>
-                  <div>
-                    <div className="text-2xl font-black text-white tracking-tight">
-                      {liveCount !== null ? liveCount.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : t('inGame')}
-                    </div>
-                    <div className="flex items-center gap-3 mt-1.5 text-[11px] text-white/40">
-                      <span>24h: <strong className="text-white/70 font-semibold">{peak24h ? peak24h.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : 'N/A'}</strong></span>
-                      <span>•</span>
-                      <span>Peak: <strong className="text-white/70 font-semibold">{allTimePeak ? allTimePeak.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : 'N/A'}</strong></span>
-                    </div>
+                  <div className="text-xl font-black text-white tracking-tight">
+                    {liveCount !== null ? liveCount.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : t('inGame')}
+                  </div>
+                  <div className="text-[11px] text-white/40 mt-0.5 truncate">
+                    24h: <span className="text-white/70 font-semibold">{peak24h ? peak24h.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : 'N/A'}</span> • Peak: <span className="text-white/70 font-semibold">{allTimePeak ? allTimePeak.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : 'N/A'}</span>
                   </div>
                 </div>
 
-                {/* 2. Price History & Deals */}
-                <div className="p-4 rounded-2xl bg-[#0c0e12]/80 border border-white/[0.06] backdrop-blur-md flex flex-col justify-between hover:border-white/10 transition-colors">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-white/40">
-                      <Tag size={14} className="text-blue-400" />
-                      <span>{t('priceAndDeals')}</span>
-                    </div>
-                    {hasDiscount ? (
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                        -{discountPercent}%
-                      </span>
-                    ) : game?.isFree ? (
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        100% Free
-                      </span>
-                    ) : null}
-                  </div>
-                  <div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-black text-white tracking-tight">
-                        {currentPriceFormatted}
-                      </span>
-                      {hasDiscount && initialPriceFormatted && (
-                        <span className="text-xs text-white/40 line-through font-mono">
-                          {initialPriceFormatted}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-white/40 mt-1.5 truncate">
-                      <span>{t('allTimeLow')}: </span>
-                      <strong className="text-white/70 font-semibold">
-                        {historicalLowFormatted || 'N/A'}
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Community Ratings & Reviews */}
-                <div className="p-4 rounded-2xl bg-[#0c0e12]/80 border border-white/[0.06] backdrop-blur-md flex flex-col justify-between hover:border-white/10 transition-colors">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-white/40">
-                      <Star size={14} className="text-amber-400" />
-                      <span>{t('steamReviews')}</span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                {/* 2. Reviews */}
+                <div className="pt-3 lg:pt-0 lg:px-4">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t('steamReviews')}</span>
+                    <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded">
                       ★ {positivePercent}%
                     </span>
                   </div>
-                  <div>
-                    <div className="text-base font-extrabold text-white tracking-tight truncate">
-                      {reviewScoreText}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1.5 text-[11px] text-white/40">
-                      {totalReviewsCount ? (
-                        <span>{totalReviewsCount.toLocaleString(language === 'de' ? 'de-DE' : 'en-US')} {t('userReviews')}</span>
-                      ) : (
-                        <span>{t('communityVerified')}</span>
-                      )}
-                      {game?.metacritic?.score && (
-                        <>
-                          <span>•</span>
-                          <span className="text-emerald-400 font-bold">Meta {game.metacritic.score}</span>
-                        </>
-                      )}
-                    </div>
+                  <div className="text-xl font-black text-white tracking-tight truncate">
+                    {reviewScoreText}
+                  </div>
+                  <div className="text-[11px] text-white/40 mt-0.5 truncate">
+                    {totalReviewsCount ? `${totalReviewsCount.toLocaleString(language === 'de' ? 'de-DE' : 'en-US')} ${t('userReviews')}` : t('communityVerified')}
                   </div>
                 </div>
 
-                {/* 4. Compatibility & Features */}
-                <div className="p-4 rounded-2xl bg-[#0c0e12]/80 border border-white/[0.06] backdrop-blur-md flex flex-col justify-between hover:border-white/10 transition-colors">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-white/40">
-                      <Gamepad2 size={14} className="text-purple-400" />
-                      <span>{t('compatibility')}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-white/40 text-[11px] font-bold">
-                      {game?.platforms?.windows && <span title="Windows">WIN</span>}
-                      {game?.platforms?.mac && <span title="macOS">• MAC</span>}
-                      {game?.platforms?.linux && <span title="Linux">• LIN</span>}
+                {/* 3. Pricing */}
+                <div className="pt-3 lg:pt-0 lg:px-4">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t('priceAndDeals')}</span>
+                    {hasDiscount ? (
+                      <span className="text-[10px] font-extrabold bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">
+                        -{discountPercent}%
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="text-xl font-black text-white tracking-tight truncate">
+                    {currentPriceFormatted}
+                  </div>
+                  <div className="text-[11px] text-white/40 mt-0.5 truncate">
+                    {t('allTimeLow')}: <span className="text-white/70 font-semibold">{historicalLowFormatted || 'N/A'}</span>
+                  </div>
+                </div>
+
+                {/* 4. Features */}
+                <div className="pt-3 lg:pt-0 lg:px-4">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t('compatibility')}</span>
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-white/40">
+                      {game?.platforms?.windows && <span>WIN</span>}
+                      {game?.platforms?.mac && <span>• MAC</span>}
+                      {game?.platforms?.linux && <span>• LIN</span>}
                     </div>
                   </div>
-                  <div>
-                    <div className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
-                      <ShieldCheck size={15} className="text-indigo-400 flex-shrink-0" />
-                      <span className="truncate">
-                        {hasFullController ? t('fullControllerSupport') : hasPartialController ? t('partialControllerSupport') : t('keyboardAndMouse')}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1.5 text-[11px] text-white/40">
-                      {hasSteamCloud && <span className="text-white/60">☁️ {t('cloudSaves')}</span>}
-                      {hasTradingCards && <span>• Cards</span>}
-                      {hasCoop && <span>• Co-Op</span>}
-                    </div>
+                  <div className="text-sm font-bold text-white tracking-tight truncate flex items-center gap-1.5">
+                    <ShieldCheck size={14} className="text-indigo-400 flex-shrink-0" />
+                    <span>{hasFullController ? t('fullControllerSupport') : hasPartialController ? t('partialControllerSupport') : t('keyboardAndMouse')}</span>
+                  </div>
+                  <div className="text-[11px] text-white/40 mt-0.5 truncate">
+                    {hasSteamCloud && <span>☁️ {t('cloudSaves')} • </span>}
+                    {hasCoop ? 'Co-Op Support' : 'Single-Player'}
                   </div>
                 </div>
 
               </div>
             </div>
 
-            {/* Media Gallery (High-Res Viewer & Snap Carousel) */}
+            {/* Media Gallery Section (Strict 16:9 Aspect Ratio, Never Stretched) */}
             {mediaItems.length > 0 && (
               <div className="w-full px-6 md:px-10 xl:px-14 py-4">
                 <div className="flex items-center justify-between mb-3">
@@ -723,11 +663,12 @@ export function GameDetailModal() {
                   <span className="text-xs text-white/30">{t('clickToExpand')}</span>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                  {/* Big Featured Player */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                  
+                  {/* Left (Col 9): Fixed 16:9 Main Cinema Viewport */}
                   <div 
                     onClick={() => setLightboxIndex(selectedMediaIdx)}
-                    className="lg:col-span-3 h-[380px] md:h-[460px] rounded-2xl overflow-hidden border border-white/[0.07] bg-black/60 relative group cursor-pointer shadow-2xl"
+                    className="lg:col-span-9 aspect-video w-full rounded-2xl overflow-hidden border border-white/[0.08] bg-black relative group cursor-pointer shadow-2xl flex items-center justify-center"
                   >
                     {mediaItems[selectedMediaIdx]?.type === 'video' ? (
                       <CustomVideoPlayer 
@@ -738,7 +679,7 @@ export function GameDetailModal() {
                       <img 
                         src={mediaItems[selectedMediaIdx]?.url} 
                         alt="Featured screenshot"
-                        className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-500"
+                        className="w-full h-full object-contain bg-black"
                       />
                     )}
                     <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white/80 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -746,23 +687,23 @@ export function GameDetailModal() {
                     </div>
                   </div>
 
-                  {/* Vertical / Scrollable Thumbnails List */}
-                  <div className="flex lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto lg:max-h-[460px] hide-scrollbar">
+                  {/* Right (Col 3): Clean 16:9 Thumbnails List */}
+                  <div className="lg:col-span-3 flex lg:flex-col gap-2.5 overflow-x-auto lg:overflow-y-auto lg:max-h-[calc(56.25vw*0.75-20px)] lg:min-h-[300px] hide-scrollbar">
                     {mediaItems.map((item, idx) => (
                       <button
                         key={item.id}
                         onClick={() => setSelectedMediaIdx(idx)}
-                        className={`relative flex-shrink-0 w-44 lg:w-full h-24 rounded-xl overflow-hidden border transition-all text-left group ${
+                        className={`relative flex-shrink-0 w-40 lg:w-full aspect-video rounded-xl overflow-hidden border transition-all text-left bg-black group ${
                           selectedMediaIdx === idx 
-                            ? 'border-white ring-2 ring-white/20 scale-[0.98]' 
-                            : 'border-white/[0.08] opacity-60 hover:opacity-100'
+                            ? 'border-white ring-2 ring-white/30' 
+                            : 'border-white/[0.06] opacity-50 hover:opacity-100'
                         }`}
                       >
                         <img src={item.thumb} alt={`Media ${idx}`} className="w-full h-full object-cover" />
                         {item.type === 'video' && (
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                            <div className="w-8 h-8 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white">
-                              <Play size={12} className="fill-white ml-0.5" />
+                          <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+                            <div className="w-7 h-7 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white">
+                              <Play size={10} className="fill-white ml-0.5" />
                             </div>
                           </div>
                         )}
@@ -774,6 +715,7 @@ export function GameDetailModal() {
                       </button>
                     ))}
                   </div>
+
                 </div>
               </div>
             )}
@@ -800,7 +742,7 @@ export function GameDetailModal() {
 
                 {/* About this game */}
                 {game?.aboutTheGame && (
-                  <div className="rounded-2xl bg-[#0c0e12]/70 border border-white/[0.06] p-6 backdrop-blur-sm">
+                  <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-6 backdrop-blur-sm">
                     <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
                       <Sparkles size={16} className="text-white/50" />
                       <span>{t('aboutThisGame')}</span>
@@ -814,7 +756,7 @@ export function GameDetailModal() {
 
                 {/* Supported Languages */}
                 {game?.supportedLanguages && (
-                  <div className="rounded-2xl bg-[#0c0e12]/70 border border-white/[0.06] p-5 backdrop-blur-sm text-xs">
+                  <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-5 backdrop-blur-sm text-xs">
                     <h4 className="font-bold text-white/80 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1.5">
                       <Globe size={13} /> {t('supportedLanguages')}
                     </h4>
@@ -832,7 +774,7 @@ export function GameDetailModal() {
                 
                 {/* System Requirements (Placed cleanly on the Right Side) */}
                 {game?.pcRequirements && (game.pcRequirements.minimum || game.pcRequirements.recommended) && (
-                  <div className="rounded-2xl bg-[#0c0e12]/70 border border-white/[0.06] p-5 backdrop-blur-sm">
+                  <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-5 backdrop-blur-sm">
                     <div className="flex items-center justify-between mb-4">
                       <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
                         <Cpu size={14} className="text-white/50" />
@@ -883,7 +825,7 @@ export function GameDetailModal() {
                 )}
 
                 {/* SteamDB Metadata Details */}
-                <div className="rounded-2xl bg-[#0c0e12]/70 border border-white/[0.06] p-5 backdrop-blur-sm space-y-3 text-xs">
+                <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-5 backdrop-blur-sm space-y-3 text-xs">
                   <h4 className="font-bold text-white/80 uppercase tracking-wider text-[11px]">SteamDB Details</h4>
                   
                   {steamId && (
@@ -924,7 +866,7 @@ export function GameDetailModal() {
 
                 {/* Achievements Showcase */}
                 {game?.achievements && (
-                  <div className="rounded-2xl bg-[#0c0e12]/70 border border-white/[0.06] p-5 backdrop-blur-sm">
+                  <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-5 backdrop-blur-sm">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
                         <CheckCircle2 size={14} className="text-blue-400" />
@@ -1028,7 +970,7 @@ export function GameDetailModal() {
                         <button
                           key={item.id}
                           onClick={() => setLightboxIndex(idx)}
-                          className={`relative flex-shrink-0 w-24 h-14 rounded-lg overflow-hidden snap-center transition-all ${
+                          className={`relative flex-shrink-0 w-24 aspect-video rounded-lg overflow-hidden snap-center transition-all bg-black ${
                             idx === lightboxIndex 
                               ? 'ring-2 ring-white scale-105 shadow-lg' 
                               : 'opacity-40 hover:opacity-100'
