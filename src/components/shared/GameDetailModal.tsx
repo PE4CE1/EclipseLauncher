@@ -369,11 +369,10 @@ export function GameDetailModal() {
                   {steamId && logoState !== 'error' ? (
                     <div className="relative min-h-[80px] flex items-end">
                       <img
+                        key={steamId}
                         src={getLogoUrl(steamId)}
                         alt={game?.name}
-                        className={`max-h-28 md:max-h-36 lg:max-h-44 max-w-md lg:max-w-xl object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] filter contrast-105 transition-opacity duration-300 ${
-                          logoState === 'loaded' ? 'opacity-100' : 'opacity-0 h-0 w-0'
-                        }`}
+                        className="max-h-28 md:max-h-36 lg:max-h-44 max-w-md lg:max-w-xl object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] filter contrast-105"
                         onLoad={() => setLogoState('loaded')}
                         onError={(e) => {
                           const target = e.currentTarget
@@ -385,11 +384,6 @@ export function GameDetailModal() {
                           }
                         }}
                       />
-                      {logoState !== 'loaded' && (
-                        <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-none drop-shadow-md">
-                          {game?.name}
-                        </h1>
-                      )}
                     </div>
                   ) : (
                     <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-none drop-shadow-md">
