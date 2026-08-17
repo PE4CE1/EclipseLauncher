@@ -1,0 +1,122 @@
+[
+  {
+    "id": "radiant",
+    "name": "Radiant",
+    "author": "TenZ",
+    "accentColor": "#ff4655",
+    "description": "Aggressive tactical coral red and charcoal esports styling",
+    "tag": "Tactical",
+    "file": "radiant.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/radiant.css"
+  },
+  {
+    "id": "miami",
+    "name": "Miami Vice 84",
+    "author": "Kavinsky",
+    "accentColor": "#ff71ce",
+    "description": "Retro 80s synthwave sunset with neon pink and cyan glows",
+    "tag": "Retro",
+    "file": "miami.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/miami.css"
+  },
+  {
+    "id": "frost",
+    "name": "Nordic Frost",
+    "author": "Valkyrie",
+    "accentColor": "#38bdf8",
+    "description": "Sub-zero arctic ice blue with crystalline frosted glass",
+    "tag": "Clean",
+    "file": "frost.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/frost.css"
+  },
+  {
+    "id": "biohazard",
+    "name": "Toxic Biohazard",
+    "author": "Hazmat",
+    "accentColor": "#a3e635",
+    "description": "Radioactive nuclear lime and hazard yellow industrial glow",
+    "tag": "Vibrant",
+    "file": "biohazard.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/biohazard.css"
+  },
+  {
+    "id": "solar",
+    "name": "Solar Flare",
+    "author": "Phoenix",
+    "accentColor": "#f97316",
+    "description": "Blazing molten ember sunburst with burning orange accents",
+    "tag": "Vibrant",
+    "file": "solar.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/solar.css"
+  },
+  {
+    "id": "gold",
+    "name": "Phantom Gold",
+    "author": "Midas",
+    "accentColor": "#fbbf24",
+    "description": "Luxury 24k gold prestige styling with royal onyx surfaces",
+    "tag": "Luxury",
+    "file": "gold.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/gold.css"
+  },
+  {
+    "id": "cyberpunk",
+    "name": "Cyberpunk Neon",
+    "author": "Eclipse Team",
+    "accentColor": "#ff0055",
+    "description": "High-contrast cyberpunk synthwave with neon magenta and cyan",
+    "tag": "Cyber",
+    "file": "cyberpunk.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/cyberpunk.css"
+  },
+  {
+    "id": "oled",
+    "name": "Midnight OLED",
+    "author": "OLED Master",
+    "accentColor": "#ffffff",
+    "description": "100% pure void black backgrounds and chrome silver contrast",
+    "tag": "Minimal",
+    "file": "oled.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/oled.css"
+  },
+  {
+    "id": "crimson",
+    "name": "Crimson Steel",
+    "author": "Vamp",
+    "accentColor": "#e11d48",
+    "description": "Dark metallic gunmetal with blood red gothic highlights",
+    "tag": "Gothic",
+    "file": "crimson.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/crimson.css"
+  },
+  {
+    "id": "emerald",
+    "name": "Emerald Matrix",
+    "author": "Neo",
+    "accentColor": "#10b981",
+    "description": "Matrix hacker terminal emerald phosphor glow and dark slate",
+    "tag": "Cyber",
+    "file": "emerald.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/emerald.css"
+  },
+  {
+    "id": "sakura",
+    "name": "Frosted Sakura",
+    "author": "Cherry",
+    "accentColor": "#f472b6",
+    "description": "Soft pastel sakura blossom petals and dreamy twilight glass",
+    "tag": "Pastel",
+    "file": "sakura.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/sakura.css"
+  },
+  {
+    "id": "nebula",
+    "name": "Nebula Purple",
+    "author": "Starlight",
+    "accentColor": "#a855f7",
+    "description": "Deep space celestial violet with starlight glow and indigo",
+    "tag": "Cosmic",
+    "file": "nebula.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/nebula.css"
+  }
+]
