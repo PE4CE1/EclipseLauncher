@@ -389,7 +389,7 @@ export function SettingsView() {
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => {
-                        const url = 'https://eclipselauncher.com/themes'
+                        const url = 'https://eclipse-launcher.netlify.app/#/themes'
                         if (window.electronAPI?.openUrl) {
                           window.electronAPI.openUrl(url)
                         } else {
@@ -429,7 +429,7 @@ export function SettingsView() {
                     </div>
                     <button 
                       onClick={() => {
-                        const url = 'https://eclipselauncher.com/themes'
+                        const url = 'https://eclipse-launcher.netlify.app/#/themes'
                         if (window.electronAPI?.openUrl) {
                           window.electronAPI.openUrl(url)
                         } else {
