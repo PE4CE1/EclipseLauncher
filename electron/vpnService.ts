@@ -1,7 +1,10 @@
-import { execSync, exec, spawn } from 'child_process'
+import { exec, spawn } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import { shell } from 'electron'
+import { promisify } from 'util'
+
+const execAsync = promisify(exec)
 
 export interface DetectedVpn {
   id: string
@@ -24,7 +27,7 @@ const KNOWN_VPNS = [
   {
     id: 'cyberghost',
     name: 'CyberGhost VPN',
-    processNames: ['Dashboard', 'CyberGhost', 'CyberGhostService'],
+    processNames: ['dashboard', 'cyberghost', 'cyberghostservice'],
     paths: [
       'C:\\Program Files\\CyberGhost 8\\Dashboard.exe',
       'C:\\Program Files\\CyberGhost 8\\CyberGhost.exe',
@@ -34,7 +37,7 @@ const KNOWN_VPNS = [
   {
     id: 'nordvpn',
     name: 'NordVPN',
-    processNames: ['NordVPN', 'nordvpn-service'],
+    processNames: ['nordvpn', 'nordvpn-service'],
     paths: [
       'C:\\Program Files\\NordVPN\\NordVPN.exe',
       'C:\\Program Files (x86)\\NordVPN\\NordVPN.exe'
@@ -44,7 +47,7 @@ const KNOWN_VPNS = [
   {
     id: 'protonvpn',
     name: 'ProtonVPN',
-    processNames: ['ProtonVPN', 'ProtonVPN.WireGuardService'],
+    processNames: ['protonvpn', 'protonvpn.wireguardservice'],
     paths: [
       'C:\\Program Files\\Proton\\VPN\\ProtonVPN.exe',
       path.join(process.env.LOCALAPPDATA || '', 'ProtonVPN\\ProtonVPN.exe'),
@@ -64,7 +67,7 @@ const KNOWN_VPNS = [
   {
     id: 'surfshark',
     name: 'Surfshark',
-    processNames: ['Surfshark', 'SurfsharkService'],
+    processNames: ['surfshark', 'surfsharkservice'],
     paths: [
       'C:\\Program Files\\Surfshark\\Surfshark.exe',
       'C:\\Program Files (x86)\\Surfshark\\Surfshark.exe'
@@ -73,7 +76,7 @@ const KNOWN_VPNS = [
   {
     id: 'expressvpn',
     name: 'ExpressVPN',
-    processNames: ['ExpressVPN', 'expressvpn-service'],
+    processNames: ['expressvpn', 'expressvpn-service'],
     paths: [
       'C:\\Program Files (x86)\\ExpressVPN\\expressvpn-ui\\ExpressVPN.exe',
       'C:\\Program Files\\ExpressVPN\\expressvpn-ui\\ExpressVPN.exe'
@@ -83,7 +86,7 @@ const KNOWN_VPNS = [
   {
     id: 'windscribe',
     name: 'Windscribe',
-    processNames: ['Windscribe', 'windscribe-service'],
+    processNames: ['windscribe', 'windscribe-service'],
     paths: [
       'C:\\Program Files\\Windscribe\\Windscribe.exe',
       'C:\\Program Files (x86)\\Windscribe\\Windscribe.exe'
@@ -119,7 +122,7 @@ const KNOWN_VPNS = [
   {
     id: 'warp',
     name: 'Cloudflare WARP (1.1.1.1)',
-    processNames: ['Cloudflare WARP', 'warp-svc'],
+    processNames: ['cloudflare warp', 'warp-svc'],
     paths: [
       'C:\\Program Files\\Cloudflare\\Cloudflare WARP\\Cloudflare WARP.exe'
     ],
@@ -127,19 +130,38 @@ const KNOWN_VPNS = [
   }
 ]
 
-// Check if any VPN tunnel is active
-export async function getVpnStatus(): Promise<VpnStatus> {
-  try {
-    const stdout = execSync(
-      `powershell -NoProfile -Command "Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -Property Name, InterfaceDescription | ConvertTo-Json"`,
-      { encoding: 'utf8', timeout: 3000 }
-    ).trim()
+// Non-blocking in-memory cache to prevent repeated PowerShell execution when switching UI tabs
+let cachedStatus: { data: VpnStatus; timestamp: number } | null = null
+let cachedVpns: { data: DetectedVpn[]; timestamp: number } | null = null
+const CACHE_TTL_MS = 15000 // 15 seconds cache
 
-    if (!stdout) return { isConnected: false }
+// Check if any VPN tunnel is active (100% Non-Blocking)
+export async function getVpnStatus(forceRefresh = false): Promise<VpnStatus> {
+  const now = Date.now()
+  if (!forceRefresh && cachedStatus && (now - cachedStatus.timestamp < CACHE_TTL_MS)) {
+    return cachedStatus.data
+  }
+
+  if (process.platform !== 'win32') {
+    return { isConnected: false }
+  }
+
+  try {
+    const { stdout } = await execAsync(
+      `powershell -NoProfile -Command "Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -Property Name, InterfaceDescription | ConvertTo-Json"`,
+      { timeout: 2500 }
+    )
+
+    const trimmed = (stdout || '').trim()
+    if (!trimmed) {
+      const res = { isConnected: false }
+      cachedStatus = { data: res, timestamp: now }
+      return res
+    }
 
     let adapters: any[] = []
     try {
-      const parsed = JSON.parse(stdout)
+      const parsed = JSON.parse(trimmed)
       adapters = Array.isArray(parsed) ? parsed : [parsed]
     } catch {
       adapters = []
@@ -163,34 +185,45 @@ export async function getVpnStatus(): Promise<VpnStatus> {
       )
     })
 
-    if (vpnAdapter) {
-      return {
-        isConnected: true,
-        vpnName: vpnAdapter.InterfaceDescription || vpnAdapter.Name || 'VPN Tunnel',
-        adapterName: vpnAdapter.Name
-      }
-    }
+    const result: VpnStatus = vpnAdapter ? {
+      isConnected: true,
+      vpnName: vpnAdapter.InterfaceDescription || vpnAdapter.Name || 'VPN Tunnel',
+      adapterName: vpnAdapter.Name
+    } : { isConnected: false }
 
-    return { isConnected: false }
+    cachedStatus = { data: result, timestamp: now }
+    return result
   } catch (e) {
-    return { isConnected: false }
+    const fallback = { isConnected: false }
+    cachedStatus = { data: fallback, timestamp: now }
+    return fallback
   }
 }
 
-// Detect all installed VPNs on the system
-export async function detectInstalledVpns(): Promise<DetectedVpn[]> {
-  const detected: DetectedVpn[] = []
-  const vpnStatus = await getVpnStatus()
+// Detect all installed VPNs on the system (100% Non-Blocking)
+export async function detectInstalledVpns(forceRefresh = false): Promise<DetectedVpn[]> {
+  const now = Date.now()
+  if (!forceRefresh && cachedVpns && (now - cachedVpns.timestamp < CACHE_TTL_MS)) {
+    return cachedVpns.data
+  }
 
-  // Get running processes once
+  const detected: DetectedVpn[] = []
+  const vpnStatus = await getVpnStatus(forceRefresh)
+
+  // Fast asynchronous process check using tasklist instead of heavy PowerShell
   let runningProcesses: string[] = []
   try {
-    const pOut = execSync(
-      `powershell -NoProfile -Command "Get-Process | Select-Object -ExpandProperty ProcessName"`,
-      { encoding: 'utf8', timeout: 3000 }
-    )
-    runningProcesses = pOut.split('\n').map(p => p.trim().toLowerCase()).filter(Boolean)
-  } catch {}
+    const { stdout } = await execAsync('tasklist /NH /FO CSV', { timeout: 2000 })
+    const lines = stdout.split('\n')
+    for (const line of lines) {
+      const match = line.match(/^"([^"]+)"/)
+      if (match && match[1]) {
+        runningProcesses.push(match[1].toLowerCase().replace(/\.exe$/, ''))
+      }
+    }
+  } catch {
+    // Fallback: check known processes
+  }
 
   for (const v of KNOWN_VPNS) {
     let installedPath: string | null = null
@@ -201,7 +234,7 @@ export async function detectInstalledVpns(): Promise<DetectedVpn[]> {
       }
     }
 
-    const isRunning = v.processNames.some(pName => runningProcesses.includes(pName.toLowerCase()))
+    const isRunning = v.processNames.some(pName => runningProcesses.includes(pName))
 
     if (installedPath || isRunning) {
       detected.push({
@@ -215,16 +248,16 @@ export async function detectInstalledVpns(): Promise<DetectedVpn[]> {
     }
   }
 
-  // Also check Windows Built-in VPN Connections
+  // Check Windows Built-in VPN Connections asynchronously
   try {
-    const vpnConns = execSync(
+    const { stdout } = await execAsync(
       `powershell -NoProfile -Command "Get-VpnConnection | Select-Object -Property Name, ConnectionStatus | ConvertTo-Json"`,
-      { encoding: 'utf8', timeout: 3000 }
-    ).trim()
-
-    if (vpnConns) {
+      { timeout: 2000 }
+    )
+    const trimmed = (stdout || '').trim()
+    if (trimmed) {
       try {
-        const parsed = JSON.parse(vpnConns)
+        const parsed = JSON.parse(trimmed)
         const conns = Array.isArray(parsed) ? parsed : [parsed]
         for (const conn of conns) {
           if (conn.Name) {
@@ -252,12 +285,15 @@ export async function detectInstalledVpns(): Promise<DetectedVpn[]> {
     })
   }
 
+  cachedVpns = { data: detected, timestamp: now }
   return detected
 }
 
 // Connect to a detected VPN
 export async function connectVpn(vpnId?: string): Promise<{ success: boolean; vpnName?: string; isCLI?: boolean; isNative?: boolean; error?: string }> {
-  const vpns = await detectInstalledVpns()
+  cachedStatus = null
+  cachedVpns = null
+  const vpns = await detectInstalledVpns(true)
   const target = vpnId ? vpns.find(v => v.id === vpnId) : vpns[0]
 
   if (!target) {
@@ -266,7 +302,7 @@ export async function connectVpn(vpnId?: string): Promise<{ success: boolean; vp
 
   try {
     if (target.isWindowsNative && target.nativeName) {
-      execSync(`rasdial "${target.nativeName}"`, { timeout: 8000 })
+      await execAsync(`rasdial "${target.nativeName}"`, { timeout: 8000 })
       return { success: true, vpnName: target.name, isNative: true }
     }
 
@@ -274,7 +310,6 @@ export async function connectVpn(vpnId?: string): Promise<{ success: boolean; vp
       exec(target.cli, (err) => {
         if (err) console.warn('[VpnService] CLI connect error:', err)
       })
-      // Wait for adapter
       await new Promise(r => setTimeout(r, 2500))
       return { success: true, vpnName: target.name, isCLI: true }
     }
@@ -293,12 +328,14 @@ export async function connectVpn(vpnId?: string): Promise<{ success: boolean; vp
 
 // Disconnect VPN
 export async function disconnectVpn(vpnId?: string): Promise<{ success: boolean; message?: string }> {
+  cachedStatus = null
+  cachedVpns = null
   try {
-    const vpns = await detectInstalledVpns()
+    const vpns = await detectInstalledVpns(true)
     const target = vpnId ? vpns.find(v => v.id === vpnId) : vpns[0]
 
     if (target?.isWindowsNative && target.nativeName) {
-      execSync(`rasdial "${target.nativeName}" /disconnect`, { timeout: 5000 })
+      await execAsync(`rasdial "${target.nativeName}" /disconnect`, { timeout: 5000 })
       return { success: true, message: 'VPN getrennt.' }
     }
 

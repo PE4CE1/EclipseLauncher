@@ -124,11 +124,21 @@ async function handleDeepLink(rawUrl: string) {
       }
 
       console.log('[DeepLink] Theme successfully constructed:', themeObj.name)
+      pendingThemeInstall = themeObj
 
       if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
         mainWindow.webContents.send('theme:install-request', themeObj)
-      } else {
-        pendingThemeInstall = themeObj
+        // Multi-stage retry in case React is still rendering
+        setTimeout(() => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('theme:install-request', themeObj)
+          }
+        }, 400)
+        setTimeout(() => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('theme:install-request', themeObj)
+          }
+        }, 1000)
       }
     } else {
       console.warn('[DeepLink] No CSS could be retrieved for theme!')
@@ -137,6 +147,12 @@ async function handleDeepLink(rawUrl: string) {
     console.error('[DeepLink] Failed to parse deep link URL:', err)
   }
 }
+
+ipcMain.handle('theme:get-pending', () => {
+  const p = pendingThemeInstall
+  pendingThemeInstall = null
+  return p
+})
 
 // Single Instance Lock for handling deep links on Windows
 const gotSingleInstanceLock = app.requestSingleInstanceLock()

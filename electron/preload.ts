@@ -223,5 +223,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_: any, theme: any) => callback(theme)
     ipcRenderer.on('theme:install-request', handler)
     return () => ipcRenderer.removeListener('theme:install-request', handler)
-  }
+  },
+  getPendingTheme: () => ipcRenderer.invoke('theme:get-pending')
 })

@@ -130,9 +130,9 @@ export default function App() {
     }
   }, [])
 
-  // Deep Link Theme Installer listener
+  // Deep Link Theme Installer listener & startup check
   useEffect(() => {
-    const unsubTheme = (window as any).electronAPI?.onThemeInstallRequest?.((theme: any) => {
+    const handleInstall = (theme: any) => {
       if (theme && theme.css) {
         useThemeStore.getState().installTheme(theme)
         const lang = useGameStore.getState().settings.language === 'de' ? 'de' : 'en'
@@ -150,7 +150,16 @@ export default function App() {
           'success'
         )
       }
-    })
+    }
+
+    // Check for any theme passed at startup
+    if ((window as any).electronAPI?.getPendingTheme) {
+      (window as any).electronAPI.getPendingTheme().then((theme: any) => {
+        if (theme) handleInstall(theme)
+      }).catch(() => {})
+    }
+
+    const unsubTheme = (window as any).electronAPI?.onThemeInstallRequest?.(handleInstall)
     return () => unsubTheme?.()
   }, [])
 
