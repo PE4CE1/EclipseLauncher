@@ -1,50 +1,129 @@
-/* ─── Frosted Sakura Theme for Eclipse Launcher ─── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   🌸 FROSTED SAKURA (KYOTO DUSK) THEME
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --theme-accent: #f472b6;
-  --theme-accent-glow: rgba(244, 114, 182, 0.45);
+  --theme-sakura: #f472b6;
+  --theme-sakura-bright: #fbcfe8;
+  --theme-sakura-dark: #be185d;
+  --theme-glow: rgba(244, 114, 182, 0.45);
 }
 
+/* Dreamy Dusk Pastel Atmosphere */
 html, body, #root {
-  background-color: #080406 !important;
+  background-color: #090407 !important;
   background-image: 
-    radial-gradient(circle at 50% 0%, rgba(244, 114, 182, 0.09) 0%, transparent 50%),
-    radial-gradient(circle at 100% 100%, rgba(251, 113, 133, 0.05) 0%, transparent 50%) !important;
+    radial-gradient(circle at 50% 0%, rgba(244, 114, 182, 0.13) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(190, 24, 93, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 0% 100%, rgba(251, 113, 133, 0.06) 0%, transparent 40%) !important;
+  color: #fdf2f8 !important;
 }
 
 ::selection {
-  background: rgba(244, 114, 182, 0.3) !important;
+  background: rgba(244, 114, 182, 0.4) !important;
   color: #ffffff !important;
 }
 
+/* Header */
+header, .bg-\[\#07080a\]\/75 {
+  background-color: rgba(9, 4, 7, 0.88) !important;
+  border-bottom: 1px solid rgba(244, 114, 182, 0.22) !important;
+  box-shadow: 0 4px 25px rgba(244, 114, 182, 0.08) !important;
+}
+
+/* Sidebar */
+aside, .border-r {
+  background-color: rgba(6, 2, 5, 0.6) !important;
+  border-right-color: rgba(244, 114, 182, 0.12) !important;
+}
+
+.sidebar-item:hover:not(.active) {
+  background: rgba(244, 114, 182, 0.1) !important;
+  color: #fbcfe8 !important;
+  transform: translateX(4px);
+}
+
 .sidebar-item.active {
-  background: rgba(244, 114, 182, 0.15) !important;
+  background: linear-gradient(90deg, rgba(244, 114, 182, 0.25), rgba(190, 24, 93, 0.05)) !important;
   color: #f472b6 !important;
+  font-weight: 700 !important;
+  box-shadow: inset 0 0 15px rgba(244, 114, 182, 0.15) !important;
 }
 
 .sidebar-item.active::before {
   background: #f472b6 !important;
-  box-shadow: 0 0 14px #f472b6 !important;
+  box-shadow: 0 0 18px #f472b6, 0 0 30px #f472b6 !important;
+  width: 3px !important;
 }
 
-.sidebar-item:hover:not(.active) {
-  color: #fbcfe8 !important;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #f472b6, #ec4899) !important;
-  color: #000000 !important;
+/* Sakura Blossom Action Buttons */
+.btn-primary, button.bg-white.text-black {
+  background: linear-gradient(135deg, #f472b6 0%, #db2777 100%) !important;
+  color: #ffffff !important;
   font-weight: 700 !important;
-  box-shadow: 0 0 24px rgba(244, 114, 182, 0.45) !important;
+  border: 1px solid rgba(251, 207, 232, 0.4) !important;
+  box-shadow: 0 0 28px rgba(244, 114, 182, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
 }
 
-.btn-primary:hover {
-  background: linear-gradient(135deg, #f9a8d4, #f472b6) !important;
-  box-shadow: 0 0 32px rgba(244, 114, 182, 0.65) !important;
+.btn-primary:hover, button.bg-white.text-black:hover {
+  background: linear-gradient(135deg, #f9a8d4 0%, #ec4899 100%) !important;
+  box-shadow: 0 0 38px rgba(244, 114, 182, 0.8) !important;
+  transform: translateY(-1px) scale(1.02) !important;
 }
 
+.btn-ghost, button.bg-white\/10 {
+  background: rgba(244, 114, 182, 0.08) !important;
+  border: 1px solid rgba(244, 114, 182, 0.22) !important;
+  color: #fce7f3 !important;
+}
+
+.btn-ghost:hover, button.bg-white\/10:hover {
+  background: rgba(244, 114, 182, 0.18) !important;
+  border-color: rgba(244, 114, 182, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 20px rgba(244, 114, 182, 0.3) !important;
+}
+
+/* Modals & Surfaces */
+.glass, .glass-heavy, .bg-hub-surface, .bg-\[\#0f1015\], .bg-\[\#0a0a0c\] {
+  background-color: rgba(13, 5, 10, 0.88) !important;
+  border: 1px solid rgba(244, 114, 182, 0.2) !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7), 0 0 25px rgba(244, 114, 182, 0.08) !important;
+}
+
+/* Game Cards */
+.game-card:hover {
+  border-color: #f472b6 !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85), 0 0 28px rgba(244, 114, 182, 0.4) !important;
+  transform: translateY(-4px) scale(1.02) !important;
+}
+
+/* Inputs */
+input, select, textarea {
+  background-color: rgba(18, 7, 14, 0.92) !important;
+  border-color: rgba(244, 114, 182, 0.25) !important;
+  color: #fdf2f8 !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #f472b6 !important;
+  box-shadow: 0 0 18px rgba(244, 114, 182, 0.45) !important;
+}
+
+/* Gradient Text */
 .gradient-text {
-  background: linear-gradient(135deg, #ffffff, #fbcfe8, #f472b6) !important;
+  background: linear-gradient(135deg, #ffffff 0%, #fbcfe8 50%, #f472b6 100%) !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar-thumb {
+  background: rgba(244, 114, 182, 0.3) !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #f472b6 !important;
+  box-shadow: 0 0 12px #f472b6 !important;
 }

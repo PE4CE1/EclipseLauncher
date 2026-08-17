@@ -1,55 +1,144 @@
-/* ─── Cyberpunk Neon Theme for Eclipse Launcher ─── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   🌆 CYBERPUNK NEON (NIGHT CITY) THEME FOR ECLIPSE LAUNCHER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
   --theme-accent: #ff0055;
-  --theme-accent-glow: rgba(255, 0, 85, 0.4);
-  --theme-accent-subtle: rgba(255, 0, 85, 0.15);
   --theme-cyan: #00f0ff;
+  --theme-yellow: #ffe600;
+  --theme-glow: rgba(255, 0, 85, 0.45);
+  --theme-cyan-glow: rgba(0, 240, 255, 0.4);
 }
 
+/* Base App Atmosphere */
 html, body, #root {
-  background-color: #07070d !important;
+  background-color: #05060b !important;
   background-image: 
-    radial-gradient(circle at 20% 0%, rgba(255, 0, 85, 0.08) 0%, transparent 45%),
-    radial-gradient(circle at 80% 100%, rgba(0, 240, 255, 0.06) 0%, transparent 45%) !important;
+    radial-gradient(circle at 15% 0%, rgba(255, 0, 85, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 85% 100%, rgba(0, 240, 255, 0.1) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(255, 230, 0, 0.02) 0%, transparent 60%) !important;
+  color: #f1f5f9 !important;
 }
 
 ::selection {
-  background: rgba(255, 0, 85, 0.3) !important;
-  color: #ffffff !important;
+  background: rgba(255, 0, 85, 0.4) !important;
+  color: #00f0ff !important;
+}
+
+/* TopBar Header */
+header, .bg-\[\#07080a\]\/75 {
+  background-color: rgba(5, 6, 11, 0.85) !important;
+  border-bottom: 1px solid rgba(255, 0, 85, 0.25) !important;
+  box-shadow: 0 4px 20px rgba(255, 0, 85, 0.08) !important;
+}
+
+/* Sidebar */
+aside, .border-r {
+  background-color: rgba(3, 4, 8, 0.6) !important;
+  border-right-color: rgba(0, 240, 255, 0.12) !important;
+}
+
+.sidebar-item {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.sidebar-item:hover:not(.active) {
+  background: rgba(0, 240, 255, 0.08) !important;
+  color: #00f0ff !important;
+  transform: translateX(4px);
 }
 
 .sidebar-item.active {
-  background: var(--theme-accent-subtle) !important;
+  background: linear-gradient(90deg, rgba(255, 0, 85, 0.22), rgba(0, 240, 255, 0.05)) !important;
   color: #ff0055 !important;
+  font-weight: 700 !important;
+  box-shadow: inset 0 0 15px rgba(255, 0, 85, 0.15) !important;
 }
 
 .sidebar-item.active::before {
   background: #ff0055 !important;
-  box-shadow: 0 0 12px #ff0055 !important;
+  box-shadow: 0 0 16px #ff0055, 0 0 30px #ff0055 !important;
+  width: 3px !important;
+  border-radius: 0 4px 4px 0 !important;
 }
 
-.sidebar-item:hover:not(.active) {
-  color: #ff3377 !important;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #ff0055, #ff5500) !important;
+/* Primary Action Buttons (Play / Install / Save) */
+.btn-primary, button.bg-white.text-black {
+  background: linear-gradient(135deg, #ff0055 0%, #ff5500 100%) !important;
   color: #ffffff !important;
-  box-shadow: 0 0 24px rgba(255, 0, 85, 0.45) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 0 25px rgba(255, 0, 85, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6) !important;
 }
 
-.btn-primary:hover {
-  background: linear-gradient(135deg, #ff1a6b, #ff661a) !important;
-  box-shadow: 0 0 32px rgba(255, 0, 85, 0.65) !important;
+.btn-primary:hover, button.bg-white.text-black:hover {
+  background: linear-gradient(135deg, #ff1a6b 0%, #ff6b1a 100%) !important;
+  box-shadow: 0 0 35px rgba(255, 0, 85, 0.75), 0 0 15px rgba(0, 240, 255, 0.4) !important;
+  transform: translateY(-1px) scale(1.02) !important;
 }
 
+/* Secondary / Ghost Buttons */
+.btn-ghost, button.bg-white\/10 {
+  background: rgba(0, 240, 255, 0.06) !important;
+  border: 1px solid rgba(0, 240, 255, 0.2) !important;
+  color: #e2e8f0 !important;
+}
+
+.btn-ghost:hover, button.bg-white\/10:hover {
+  background: rgba(0, 240, 255, 0.15) !important;
+  border-color: rgba(0, 240, 255, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.25) !important;
+}
+
+/* Glassmorphism Containers & Modals */
+.glass, .glass-heavy, .bg-hub-surface, .bg-\[\#0f1015\], .bg-\[\#0a0a0c\] {
+  background-color: rgba(8, 10, 18, 0.85) !important;
+  border: 1px solid rgba(255, 0, 85, 0.18) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 0, 85, 0.05) !important;
+}
+
+/* Game Cards */
+.game-card {
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.game-card:hover {
+  border-color: rgba(0, 240, 255, 0.6) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8), 0 0 25px rgba(0, 240, 255, 0.35) !important;
+  transform: translateY(-4px) scale(1.02) !important;
+}
+
+/* Inputs & Search */
+input, select, textarea {
+  background-color: rgba(10, 12, 22, 0.9) !important;
+  border-color: rgba(0, 240, 255, 0.25) !important;
+  color: #ffffff !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #ff0055 !important;
+  box-shadow: 0 0 15px rgba(255, 0, 85, 0.4) !important;
+}
+
+/* Text Gradients */
 .gradient-text {
-  background: linear-gradient(135deg, #ff0055, #00f0ff) !important;
+  background: linear-gradient(135deg, #ff0055 0%, #00f0ff 100%) !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 0, 85, 0.25) !important;
+  border-radius: 4px !important;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 0, 85, 0.3) !important;
+  background: #ff0055 !important;
+  box-shadow: 0 0 10px #ff0055 !important;
 }
