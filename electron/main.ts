@@ -34,6 +34,110 @@ if (process.platform === 'win32') {
 }
 app.setPath('userData', path.join(app.getPath('appData'), 'GameHub'))
 
+// ─── Deep Linking: eclipse:// protocol registration ──────────────────────────
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('eclipse', process.execPath, [path.resolve(process.argv[1])])
+  }
+} else {
+  app.setAsDefaultProtocolClient('eclipse')
+}
+
+let pendingThemeInstall: any = null
+
+async function handleDeepLink(rawUrl: string) {
+  try {
+    if (!rawUrl || typeof rawUrl !== 'string') return
+    const cleanUrl = rawUrl.trim()
+    if (!cleanUrl.startsWith('eclipse://')) return
+
+    console.log('[DeepLink] Processing:', cleanUrl)
+    // Support URLs like eclipse://install-theme?url=... or eclipse://theme?data=...
+    const urlObj = new URL(cleanUrl)
+    const action = (urlObj.host || urlObj.pathname.replace(/^\/\//, '')).toLowerCase()
+
+    if (action === 'install-theme' || action === 'theme') {
+      const params = urlObj.searchParams
+      const themeUrl = params.get('url')
+      let name = params.get('name') || 'Custom Theme'
+      let author = params.get('author') || 'Eclipse Community'
+      let color = params.get('color') || '#ffffff'
+      let description = params.get('description') || ''
+      let preview = params.get('preview') || ''
+      let css = params.get('css') || ''
+      const dataBase64 = params.get('data')
+
+      if (dataBase64) {
+        try {
+          const decoded = JSON.parse(Buffer.from(dataBase64, 'base64').toString('utf-8'))
+          if (decoded.css) css = decoded.css
+          if (decoded.name) name = decoded.name
+          if (decoded.author) author = decoded.author
+          if (decoded.color) color = decoded.color
+          if (decoded.description) description = decoded.description
+          if (decoded.preview) preview = decoded.preview
+        } catch {}
+      }
+
+      if (!css && themeUrl) {
+        try {
+          const res = await fetch(themeUrl)
+          if (res.ok) {
+            css = await res.text()
+          }
+        } catch (fetchErr) {
+          console.error('[DeepLink] Error fetching theme CSS:', fetchErr)
+        }
+      }
+
+      if (css) {
+        const themeObj = {
+          id: 'theme_' + name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now(),
+          name,
+          author,
+          accentColor: color,
+          description,
+          previewImage: preview,
+          css,
+          installedAt: Date.now()
+        }
+
+        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isLoading()) {
+          mainWindow.webContents.send('theme:install-request', themeObj)
+        } else {
+          pendingThemeInstall = themeObj
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[DeepLink] Failed to parse deep link URL:', err)
+  }
+}
+
+// Single Instance Lock for handling deep links on Windows
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+
+if (!gotSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, argv) => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
+      mainWindow.focus()
+    }
+    const deepLinkArg = argv.find(arg => arg.startsWith('eclipse://'))
+    if (deepLinkArg) {
+      handleDeepLink(deepLinkArg)
+    }
+  })
+}
+
+app.on('open-url', (event, url) => {
+  event.preventDefault()
+  handleDeepLink(url)
+})
+
 const settingsPath = path.join(app.getPath('userData'), 'settings.json')
 
 function getSavedSettings(): Record<string, any> {
@@ -158,6 +262,10 @@ function createWindow() {
       if (mainWindow && !mainWindow.isVisible()) {
         mainWindow.show()
         mainWindow.focus()
+      }
+      if (pendingThemeInstall && mainWindow) {
+        mainWindow.webContents.send('theme:install-request', pendingThemeInstall)
+        pendingThemeInstall = null
       }
     })
 
@@ -861,6 +969,12 @@ app.whenReady().then(() => {
   } catch (e) {}
 
   createWindow()
+
+  // Check initial startup deep link argument
+  const initialDeepLink = process.argv.find(arg => arg.startsWith('eclipse://'))
+  if (initialDeepLink) {
+    handleDeepLink(initialDeepLink)
+  }
 })
 
 app.on('window-all-closed', () => {

@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { 
   User, RefreshCw, Save, Shield, ShieldCheck,
   Settings as SettingsIcon, Download, Bell, Gamepad2, 
-  Link, Monitor, Check, Plus, Trash, Loader2, Folder, Volume2
+  Link, Monitor, Check, Plus, Trash, Loader2, Folder, Volume2,
+  Paintbrush, ExternalLink, Trash2, Power, RotateCcw
 } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
+import { useThemeStore } from '../../store/themeStore'
 import { useScanner } from '../../hooks/useScanner'
 import { useSourceStore } from '../../store/sourceStore'
 import { useTranslation } from '../../hooks/useTranslation'
@@ -18,6 +20,7 @@ import { playNotificationChime, playNotificationSound, getSoundPresets } from '.
 export function SettingsView() {
   const { settings, updateSettings, scanMessage, isScanning } = useGameStore()
   const { showNotification, activeSettingsTab, setActiveSettingsTab } = useUIStore()
+  const { installedThemes, activeThemeId, toggleTheme, deleteTheme, setActiveTheme } = useThemeStore()
   const { scan } = useScanner()
   const { sources, syncSource, syncAll, addSource, removeSource, removeAllSources } = useSourceStore()
   const { t, language } = useTranslation()
@@ -374,15 +377,133 @@ export function SettingsView() {
               <hr className="border-white/[0.08]" />
 
               <section>
-                <h2 className="text-lg font-bold text-white mb-4 tracking-tight">{t('appearance')}</h2>
-                <div className="flex gap-3 mb-4">
-                  <button className="px-4 py-2 bg-white text-black hover:bg-white/90 rounded-lg text-xs font-semibold transition-all shadow-sm">{t('webStore')}</button>
-                  <button className="px-4 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-semibold transition-colors">{t('delete')}</button>
-                  <button className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-colors border border-white/10">+ {t('create')}</button>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-white tracking-tight">{t('appearance')}</h2>
+                    <p className="text-xs text-white/50 mt-0.5">
+                      {language === 'de' 
+                        ? 'Passe das Design von Eclipse Launcher mit Themes aus dem Web Store an.' 
+                        : 'Customize Eclipse Launcher styling with themes from the Web Store.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => {
+                        const url = 'https://eclipselauncher.com/themes'
+                        if (window.electronAPI?.openUrl) {
+                          window.electronAPI.openUrl(url)
+                        } else {
+                          window.open(url, '_blank')
+                        }
+                      }}
+                      className="px-3.5 py-1.5 bg-white text-black hover:bg-white/90 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <ExternalLink size={13} />
+                      <span>{t('webStore')}</span>
+                    </button>
+                    {activeThemeId && (
+                      <button 
+                        onClick={() => setActiveTheme(null)}
+                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                        title={language === 'de' ? 'Auf Standard-Eclipse zurücksetzen' : 'Reset to Default Eclipse'}
+                      >
+                        <RotateCcw size={12} />
+                        <span>{language === 'de' ? 'Standard' : 'Default'}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="p-4 border border-white/10 border-dashed rounded-lg text-center text-xs text-hub-muted">
-                  {t('noThemes')}
-                </div>
+
+                {installedThemes.length === 0 ? (
+                  <div className="p-8 border border-white/10 border-dashed rounded-xl text-center flex flex-col items-center justify-center gap-3 bg-white/[0.01]">
+                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40">
+                      <Paintbrush size={18} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white/80">{t('noThemes')}</p>
+                      <p className="text-xs text-white/40 mt-1 max-w-sm">
+                        {language === 'de' 
+                          ? 'Besuche den Web Store, um Themes mit 1-Klick direkt in deinen Launcher zu importieren.'
+                          : 'Visit the Web Store to 1-click import custom themes directly into your launcher.'}
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        const url = 'https://eclipselauncher.com/themes'
+                        if (window.electronAPI?.openUrl) {
+                          window.electronAPI.openUrl(url)
+                        } else {
+                          window.open(url, '_blank')
+                        }
+                      }}
+                      className="mt-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all border border-white/10"
+                    >
+                      <ExternalLink size={13} />
+                      <span>{language === 'de' ? 'Themes im Web Store durchsuchen' : 'Browse Themes in Web Store'}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {installedThemes.map((theme) => {
+                      const isActive = activeThemeId === theme.id
+                      return (
+                        <div 
+                          key={theme.id}
+                          className={`p-3.5 rounded-xl border transition-all flex items-center justify-between ${
+                            isActive 
+                              ? 'bg-white/[0.06] border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.04)]' 
+                              : 'bg-[#0f1015] border-white/10 hover:border-white/20'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3.5 min-w-0 flex-1 pr-3">
+                            <div 
+                              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border border-white/20 shadow-inner"
+                              style={{ backgroundColor: theme.accentColor || '#ffffff' }}
+                            >
+                              <Paintbrush size={15} className="mix-blend-difference text-white" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-bold text-white truncate">{theme.name}</h4>
+                                {isActive && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white text-black uppercase tracking-wider flex-shrink-0">
+                                    {language === 'de' ? 'Aktiv' : 'Active'}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px] text-white/50 mt-0.5 truncate">
+                                <span>by {theme.author || 'Eclipse Community'}</span>
+                                {theme.description && <span className="truncate">• {theme.description}</span>}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => toggleTheme(theme.id)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                isActive 
+                                  ? 'bg-white text-black hover:bg-white/90 shadow-sm' 
+                                  : 'bg-white/10 text-white/80 hover:text-white hover:bg-white/20'
+                              }`}
+                            >
+                              <Power size={12} />
+                              <span>{isActive ? (language === 'de' ? 'Deaktivieren' : 'Disable') : (language === 'de' ? 'Aktivieren' : 'Enable')}</span>
+                            </button>
+
+                            <button
+                              onClick={() => deleteTheme(theme.id)}
+                              className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors cursor-pointer"
+                              title={language === 'de' ? 'Theme löschen' : 'Delete Theme'}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </section>
             </motion.div>
           )}

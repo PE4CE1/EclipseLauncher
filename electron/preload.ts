@@ -216,5 +216,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_: Electron.IpcRendererEvent, payload: any) => callback(payload)
     ipcRenderer.on('updater:status', handler)
     return () => ipcRenderer.removeListener('updater:status', handler)
+  },
+
+  // Custom Theme Deep Link
+  onThemeInstallRequest: (callback: (theme: any) => void) => {
+    const handler = (_: any, theme: any) => callback(theme)
+    ipcRenderer.on('theme:install-request', handler)
+    return () => ipcRenderer.removeListener('theme:install-request', handler)
   }
 })

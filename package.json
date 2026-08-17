@@ -58,6 +58,14 @@
         "repo": "EclipseLauncher"
       }
     ],
+    "protocols": [
+      {
+        "name": "Eclipse Launcher Protocol",
+        "schemes": [
+          "eclipse"
+        ]
+      }
+    ],
     "win": {
       "target": [
         "nsis"

@@ -23,6 +23,7 @@ import { useDownloadStore } from './store/downloadStore'
 import { useScanner } from './hooks/useScanner'
 import { sendAppNotification } from './services/notificationService'
 import { initFirebaseSocial, updateFirebasePresence } from './services/firebaseService'
+import { useThemeStore } from './store/themeStore'
 
 const pageVariants = {
   initial: { opacity: 0, y: 6, filter: 'blur(3px)' },
@@ -128,6 +129,52 @@ export default function App() {
       unsubProfile?.()
     }
   }, [])
+
+  // Deep Link Theme Installer listener
+  useEffect(() => {
+    const unsubTheme = (window as any).electronAPI?.onThemeInstallRequest?.((theme: any) => {
+      if (theme && theme.css) {
+        useThemeStore.getState().installTheme(theme)
+        const lang = useGameStore.getState().settings.language === 'de' ? 'de' : 'en'
+        sendAppNotification({
+          title: lang === 'de' ? 'Neues Theme installiert! 🎨' : 'New Theme Installed! 🎨',
+          body: lang === 'de'
+            ? `Das Theme "${theme.name}" wurde erfolgreich importiert und aktiviert!`
+            : `Theme "${theme.name}" was successfully imported and activated!`,
+          type: 'info'
+        })
+        useUIStore.getState().showNotification(
+          lang === 'de'
+            ? `Theme "${theme.name}" importiert & aktiviert! ✨`
+            : `Theme "${theme.name}" imported & activated! ✨`,
+          'success'
+        )
+      }
+    })
+    return () => unsubTheme?.()
+  }, [])
+
+  // Dynamic Custom CSS Theme Injection
+  const { installedThemes, activeThemeId } = useThemeStore()
+  useEffect(() => {
+    const styleId = 'eclipse-custom-theme-style'
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null
+
+    const activeTheme = installedThemes.find((t) => t.id === activeThemeId)
+
+    if (activeTheme && activeTheme.css) {
+      if (!styleEl) {
+        styleEl = document.createElement('style')
+        styleEl.id = styleId
+        document.head.appendChild(styleEl)
+      }
+      styleEl.textContent = activeTheme.css
+    } else {
+      if (styleEl) {
+        styleEl.remove()
+      }
+    }
+  }, [installedThemes, activeThemeId])
 
   // Auto-updater listener
   useEffect(() => {
