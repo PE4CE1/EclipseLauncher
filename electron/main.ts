@@ -109,6 +109,24 @@ async function handleDeepLink(rawUrl: string) {
       } catch (fetchErr) {
         console.error('[DeepLink] Error fetching theme CSS from URL:', fetchErr)
       }
+
+      // Local disk fallback (for dev mode or offline)
+      if (!css) {
+        const themeFileName = path.basename(themeUrl.split('?')[0])
+        const candidatePaths = [
+          path.join(__dirname, '../themes', themeFileName),
+          path.join(__dirname, '../../themes', themeFileName),
+          path.join(app.getAppPath(), 'themes', themeFileName),
+          path.join(process.cwd(), 'themes', themeFileName)
+        ]
+        for (const cp of candidatePaths) {
+          if (fs.existsSync(cp)) {
+            css = fs.readFileSync(cp, 'utf-8')
+            console.log('[DeepLink] Loaded theme CSS from local disk:', cp)
+            break
+          }
+        }
+      }
     }
 
     if (css) {

@@ -1,0 +1,50 @@
+/* ─── Emerald Matrix Theme for Eclipse Launcher ─── */
+:root {
+  --theme-accent: #10b981;
+  --theme-accent-glow: rgba(16, 185, 129, 0.45);
+}
+
+html, body, #root {
+  background-color: #030705 !important;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.04) 0%, transparent 50%) !important;
+}
+
+::selection {
+  background: rgba(16, 185, 129, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.sidebar-item.active {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+}
+
+.sidebar-item.active::before {
+  background: #10b981 !important;
+  box-shadow: 0 0 14px #10b981 !important;
+}
+
+.sidebar-item:hover:not(.active) {
+  color: #6ee7b7 !important;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: #000000 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.45) !important;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #34d399, #10b981) !important;
+  box-shadow: 0 0 32px rgba(16, 185, 129, 0.65) !important;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #ffffff, #34d399, #10b981) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}

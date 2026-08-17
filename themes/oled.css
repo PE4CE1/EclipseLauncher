@@ -1,0 +1,31 @@
+/* ─── Midnight OLED Theme for Eclipse Launcher (Pure Black) ─── */
+:root {
+  --theme-accent: #ffffff;
+  --theme-accent-glow: rgba(255, 255, 255, 0.2);
+}
+
+html, body, #root, .bg-hub-base, .bg-hub-surface, .bg-\[\#040405\], .bg-\[\#07080a\], .bg-\[\#0b0c0e\] {
+  background-color: #000000 !important;
+  background-image: none !important;
+}
+
+.glass, .glass-heavy, .bg-hub-elevated, .bg-\[\#0f1015\], .bg-\[\#0c0d11\] {
+  background-color: #040404 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.sidebar-item.active {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+.sidebar-item.active::before {
+  background: #ffffff !important;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8) !important;
+}
+
+.btn-primary {
+  background: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.25) !important;
+}
