@@ -1,0 +1,127 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   🌴 MIAMI VICE 84 (RETRO SYNTHWAVE SUNSET) THEME
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --theme-pink: #ff71ce;
+  --theme-cyan: #01cdfe;
+  --theme-mint: #05ffa1;
+  --theme-yellow: #fffb96;
+}
+
+/* 80s Neon Sunset Horizon Atmosphere */
+html, body, #root {
+  background-color: #0d021a !important;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(255, 113, 206, 0.18) 0%, transparent 45%),
+    radial-gradient(circle at 100% 100%, rgba(1, 205, 254, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 0% 100%, rgba(5, 255, 161, 0.1) 0%, transparent 40%) !important;
+  color: #fdf2f8 !important;
+}
+
+::selection {
+  background: #ff71ce !important;
+  color: #01cdfe !important;
+}
+
+/* Header */
+header, .bg-\[\#07080a\]\/75 {
+  background-color: rgba(13, 2, 26, 0.88) !important;
+  border-bottom: 2px solid transparent !important;
+  border-image: linear-gradient(90deg, #ff71ce, #01cdfe, #05ffa1) 1 !important;
+  box-shadow: 0 4px 30px rgba(255, 113, 206, 0.2) !important;
+}
+
+/* Sidebar */
+aside, .border-r {
+  background-color: rgba(9, 1, 18, 0.7) !important;
+  border-right: 1px solid rgba(1, 205, 254, 0.2) !important;
+}
+
+.sidebar-item:hover:not(.active) {
+  background: linear-gradient(90deg, rgba(255, 113, 206, 0.15), rgba(1, 205, 254, 0.05)) !important;
+  color: #01cdfe !important;
+  transform: translateX(6px) !important;
+}
+
+.sidebar-item.active {
+  background: linear-gradient(90deg, rgba(255, 113, 206, 0.3), rgba(1, 205, 254, 0.15)) !important;
+  color: #ff71ce !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(255, 113, 206, 0.3) !important;
+  box-shadow: 0 0 20px rgba(255, 113, 206, 0.3) !important;
+}
+
+.sidebar-item.active::before {
+  background: #ff71ce !important;
+  box-shadow: 0 0 15px #ff71ce, 0 0 25px #01cdfe !important;
+  width: 4px !important;
+}
+
+/* Sunset Gradient Action Buttons */
+.btn-primary, button.bg-white.text-black {
+  background: linear-gradient(135deg, #ff71ce 0%, #ff5577 50%, #01cdfe 100%) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 0 30px rgba(255, 113, 206, 0.6), 0 0 15px rgba(1, 205, 254, 0.4) !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6) !important;
+}
+
+.btn-primary:hover, button.bg-white.text-black:hover {
+  background: linear-gradient(135deg, #ff8adc 0%, #ff6b8b 50%, #2bd6ff 100%) !important;
+  box-shadow: 0 0 45px rgba(255, 113, 206, 0.9), 0 0 25px rgba(1, 205, 254, 0.6) !important;
+  transform: translateY(-2px) scale(1.02) !important;
+}
+
+.btn-ghost, button.bg-white\/10 {
+  background: rgba(1, 205, 254, 0.08) !important;
+  border: 1px solid rgba(1, 205, 254, 0.25) !important;
+  color: #fdf2f8 !important;
+}
+
+.btn-ghost:hover, button.bg-white\/10:hover {
+  background: rgba(255, 113, 206, 0.2) !important;
+  border-color: #ff71ce !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 20px rgba(255, 113, 206, 0.4) !important;
+}
+
+/* Modals & Surfaces */
+.glass, .glass-heavy, .bg-hub-surface, .bg-\[\#0f1015\], .bg-\[\#0a0a0c\] {
+  background-color: rgba(19, 3, 38, 0.9) !important;
+  border: 1px solid rgba(255, 113, 206, 0.25) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(1, 205, 254, 0.15) !important;
+}
+
+/* Game Cards */
+.game-card:hover {
+  border-color: #01cdfe !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.9), 0 0 30px rgba(1, 205, 254, 0.5), 0 0 15px rgba(255, 113, 206, 0.3) !important;
+  transform: translateY(-5px) scale(1.02) !important;
+}
+
+/* Inputs */
+input, select, textarea {
+  background-color: rgba(22, 4, 44, 0.95) !important;
+  border-color: rgba(1, 205, 254, 0.3) !important;
+  color: #ffffff !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #ff71ce !important;
+  box-shadow: 0 0 20px rgba(255, 113, 206, 0.5) !important;
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #fffb96 0%, #ff71ce 50%, #01cdfe 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ff71ce, #01cdfe) !important;
+  border-radius: 4px !important;
+}

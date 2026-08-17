@@ -1,0 +1,141 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   🎯 RADIANT (TACTICAL ESPORTS) THEME FOR ECLIPSE LAUNCHER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --theme-radiant: #ff4655;
+  --theme-radiant-dark: #bd1e2c;
+  --theme-slate: #0f1923;
+  --theme-glow: rgba(255, 70, 85, 0.5);
+}
+
+/* Tactical Charcoal & Coral Red Atmosphere */
+html, body, #root {
+  background-color: #0b1016 !important;
+  background-image: 
+    radial-gradient(circle at 10% 0%, rgba(255, 70, 85, 0.15) 0%, transparent 45%),
+    radial-gradient(circle at 90% 100%, rgba(15, 25, 35, 0.8) 0%, transparent 50%),
+    linear-gradient(180deg, rgba(255, 70, 85, 0.03) 0%, transparent 100%) !important;
+  color: #ece8e1 !important;
+  letter-spacing: -0.01em !important;
+}
+
+::selection {
+  background: #ff4655 !important;
+  color: #ffffff !important;
+}
+
+/* Header */
+header, .bg-\[\#07080a\]\/75 {
+  background-color: rgba(11, 16, 22, 0.92) !important;
+  border-bottom: 2px solid #ff4655 !important;
+  box-shadow: 0 4px 25px rgba(255, 70, 85, 0.15) !important;
+}
+
+/* Sidebar */
+aside, .border-r {
+  background-color: rgba(9, 13, 18, 0.75) !important;
+  border-right: 1px solid rgba(255, 70, 85, 0.18) !important;
+}
+
+.sidebar-item {
+  border-radius: 4px !important;
+  font-family: inherit !important;
+  text-transform: uppercase !important;
+  font-size: 12px !important;
+  letter-spacing: 0.06em !important;
+}
+
+.sidebar-item:hover:not(.active) {
+  background: rgba(255, 70, 85, 0.12) !important;
+  color: #ffffff !important;
+  transform: translateX(5px) !important;
+}
+
+.sidebar-item.active {
+  background: #ff4655 !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 20px rgba(255, 70, 85, 0.6) !important;
+}
+
+.sidebar-item.active::before {
+  display: none !important;
+}
+
+/* Tactical Primary Action Buttons */
+.btn-primary, button.bg-white.text-black {
+  background: #ff4655 !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 0 30px rgba(255, 70, 85, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+.btn-primary:hover, button.bg-white.text-black:hover {
+  background: #ff5e6c !important;
+  box-shadow: 0 0 45px rgba(255, 70, 85, 0.85) !important;
+  transform: translateY(-2px) !important;
+}
+
+.btn-ghost, button.bg-white\/10 {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 70, 85, 0.25) !important;
+  color: #ece8e1 !important;
+  border-radius: 4px !important;
+}
+
+.btn-ghost:hover, button.bg-white\/10:hover {
+  background: rgba(255, 70, 85, 0.2) !important;
+  border-color: #ff4655 !important;
+  color: #ffffff !important;
+}
+
+/* Modals & Surfaces */
+.glass, .glass-heavy, .bg-hub-surface, .bg-\[\#0f1015\], .bg-\[\#0a0a0c\] {
+  background-color: rgba(15, 23, 32, 0.95) !important;
+  border: 1px solid rgba(255, 70, 85, 0.25) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 70, 85, 0.1) !important;
+}
+
+/* Game Cards */
+.game-card {
+  border-radius: 6px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.game-card:hover {
+  border-color: #ff4655 !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 70, 85, 0.5) !important;
+  transform: translateY(-5px) !important;
+}
+
+/* Inputs & Search */
+input, select, textarea {
+  background-color: rgba(11, 16, 22, 0.95) !important;
+  border: 1px solid rgba(255, 70, 85, 0.3) !important;
+  color: #ece8e1 !important;
+  border-radius: 4px !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #ff4655 !important;
+  box-shadow: 0 0 20px rgba(255, 70, 85, 0.5) !important;
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #ffffff 0%, #ece8e1 40%, #ff4655 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar-thumb {
+  background: #ff4655 !important;
+  border-radius: 2px !important;
+}

@@ -1,0 +1,130 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   👑 PHANTOM GOLD (24K PRESTIGE LUXURY) THEME
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --theme-gold: #fbbf24;
+  --theme-gold-dark: #d97706;
+  --theme-champagne: #fef3c7;
+  --theme-glow: rgba(251, 191, 36, 0.45);
+}
+
+/* Royal Onyx Gold Shimmer Atmosphere */
+html, body, #root {
+  background-color: #080603 !important;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(251, 191, 36, 0.14) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(217, 119, 6, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 0% 100%, rgba(254, 243, 199, 0.04) 0%, transparent 40%) !important;
+  color: #fffbeb !important;
+}
+
+::selection {
+  background: rgba(251, 191, 36, 0.4) !important;
+  color: #000000 !important;
+}
+
+/* Header */
+header, .bg-\[\#07080a\]\/75 {
+  background-color: rgba(8, 6, 3, 0.9) !important;
+  border-bottom: 1px solid rgba(251, 191, 36, 0.25) !important;
+  box-shadow: 0 4px 30px rgba(251, 191, 36, 0.1) !important;
+}
+
+/* Sidebar */
+aside, .border-r {
+  background-color: rgba(5, 4, 2, 0.7) !important;
+  border-right: 1px solid rgba(251, 191, 36, 0.15) !important;
+}
+
+.sidebar-item:hover:not(.active) {
+  background: rgba(251, 191, 36, 0.1) !important;
+  color: #fde68a !important;
+  transform: translateX(4px) !important;
+}
+
+.sidebar-item.active {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.25), rgba(217, 119, 6, 0.05)) !important;
+  color: #fbbf24 !important;
+  font-weight: 700 !important;
+  box-shadow: inset 0 0 15px rgba(251, 191, 36, 0.18) !important;
+}
+
+.sidebar-item.active::before {
+  background: #fbbf24 !important;
+  box-shadow: 0 0 18px #fbbf24, 0 0 30px #fbbf24 !important;
+  width: 3px !important;
+}
+
+/* 24k Gold Prestige Action Buttons */
+.btn-primary, button.bg-white.text-black {
+  background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%) !important;
+  color: #261603 !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  border: 1px solid rgba(254, 243, 199, 0.5) !important;
+  box-shadow: 0 0 30px rgba(251, 191, 36, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+.btn-primary:hover, button.bg-white.text-black:hover {
+  background: linear-gradient(135deg, #fde68a 0%, #f59e0b 100%) !important;
+  box-shadow: 0 0 42px rgba(251, 191, 36, 0.85) !important;
+  transform: translateY(-1px) scale(1.02) !important;
+}
+
+.btn-ghost, button.bg-white\/10 {
+  background: rgba(251, 191, 36, 0.08) !important;
+  border: 1px solid rgba(251, 191, 36, 0.22) !important;
+  color: #fef3c7 !important;
+}
+
+.btn-ghost:hover, button.bg-white\/10:hover {
+  background: rgba(251, 191, 36, 0.2) !important;
+  border-color: #fbbf24 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.3) !important;
+}
+
+/* Modals & Surfaces */
+.glass, .glass-heavy, .bg-hub-surface, .bg-\[\#0f1015\], .bg-\[\#0a0a0c\] {
+  background-color: rgba(13, 10, 4, 0.9) !important;
+  border: 1px solid rgba(251, 191, 36, 0.22) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(251, 191, 36, 0.08) !important;
+}
+
+/* Game Cards */
+.game-card:hover {
+  border-color: #fbbf24 !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85), 0 0 30px rgba(251, 191, 36, 0.5) !important;
+  transform: translateY(-4px) scale(1.02) !important;
+}
+
+/* Inputs */
+input, select, textarea {
+  background-color: rgba(18, 14, 5, 0.95) !important;
+  border-color: rgba(251, 191, 36, 0.25) !important;
+  color: #fffbeb !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 18px rgba(251, 191, 36, 0.45) !important;
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #ffffff 0%, #fef3c7 40%, #fbbf24 80%, #d97706 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar-thumb {
+  background: rgba(251, 191, 36, 0.35) !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #fbbf24 !important;
+  box-shadow: 0 0 12px #fbbf24 !important;
+}
