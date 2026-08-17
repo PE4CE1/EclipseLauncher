@@ -1,0 +1,179 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   💧 LIQUID GLASS (ULTRA-CLEAN TRANSLUCENT REFRACTIVE) THEME
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --theme-glass-accent: #38bdf8;
+  --theme-glass-specular: rgba(255, 255, 255, 0.4);
+  --theme-glass-border: rgba(255, 255, 255, 0.15);
+  --theme-glass-bg: rgba(255, 255, 255, 0.05);
+}
+
+/* Fluid Liquid Crystal Ambient Atmosphere */
+html, body, #root {
+  background-color: #03060c !important;
+  background-image: 
+    radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.14) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 0% 80%, rgba(45, 212, 191, 0.06) 0%, transparent 45%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%) !important;
+  color: #f8fafc !important;
+}
+
+::selection {
+  background: rgba(56, 189, 248, 0.35) !important;
+  color: #ffffff !important;
+}
+
+/* Fluid TopBar Header */
+header, .bg-\[\#07080a\]\/75 {
+  background: linear-gradient(180deg, rgba(6, 12, 22, 0.75) 0%, rgba(3, 7, 14, 0.6) 100%) !important;
+  backdrop-filter: blur(32px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Sidebar with Liquid Droplet Feel */
+aside, .border-r {
+  background: linear-gradient(180deg, rgba(4, 8, 16, 0.6) 0%, rgba(2, 4, 9, 0.7) 100%) !important;
+  backdrop-filter: blur(40px) !important;
+  -webkit-backdrop-filter: blur(40px) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+
+.sidebar-item {
+  color: #94a3b8 !important;
+  border: none !important;
+  outline: none !important;
+  border-radius: 10px !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.sidebar-item:hover:not(.active) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  transform: translateX(3px) !important;
+}
+
+.sidebar-item.active {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.35) !important;
+}
+
+.sidebar-item.active::before {
+  background: #38bdf8 !important;
+  box-shadow: 0 0 16px #38bdf8, 0 0 30px #38bdf8 !important;
+  width: 3px !important;
+  border-radius: 0 4px 4px 0 !important;
+}
+
+/* High-Gloss Liquid Glass Primary Action Button */
+.btn-primary, button.bg-white.text-black {
+  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%) !important;
+  color: #020617 !important;
+  font-weight: 800 !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 
+    0 10px 25px rgba(56, 189, 248, 0.25),
+    0 2px 10px rgba(0, 0, 0, 0.2),
+    inset 0 2px 2px rgba(255, 255, 255, 1) !important;
+  text-shadow: none !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.btn-primary:hover, button.bg-white.text-black:hover {
+  background: #ffffff !important;
+  box-shadow: 
+    0 14px 35px rgba(56, 189, 248, 0.45),
+    0 0 25px rgba(255, 255, 255, 0.6),
+    inset 0 2px 3px rgba(255, 255, 255, 1) !important;
+  transform: translateY(-2px) scale(1.02) !important;
+}
+
+/* Translucent Frosted Secondary Buttons */
+.btn-ghost, button.bg-white\/10 {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #f1f5f9 !important;
+  backdrop-filter: blur(16px) !important;
+  border-radius: 10px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.btn-ghost:hover, button.bg-white\/10:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.06) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Liquid Glass Modals & Surfaces */
+.glass, .glass-heavy, .bg-hub-surface, .bg-\[\#0f1015\], .bg-\[\#0a0a0c\] {
+  background: linear-gradient(135deg, rgba(10, 18, 32, 0.8) 0%, rgba(4, 8, 16, 0.85) 100%) !important;
+  backdrop-filter: blur(36px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 
+    0 24px 60px rgba(0, 0, 0, 0.65),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Smooth Seamless Game Cards */
+.game-card {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.game-card:hover {
+  border: none !important;
+  box-shadow: none !important;
+  transform: translateY(-4px) !important;
+}
+
+/* Frosted Refractive Inputs */
+input, select, textarea {
+  background: rgba(6, 12, 24, 0.75) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+  border-radius: 10px !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(56, 189, 248, 0.6) !important;
+  box-shadow: 
+    0 0 20px rgba(56, 189, 248, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Crystalline Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #ffffff 0%, #bae6fd 40%, #e0f2fe 80%, #38bdf8 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Smooth Frosted Glass Scrollbar */
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(10px) !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.5) !important;
+}

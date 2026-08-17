@@ -1,5 +1,15 @@
 [
   {
+    "id": "liquid-glass",
+    "name": "Liquid Glass",
+    "author": "Aero",
+    "accentColor": "#38bdf8",
+    "description": "Ultra-clean translucent frosted fluid glass with specular highlights",
+    "tag": "Glass",
+    "file": "liquid-glass.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/liquid-glass.css"
+  },
+  {
     "id": "radiant",
     "name": "Radiant",
     "author": "TenZ",
