@@ -10,12 +10,12 @@
 }
 
 /* Fluid Liquid Crystal Ambient Atmosphere with Custom Background */
-html, body, #root {
+html, body, #root, .bg-hub-base, .bg-\[\#040405\], .bg-\[\#07080a\], .bg-\[\#0b0c0e\], .bg-\[\#07070a\], .bg-\[\#050507\] {
   background-color: #03060c !important;
   background-image: 
-    radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.16) 0%, transparent 50%),
-    radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
-    linear-gradient(180deg, rgba(3, 6, 12, 0.72) 0%, rgba(3, 6, 12, 0.88) 100%),
+    radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+    linear-gradient(180deg, rgba(3, 6, 12, 0.4) 0%, rgba(3, 6, 12, 0.65) 100%),
     url('https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/assets/liquid-glass.png') !important;
   background-size: cover !important;
   background-position: center !important;
