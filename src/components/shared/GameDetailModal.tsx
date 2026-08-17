@@ -440,9 +440,9 @@ export function GameDetailModal() {
                 </div>
 
                 {/* Main Action Buttons Bar */}
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2.5 sm:gap-3 flex-nowrap flex-shrink-0 max-w-full">
                   {/* Playtime Badge */}
-                  <div className="px-3.5 py-2 rounded-xl bg-white/[0.04] backdrop-blur-md border border-white/[0.07] flex items-center gap-2 text-xs font-semibold text-white/90 shadow-sm">
+                  <div className="px-3.5 py-2 rounded-xl bg-white/[0.04] backdrop-blur-md border border-white/[0.07] flex items-center gap-2 text-xs font-semibold text-white/90 shadow-sm flex-shrink-0 whitespace-nowrap">
                     <Clock size={13} className="text-white/40" />
                     <span>{playtimeFormatted}</span>
                   </div>
@@ -451,7 +451,7 @@ export function GameDetailModal() {
                   {installed ? (
                     <>
                       {showDeleteConfirm ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
                           <button
                             onClick={() => {
                               if (installed.id && installed.installed !== false) {
@@ -460,13 +460,13 @@ export function GameDetailModal() {
                                 showNotification(t('wasRemoved', { name: installed.name }), 'info')
                               }
                             }}
-                            className="px-4 h-10 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                            className="px-4 h-10 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-2 flex-shrink-0 whitespace-nowrap"
                           >
                             <Trash2 size={14} /> {t('removeCompletely')}
                           </button>
                           <button
                             onClick={() => setShowDeleteConfirm(false)}
-                            className="px-3 h-10 hover:bg-white/10 text-white/70 rounded-xl text-xs font-medium transition-all"
+                            className="px-3 h-10 hover:bg-white/10 text-white/70 rounded-xl text-xs font-medium transition-all flex-shrink-0 whitespace-nowrap"
                           >
                             {t('cancel')}
                           </button>
@@ -477,7 +477,7 @@ export function GameDetailModal() {
                             if (installed.installed !== false) setShowDeleteConfirm(true)
                           }}
                           disabled={installed.installed === false}
-                          className="h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-red-500/10 hover:border-red-500/30 text-white/50 hover:text-red-400 text-xs font-semibold transition-all flex items-center gap-2 group"
+                          className="h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-red-500/10 hover:border-red-500/30 text-white/50 hover:text-red-400 text-xs font-semibold transition-all flex items-center gap-2 group flex-shrink-0 whitespace-nowrap"
                         >
                           <Check size={14} className="group-hover:hidden text-white/40" />
                           <span className="group-hover:hidden">{t('inLibrary')}</span>
@@ -506,7 +506,7 @@ export function GameDetailModal() {
                             }
                           }}
                           disabled={isKilling}
-                          className={`h-10 px-6 rounded-xl text-xs font-extrabold shadow-xl transition-all flex items-center justify-center gap-2.5 ${
+                          className={`h-10 px-6 rounded-xl text-xs font-extrabold shadow-xl transition-all flex items-center justify-center gap-2.5 flex-shrink-0 whitespace-nowrap ${
                             isKilling
                               ? 'bg-white/10 text-white/40 cursor-not-allowed'
                               : isCurrentlyPlaying
@@ -543,7 +543,7 @@ export function GameDetailModal() {
                     <>
                       <button
                         onClick={handleLibraryToggle}
-                        className={`h-10 px-4 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2 ${
+                        className={`h-10 px-4 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2 flex-shrink-0 whitespace-nowrap ${
                           isInLibrary
                             ? 'bg-white/[0.03] border-white/[0.07] text-white/50 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30'
                             : 'bg-white/[0.03] border-white/[0.12] text-white hover:bg-white/[0.08]'
@@ -565,7 +565,7 @@ export function GameDetailModal() {
                       <button
                         onClick={() => setIsDownloadOptionsOpen(true)}
                         disabled={availableDownloads.length === 0}
-                        className={`h-10 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-lg ${
+                        className={`h-10 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-lg flex-shrink-0 whitespace-nowrap ${
                           availableDownloads.length === 0
                             ? 'bg-white/[0.02] border border-white/[0.05] text-white/20 cursor-not-allowed'
                             : 'bg-white hover:bg-gray-100 text-black shadow-white/10'
