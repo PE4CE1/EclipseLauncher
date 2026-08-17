@@ -30,6 +30,11 @@ html, body, #root {
   color: #ffffff;
 }
 
+/* Ensure buttons and controls are always crisp */
+button, button *, .btn-primary, .btn-ghost, .badge {
+  text-shadow: none;
+}
+
 /* Electron draggable region */
 .drag-region {
   -webkit-app-region: drag;

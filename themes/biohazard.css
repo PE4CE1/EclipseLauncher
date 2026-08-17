@@ -128,3 +128,8 @@ input:focus, select:focus, textarea:focus {
   background: #a3e635 !important;
   box-shadow: 0 0 12px #a3e635 !important;
 }
+
+
+button, button *, .btn-primary, .btn-primary *, .btn-ghost, .btn-ghost *, .sidebar-item, .sidebar-item * {
+  text-shadow: none !important;
+}

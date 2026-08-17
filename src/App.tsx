@@ -26,9 +26,9 @@ import { initFirebaseSocial, updateFirebasePresence } from './services/firebaseS
 import { useThemeStore } from './store/themeStore'
 
 const pageVariants = {
-  initial: { opacity: 0, y: 6, filter: 'blur(3px)' },
-  animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
-  exit:    { opacity: 0, y: -4, filter: 'blur(3px)' },
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit:    { opacity: 0 },
 }
 
 function ViewRouter() {
@@ -185,13 +185,8 @@ export default function App() {
     }
   }, [installedThemes, activeThemeId])
 
-  // Live Auto-Sync: Refresh active official theme CSS to keep wallpapers & tweaks updated
+  // Live Auto-Sync: Refresh installed official themes CSS to keep wallpapers, buttons & tweaks up to date
   useEffect(() => {
-    if (!activeThemeId) return
-    const activeTheme = installedThemes.find((t) => t.id === activeThemeId)
-    if (!activeTheme) return
-
-    const themeNameSlug = activeTheme.name.toLowerCase().replace(/[^a-z0-9]/g, '')
     const knownThemeFiles: Record<string, string> = {
       liquidglass: 'liquid-glass.css',
       midnightoled: 'oled.css',
@@ -208,21 +203,24 @@ export default function App() {
       phantomgold: 'gold.css'
     }
 
-    const fileName = knownThemeFiles[themeNameSlug]
-    if (fileName) {
-      const url = `https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/${fileName}?t=${Date.now()}`
-      fetch(url)
-        .then((r) => (r.ok ? r.text() : null))
-        .then((latestCss) => {
-          if (latestCss && latestCss !== activeTheme.css) {
-            useThemeStore.getState().installTheme({
-              ...activeTheme,
-              css: latestCss
-            })
-          }
-        })
-        .catch(() => {})
-    }
+    installedThemes.forEach((theme) => {
+      const slug = theme.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const fileName = knownThemeFiles[slug]
+      if (fileName) {
+        const url = `https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/${fileName}?t=${Date.now()}`
+        fetch(url)
+          .then((r) => (r.ok ? r.text() : null))
+          .then((latestCss) => {
+            if (latestCss && latestCss !== theme.css) {
+              useThemeStore.getState().installTheme({
+                ...theme,
+                css: latestCss
+              })
+            }
+          })
+          .catch(() => {})
+      }
+    })
   }, [activeThemeId])
 
   // Auto-updater listener
