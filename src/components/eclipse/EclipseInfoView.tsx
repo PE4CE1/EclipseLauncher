@@ -21,6 +21,26 @@ interface GitHubRelease {
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
   {
+    id: 116,
+    tag_name: 'v1.1.6',
+    name: 'v1.1.6 - Custom Themes Store, Deep Linking & Fullscreen Lightbox Fix',
+    published_at: '2026-08-17T18:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.1.6',
+    body: `### 🎨 Custom Themes & 1-Click Import Engine
+* **Themes Store & Deep Linking:** 1-Klick-Import von Themes direkt aus dem Web oder Discord per \`eclipse://install-theme\` Protokoll.
+* **13 Handcrafted Community Themes:** Liquid Glass, Radiant, Miami Vice 84, Nordic Frost, Toxic Biohazard, Solar Flare, Phantom Gold, Cyberpunk Neon, Midnight OLED, Crimson Steel, Emerald Matrix, Frosted Sakura, Nebula Purple.
+* **Live GitHub Synchronisation:** Dynamisches Laden der Theme-Kataloge und lokale Fallback-Unterstützung.
+
+### 🖼️ Fullscreen Gallery Lightbox
+* **Isolierte Vollbild-Anzeige:** TopBar wird im Vollbild-Modus automatisch ausgeblendet für maximale Immersion.
+* **Portal-Rendering:** Höchste Z-Index-Ebene mit Escape-Support und dediziertem Schließen-Button.
+
+### ⚡ Performance & Fixes
+* **Lagfreier Tab-Wechsel:** VPN-Netzwerkabfragen in den Einstellungen komplett asynchron und gecacht (60 FPS).
+* **Safe URL Decoder:** Keine URI-Fehler mehr bei Sonderzeichen oder Prozentwerten.`,
+    prerelease: false
+  },
+  {
     id: 115,
     tag_name: 'v1.1.5',
     name: 'v1.1.5 - Standalone Friends Window, Live Pricing & Reworked Details',
@@ -226,10 +246,10 @@ export function EclipseInfoView() {
   const [releases, setReleases] = useState<GitHubRelease[]>(FALLBACK_RELEASES)
   const [isLoading, setIsLoading] = useState(false)
   const [expandedReleases, setExpandedReleases] = useState<Record<string, boolean>>({
-    'v1.1.5': true,
+    'v1.1.6': true,
   })
 
-  const currentVersion = 'v1.1.5'
+  const currentVersion = 'v1.1.6'
 
   // Fetch live releases from GitHub
   useEffect(() => {
