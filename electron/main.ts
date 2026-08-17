@@ -48,66 +48,90 @@ let pendingThemeInstall: any = null
 async function handleDeepLink(rawUrl: string) {
   try {
     if (!rawUrl || typeof rawUrl !== 'string') return
-    const cleanUrl = rawUrl.trim()
-    if (!cleanUrl.startsWith('eclipse://')) return
+    let cleanUrl = rawUrl.trim().replace(/^["']|["']$/g, '')
+    if (!cleanUrl.toLowerCase().includes('eclipse:')) return
+
+    // Extract exact eclipse:... substring
+    const match = cleanUrl.match(/eclipse:[^\s"']+/i)
+    if (match) {
+      cleanUrl = match[0]
+    }
 
     console.log('[DeepLink] Processing:', cleanUrl)
-    // Support URLs like eclipse://install-theme?url=... or eclipse://theme?data=...
+
+    // Normalize protocol to double slash if missing (e.g. eclipse:install-theme -> eclipse://install-theme)
+    if (cleanUrl.startsWith('eclipse:') && !cleanUrl.startsWith('eclipse://')) {
+      cleanUrl = cleanUrl.replace(/^eclipse:\/?\/?/i, 'eclipse://')
+    }
+
     const urlObj = new URL(cleanUrl)
-    const action = (urlObj.host || urlObj.pathname.replace(/^\/\//, '')).toLowerCase()
+    const rawPath = (urlObj.host + urlObj.pathname).toLowerCase().replace(/^\/+|\/+$/g, '')
 
-    if (action === 'install-theme' || action === 'theme') {
-      const params = urlObj.searchParams
-      const themeUrl = params.get('url')
-      let name = params.get('name') || 'Custom Theme'
-      let author = params.get('author') || 'Eclipse Community'
-      let color = params.get('color') || '#ffffff'
-      let description = params.get('description') || ''
-      let preview = params.get('preview') || ''
-      let css = params.get('css') || ''
-      const dataBase64 = params.get('data')
+    const params = urlObj.searchParams
+    let themeUrl = params.get('url') || params.get('themeUrl') || params.get('cssUrl')
+    let name = params.get('name') || params.get('title') || 'Custom Theme'
+    let author = params.get('author') || params.get('by') || 'Eclipse Community'
+    let color = params.get('color') || params.get('accentColor') || '#ffffff'
+    let description = params.get('description') || params.get('desc') || ''
+    let preview = params.get('preview') || params.get('previewImage') || ''
+    let css = params.get('css') || ''
+    const dataBase64 = params.get('data') || params.get('theme')
 
-      if (dataBase64) {
-        try {
-          const decoded = JSON.parse(Buffer.from(dataBase64, 'base64').toString('utf-8'))
-          if (decoded.css) css = decoded.css
-          if (decoded.name) name = decoded.name
-          if (decoded.author) author = decoded.author
-          if (decoded.color) color = decoded.color
-          if (decoded.description) description = decoded.description
-          if (decoded.preview) preview = decoded.preview
-        } catch {}
+    if (dataBase64) {
+      try {
+        const decoded = JSON.parse(Buffer.from(dataBase64, 'base64').toString('utf-8'))
+        if (decoded.css) css = decoded.css
+        if (decoded.name) name = decoded.name
+        if (decoded.author) author = decoded.author
+        if (decoded.color || decoded.accentColor) color = decoded.color || decoded.accentColor
+        if (decoded.description) description = decoded.description
+        if (decoded.preview || decoded.previewImage) preview = decoded.preview || decoded.previewImage
+      } catch (e) {
+        console.warn('[DeepLink] Could not parse base64 data:', e)
       }
+    }
 
-      if (!css && themeUrl) {
-        try {
-          const res = await fetch(themeUrl)
-          if (res.ok) {
-            css = await res.text()
-          }
-        } catch (fetchErr) {
-          console.error('[DeepLink] Error fetching theme CSS:', fetchErr)
+    if (!css && themeUrl) {
+      try {
+        // Automatically convert GitHub blob URLs to raw.githubusercontent.com
+        if (themeUrl.includes('github.com') && themeUrl.includes('/blob/')) {
+          themeUrl = themeUrl.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/')
         }
-      }
-
-      if (css) {
-        const themeObj = {
-          id: 'theme_' + name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now(),
-          name,
-          author,
-          accentColor: color,
-          description,
-          previewImage: preview,
-          css,
-          installedAt: Date.now()
-        }
-
-        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isLoading()) {
-          mainWindow.webContents.send('theme:install-request', themeObj)
+        console.log('[DeepLink] Fetching CSS from:', themeUrl)
+        const res = await fetch(themeUrl, {
+          headers: { 'User-Agent': 'Eclipse-Launcher-Client' }
+        })
+        if (res.ok) {
+          css = await res.text()
         } else {
-          pendingThemeInstall = themeObj
+          console.warn('[DeepLink] Fetch failed with HTTP status:', res.status)
         }
+      } catch (fetchErr) {
+        console.error('[DeepLink] Error fetching theme CSS from URL:', fetchErr)
       }
+    }
+
+    if (css) {
+      const themeObj = {
+        id: 'theme_' + name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now(),
+        name: decodeURIComponent(name),
+        author: decodeURIComponent(author),
+        accentColor: color,
+        description: decodeURIComponent(description),
+        previewImage: preview,
+        css,
+        installedAt: Date.now()
+      }
+
+      console.log('[DeepLink] Theme successfully constructed:', themeObj.name)
+
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
+        mainWindow.webContents.send('theme:install-request', themeObj)
+      } else {
+        pendingThemeInstall = themeObj
+      }
+    } else {
+      console.warn('[DeepLink] No CSS could be retrieved for theme!')
     }
   } catch (err) {
     console.error('[DeepLink] Failed to parse deep link URL:', err)
@@ -126,7 +150,7 @@ if (!gotSingleInstanceLock) {
       mainWindow.show()
       mainWindow.focus()
     }
-    const deepLinkArg = argv.find(arg => arg.startsWith('eclipse://'))
+    const deepLinkArg = argv.find(arg => arg.toLowerCase().includes('eclipse:'))
     if (deepLinkArg) {
       handleDeepLink(deepLinkArg)
     }
@@ -971,7 +995,7 @@ app.whenReady().then(() => {
   createWindow()
 
   // Check initial startup deep link argument
-  const initialDeepLink = process.argv.find(arg => arg.startsWith('eclipse://'))
+  const initialDeepLink = process.argv.find(arg => arg.toLowerCase().includes('eclipse:'))
   if (initialDeepLink) {
     handleDeepLink(initialDeepLink)
   }
