@@ -130,13 +130,26 @@ async function handleDeepLink(rawUrl: string) {
     }
 
     if (css) {
+      const safeDecode = (str: string | null | undefined): string => {
+        if (!str) return ''
+        try {
+          return decodeURIComponent(str)
+        } catch {
+          return str
+        }
+      }
+
+      const finalName = safeDecode(name) || name || 'Custom Theme'
+      const finalAuthor = safeDecode(author) || author || 'Eclipse Community'
+      const finalDesc = safeDecode(description) || description || ''
+
       const themeObj = {
-        id: 'theme_' + name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now(),
-        name: decodeURIComponent(name),
-        author: decodeURIComponent(author),
-        accentColor: color,
-        description: decodeURIComponent(description),
-        previewImage: preview,
+        id: 'theme_' + finalName.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now(),
+        name: finalName,
+        author: finalAuthor,
+        accentColor: color || '#ffffff',
+        description: finalDesc,
+        previewImage: preview || '',
         css,
         installedAt: Date.now()
       }
