@@ -361,10 +361,10 @@ export function GameDetailModal() {
       {isGameModalOpen && (steamId || selectedGameName) && (
         <motion.div 
           className="absolute inset-0 z-20 flex flex-col bg-[#07080a] game-detail-modal-overlay text-white select-none overflow-hidden"
-          initial={{ opacity: 0 }}
+          initial={{ opacity: 1 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.1 }}
         >
           {/* Main Full-Width Scrollable Canvas (Top Bar removed as requested) */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
