@@ -9,26 +9,42 @@
   --theme-glass-bg: rgba(255, 255, 255, 0.05);
 }
 
-/* Fluid Liquid Crystal Ambient Atmosphere with Custom Background */
+/* Base Canvas */
 html, body, #root, .bg-hub-base, .bg-\[\#040405\], .bg-\[\#07080a\], .bg-\[\#0b0c0e\], .bg-\[\#07070a\], .bg-\[\#050507\] {
-  background-color: #020408 !important;
+  background-color: #02040a !important;
+  background-image: none !important;
+  color: #f8fafc !important;
+  position: relative;
+}
+
+/* Genuine GPU Blurred Ambient Artwork Layer */
+body::before {
+  content: "" !important;
+  position: fixed !important;
+  inset: -40px !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
   background-image: 
-    radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.22) 0%, transparent 50%),
-    radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.14) 0%, transparent 50%),
-    linear-gradient(180deg, rgba(2, 5, 12, 0.62) 0%, rgba(2, 5, 12, 0.82) 100%),
+    radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.3) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.22) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(2, 5, 12, 0.65) 0%, rgba(2, 5, 12, 0.88) 100%),
     url('https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/assets/liquid-glass.png') !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
-  background-attachment: fixed !important;
-  color: #f8fafc !important;
+  filter: blur(36px) brightness(0.9) saturate(140%) !important;
+  -webkit-filter: blur(36px) brightness(0.9) saturate(140%) !important;
+  transform: scale(1.06) !important;
 }
 
-/* Smooth Ambient Frosted Glass Blur over Content */
+#root {
+  position: relative !important;
+  z-index: 1 !important;
+  background-color: transparent !important;
+}
+
 main, .h-full.overflow-y-auto {
   background-color: transparent !important;
-  backdrop-filter: blur(14px) saturate(130%) !important;
-  -webkit-backdrop-filter: blur(14px) saturate(130%) !important;
 }
 
 ::selection {
@@ -38,18 +54,18 @@ main, .h-full.overflow-y-auto {
 
 /* Fluid TopBar Header */
 header, .bg-\[\#07080a\]\/75 {
-  background: rgba(4, 9, 18, 0.7) !important;
-  backdrop-filter: blur(32px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
+  background: rgba(4, 9, 18, 0.75) !important;
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
 }
 
 /* Sidebar with Liquid Droplet Feel */
 aside, .border-r {
-  background: rgba(3, 7, 15, 0.6) !important;
-  backdrop-filter: blur(36px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(36px) saturate(160%) !important;
+  background: rgba(3, 7, 15, 0.65) !important;
+  backdrop-filter: blur(32px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(160%) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
@@ -129,9 +145,9 @@ aside, .border-r {
 
 /* Liquid Glass Modals & Surfaces */
 .glass, .glass-heavy, .bg-hub-surface, .bg-\[\#0f1015\], .bg-\[\#0a0a0c\], .bg-\[\#07080a\] {
-  background: rgba(6, 11, 20, 0.8) !important;
-  backdrop-filter: blur(32px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  background: rgba(6, 11, 20, 0.85) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   box-shadow: 
     0 24px 60px rgba(0, 0, 0, 0.65),
@@ -154,7 +170,7 @@ aside, .border-r {
 
 /* Frosted Refractive Inputs */
 input, select, textarea {
-  background: rgba(4, 9, 18, 0.75) !important;
+  background: rgba(4, 9, 18, 0.8) !important;
   backdrop-filter: blur(20px) !important;
   border: 1px solid rgba(255, 255, 255, 0.14) !important;
   color: #ffffff !important;
