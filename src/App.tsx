@@ -374,7 +374,9 @@ export default function App() {
         <div className="flex-1 overflow-hidden relative">
           {/* Main views and GameDetailModal (both extend from top y=0 behind TopBar) */}
           <main className="h-full w-full overflow-hidden relative">
-            <ViewRouter />
+            <div className={`h-full w-full ${isGameModalOpen ? 'invisible pointer-events-none' : 'visible'}`}>
+              <ViewRouter />
+            </div>
             <GameDetailModal />
           </main>
 
