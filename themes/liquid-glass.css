@@ -11,11 +11,11 @@
 
 /* Fluid Liquid Crystal Ambient Atmosphere with Custom Background */
 html, body, #root, .bg-hub-base, .bg-\[\#040405\], .bg-\[\#07080a\], .bg-\[\#0b0c0e\], .bg-\[\#07070a\], .bg-\[\#050507\] {
-  background-color: #03060c !important;
+  background-color: #020408 !important;
   background-image: 
-    radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.18) 0%, transparent 50%),
-    radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
-    linear-gradient(180deg, rgba(3, 6, 12, 0.35) 0%, rgba(3, 6, 12, 0.55) 100%),
+    radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.22) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.14) 0%, transparent 50%),
+    linear-gradient(180deg, rgba(2, 5, 12, 0.62) 0%, rgba(2, 5, 12, 0.82) 100%),
     url('https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/assets/liquid-glass.png') !important;
   background-size: cover !important;
   background-position: center !important;
@@ -24,9 +24,11 @@ html, body, #root, .bg-hub-base, .bg-\[\#040405\], .bg-\[\#07080a\], .bg-\[\#0b0
   color: #f8fafc !important;
 }
 
-/* Allow wallpaper to show through all views and sidebar */
-main, .bg-hub-base {
+/* Smooth Ambient Frosted Glass Blur over Content */
+main, .h-full.overflow-y-auto {
   background-color: transparent !important;
+  backdrop-filter: blur(14px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(130%) !important;
 }
 
 ::selection {
@@ -36,18 +38,18 @@ main, .bg-hub-base {
 
 /* Fluid TopBar Header */
 header, .bg-\[\#07080a\]\/75 {
-  background: rgba(6, 12, 22, 0.6) !important;
-  backdrop-filter: blur(28px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  background: rgba(4, 9, 18, 0.7) !important;
+  backdrop-filter: blur(32px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
 }
 
 /* Sidebar with Liquid Droplet Feel */
 aside, .border-r {
-  background: rgba(4, 8, 16, 0.45) !important;
-  backdrop-filter: blur(32px) !important;
-  -webkit-backdrop-filter: blur(32px) !important;
+  background: rgba(3, 7, 15, 0.6) !important;
+  backdrop-filter: blur(36px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(160%) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
@@ -126,13 +128,13 @@ aside, .border-r {
 }
 
 /* Liquid Glass Modals & Surfaces */
-.glass, .glass-heavy, .bg-hub-surface, .bg-\[\#0f1015\], .bg-\[\#0a0a0c\] {
-  background: rgba(10, 18, 32, 0.75) !important;
-  backdrop-filter: blur(28px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+.glass, .glass-heavy, .bg-hub-surface, .bg-\[\#0f1015\], .bg-\[\#0a0a0c\], .bg-\[\#07080a\] {
+  background: rgba(6, 11, 20, 0.8) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   box-shadow: 
-    0 24px 60px rgba(0, 0, 0, 0.6),
+    0 24px 60px rgba(0, 0, 0, 0.65),
     inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
 }
 
@@ -152,7 +154,7 @@ aside, .border-r {
 
 /* Frosted Refractive Inputs */
 input, select, textarea {
-  background: rgba(6, 12, 24, 0.7) !important;
+  background: rgba(4, 9, 18, 0.75) !important;
   backdrop-filter: blur(20px) !important;
   border: 1px solid rgba(255, 255, 255, 0.14) !important;
   color: #ffffff !important;
