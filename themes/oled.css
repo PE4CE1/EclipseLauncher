@@ -11,7 +11,7 @@
 html, body, #root, .bg-hub-base, .bg-\[\#040405\], .bg-\[\#07080a\], .bg-\[\#0b0c0e\], .bg-\[\#07070a\], .bg-\[\#050507\] {
   background-color: #000000 !important;
   background-image: 
-    linear-gradient(180deg, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.85) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.65) 100%),
     url('https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/assets/oled.png') !important;
   background-size: cover !important;
   background-position: center !important;
@@ -20,8 +20,20 @@ html, body, #root, .bg-hub-base, .bg-\[\#040405\], .bg-\[\#07080a\], .bg-\[\#0b0
   color: #ffffff !important;
 }
 
-header, aside, main {
-  background-color: #000000 !important;
+/* Allow wallpaper to show seamlessly through main views and sidebar */
+main, .bg-hub-base {
+  background-color: transparent !important;
+}
+
+header {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(20px) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+aside {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(24px) !important;
   border-color: rgba(255, 255, 255, 0.05) !important;
 }
 
@@ -34,67 +46,55 @@ header, aside, main {
   color: #000000 !important;
 }
 
-/* Clean Seamless Sidebar without Harsh Outlines */
+/* Pure Chrome Silver Navigation Item */
 .sidebar-item {
-  color: #888888 !important;
+  color: #a1a1aa !important;
   border: none !important;
   outline: none !important;
 }
 
 .sidebar-item:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.04) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
   color: #ffffff !important;
   border: none !important;
 }
 
 .sidebar-item.active {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #ffffff !important;
+  background: #ffffff !important;
+  color: #000000 !important;
   font-weight: 700 !important;
+  border-radius: 8px !important;
   border: none !important;
-  box-shadow: none !important;
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.3) !important;
 }
 
 .sidebar-item.active::before {
-  background: #ffffff !important;
-  box-shadow: 0 0 14px rgba(255, 255, 255, 0.8) !important;
-  width: 3px !important;
+  display: none !important;
 }
 
-/* Solid Ceramic Buttons */
+/* High-Contrast Pure White Action Button */
 .btn-primary, button.bg-white.text-black {
   background: #ffffff !important;
   color: #000000 !important;
   font-weight: 800 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.25) !important;
   border: none !important;
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.2) !important;
 }
 
 .btn-primary:hover, button.bg-white.text-black:hover {
   background: #e4e4e7 !important;
-  box-shadow: 0 0 32px rgba(255, 255, 255, 0.4) !important;
-  transform: scale(1.02) !important;
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.45) !important;
 }
 
-.btn-ghost, button.bg-white\/10 {
-  background: #0d0d0d !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #ffffff !important;
+/* OLED Glass Surface */
+.glass, .glass-heavy, .bg-hub-surface, .bg-\[\#0f1015\], .bg-\[\#0a0a0c\] {
+  background: rgba(10, 10, 12, 0.75) !important;
+  backdrop-filter: blur(24px) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-.btn-ghost:hover, button.bg-white\/10:hover {
-  background: #181818 !important;
-  border-color: rgba(255, 255, 255, 0.25) !important;
-}
-
-/* Pitch Black Glass Surfaces & Modals */
-.glass, .glass-heavy, .bg-hub-elevated, .bg-\[\#0f1015\], .bg-\[\#0a0a0c\], .bg-\[\#0c0d11\] {
-  background-color: #050505 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 1) !important;
-}
-
-/* Clean Seamless Game Cards without Frame Box */
+/* Clean Cards without Strange Borders */
 .game-card {
   border: none !important;
   background: transparent !important;
@@ -105,27 +105,33 @@ header, aside, main {
 .game-card:hover {
   border: none !important;
   box-shadow: none !important;
-  transform: translateY(-4px) !important;
 }
 
-/* Inputs & Search */
+/* OLED Deep Void Inputs */
 input, select, textarea {
-  background-color: #080808 !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: rgba(8, 8, 10, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
   color: #ffffff !important;
 }
 
 input:focus, select:focus, textarea:focus {
   border-color: #ffffff !important;
-  box-shadow: 0 0 14px rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.15) !important;
 }
 
-/* Minimal Monochromatic Scrollbar */
+/* Platinum Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #ffffff 0%, #d4d4d8 60%, #a1a1aa 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* OLED Minimalist Scrollbar */
 ::-webkit-scrollbar-thumb {
-  background: #222222 !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   border-radius: 4px !important;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #444444 !important;
+  background: rgba(255, 255, 255, 0.35) !important;
 }

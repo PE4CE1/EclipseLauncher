@@ -185,6 +185,46 @@ export default function App() {
     }
   }, [installedThemes, activeThemeId])
 
+  // Live Auto-Sync: Refresh active official theme CSS to keep wallpapers & tweaks updated
+  useEffect(() => {
+    if (!activeThemeId) return
+    const activeTheme = installedThemes.find((t) => t.id === activeThemeId)
+    if (!activeTheme) return
+
+    const themeNameSlug = activeTheme.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const knownThemeFiles: Record<string, string> = {
+      liquidglass: 'liquid-glass.css',
+      midnightoled: 'oled.css',
+      cyberpunkneon: 'cyberpunk.css',
+      crimsonsteel: 'crimson.css',
+      emeraldmatrix: 'emerald.css',
+      frostedsakura: 'sakura.css',
+      nebulapurple: 'nebula.css',
+      radiant: 'radiant.css',
+      miamivice84: 'miami.css',
+      nordicfrost: 'frost.css',
+      toxicbiohazard: 'biohazard.css',
+      solarflare: 'solar.css',
+      phantomgold: 'gold.css'
+    }
+
+    const fileName = knownThemeFiles[themeNameSlug]
+    if (fileName) {
+      const url = `https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/${fileName}?t=${Date.now()}`
+      fetch(url)
+        .then((r) => (r.ok ? r.text() : null))
+        .then((latestCss) => {
+          if (latestCss && latestCss !== activeTheme.css) {
+            useThemeStore.getState().installTheme({
+              ...activeTheme,
+              css: latestCss
+            })
+          }
+        })
+        .catch(() => {})
+    }
+  }, [activeThemeId])
+
   // Auto-updater listener
   useEffect(() => {
     if (!window.electronAPI?.onUpdaterEvent) return;
