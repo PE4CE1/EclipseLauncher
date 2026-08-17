@@ -7,10 +7,16 @@
   --theme-silver: #e4e4e7;
 }
 
-/* 100% Absolute Deep Pure Black on ALL Surfaces */
-html, body, #root, .bg-hub-base, .bg-hub-surface, .bg-\[\#040405\], .bg-\[\#07080a\], .bg-\[\#0b0c0e\], .bg-\[\#07070a\], .bg-\[\#050507\] {
+/* 100% Absolute Deep Pure Black with Custom OLED Background */
+html, body, #root, .bg-hub-base, .bg-\[\#040405\], .bg-\[\#07080a\], .bg-\[\#0b0c0e\], .bg-\[\#07070a\], .bg-\[\#050507\] {
   background-color: #000000 !important;
-  background-image: none !important;
+  background-image: 
+    linear-gradient(180deg, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.85) 100%),
+    url('https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/assets/oled.png') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
   color: #ffffff !important;
 }
 
