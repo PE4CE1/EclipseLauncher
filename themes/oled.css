@@ -7,26 +7,33 @@
   --theme-silver: #e4e4e7;
 }
 
-/* 100% Absolute Deep Pure Black with Pre-Blurred OLED Background */
-html, body, #root, .bg-hub-base, .bg-\[\#040405\], .bg-\[\#07080a\], .bg-\[\#0b0c0e\], .bg-\[\#07070a\], .bg-\[\#050507\] {
+/* Fixed Viewport Wallpaper (Rock-solid, never jumps or shifts during tab switching) */
+html, body {
   background-color: #000000 !important;
   background-image: 
     linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.8) 100%),
     url('https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/assets/oled.png') !important;
   background-size: cover !important;
-  background-position: center !important;
+  background-position: center center !important;
   background-repeat: no-repeat !important;
   background-attachment: fixed !important;
   color: #ffffff !important;
 }
 
-/* Ambient Dark Aura for High-Contrast Text Legibility */
-h1, h2, h3, h4, h5, h6, .text-hub-text, .font-bold, .font-semibold, .font-extrabold, .font-black {
+/* Ensure sub-views and animated containers are transparent and don't re-render/shift background */
+#root, main, .bg-hub-base, .bg-\[\#040405\], .bg-\[\#07080a\], .bg-\[\#0b0c0e\], .bg-\[\#07070a\], .bg-\[\#050507\] {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Ambient Dark Aura for Headings and General Labels only */
+h1, h2, h3, h4, h5, h6, .text-hub-text {
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 1) !important;
 }
 
-.text-hub-muted, .text-white\/40, .text-white\/50, .text-white\/60, .text-white\/70 {
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.95) !important;
+/* Ultra-Clean & Crisp Button Typography (Zero blur / No fuzzy shadows on buttons) */
+button, .btn-primary, .btn-ghost, button *, .btn-primary *, .btn-ghost *, .sidebar-item, .sidebar-item * {
+  text-shadow: none !important;
 }
 
 header {
@@ -76,19 +83,22 @@ aside {
   display: none !important;
 }
 
-/* High-Contrast Pure White Action Button */
-.btn-primary, button.bg-white.text-black {
+/* High-Contrast Pure White Action Button (Crisp Black Text) */
+.btn-primary, button.bg-white.text-black, button.bg-white {
   background: #ffffff !important;
   color: #000000 !important;
   font-weight: 800 !important;
   border-radius: 8px !important;
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.25) !important;
   border: none !important;
+  text-shadow: none !important;
 }
 
-.btn-primary:hover, button.bg-white.text-black:hover {
+.btn-primary:hover, button.bg-white.text-black:hover, button.bg-white:hover {
   background: #e4e4e7 !important;
+  color: #000000 !important;
   box-shadow: 0 0 30px rgba(255, 255, 255, 0.45) !important;
+  text-shadow: none !important;
 }
 
 /* OLED Floating Dark Glass Shelf for Carousels */
