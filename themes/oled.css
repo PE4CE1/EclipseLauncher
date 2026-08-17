@@ -1,11 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   🌑 MIDNIGHT OLED (TRUE BLACK & SILVER CHROME) THEME
+   🌑 MIDNIGHT OLED (TRUE PURE BLACK & SEAMLESS CONTRAST) THEME
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
   --theme-accent: #ffffff;
   --theme-silver: #e4e4e7;
-  --theme-contrast-border: rgba(255, 255, 255, 0.14);
 }
 
 /* 100% Absolute Deep Pure Black on ALL Surfaces */
@@ -15,9 +14,13 @@ html, body, #root, .bg-hub-base, .bg-hub-surface, .bg-\[\#040405\], .bg-\[\#0708
   color: #ffffff !important;
 }
 
-header, aside, main, .border-r, .border-b, .border-white\/\[0\.06\], .border-white\/\[0\.02\] {
+header, aside, main {
   background-color: #000000 !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.border-r, .border-b, .border-white\/\[0\.06\], .border-white\/\[0\.02\] {
+  border-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 ::selection {
@@ -25,26 +28,30 @@ header, aside, main, .border-r, .border-b, .border-white\/\[0\.06\], .border-whi
   color: #000000 !important;
 }
 
-/* Sidebar Styling */
+/* Clean Seamless Sidebar without Harsh Outlines */
 .sidebar-item {
   color: #888888 !important;
+  border: none !important;
+  outline: none !important;
 }
 
 .sidebar-item:hover:not(.active) {
-  background: #0d0d0d !important;
+  background: rgba(255, 255, 255, 0.04) !important;
   color: #ffffff !important;
+  border: none !important;
 }
 
 .sidebar-item.active {
-  background: #141414 !important;
+  background: rgba(255, 255, 255, 0.08) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .sidebar-item.active::before {
   background: #ffffff !important;
-  box-shadow: 0 0 16px rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.8) !important;
   width: 3px !important;
 }
 
@@ -53,56 +60,58 @@ header, aside, main, .border-r, .border-b, .border-white\/\[0\.06\], .border-whi
   background: #ffffff !important;
   color: #000000 !important;
   font-weight: 800 !important;
-  border: 1px solid #ffffff !important;
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.25) !important;
+  border: none !important;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.2) !important;
 }
 
 .btn-primary:hover, button.bg-white.text-black:hover {
   background: #e4e4e7 !important;
-  box-shadow: 0 0 35px rgba(255, 255, 255, 0.45) !important;
+  box-shadow: 0 0 32px rgba(255, 255, 255, 0.4) !important;
   transform: scale(1.02) !important;
 }
 
 .btn-ghost, button.bg-white\/10 {
-  background: #080808 !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  background: #0d0d0d !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   color: #ffffff !important;
 }
 
 .btn-ghost:hover, button.bg-white\/10:hover {
-  background: #161616 !important;
-  border-color: rgba(255, 255, 255, 0.4) !important;
+  background: #181818 !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
 }
 
 /* Pitch Black Glass Surfaces & Modals */
 .glass, .glass-heavy, .bg-hub-elevated, .bg-\[\#0f1015\], .bg-\[\#0a0a0c\], .bg-\[\#0c0d11\] {
-  background-color: #040404 !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background-color: #050505 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 1) !important;
 }
 
-/* High-Contrast Game Cards */
+/* Clean Seamless Game Cards without Frame Box */
 .game-card {
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  background-color: #050505 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .game-card:hover {
-  border-color: #ffffff !important;
-  box-shadow: 0 0 30px rgba(255, 255, 255, 0.25) !important;
+  border: none !important;
+  box-shadow: none !important;
   transform: translateY(-4px) !important;
 }
 
 /* Inputs & Search */
 input, select, textarea {
-  background-color: #050505 !important;
-  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  background-color: #080808 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
   color: #ffffff !important;
 }
 
 input:focus, select:focus, textarea:focus {
   border-color: #ffffff !important;
-  box-shadow: 0 0 16px rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.25) !important;
 }
 
 /* Minimal Monochromatic Scrollbar */
@@ -112,5 +121,5 @@ input:focus, select:focus, textarea:focus {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555555 !important;
+  background: #444444 !important;
 }
