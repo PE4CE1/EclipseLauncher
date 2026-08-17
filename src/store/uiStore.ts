@@ -67,6 +67,9 @@ interface UIStore {
   isEclipseCinemaActive: boolean
   triggerEclipseCinema: () => void
   closeEclipseCinema: () => void
+
+  isLightboxOpen: boolean
+  setIsLightboxOpen: (v: boolean) => void
 }
 
 let notificationTimer: any = null
@@ -210,4 +213,7 @@ export const useUIStore = create<UIStore>((set) => ({
   isEclipseCinemaActive: false,
   triggerEclipseCinema: () => set({ isEclipseCinemaActive: true }),
   closeEclipseCinema: () => set({ isEclipseCinemaActive: false }),
+
+  isLightboxOpen: false,
+  setIsLightboxOpen: (v) => set({ isLightboxOpen: v }),
 }))

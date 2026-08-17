@@ -23,7 +23,8 @@ export function TopBar() {
     openGameDetails, setActiveView,
     isGameModalOpen, setIsGameModalOpen, selectedGameName,
     goBack, goForward, canGoBack, canGoForward,
-    isEclipseCinemaActive
+    isEclipseCinemaActive,
+    isLightboxOpen
   } = useUIStore()
 
   const [localQuery, setLocalQuery] = useState('')
@@ -60,7 +61,7 @@ export function TopBar() {
 
   return (
     <header className={`absolute top-0 left-0 right-0 h-16 z-50 flex items-center justify-between px-6 bg-[#07080a]/75 backdrop-blur-md border-b border-white/[0.06] transition-all duration-300 pointer-events-auto ${
-      isEclipseCinemaActive ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      isEclipseCinemaActive || isLightboxOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
     }`}>
       {/* View title or Back button & Navigation History */}
       <div className="flex items-center gap-3">

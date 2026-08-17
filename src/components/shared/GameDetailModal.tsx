@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Check, Plus, Play, X, Loader2, Trash2,
@@ -31,7 +32,7 @@ import steamLogoImg from '../../assets/steam-logo.png'
 import type { LibraryGame } from '../../types/game'
 
 export function GameDetailModal() {
-  const { selectedGameId, selectedGameName, isGameModalOpen, setIsGameModalOpen, showNotification, currency, toggleCurrency } = useUIStore()
+  const { selectedGameId, selectedGameName, isGameModalOpen, setIsGameModalOpen, showNotification, currency, toggleCurrency, setIsLightboxOpen } = useUIStore()
   const { library, addToLibrary, removeFromLibrary, installedGames, activeGame, stopPlaySession } = useGameStore()
   const { sources } = useSourceStore()
   const { launchGame } = useScanner()
@@ -57,7 +58,14 @@ export function GameDetailModal() {
     setSelectedMediaIdx(0)
     setReqTab('minimum')
     setLogoState('loading')
+    setLightboxIndex(null)
   }, [steamId, selectedGameName])
+
+  // Synchronize fullscreen lightbox state with global UIStore
+  useEffect(() => {
+    setIsLightboxOpen(lightboxIndex !== null)
+    return () => setIsLightboxOpen(false)
+  }, [lightboxIndex, setIsLightboxOpen])
 
   // Fetch SteamDB, Steam Insights & Real Pricing with All-Time Low
   useEffect(() => {
@@ -132,6 +140,24 @@ export function GameDetailModal() {
     }
     return items
   }, [detail])
+
+  // Keyboard navigation inside lightbox (Escape, ArrowLeft, ArrowRight)
+  useEffect(() => {
+    if (lightboxIndex === null) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        setLightboxIndex(null)
+      } else if (e.key === 'ArrowLeft') {
+        setLightboxIndex((prev) => (prev !== null ? (prev - 1 + mediaItems.length) % mediaItems.length : null))
+      } else if (e.key === 'ArrowRight') {
+        setLightboxIndex((prev) => (prev !== null ? (prev + 1) % mediaItems.length : null))
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
+  }, [lightboxIndex, mediaItems.length])
 
   const isInLibrary = library.some(g => g.steamId === steamId)
   const installed = installedGames.find(g =>
@@ -990,85 +1016,103 @@ export function GameDetailModal() {
             onDownload={handleDownload}
           />
 
-          {/* Fullscreen Lightbox Overlay with Ambient Glow Blur Background */}
-          <AnimatePresence>
-            {lightboxIndex !== null && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-3xl flex flex-col items-center justify-center p-6 select-none overflow-hidden"
-                onClick={() => setLightboxIndex(null)}
-              >
-                {/* Ambient Blurred Background of current media in Lightbox */}
-                {mediaItems[lightboxIndex] && (
-                  <div 
-                    className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-35 scale-125 pointer-events-none transform-gpu"
-                    style={{ backgroundImage: `url(${mediaItems[lightboxIndex].thumb})` }}
-                  />
-                )}
-                <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+          {/* Fullscreen Lightbox Overlay with Ambient Glow Blur Background (Rendered in Portal at Highest Z-Index) */}
+          {createPortal(
+            <AnimatePresence>
+              {lightboxIndex !== null && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center p-6 select-none overflow-hidden"
+                  onClick={() => setLightboxIndex(null)}
+                >
+                  {/* Dedicated Close Button in Top-Right */}
+                  <div className="absolute top-5 right-6 z-30 flex items-center gap-3">
+                    <span className="text-[11px] text-white/50 font-mono hidden sm:inline-block">ESC to close</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setLightboxIndex(null)
+                      }}
+                      className="w-10 h-10 rounded-full bg-black/70 hover:bg-white/20 border border-white/20 text-white/80 hover:text-white flex items-center justify-center transition-all shadow-2xl"
+                      title="Close fullscreen view (Esc)"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
 
-                <div className="relative z-10 flex-1 w-full max-w-7xl flex items-center justify-center min-h-0 pb-20">
-                  {mediaItems[lightboxIndex]?.type === 'video' ? (
-                    <div className="w-full max-w-6xl aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black border border-white/15" onClick={e => e.stopPropagation()}>
-                      <CustomVideoPlayer 
-                        src={mediaItems[lightboxIndex].url}
-                        poster={mediaItems[lightboxIndex].thumb}
-                      />
-                    </div>
-                  ) : (
-                    <img 
-                      key={mediaItems[lightboxIndex]?.url}
-                      src={mediaItems[lightboxIndex]?.url} 
-                      alt="Fullscreen view" 
-                      className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain bg-black/80 border border-white/15"
-                      onClick={(e) => e.stopPropagation()}
+                  {/* Ambient Blurred Background of current media in Lightbox */}
+                  {mediaItems[lightboxIndex] && (
+                    <div 
+                      className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-35 scale-125 pointer-events-none transform-gpu"
+                      style={{ backgroundImage: `url(${mediaItems[lightboxIndex].thumb})` }}
                     />
                   )}
+                  <div className="absolute inset-0 bg-black/40 pointer-events-none" />
 
-                  {mediaItems.length > 1 && (
-                    <>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex - 1 + mediaItems.length) % mediaItems.length) }}
-                        className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/70 hover:bg-white/20 text-white flex items-center justify-center transition-all border border-white/20 shadow-2xl"
-                      >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
-                      </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex + 1) % mediaItems.length) }}
-                        className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/70 hover:bg-white/20 text-white flex items-center justify-center transition-all border border-white/20 shadow-2xl"
-                      >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
-                      </button>
-                    </>
-                  )}
-                </div>
+                  <div className="relative z-10 flex-1 w-full max-w-7xl flex items-center justify-center min-h-0 pb-20">
+                    {mediaItems[lightboxIndex]?.type === 'video' ? (
+                      <div className="w-full max-w-6xl aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black border border-white/15" onClick={e => e.stopPropagation()}>
+                        <CustomVideoPlayer 
+                          src={mediaItems[lightboxIndex].url}
+                          poster={mediaItems[lightboxIndex].thumb}
+                        />
+                      </div>
+                    ) : (
+                      <img 
+                        key={mediaItems[lightboxIndex]?.url}
+                        src={mediaItems[lightboxIndex]?.url} 
+                        alt="Fullscreen view" 
+                        className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain bg-black/80 border border-white/15"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    )}
 
-                {/* Thumbnail Strip in Lightbox */}
-                {mediaItems.length > 1 && (
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-full px-6 z-20">
-                    <div className="flex items-center gap-2 overflow-x-auto py-2 px-2 snap-x hide-scrollbar" onClick={(e) => e.stopPropagation()}>
-                      {mediaItems.map((item, idx) => (
-                        <button
-                          key={item.id}
-                          onClick={() => setLightboxIndex(idx)}
-                          className={`relative flex-shrink-0 w-24 aspect-video rounded-lg overflow-hidden snap-center transition-all bg-black ${
-                            idx === lightboxIndex 
-                              ? 'border-2 border-white scale-105 shadow-xl' 
-                              : 'border border-white/10 opacity-40 hover:opacity-100'
-                          }`}
+                    {mediaItems.length > 1 && (
+                      <>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex - 1 + mediaItems.length) % mediaItems.length) }}
+                          className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/70 hover:bg-white/20 text-white flex items-center justify-center transition-all border border-white/20 shadow-2xl"
                         >
-                          <img src={item.thumb} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
                         </button>
-                      ))}
-                    </div>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex + 1) % mediaItems.length) }}
+                          className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/70 hover:bg-white/20 text-white flex items-center justify-center transition-all border border-white/20 shadow-2xl"
+                        >
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
+                        </button>
+                      </>
+                    )}
                   </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+
+                  {/* Thumbnail Strip in Lightbox */}
+                  {mediaItems.length > 1 && (
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-full px-6 z-20">
+                      <div className="flex items-center gap-2 overflow-x-auto py-2 px-2 snap-x hide-scrollbar" onClick={(e) => e.stopPropagation()}>
+                        {mediaItems.map((item, idx) => (
+                          <button
+                            key={item.id}
+                            onClick={() => setLightboxIndex(idx)}
+                            className={`relative flex-shrink-0 w-24 aspect-video rounded-lg overflow-hidden snap-center transition-all bg-black ${
+                              idx === lightboxIndex 
+                                ? 'border-2 border-white scale-105 shadow-xl' 
+                                : 'border border-white/10 opacity-40 hover:opacity-100'
+                            }`}
+                          >
+                            <img src={item.thumb} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>,
+            document.body
+          )}
 
         </motion.div>
       )}
