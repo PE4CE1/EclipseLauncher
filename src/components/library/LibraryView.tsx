@@ -16,7 +16,7 @@ const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '')
 // Global instant asset resolution memory cache to eliminate repeat probes during scrolling
 const coverCache = new Map<string, { url: string; isVertical: boolean }>()
 
-/** Ultra-fast, zero-overhead Cover Art with hardware async decoding and instant caching */
+/** Ultra-fast Cover Art with hardware async decoding and wide PREVIEW support */
 export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { game: LibraryGame | (InstalledGame & { isInstalled: boolean }) }) {
   const resolvedId = ('steamId' in game && typeof game.steamId === 'number' && game.steamId > 0)
     ? game.steamId
@@ -37,6 +37,7 @@ export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { g
     return getPlaceholderCover(game.name)
   })
 
+  const [isWide, setIsWide] = useState(false)
   const [fallbackStage, setFallbackStage] = useState(0)
 
   const handleError = useCallback(() => {
@@ -45,11 +46,47 @@ export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { g
       setImgSrc(`https://cdn.akamai.steamstatic.com/steam/apps/${resolvedId}/library_600x900.jpg`)
     } else if (resolvedId && fallbackStage === 1) {
       setFallbackStage(2)
+      setIsWide(true)
       setImgSrc(`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/header.jpg`)
+    } else if (resolvedId && fallbackStage === 2) {
+      setFallbackStage(3)
+      setIsWide(true)
+      setImgSrc(`https://cdn.akamai.steamstatic.com/steam/apps/${resolvedId}/capsule_617x283.jpg`)
     } else {
+      setIsWide(false)
       setImgSrc(getPlaceholderCover(game.name))
     }
   }, [resolvedId, fallbackStage, game.name])
+
+  if (isWide) {
+    return (
+      <div className="relative w-full h-full overflow-hidden bg-[#0a0b0f] flex items-center justify-center p-3 select-none">
+        <img
+          src={imgSrc}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover filter blur-md scale-125 opacity-40 brightness-75 pointer-events-none"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/40 pointer-events-none" />
+        <div className="absolute top-3 inset-x-0 flex justify-center pointer-events-none z-10">
+          <span className="text-[9px] font-semibold tracking-widest uppercase text-white/50 bg-black/70 px-2 py-0.5 rounded-full border border-white/10 shadow-sm">
+            PREVIEW
+          </span>
+        </div>
+        <div className="relative z-10 w-full aspect-[16/9] rounded-lg overflow-hidden shadow-[0_12px_28px_rgba(0,0,0,0.85)] border border-white/15">
+          <img
+            src={imgSrc}
+            alt={game.name}
+            loading="lazy"
+            decoding="async"
+            onError={handleError}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#0a0b0e]">
@@ -425,6 +462,26 @@ export function LibraryView() {
     })
   }, [allGames, search, favoriteIds, activeTab])
 
+  // Instant 0ms render: mount the visible viewport instantly, expand the rest in background frames
+  const [visibleLimit, setVisibleLimit] = useState(48)
+
+  useEffect(() => {
+    setVisibleLimit(48)
+  }, [search, activeTab])
+
+  useEffect(() => {
+    if (visibleLimit < filtered.length) {
+      const timer = setTimeout(() => {
+        setVisibleLimit(prev => Math.min(prev + 64, filtered.length))
+      }, 20)
+      return () => clearTimeout(timer)
+    }
+  }, [visibleLimit, filtered.length])
+
+  const visibleGames = useMemo(() => {
+    return filtered.slice(0, visibleLimit)
+  }, [filtered, visibleLimit])
+
   const handleAddCustom = useCallback(async () => {
     const path = await addCustomGame()
     if (path) {
@@ -590,7 +647,7 @@ export function LibraryView() {
         ) : viewMode === 'grid' ? (
           /* Grid View - Clean Minimalist Cover Cards */
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {filtered.map((game) => {
+            {visibleGames.map((game) => {
               const isInstalled = 'isInstalled' in game ? game.isInstalled : (game.installed ?? true)
               const isFav = favoriteIds.includes(game.id)
               const isPlaying = !!(activeGame && (
@@ -620,7 +677,7 @@ export function LibraryView() {
         ) : (
           /* List View */
           <div className="grid gap-2">
-            {filtered.map((game) => {
+            {visibleGames.map((game) => {
               const isInstalled = 'isInstalled' in game ? game.isInstalled : (game.installed ?? true)
               const isFav = favoriteIds.includes(game.id)
               const isPlaying = !!(activeGame && (
