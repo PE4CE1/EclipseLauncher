@@ -142,6 +142,7 @@ export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { g
 
 interface GridCardProps {
   game: LibraryGame | (InstalledGame & { isInstalled: boolean })
+  index: number
   isFav: boolean
   isInstalled: boolean
   isPlaying: boolean
@@ -152,9 +153,10 @@ interface GridCardProps {
   onStopGame: (id: string) => void
 }
 
-/** Memoized Grid Card for 120fps smooth scrolling */
+/** Memoized Grid Card with 120fps hardware-accelerated entrance wave animation */
 const LibraryGridCard = React.memo(function LibraryGridCard({
   game,
+  index,
   isFav,
   isInstalled,
   isPlaying,
@@ -167,14 +169,11 @@ const LibraryGridCard = React.memo(function LibraryGridCard({
   const platform = game.platform
 
   return (
-    <div
+    <motion.div
       id={`library-grid-item-${game.id}`}
-      style={{
-        contain: 'paint layout style',
-        contentVisibility: 'auto',
-        containIntrinsicSize: '200px 300px',
-        transform: 'translateZ(0)',
-      }}
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.018, 0.28), duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
       className="group relative flex flex-col rounded-xl bg-hub-surface border border-white/10 hover:border-white/40 hover:shadow-[0_0_20px_rgba(255,255,255,0.08)] overflow-hidden transition-all duration-300 ease-out cursor-pointer will-change-transform"
       onClick={() => onOpenDetails(game)}
     >
@@ -278,12 +277,13 @@ const LibraryGridCard = React.memo(function LibraryGridCard({
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 })
 
 interface ListCardProps {
   game: LibraryGame | (InstalledGame & { isInstalled: boolean })
+  index: number
   isFav: boolean
   isInstalled: boolean
   isPlaying: boolean
@@ -298,6 +298,7 @@ interface ListCardProps {
 /** Memoized List Card for fast performance */
 const LibraryListCard = React.memo(function LibraryListCard({
   game,
+  index,
   isFav,
   isInstalled,
   isPlaying,
@@ -311,14 +312,11 @@ const LibraryListCard = React.memo(function LibraryListCard({
   const platform = game.platform
 
   return (
-    <div
+    <motion.div
       id={`library-item-${game.id}`}
-      style={{
-        contain: 'paint layout style',
-        contentVisibility: 'auto',
-        containIntrinsicSize: '100% 64px',
-        transform: 'translateZ(0)',
-      }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.015, 0.25), duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       className="flex items-center gap-4 p-3 rounded-xl bg-hub-surface border border-hub-border/30 hover:border-hub-border/60 hover:bg-hub-elevated transition-all group cursor-pointer"
       onClick={() => onOpenDetails(game)}
     >
@@ -434,7 +432,7 @@ const LibraryListCard = React.memo(function LibraryListCard({
           </button>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 })
 
@@ -685,7 +683,7 @@ export function LibraryView() {
         ) : viewMode === 'grid' ? (
           /* Grid View - Clean Minimalist Cover Cards */
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {visibleGames.map((game) => {
+            {visibleGames.map((game, i) => {
               const isInstalled = 'isInstalled' in game ? game.isInstalled : (game.installed ?? true)
               const isFav = favoriteIds.includes(game.id)
               const isPlaying = !!(activeGame && (
@@ -700,6 +698,7 @@ export function LibraryView() {
                 <LibraryGridCard
                   key={game.id}
                   game={game}
+                  index={i}
                   isFav={isFav}
                   isInstalled={isInstalled}
                   isPlaying={isPlaying}
@@ -715,7 +714,7 @@ export function LibraryView() {
         ) : (
           /* List View */
           <div className="grid gap-2">
-            {visibleGames.map((game) => {
+            {visibleGames.map((game, i) => {
               const isInstalled = 'isInstalled' in game ? game.isInstalled : (game.installed ?? true)
               const isFav = favoriteIds.includes(game.id)
               const isPlaying = !!(activeGame && (
@@ -730,6 +729,7 @@ export function LibraryView() {
                 <LibraryListCard
                   key={game.id}
                   game={game}
+                  index={i}
                   isFav={isFav}
                   isInstalled={isInstalled}
                   isPlaying={isPlaying}
