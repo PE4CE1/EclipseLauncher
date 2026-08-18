@@ -102,43 +102,28 @@ export function useScanner() {
         const mergedInitial = deduplicateInstalledGames(mergeGames(initialGames))
         setInstalledGames(mergedInitial)
         
-        const enrichPromise = async () => {
-          const syncMsg = lang === 'de' ? 'Lade Steam-Bibliothek & Metadaten…' : 'Resolving Steam metadata…'
-          setScanMessage(syncMsg)
-          options?.onProgress?.(syncMsg, 60)
+        // Immediately preload library covers into memory cache
+        preloadLibraryCovers(mergedInitial, 80)
 
-          const enriched = await enrichWithSteamIds(result.games, (msg) => {
-            setScanMessage(msg)
-            options?.onProgress?.(msg)
-          }, options?.signal)
+        // Background name resolution (does not block splash screen)
+        enrichWithSteamIds(result.games, (msg) => {
+          // Keep internal background log without spamming splash UI
+        }, options?.signal)
+          .then((enriched) => {
+            let uniqueGames = deduplicateInstalledGames(enriched)
+            if (!useGameStore.getState().settings.scanUninstalledSteam) {
+              uniqueGames = uniqueGames.filter(g => g.installed !== false)
+            }
+            const finalGames = deduplicateInstalledGames(mergeGames(uniqueGames))
+            setInstalledGames(finalGames)
+            preloadLibraryCovers(finalGames, 80)
+            setScanMessage('')
+          })
+          .catch(err => console.error('[useScanner] Background enrich failed', err))
 
-          let uniqueGames = deduplicateInstalledGames(enriched)
-          if (!useGameStore.getState().settings.scanUninstalledSteam) {
-            uniqueGames = uniqueGames.filter(g => g.installed !== false)
-          }
-          const finalGames = deduplicateInstalledGames(mergeGames(uniqueGames))
-          setInstalledGames(finalGames)
-
-          // Preload top game covers for instantaneous library opening
-          preloadLibraryCovers(finalGames, 50)
-
-          setScanMessage('')
-          return finalGames
-        }
-
-        if (options?.awaitEnrichment) {
-          const finalGames = await enrichPromise()
-          setIsScanning(false)
-          return finalGames
-        } else {
-          setIsScanning(false)
-          enrichPromise()
-            .then((uniqueGames) => {
-              showNotification(lang === 'de' ? `${uniqueGames.length} Spiele gefunden` : `Found ${uniqueGames.length} games`, 'success')
-            })
-            .catch(err => console.error('[useScanner] Background enrich failed', err))
-          return mergedInitial
-        }
+        setIsScanning(false)
+        setScanMessage('')
+        return mergedInitial
       } else {
         setIsScanning(false)
         setScanMessage('')

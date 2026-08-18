@@ -92,19 +92,15 @@ export function SplashView({ onComplete }: SplashViewProps) {
     setStatusText(language === 'de' ? 'Initialisiere Eclipse Engine...' : 'Initializing Eclipse Engine...')
     await new Promise(r => setTimeout(r, 200))
 
-    // 2. Full parallel scan + Steam manifest resolution + Library enrichment
-    setProgress(35)
-    setStatusText(language === 'de' ? 'Scanne installierte Spiele & Manifeste...' : 'Scanning game manifests...')
+    // 2. Scan manifests & build library
+    setProgress(45)
+    setStatusText(language === 'de' ? 'Scanne installierte Spiele & erstelle Bibliothek...' : 'Scanning installed games & library...')
 
     let scannedCount = 0
     try {
       const games = await scan({
         signal: abortController.signal,
-        awaitEnrichment: true,
-        onProgress: (msg, pct) => {
-          if (msg) setStatusText(msg)
-          if (pct) setProgress(Math.max(pct, 35))
-        }
+        awaitEnrichment: false,
       })
       scannedCount = games?.length || 0
     } catch (e) {
@@ -112,9 +108,9 @@ export function SplashView({ onComplete }: SplashViewProps) {
     }
 
     // 3. Preload & Cache Optimization
-    setProgress(88)
-    setStatusText(language === 'de' ? 'Optimiere Spiele-Cache & Cover-Art...' : 'Optimizing game cache & cover art...')
-    await new Promise(r => setTimeout(r, 300))
+    setProgress(85)
+    setStatusText(language === 'de' ? 'Lade Cover-Art & optimiere Spiele-Cache...' : 'Preloading cover art & optimizing cache...')
+    await new Promise(r => setTimeout(r, 350))
 
     // 4. Ready Stage
     setProgress(100)
