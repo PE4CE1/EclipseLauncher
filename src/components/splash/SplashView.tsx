@@ -323,48 +323,45 @@ export function SplashView({ onComplete }: SplashViewProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full space-y-3.5"
+              className="w-full space-y-4"
             >
-              {/* Sleek Minimalist Info Card */}
-              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-xs font-semibold text-white tracking-wide">
-                      {language === 'de' ? 'Update verfügbar' : 'Update Available'}
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-mono font-bold text-white bg-white/10 px-2 py-0.5 rounded-md border border-white/10">
-                    v{foundUpdate.version}
+              {/* Sleek Minimalist Update Card */}
+              <div className="p-4 rounded-2xl bg-[#0c0d12]/90 border border-white/10 space-y-3 text-center backdrop-blur-md">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-semibold text-white tracking-wide">
+                    {language === 'de' ? 'Update erforderlich' : 'Update Required'}
                   </span>
                 </div>
 
-                {/* Highlights */}
-                {(() => {
-                  const notes = foundUpdate.notes
-                    ? foundUpdate.notes
-                        .split('\n')
-                        .map(l => l.trim())
-                        .filter(l => l && !l.startsWith('## What') && !l.startsWith('###') && !l.startsWith('**Full Changelog**'))
-                        .map(l => l.replace(/^[-*]\s*/, '').replace(/\*\*/g, '').replace(/`/g, ''))
-                        .filter(l => l.length > 0)
-                        .slice(0, 3)
-                    : []
+                <p className="text-[11px] text-white/50 leading-relaxed px-2">
+                  {language === 'de'
+                    ? 'Eine neue Version von Eclipse Launcher ist verfügbar. Bitte aktualisiere den Launcher, um fortzufahren.'
+                    : 'A new version of Eclipse Launcher is available. Please update the launcher to proceed.'}
+                </p>
 
-                  return notes.length > 0 ? (
-                    <div className="space-y-1 pt-1.5 border-t border-white/[0.06]">
-                      {notes.map((note, i) => (
-                        <p key={i} className="text-[11px] text-white/50 leading-relaxed truncate">
-                          • {note}
-                        </p>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-white/40 pt-1">
-                      {language === 'de' ? 'Enthält Verbesserungen und Fehlerbehebungen.' : 'Includes performance improvements and bug fixes.'}
-                    </p>
-                  )
-                })()}
+                {/* Version Transition Pills */}
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/50">
+                    <span className="text-[10px] uppercase font-semibold text-white/30 tracking-wider">
+                      {language === 'de' ? 'Aktuell' : 'Current'}
+                    </span>
+                    <span className="text-xs font-mono font-medium text-white/60">
+                      v{APP_VERSION}
+                    </span>
+                  </div>
+                  
+                  <span className="text-white/20 text-xs">→</span>
+
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/15 border border-white/25 text-white shadow-sm">
+                    <span className="text-[10px] uppercase font-semibold text-white/50 tracking-wider">
+                      {language === 'de' ? 'Neu' : 'New'}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-white">
+                      v{foundUpdate.version}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Live Download Progress (when active) */}
@@ -408,7 +405,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
                     className="w-full py-3 bg-white hover:bg-white/90 active:scale-[0.99] text-black rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] cursor-pointer"
                   >
                     <Download size={13} className="text-black" />
-                    <span>{language === 'de' ? `Update installieren (v${foundUpdate.version})` : `Install Update (v${foundUpdate.version})`}</span>
+                    <span>{language === 'de' ? 'Update jetzt installieren' : 'Install Update Now'}</span>
                   </button>
                 )}
               </div>
