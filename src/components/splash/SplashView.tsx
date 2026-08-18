@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Play } from 'lucide-react'
+import { Check, Play, Download, ArrowUpCircle, RefreshCw, Sparkles, ExternalLink } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useScanner } from '../../hooks/useScanner'
 import { useTranslation } from '../../hooks/useTranslation'
+import { checkForAppUpdates, APP_VERSION, type AppReleaseInfo } from '../../services/updateService'
 // @ts-ignore
 import eclipseLogo from '../../assets/logo.png'
 
@@ -45,12 +46,18 @@ export function SplashView({ onComplete }: SplashViewProps) {
 
   const [autoScanEnabled] = useState(getInitialAutoScan)
   const [userClickedStart, setUserClickedStart] = useState(false)
-  const [progress, setProgress] = useState(15)
+  const [progress, setProgress] = useState(10)
   const [statusText, setStatusText] = useState(
-    language === 'de' ? 'Initialisiere Eclipse Engine...' : 'Initializing Eclipse Engine...'
+    language === 'de' ? 'Prüfe auf Updates...' : 'Checking for updates...'
   )
   const [isDone, setIsDone] = useState(false)
   const isFinishedRef = useRef(false)
+
+  // Update check states
+  const [foundUpdate, setFoundUpdate] = useState<AppReleaseInfo | null>(null)
+  const [isDownloadingUpdate, setIsDownloadingUpdate] = useState(false)
+  const [updateDownloaded, setUpdateDownloaded] = useState(false)
+  const [updateDownloadProgress, setUpdateDownloadProgress] = useState(0)
 
   // Local settings toggles for manual start mode
   const [loadSteam, setLoadSteam] = useState(getInitialScanSteam)
@@ -77,20 +84,60 @@ export function SplashView({ onComplete }: SplashViewProps) {
     }
   }
 
+  // Listen for native electron-updater events
+  useEffect(() => {
+    if (window.electronAPI?.onUpdaterEvent) {
+      const unsub = window.electronAPI.onUpdaterEvent(({ status, data }) => {
+        if (status === 'available' && data) {
+          setFoundUpdate({
+            version: data.version || 'New',
+            name: data.releaseName || `Version ${data.version}`,
+            notes: data.releaseNotes || '',
+            publishedAt: data.releaseDate || '',
+            downloadUrl: '',
+            isNewer: true
+          })
+        } else if (status === 'downloading' && data?.percent) {
+          setIsDownloadingUpdate(true)
+          setUpdateDownloadProgress(Math.round(data.percent))
+        } else if (status === 'downloaded') {
+          setIsDownloadingUpdate(false)
+          setUpdateDownloaded(true)
+        }
+      })
+      return unsub
+    }
+  }, [])
+
   // Sync external scanner messages if provided
   useEffect(() => {
-    if (scanMessage && !isDone) {
+    if (scanMessage && !isDone && !foundUpdate) {
       setStatusText(scanMessage)
     }
-  }, [scanMessage, isDone])
+  }, [scanMessage, isDone, foundUpdate])
 
   const runProgressSequence = async () => {
     const abortController = new AbortController()
 
-    // 1. Initial stage (0.2s)
-    setProgress(15)
-    setStatusText(language === 'de' ? 'Initialisiere Eclipse Engine...' : 'Initializing Eclipse Engine...')
-    await new Promise(r => setTimeout(r, 200))
+    // 1. Initial stage: Check for updates (0.3s)
+    setProgress(10)
+    setStatusText(language === 'de' ? 'Prüfe auf Updates...' : 'Checking for updates...')
+    await new Promise(r => setTimeout(r, 300))
+
+    try {
+      if (window.electronAPI?.checkUpdate) {
+        window.electronAPI.checkUpdate()
+      }
+      const updateCheck = await checkForAppUpdates()
+      if (updateCheck && updateCheck.isNewer) {
+        setFoundUpdate(updateCheck)
+        setStatusText(language === 'de' ? `Update v${updateCheck.version} verfügbar!` : `Update v${updateCheck.version} available!`)
+        // STOP sequence here! The mandatory update modal is now shown.
+        return
+      }
+    } catch (e) {
+      console.warn('[SplashView] Update check error:', e)
+    }
 
     // 2. Scan manifests & build library
     setProgress(45)
@@ -141,6 +188,41 @@ export function SplashView({ onComplete }: SplashViewProps) {
     await runProgressSequence()
   }
 
+  const handleStartUpdate = async () => {
+    if (!foundUpdate) return
+    if (window.electronAPI?.downloadUpdate) {
+      try {
+        setIsDownloadingUpdate(true)
+        setUpdateDownloadProgress(10)
+        await window.electronAPI.downloadUpdate()
+      } catch (e) {
+        console.warn('[SplashView] downloadUpdate failed, opening download URL:', e)
+        setIsDownloadingUpdate(false)
+        if (window.electronAPI?.openUrl) {
+          window.electronAPI.openUrl(foundUpdate.downloadUrl)
+        } else {
+          window.open(foundUpdate.downloadUrl, '_blank')
+        }
+      }
+    } else {
+      if (window.electronAPI?.openUrl) {
+        window.electronAPI.openUrl(foundUpdate.downloadUrl)
+      } else {
+        window.open(foundUpdate.downloadUrl, '_blank')
+      }
+    }
+  }
+
+  const handleInstallUpdate = () => {
+    if (window.electronAPI?.installUpdate) {
+      window.electronAPI.installUpdate()
+    } else if (window.electronAPI?.relaunchApp) {
+      window.electronAPI.relaunchApp()
+    } else {
+      window.location.reload()
+    }
+  }
+
   const isScanningActive = autoScanEnabled || userClickedStart
 
   return (
@@ -173,7 +255,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
       </div>
 
       {/* ─── Main Splash Content Container ─── */}
-      <div className="relative z-10 w-full max-w-[380px] px-6 flex flex-col items-center">
+      <div className="relative z-10 w-full max-w-[420px] px-6 flex flex-col items-center">
         
         {/* Floating Eclipse Logo with Corona Glow */}
         <div className="relative mb-5 flex items-center justify-center w-28 h-28">
@@ -206,7 +288,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
         </div>
 
         {/* Brand Header */}
-        <div className="text-center mb-7">
+        <div className="text-center mb-6">
           <motion.h1 
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -227,13 +309,109 @@ export function SplashView({ onComplete }: SplashViewProps) {
             </span>
             <span className="text-white/20 text-[10px]">•</span>
             <span className="text-[10px] font-medium tracking-wider text-white/40 font-mono">
-              v1.1.6
+              v{APP_VERSION}
             </span>
           </motion.div>
         </div>
 
         <AnimatePresence mode="wait">
-          {isScanningActive ? (
+          {foundUpdate ? (
+            /* ─── State 3: Mandatory Update Screen ─── */
+            <motion.div
+              key="mandatory-update"
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full bg-[#0c0d13]/90 border border-white/15 rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.9)] backdrop-blur-2xl text-center space-y-4"
+            >
+              {/* Glowing Update Icon */}
+              <div className="mx-auto w-12 h-12 rounded-2xl bg-white/[0.08] border border-white/20 flex items-center justify-center shadow-[0_0_25px_rgba(255,255,255,0.15)] relative">
+                <ArrowUpCircle size={24} className="text-white animate-pulse" />
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 border-2 border-[#0c0d13] rounded-full" />
+              </div>
+
+              {/* Title & Version Pills */}
+              <div>
+                <h2 className="text-base font-bold text-white tracking-tight">
+                  {language === 'de' ? 'Update erforderlich' : 'Update Required'}
+                </h2>
+                <p className="text-[11px] text-white/50 mt-1 leading-relaxed">
+                  {language === 'de' 
+                    ? 'Eine neue Version von Eclipse Launcher ist verfügbar. Bitte installiere das Update, um fortzufahren.'
+                    : 'A new version of Eclipse Launcher is available. Please install the update to proceed.'}
+                </p>
+                
+                <div className="flex items-center justify-center gap-2 mt-3">
+                  <span className="text-[10px] font-mono font-medium px-2.5 py-0.5 rounded-full bg-white/5 text-white/40 border border-white/10">
+                    {language === 'de' ? 'Aktuell' : 'Current'}: v{APP_VERSION}
+                  </span>
+                  <span className="text-white/30 text-xs">➔</span>
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-white/15 text-white border border-white/25 shadow-sm">
+                    {language === 'de' ? 'Neu' : 'New'}: v{foundUpdate.version}
+                  </span>
+                </div>
+              </div>
+
+              {/* Changelog Container */}
+              {foundUpdate.notes && (
+                <div className="text-left bg-black/60 border border-white/10 rounded-xl p-3 max-h-32 overflow-y-auto custom-scrollbar">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-white/40 block mb-1">
+                    {language === 'de' ? 'Neuerungen & Änderungen' : 'Release Notes'}
+                  </span>
+                  <p className="text-xs text-white/80 whitespace-pre-wrap leading-relaxed">
+                    {foundUpdate.notes}
+                  </p>
+                </div>
+              )}
+
+              {/* Live Download Progress Bar (when downloading) */}
+              {isDownloadingUpdate && (
+                <div className="space-y-1.5 pt-1">
+                  <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden relative">
+                    <motion.div 
+                      className="absolute left-0 top-0 bottom-0 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"
+                      animate={{ width: `${updateDownloadProgress}%` }}
+                      transition={{ duration: 0.2 }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-white/60 px-0.5">
+                    <span>{language === 'de' ? 'Lade Update herunter...' : 'Downloading update...'}</span>
+                    <span className="font-mono font-bold text-white">{updateDownloadProgress}%</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Mandatory Action Button */}
+              <div className="pt-1">
+                {updateDownloaded ? (
+                  <button
+                    onClick={handleInstallUpdate}
+                    className="w-full py-2.5 bg-white hover:bg-white/90 active:scale-[0.99] text-black rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-[0_0_25px_rgba(255,255,255,0.25)] cursor-pointer"
+                  >
+                    <RefreshCw size={14} className="text-black" />
+                    <span>{language === 'de' ? 'Jetzt neu starten & anwenden' : 'Restart & Apply Update'}</span>
+                  </button>
+                ) : isDownloadingUpdate ? (
+                  <button
+                    disabled
+                    className="w-full py-2.5 bg-white/20 text-white/60 rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 cursor-not-allowed"
+                  >
+                    <RefreshCw size={14} className="animate-spin text-white/60" />
+                    <span>{language === 'de' ? `Herunterladen... (${updateDownloadProgress}%)` : `Downloading... (${updateDownloadProgress}%)`}</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleStartUpdate}
+                    className="w-full py-2.5 bg-white hover:bg-white/90 active:scale-[0.99] text-black rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-[0_0_25px_rgba(255,255,255,0.25)] cursor-pointer"
+                  >
+                    <Download size={14} className="text-black" />
+                    <span>{language === 'de' ? 'Jetzt aktualisieren & installieren' : 'Update & Install Now'}</span>
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          ) : isScanningActive ? (
             /* ─── State 1: Active Progress & Loading Animation ─── */
             <motion.div 
               key="scanning"
@@ -341,3 +519,4 @@ export function SplashView({ onComplete }: SplashViewProps) {
     </motion.div>
   )
 }
+
