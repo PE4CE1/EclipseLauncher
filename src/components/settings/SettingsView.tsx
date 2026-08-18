@@ -938,7 +938,7 @@ export function SettingsView() {
                         type="text" 
                         value={newSourceUrl}
                         onChange={e => setNewSourceUrl(e.target.value)}
-                        placeholder="https://hydralinks.pages.dev/sources/fitgirl.json"
+                        placeholder="https://hydralinks.cloud/sources/dodi.json"
                         className="flex-1 bg-hub-base border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-white/30"
                         autoFocus
                         onKeyDown={e => e.key === 'Enter' && handleAddSource()}

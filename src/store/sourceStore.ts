@@ -63,6 +63,22 @@ async function fetchSourceContent(url: string): Promise<string | null> {
     } catch {}
   }
 
+  // 5. Smart fallback mirror for hydralinks.cloud / hydralinks.pages.dev
+  if (url.includes('hydralinks.cloud') || url.includes('hydralinks.pages.dev')) {
+    try {
+      const mirrorUrl = url.includes('hydralinks.cloud')
+        ? url.replace('hydralinks.cloud', 'hydralinks.pages.dev')
+        : url.replace('hydralinks.pages.dev', 'hydralinks.cloud')
+      const res = await fetch(mirrorUrl)
+      if (res.ok) {
+        const text = await res.text()
+        if (text && text.includes('downloads') && text.length > 50) {
+          return text
+        }
+      }
+    } catch {}
+  }
+
   return null
 }
 
