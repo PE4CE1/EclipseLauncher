@@ -87,32 +87,45 @@ export function SplashView({ onComplete }: SplashViewProps) {
   const runProgressSequence = async () => {
     const abortController = new AbortController()
 
-    // 1. Initial stage (0.35s)
-    await new Promise(r => setTimeout(r, 350))
-    setProgress(32)
+    // 1. Initial stage (0.2s)
+    setProgress(15)
+    setStatusText(language === 'de' ? 'Initialisiere Eclipse Engine...' : 'Initializing Eclipse Engine...')
+    await new Promise(r => setTimeout(r, 200))
+
+    // 2. Full parallel scan + Steam manifest resolution + Library enrichment
+    setProgress(35)
     setStatusText(language === 'de' ? 'Scanne installierte Spiele & Manifeste...' : 'Scanning game manifests...')
 
-    // Run parallel scan
-    scan({ signal: abortController.signal }).catch(() => {})
+    let scannedCount = 0
+    try {
+      const games = await scan({
+        signal: abortController.signal,
+        awaitEnrichment: true,
+        onProgress: (msg, pct) => {
+          if (msg) setStatusText(msg)
+          if (pct) setProgress(Math.max(pct, 35))
+        }
+      })
+      scannedCount = games?.length || 0
+    } catch (e) {
+      console.warn('[SplashView] Scan error:', e)
+    }
 
-    // 2. Library sync stage (0.55s)
-    await new Promise(r => setTimeout(r, 550))
-    setProgress(68)
-    setStatusText(language === 'de' ? 'Synchronisiere Bibliotheken & Metadaten...' : 'Synchronizing libraries & metadata...')
+    // 3. Preload & Cache Optimization
+    setProgress(88)
+    setStatusText(language === 'de' ? 'Optimiere Spiele-Cache & Cover-Art...' : 'Optimizing game cache & cover art...')
+    await new Promise(r => setTimeout(r, 300))
 
-    // 3. Database optimization stage (0.55s)
-    await new Promise(r => setTimeout(r, 550))
-    setProgress(92)
-    setStatusText(language === 'de' ? 'Optimiere Cache & Oberflächen...' : 'Optimizing cache & interface...')
-
-    // 4. Ready stage (0.45s)
-    await new Promise(r => setTimeout(r, 450))
+    // 4. Ready Stage
     setProgress(100)
     setIsDone(true)
-    setStatusText(language === 'de' ? 'Bereit • Willkommen' : 'Ready • Welcome')
+    const countLabel = scannedCount > 0 
+      ? (language === 'de' ? `${scannedCount} Spiele geladen` : `${scannedCount} games loaded`) 
+      : (language === 'de' ? 'Bereit • Willkommen' : 'Ready • Welcome')
+    setStatusText(language === 'de' ? `Bibliothek bereit • ${countLabel}` : `Library Ready • ${countLabel}`)
 
-    // 5. Short hold for satisfaction then smooth exit
-    await new Promise(r => setTimeout(r, 400))
+    // 5. Short clean pause then smooth exit
+    await new Promise(r => setTimeout(r, 350))
     finish()
   }
 

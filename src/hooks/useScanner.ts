@@ -35,24 +35,38 @@ function deduplicateInstalledGames(games: InstalledGame[]): InstalledGame[] {
   return Array.from(new Set(map.values()))
 }
 
+export function preloadLibraryCovers(games: InstalledGame[], maxCount = 50) {
+  const top = games.slice(0, maxCount)
+  for (const g of top) {
+    const id = g.steamId || (g.appId ? Number(g.appId) : null)
+    if (id && !isNaN(id)) {
+      const img = new Image()
+      img.src = `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${id}/library_600x900.jpg`
+    }
+  }
+}
+
 export function useScanner() {
   const { setInstalledGames, setIsScanning, setScanMessage } = useGameStore()
   const { showNotification } = useUIStore()
 
-  const scan = useCallback(async (options?: { signal?: AbortSignal }) => {
+  const scan = useCallback(async (options?: { signal?: AbortSignal; awaitEnrichment?: boolean; onProgress?: (msg: string, percent?: number) => void }) => {
     if (!window.electronAPI) {
       console.warn('[useScanner] electronAPI not available — running in browser mode')
       setInstalledGames([])
-      return
+      return []
     }
 
     const lang = useGameStore.getState().settings.language === 'de' ? 'de' : 'en'
 
     setIsScanning(true)
-    setScanMessage(lang === 'de' ? 'Scanne Spiele-Bibliothek…' : 'Scanning game library…')
+    const initialMsg = lang === 'de' ? 'Scanne Spiele-Bibliothek…' : 'Scanning game library…'
+    setScanMessage(initialMsg)
+    options?.onProgress?.(initialMsg, 30)
 
     const unsubscribe = window.electronAPI.onScanProgress((progress) => {
       setScanMessage(progress.message)
+      options?.onProgress?.(progress.message)
     })
 
     try {
@@ -85,34 +99,58 @@ export function useScanner() {
           return { ...g, playTimeMinutes: maxPlaytime, lastPlayed: maxLastPlayed || undefined }
         })
         
-        setInstalledGames(deduplicateInstalledGames(mergeGames(initialGames)))
+        const mergedInitial = deduplicateInstalledGames(mergeGames(initialGames))
+        setInstalledGames(mergedInitial)
         
-        // Hide scanning UI for the background fetch
-        setIsScanning(false)
-        setScanMessage(lang === 'de' ? 'Lade Steam-Metadaten…' : 'Resolving Steam metadata…')
+        const enrichPromise = async () => {
+          const syncMsg = lang === 'de' ? 'Lade Steam-Bibliothek & Metadaten…' : 'Resolving Steam metadata…'
+          setScanMessage(syncMsg)
+          options?.onProgress?.(syncMsg, 60)
 
-        // Fetch names in the background WITHOUT blocking the function return
-        enrichWithSteamIds(result.games, (msg) => setScanMessage(msg), options?.signal)
-          .then((enriched) => {
-            let uniqueGames = deduplicateInstalledGames(enriched)
-            if (!useGameStore.getState().settings.scanUninstalledSteam) {
-              uniqueGames = uniqueGames.filter(g => g.installed !== false)
-            }
-            setInstalledGames(deduplicateInstalledGames(mergeGames(uniqueGames)))
-            showNotification(lang === 'de' ? `${uniqueGames.length} Spiele gefunden` : `Found ${uniqueGames.length} games`, 'success')
-            setScanMessage('')
-          })
-          .catch(err => console.error('[useScanner] Background enrich failed', err))
+          const enriched = await enrichWithSteamIds(result.games, (msg) => {
+            setScanMessage(msg)
+            options?.onProgress?.(msg)
+          }, options?.signal)
+
+          let uniqueGames = deduplicateInstalledGames(enriched)
+          if (!useGameStore.getState().settings.scanUninstalledSteam) {
+            uniqueGames = uniqueGames.filter(g => g.installed !== false)
+          }
+          const finalGames = deduplicateInstalledGames(mergeGames(uniqueGames))
+          setInstalledGames(finalGames)
+
+          // Preload top game covers for instantaneous library opening
+          preloadLibraryCovers(finalGames, 50)
+
+          setScanMessage('')
+          return finalGames
+        }
+
+        if (options?.awaitEnrichment) {
+          const finalGames = await enrichPromise()
+          setIsScanning(false)
+          return finalGames
+        } else {
+          setIsScanning(false)
+          enrichPromise()
+            .then((uniqueGames) => {
+              showNotification(lang === 'de' ? `${uniqueGames.length} Spiele gefunden` : `Found ${uniqueGames.length} games`, 'success')
+            })
+            .catch(err => console.error('[useScanner] Background enrich failed', err))
+          return mergedInitial
+        }
       } else {
         setIsScanning(false)
         setScanMessage('')
         showNotification(result.error || (lang === 'de' ? 'Scan fehlgeschlagen' : 'Scan failed'), 'error')
+        return []
       }
     } catch (err) {
       showNotification(lang === 'de' ? 'Fehler beim Scannen der Spiele' : 'Scan encountered an error', 'error')
       console.error('[useScanner]', err)
       setIsScanning(false)
       setScanMessage('')
+      return []
     } finally {
       unsubscribe?.()
     }
