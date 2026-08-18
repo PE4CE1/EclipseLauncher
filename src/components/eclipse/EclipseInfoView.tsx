@@ -21,6 +21,27 @@ interface GitHubRelease {
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
   {
+    id: 117,
+    tag_name: 'v1.1.7',
+    name: 'v1.1.7 - Mandatory Startup Updater, Web Store Sources & Crisp Transitions',
+    published_at: '2026-08-18T19:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.1.7',
+    body: `### 🚀 Mandatory Startup Update Checker
+* **Live Update-Erkennung:** Automatischer Versionsabgleich beim Starten im Splash Screen.
+* **Sleek Update Modal:** Minimalistisches Versions-Badge (\`Aktuell\` ➔ \`Neu\`) ohne überladenen Schnickschnack.
+* **1-Click Live Download & Install:** Nahtloser Installer-Download mit Echtzeit-Fortschrittsbalken und automatischer Ausführung.
+
+### 🌐 Web Store Download Sources
+* **Zero-Default Architecture:** Standardmäßig keine vorinstallierten Quellen für maximale Sicherheit und Benutzerkontrolle.
+* **1-Click Web Store Integration:** Direkte Verknüpfung mit dem Eclipse Web Store (\`https://eclipse-launcher.netlify.app/#/downloads\`).
+* **Intelligente Cloudflare & Mirror Fallbacks:** Robuste Synchronisation für alle Hydra-Quellen (DODI, FitGirl, SteamRIP etc.).
+
+### ⚡ Splash Screen & UI Polish
+* **Crisp Exit Animation:** Gestochen scharfer, schneller Fade-Out des Splash Screens ohne störenden Blur-Effekt.
+* **Library Performance:** Sofortiges Öffnen der Bibliothek in 0.00s und smartes Preview-Banner-Fallback.`,
+    prerelease: false
+  },
+  {
     id: 116,
     tag_name: 'v1.1.6',
     name: 'v1.1.6 - Custom Themes Store, Deep Linking & Fullscreen Lightbox Fix',
