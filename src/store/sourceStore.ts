@@ -2,19 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { DownloadSource, HydraSourceData } from '../types/source'
 
-export const DEFAULT_SOURCES = [
-  'https://hydralinks.cloud/sources/fitgirl.json',
-  'https://hydralinks.cloud/sources/steamrip.json',
-  'https://hydralinks.cloud/sources/xatab.json',
-  'https://hydralinks.cloud/sources/onlinefix.json',
-  'https://hydralinks.cloud/sources/dodi.json',
-  'https://wkeynhk.online/steamgg.json',
-  'https://hydralinks.pages.dev/sources/gog.json',
-  'https://hydralinks.pages.dev/sources/kaoskrew.json',
-  'https://hydralinks.pages.dev/sources/empress.json',
-  'https://hydralinks.pages.dev/sources/atop-games.json',
-  'https://hydralinks.pages.dev/sources/rexagames.json',
-]
+export const DEFAULT_SOURCES: string[] = []
 
 interface SourceStore {
   sources: DownloadSource[]
@@ -83,18 +71,7 @@ export const useSourceStore = create<SourceStore>()(
     (set, get) => ({
       sources: [],
       initializeDefaults: () => {
-        const current = get().sources;
-        if (current.length === 0) {
-          const defaults: DownloadSource[] = DEFAULT_SOURCES.map(url => ({
-            url,
-            name: new URL(url).pathname.split('/').pop()?.replace('.json', '') || 'Source',
-            status: 'pending',
-            optionsCount: 0,
-            data: []
-          }))
-          set({ sources: defaults })
-          get().syncAll()
-        }
+        // No default sources preloaded - user adds custom sources from Eclipse Web Store
       },
       addSource: (url) => {
         const trimmed = url.trim()
@@ -141,7 +118,9 @@ export const useSourceStore = create<SourceStore>()(
       },
       syncAll: async () => {
         const urls = get().sources.map(s => s.url)
-        await Promise.allSettled(urls.map(url => get().syncSource(url)))
+        if (urls.length > 0) {
+          await Promise.allSettled(urls.map(url => get().syncSource(url)))
+        }
       }
     }),
     {
@@ -151,42 +130,8 @@ export const useSourceStore = create<SourceStore>()(
         sources: state.sources.map(s => ({ ...s, data: [], status: 'pending' }))
       }),
       onRehydrateStorage: () => (state) => {
-        if (state) {
-          // Auto migrate any old un-synced or blocked URLs
-          if (state.sources.length > 0) {
-            const migrated = state.sources.map(s => {
-              if (s.url.includes('hydralinks.cloud/sources/')) {
-                return { ...s, url: s.url.replace('hydralinks.cloud/sources/', 'hydralinks.pages.dev/sources/') }
-              }
-              return s
-            })
-            // Remove completely defunct 404 dead links
-            const valid = migrated.filter(s => 
-              !s.url.includes('davidkazumisource.com') && 
-              !s.url.includes('fitgirl.json') && 
-              !s.url.includes('dodi.json') && 
-              !s.url.includes('steamrip.json') && 
-              !s.url.includes('onlinefix.json') && 
-              !s.url.includes('xatab.json')
-            )
-            // Ensure all working defaults are present
-            DEFAULT_SOURCES.forEach(defUrl => {
-              if (!valid.some(s => s.url === defUrl)) {
-                valid.push({
-                  url: defUrl,
-                  name: new URL(defUrl).pathname.split('/').pop()?.replace('.json', '') || 'Source',
-                  status: 'pending',
-                  optionsCount: 0,
-                  data: []
-                })
-              }
-            })
-
-            state.sources = valid
-            setTimeout(() => state.syncAll(), 200)
-          } else {
-            state.initializeDefaults()
-          }
+        if (state && state.sources.length > 0) {
+          setTimeout(() => state.syncAll(), 300)
         }
       }
     }

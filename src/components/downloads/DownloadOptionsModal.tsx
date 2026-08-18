@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, useDeferredValue } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Download as DownloadIcon, X, ChevronDown, Check, ArrowLeft, Zap, ShieldCheck, RefreshCw } from 'lucide-react'
+import { Download as DownloadIcon, X, ChevronDown, Check, ArrowLeft, Zap, ShieldCheck, RefreshCw, ExternalLink } from 'lucide-react'
 import { useTranslation } from '../../hooks/useTranslation'
 import { useGameStore } from '../../store/gameStore'
+import { useSourceStore } from '../../store/sourceStore'
 
 function formatDateString(dateStr?: string): string {
   if (!dateStr) return ''
@@ -282,8 +283,25 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = []
             {/* Repack Items List */}
             <div className="flex-1 overflow-y-auto p-4 px-6 space-y-2.5 custom-scrollbar min-h-0">
               {sortedAndFilteredDownloads.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-hub-muted text-sm p-8">
-                  {t('noMatchingRepacks')}
+                <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-3">
+                  <p className="text-hub-muted text-xs max-w-sm">
+                    {useSourceStore.getState().sources.length === 0
+                      ? (language === 'de' ? 'Keine Download-Quellen hinterlegt. Füge Quellen aus dem Web Store hinzu.' : 'No download sources configured. Add sources from the Web Store.')
+                      : t('noMatchingRepacks')}
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (window.electronAPI?.openUrl) {
+                        window.electronAPI.openUrl('https://eclipselauncher.com')
+                      } else {
+                        window.open('https://eclipselauncher.com', '_blank')
+                      }
+                    }}
+                    className="px-3.5 py-1.5 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <ExternalLink size={12} className="text-black" />
+                    {language === 'de' ? 'Quellen im Web Store finden' : 'Browse Sources in Web Store'}
+                  </button>
                 </div>
               ) : (
                 sortedAndFilteredDownloads.map((dl, idx) => (

@@ -820,26 +820,83 @@ export function SettingsView() {
 
               {/* ─── Hydra Sources Management ─── */}
               <section>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                   <div>
                     <h2 className="text-lg font-bold text-white tracking-tight">{t('downloadSourcesManagement')}</h2>
                     <p className="text-xs text-hub-muted mt-0.5">
                       {language === 'de' 
-                        ? 'Hydra-Quellen (JSON) aus https://library.hydra.wiki/sources/ für automatische Repack- und Direct-Download-Optionen.' 
-                        : 'Hydra sources (JSON) from https://library.hydra.wiki/sources/ for repacks and direct downloads.'}
+                        ? 'Download-Quellen (JSON) für automatische Repack- und Direct-Download-Optionen im Launcher.' 
+                        : 'Download sources (JSON) for automatic repacks and direct download options.'}
                     </p>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button onClick={() => syncAll()} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-all border border-white/10 cursor-pointer">
-                      {t('syncSources')}
+                  <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                    <button 
+                      onClick={() => {
+                        if (window.electronAPI?.openUrl) {
+                          window.electronAPI.openUrl('https://eclipselauncher.com')
+                        } else {
+                          window.open('https://eclipselauncher.com', '_blank')
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      <ExternalLink size={12} className="text-black" />
+                      {language === 'de' ? 'Web Store Quellen' : 'Web Store Sources'}
                     </button>
-                    <button onClick={() => removeAllSources()} className="px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg text-xs font-semibold transition-all cursor-pointer">
-                      {t('removeAllSources')}
-                    </button>
+                    {sources.length > 0 && (
+                      <>
+                        <button onClick={() => syncAll()} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-all border border-white/10 cursor-pointer">
+                          {t('syncSources')}
+                        </button>
+                        <button onClick={() => removeAllSources()} className="px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg text-xs font-semibold transition-all cursor-pointer">
+                          {t('removeAllSources')}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 <div className="space-y-3 mt-4">
+                  {sources.length === 0 && !showAddSource && (
+                    <div className="bg-[#0f1015] border border-white/10 rounded-2xl p-6 text-center space-y-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 mx-auto flex items-center justify-center text-white/60">
+                        <Download size={18} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-white">
+                          {language === 'de' ? 'Keine Download-Quellen hinterlegt' : 'No Download Sources Configured'}
+                        </h3>
+                        <p className="text-xs text-hub-muted mt-1 max-w-md mx-auto leading-relaxed">
+                          {language === 'de' 
+                            ? 'Hole dir geprüfte Download-Quellen aus dem offiziellen Eclipse Web Store oder füge eigene JSON-Links ein.'
+                            : 'Get verified download sources from the official Eclipse Web Store or add your custom JSON links.'}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-center gap-2.5 pt-1">
+                        <button
+                          onClick={() => {
+                            if (window.electronAPI?.openUrl) {
+                              window.electronAPI.openUrl('https://eclipselauncher.com')
+                            } else {
+                              window.open('https://eclipselauncher.com', '_blank')
+                            }
+                          }}
+                          className="px-4 py-2 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+                        >
+                          <ExternalLink size={13} className="text-black" />
+                          {language === 'de' ? 'Quellen im Web Store finden' : 'Browse Sources in Web Store'}
+                        </button>
+                        <button
+                          onClick={() => setShowAddSource(true)}
+                          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/10 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+                        >
+                          <Plus size={14} />
+                          {language === 'de' ? 'Manuell hinzufügen' : 'Add Manually'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {sources.map(source => (
                     <div key={source.url} className="bg-[#0f1015] border border-white/10 rounded-xl p-3.5 flex flex-col gap-2.5">
                       <div className="flex items-center justify-between">
@@ -881,7 +938,7 @@ export function SettingsView() {
                         type="text" 
                         value={newSourceUrl}
                         onChange={e => setNewSourceUrl(e.target.value)}
-                        placeholder="https://wkeynhk.online/steamgg.json"
+                        placeholder="https://hydralinks.pages.dev/sources/fitgirl.json"
                         className="flex-1 bg-hub-base border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-white/30"
                         autoFocus
                         onKeyDown={e => e.key === 'Enter' && handleAddSource()}
@@ -889,12 +946,12 @@ export function SettingsView() {
                       <button onClick={handleAddSource} className="px-4 py-1.5 bg-white text-black hover:bg-white/90 rounded-lg text-xs font-semibold shadow-sm cursor-pointer">{t('add')}</button>
                       <button onClick={() => setShowAddSource(false)} className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold border border-white/10 cursor-pointer">{t('cancel')}</button>
                     </div>
-                  ) : (
+                  ) : sources.length > 0 ? (
                     <button onClick={() => setShowAddSource(true)} className="w-full py-3 bg-hub-surface hover:bg-white/[0.04] border border-white/10 border-dashed rounded-xl flex items-center justify-center gap-2 text-xs font-medium text-hub-muted hover:text-white transition-colors cursor-pointer">
                       <Plus size={15} />
                       {t('addSource')}
                     </button>
-                  )}
+                  ) : null}
                 </div>
               </section>
             </motion.div>
