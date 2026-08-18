@@ -247,7 +247,7 @@ export interface ElectronAPI {
 
   // Auto Updater
   checkUpdate: () => Promise<void>
-  downloadUpdate: () => Promise<void>
+  downloadUpdate: (url?: string) => Promise<any>
   installUpdate: () => Promise<void>
   onUpdaterEvent: (callback: (payload: { status: string; data?: any }) => void) => () => void
 }

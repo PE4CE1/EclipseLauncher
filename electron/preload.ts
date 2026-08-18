@@ -199,7 +199,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Auto Updater
   checkUpdate: () => ipcRenderer.invoke('updater:check'),
-  downloadUpdate: () => ipcRenderer.invoke('updater:download'),
+  downloadUpdate: (url?: string) => ipcRenderer.invoke('updater:download', url),
   installUpdate: () => ipcRenderer.invoke('updater:install'),
 
   // Generic invoke for other commands

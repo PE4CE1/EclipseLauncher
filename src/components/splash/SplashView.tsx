@@ -190,11 +190,15 @@ export function SplashView({ onComplete }: SplashViewProps) {
 
   const handleStartUpdate = async () => {
     if (!foundUpdate) return
+    setIsDownloadingUpdate(true)
+    setUpdateDownloadProgress(3)
+
     if (window.electronAPI?.downloadUpdate) {
       try {
-        setIsDownloadingUpdate(true)
-        setUpdateDownloadProgress(10)
-        await window.electronAPI.downloadUpdate()
+        const res = await window.electronAPI.downloadUpdate(foundUpdate.downloadUrl)
+        if (res && res.success === false) {
+          throw new Error(res.error || 'Download failed')
+        }
       } catch (e) {
         console.warn('[SplashView] downloadUpdate failed, opening download URL:', e)
         setIsDownloadingUpdate(false)
