@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { GameCard } from './GameCard'
 import type { SteamGame } from '../../services/steamService'
+import { useUIStore } from '../../store/uiStore'
 
 interface GameCarouselProps {
   title: string
@@ -24,6 +25,7 @@ function SkeletonCard() {
 
 export function GameCarousel({ title, games, isLoading, id }: GameCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const isGameModalOpen = useUIStore(state => state.isGameModalOpen)
 
   function scroll(direction: 'left' | 'right') {
     if (!scrollRef.current) return
@@ -61,7 +63,7 @@ export function GameCarousel({ title, games, isLoading, id }: GameCarouselProps)
               <div key={i} className="carousel-item"><SkeletonCard /></div>
             ))
           : games.map((game, i) => (
-              <div key={game.steamId} className="carousel-item" role="listitem">
+              <div key={`${game.steamId}-${isGameModalOpen ? 'open' : 'closed'}`} className="carousel-item" role="listitem">
                 <GameCard game={game} index={i} />
               </div>
             ))
