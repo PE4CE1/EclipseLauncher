@@ -25,9 +25,16 @@ html, body {
 }
 
 /* Ensure sub-views and animated containers are transparent and don't re-render/shift background */
-#root, main, .bg-hub-base, .bg-\[\#040405\], .bg-\[\#07080a\], .bg-\[\#0b0c0e\], .bg-\[\#07070a\], .bg-\[\#050507\] {
+#root, main, .bg-hub-base, .bg-\[\#040405\]:not(.splash-screen-overlay), .bg-\[\#07080a\]:not(.game-detail-modal-overlay), .bg-\[\#0b0c0e\], .bg-\[\#07070a\], .bg-\[\#050507\] {
   background-color: transparent !important;
   background-image: none !important;
+}
+
+/* Splash Screen must ALWAYS be solid deep space black and never transparent */
+.splash-screen-overlay {
+  background-color: #040405 !important;
+  background-image: radial-gradient(circle at 50% 50%, #0c0d12 0%, #040405 100%) !important;
+  opacity: 1 !important;
 }
 
 /* Game Detail Modal: Dedicated Opaque Wallpaper Canvas (Prevents Home View Bleed-through) */

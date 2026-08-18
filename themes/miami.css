@@ -130,3 +130,11 @@ input:focus, select:focus, textarea:focus {
 button, button *, .btn-primary, .btn-primary *, .btn-ghost, .btn-ghost *, .sidebar-item, .sidebar-item * {
   text-shadow: none !important;
 }
+
+
+/* Splash screen overlay must always be solid */
+.splash-screen-overlay {
+  background-color: #040405 !important;
+  background-image: radial-gradient(circle at 50% 50%, #0c0d12 0%, #040405 100%) !important;
+  opacity: 1 !important;
+}

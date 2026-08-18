@@ -139,7 +139,8 @@ export function SplashView({ onComplete }: SplashViewProps) {
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.02, filter: 'blur(8px)' }}
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#040405] text-white select-none overflow-hidden"
+      className="fixed inset-0 z-[99999] flex items-center justify-center splash-screen-overlay text-white select-none overflow-hidden"
+      style={{ backgroundColor: '#040405' }}
     >
       {/* ─── Ambient Space Backdrop ─── */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">

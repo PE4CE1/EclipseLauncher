@@ -35,6 +35,13 @@ button, button *, .btn-primary, .btn-ghost, .badge {
   text-shadow: none;
 }
 
+/* Splash screen overlay is always 100% solid and blocks everything underneath */
+.splash-screen-overlay {
+  background-color: #040405 !important;
+  background-image: radial-gradient(circle at 50% 50%, #0d0e12 0%, #040405 100%) !important;
+  opacity: 1 !important;
+}
+
 /* Electron draggable region */
 .drag-region {
   -webkit-app-region: drag;
