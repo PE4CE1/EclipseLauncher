@@ -232,8 +232,8 @@ export function SplashView({ onComplete }: SplashViewProps) {
   return (
     <motion.div 
       initial={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.02, filter: 'blur(8px)' }}
-      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
       className="fixed inset-0 z-[99999] flex items-center justify-center splash-screen-overlay text-white select-none overflow-hidden"
       style={{ backgroundColor: '#040405' }}
     >
