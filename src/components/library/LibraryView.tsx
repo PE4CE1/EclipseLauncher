@@ -14,9 +14,9 @@ type TabId = 'all' | 'installed' | 'favorites' | 'custom'
 const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
 
 // Global instant asset resolution memory cache to eliminate repeat probes during scrolling
-const coverCache = new Map<string, { url: string; isVertical: boolean }>()
+const coverCache = new Map<string, { url: string; isWide: boolean }>()
 
-/** Ultra-fast Cover Art with hardware async decoding and wide PREVIEW support */
+/** Ultra-fast Cover Art with hardware async decoding, smart hero banner fallback, and clean shimmer loading */
 export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { game: LibraryGame | (InstalledGame & { isInstalled: boolean }) }) {
   const resolvedId = ('steamId' in game && typeof game.steamId === 'number' && game.steamId > 0)
     ? game.steamId
@@ -28,7 +28,11 @@ export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { g
           ? Number(game.id)
           : undefined
 
+  const cacheKey = `${game.name}_${resolvedId || game.id}`
+  const cached = coverCache.get(cacheKey)
+
   const [imgSrc, setImgSrc] = useState<string>(() => {
+    if (cached) return cached.url
     if (resolvedId) {
       return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/library_600x900.jpg`
     }
@@ -37,67 +41,101 @@ export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { g
     return getPlaceholderCover(game.name)
   })
 
-  const [isWide, setIsWide] = useState(false)
+  const [isWide, setIsWide] = useState<boolean>(() => cached ? cached.isWide : false)
+  const [isLoaded, setIsLoaded] = useState<boolean>(() => !!cached)
   const [fallbackStage, setFallbackStage] = useState(0)
 
   const handleError = useCallback(() => {
+    setIsLoaded(false)
     if (resolvedId && fallbackStage === 0) {
       setFallbackStage(1)
       setImgSrc(`https://cdn.akamai.steamstatic.com/steam/apps/${resolvedId}/library_600x900.jpg`)
     } else if (resolvedId && fallbackStage === 1) {
       setFallbackStage(2)
       setIsWide(true)
-      setImgSrc(`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/header.jpg`)
+      // Smart top hero banner (like in the game detail / Meccha Chameleon view)
+      setImgSrc(`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/library_hero.jpg`)
     } else if (resolvedId && fallbackStage === 2) {
       setFallbackStage(3)
       setIsWide(true)
+      // Wide Header fallback
+      setImgSrc(`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/header.jpg`)
+    } else if (resolvedId && fallbackStage === 3) {
+      setFallbackStage(4)
+      setIsWide(true)
+      // Wide Capsule fallback
       setImgSrc(`https://cdn.akamai.steamstatic.com/steam/apps/${resolvedId}/capsule_617x283.jpg`)
+    } else if (resolvedId && fallbackStage === 4) {
+      setFallbackStage(5)
+      setIsWide(true)
+      // Store page background screenshot
+      setImgSrc(`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/page_bg_generated_v6.jpg`)
     } else {
       setIsWide(false)
-      setImgSrc(getPlaceholderCover(game.name))
+      const placeholder = getPlaceholderCover(game.name)
+      setImgSrc(placeholder)
+      setIsLoaded(true)
+      coverCache.set(cacheKey, { url: placeholder, isWide: false })
     }
-  }, [resolvedId, fallbackStage, game.name])
+  }, [resolvedId, fallbackStage, game.name, cacheKey])
 
-  if (isWide) {
-    return (
-      <div className="relative w-full h-full overflow-hidden bg-[#0a0b0f] flex items-center justify-center p-3 select-none">
-        <img
-          src={imgSrc}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          className="absolute inset-0 w-full h-full object-cover filter blur-md scale-125 opacity-40 brightness-75 pointer-events-none"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/40 pointer-events-none" />
-        <div className="absolute top-3 inset-x-0 flex justify-center pointer-events-none z-10">
-          <span className="text-[9px] font-semibold tracking-widest uppercase text-white/50 bg-black/70 px-2 py-0.5 rounded-full border border-white/10 shadow-sm">
-            PREVIEW
-          </span>
-        </div>
-        <div className="relative z-10 w-full aspect-[16/9] rounded-lg overflow-hidden shadow-[0_12px_28px_rgba(0,0,0,0.85)] border border-white/15">
-          <img
-            src={imgSrc}
-            alt={game.name}
-            loading="lazy"
-            decoding="async"
-            onError={handleError}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      </div>
-    )
-  }
+  const handleLoad = useCallback(() => {
+    setIsLoaded(true)
+    coverCache.set(cacheKey, { url: imgSrc, isWide })
+  }, [cacheKey, imgSrc, isWide])
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-[#0a0b0e]">
-      <img
-        src={imgSrc}
-        alt={game.name}
-        loading="lazy"
-        decoding="async"
-        onError={handleError}
-        className="w-full h-full object-cover select-none transform transition-transform duration-300"
-      />
+    <div className="relative w-full h-full overflow-hidden bg-[#0c0d13] select-none">
+      {/* ─── Ultra Clean Subtle Loading Shimmer ─── */}
+      {!isLoaded && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#0a0b0f] overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_70%)]" />
+          <div className="w-11 h-11 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-center shadow-inner animate-pulse mb-2">
+            <Gamepad2 size={18} className="text-white/20" />
+          </div>
+          <div className="w-14 h-1 rounded-full bg-white/[0.04] animate-pulse" />
+        </div>
+      )}
+
+      {isWide ? (
+        <div className="relative w-full h-full overflow-hidden bg-[#0a0b0f] flex items-center justify-center p-3">
+          {/* Ambient Blurred Aura */}
+          <img
+            src={imgSrc}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover filter blur-xl scale-150 opacity-40 brightness-75 pointer-events-none"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/50 pointer-events-none" />
+          <div className="absolute top-2.5 inset-x-0 flex justify-center pointer-events-none z-10">
+            <span className="text-[8px] font-bold tracking-widest uppercase text-white/70 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 shadow-sm">
+              PREVIEW
+            </span>
+          </div>
+          <div className="relative z-10 w-full aspect-[16/9] rounded-lg overflow-hidden shadow-[0_12px_28px_rgba(0,0,0,0.85)] border border-white/15">
+            <img
+              src={imgSrc}
+              alt={game.name}
+              loading="lazy"
+              decoding="async"
+              onLoad={handleLoad}
+              onError={handleError}
+              className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          </div>
+        </div>
+      ) : (
+        <img
+          src={imgSrc}
+          alt={game.name}
+          loading="lazy"
+          decoding="async"
+          onLoad={handleLoad}
+          onError={handleError}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+        />
+      )}
     </div>
   )
 })
