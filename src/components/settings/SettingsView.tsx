@@ -832,10 +832,11 @@ export function SettingsView() {
                   <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                     <button 
                       onClick={() => {
+                        const url = 'https://eclipse-launcher.netlify.app/#/downloads'
                         if (window.electronAPI?.openUrl) {
-                          window.electronAPI.openUrl('https://eclipselauncher.com')
+                          window.electronAPI.openUrl(url)
                         } else {
-                          window.open('https://eclipselauncher.com', '_blank')
+                          window.open(url, '_blank')
                         }
                       }}
                       className="px-3 py-1.5 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
@@ -875,10 +876,11 @@ export function SettingsView() {
                       <div className="flex items-center justify-center gap-2.5 pt-1">
                         <button
                           onClick={() => {
+                            const url = 'https://eclipse-launcher.netlify.app/#/downloads'
                             if (window.electronAPI?.openUrl) {
-                              window.electronAPI.openUrl('https://eclipselauncher.com')
+                              window.electronAPI.openUrl(url)
                             } else {
-                              window.open('https://eclipselauncher.com', '_blank')
+                              window.open(url, '_blank')
                             }
                           }}
                           className="px-4 py-2 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 shadow-sm cursor-pointer"

@@ -291,10 +291,11 @@ export function DownloadOptionsModal({ isOpen, onClose, gameName, downloads = []
                   </p>
                   <button
                     onClick={() => {
+                      const url = 'https://eclipse-launcher.netlify.app/#/downloads'
                       if (window.electronAPI?.openUrl) {
-                        window.electronAPI.openUrl('https://eclipselauncher.com')
+                        window.electronAPI.openUrl(url)
                       } else {
-                        window.open('https://eclipselauncher.com', '_blank')
+                        window.open(url, '_blank')
                       }
                     }}
                     className="px-3.5 py-1.5 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
