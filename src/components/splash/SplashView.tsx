@@ -316,97 +316,99 @@ export function SplashView({ onComplete }: SplashViewProps) {
 
         <AnimatePresence mode="wait">
           {foundUpdate ? (
-            /* ─── State 3: Mandatory Update Screen ─── */
+            /* ─── State 3: Ultra-Clean Minimalist Update View ─── */
             <motion.div
               key="mandatory-update"
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -10 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full bg-[#0c0d13]/90 border border-white/15 rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.9)] backdrop-blur-2xl text-center space-y-4"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full space-y-3.5"
             >
-              {/* Glowing Update Icon */}
-              <div className="mx-auto w-12 h-12 rounded-2xl bg-white/[0.08] border border-white/20 flex items-center justify-center shadow-[0_0_25px_rgba(255,255,255,0.15)] relative">
-                <ArrowUpCircle size={24} className="text-white animate-pulse" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 border-2 border-[#0c0d13] rounded-full" />
-              </div>
-
-              {/* Title & Version Pills */}
-              <div>
-                <h2 className="text-base font-bold text-white tracking-tight">
-                  {language === 'de' ? 'Update erforderlich' : 'Update Required'}
-                </h2>
-                <p className="text-[11px] text-white/50 mt-1 leading-relaxed">
-                  {language === 'de' 
-                    ? 'Eine neue Version von Eclipse Launcher ist verfügbar. Bitte installiere das Update, um fortzufahren.'
-                    : 'A new version of Eclipse Launcher is available. Please install the update to proceed.'}
-                </p>
-                
-                <div className="flex items-center justify-center gap-2 mt-3">
-                  <span className="text-[10px] font-mono font-medium px-2.5 py-0.5 rounded-full bg-white/5 text-white/40 border border-white/10">
-                    {language === 'de' ? 'Aktuell' : 'Current'}: v{APP_VERSION}
-                  </span>
-                  <span className="text-white/30 text-xs">➔</span>
-                  <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-white/15 text-white border border-white/25 shadow-sm">
-                    {language === 'de' ? 'Neu' : 'New'}: v{foundUpdate.version}
+              {/* Sleek Minimalist Info Card */}
+              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs font-semibold text-white tracking-wide">
+                      {language === 'de' ? 'Update verfügbar' : 'Update Available'}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold text-white bg-white/10 px-2 py-0.5 rounded-md border border-white/10">
+                    v{foundUpdate.version}
                   </span>
                 </div>
+
+                {/* Highlights */}
+                {(() => {
+                  const notes = foundUpdate.notes
+                    ? foundUpdate.notes
+                        .split('\n')
+                        .map(l => l.trim())
+                        .filter(l => l && !l.startsWith('## What') && !l.startsWith('###') && !l.startsWith('**Full Changelog**'))
+                        .map(l => l.replace(/^[-*]\s*/, '').replace(/\*\*/g, '').replace(/`/g, ''))
+                        .filter(l => l.length > 0)
+                        .slice(0, 3)
+                    : []
+
+                  return notes.length > 0 ? (
+                    <div className="space-y-1 pt-1.5 border-t border-white/[0.06]">
+                      {notes.map((note, i) => (
+                        <p key={i} className="text-[11px] text-white/50 leading-relaxed truncate">
+                          • {note}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-white/40 pt-1">
+                      {language === 'de' ? 'Enthält Verbesserungen und Fehlerbehebungen.' : 'Includes performance improvements and bug fixes.'}
+                    </p>
+                  )
+                })()}
               </div>
 
-              {/* Changelog Container */}
-              {foundUpdate.notes && (
-                <div className="text-left bg-black/60 border border-white/10 rounded-xl p-3 max-h-32 overflow-y-auto custom-scrollbar">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-white/40 block mb-1">
-                    {language === 'de' ? 'Neuerungen & Änderungen' : 'Release Notes'}
-                  </span>
-                  <p className="text-xs text-white/80 whitespace-pre-wrap leading-relaxed">
-                    {foundUpdate.notes}
-                  </p>
-                </div>
-              )}
-
-              {/* Live Download Progress Bar (when downloading) */}
+              {/* Live Download Progress (when active) */}
               {isDownloadingUpdate && (
-                <div className="space-y-1.5 pt-1">
-                  <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden relative">
+                <div className="space-y-1.5">
+                  <div className="w-full h-1 bg-white/[0.08] rounded-full overflow-hidden relative">
                     <motion.div 
-                      className="absolute left-0 top-0 bottom-0 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"
+                      className="absolute left-0 top-0 bottom-0 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,0.7)]"
                       animate={{ width: `${updateDownloadProgress}%` }}
                       transition={{ duration: 0.2 }}
                     />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-white/60 px-0.5">
+                  <div className="flex items-center justify-between text-[11px] text-white/50 px-0.5">
                     <span>{language === 'de' ? 'Lade Update herunter...' : 'Downloading update...'}</span>
-                    <span className="font-mono font-bold text-white">{updateDownloadProgress}%</span>
+                    <span className="font-mono font-semibold text-white">{updateDownloadProgress}%</span>
                   </div>
                 </div>
               )}
 
-              {/* Mandatory Action Button */}
-              <div className="pt-1">
+              {/* Primary Action Button */}
+              <div>
                 {updateDownloaded ? (
                   <button
                     onClick={handleInstallUpdate}
-                    className="w-full py-2.5 bg-white hover:bg-white/90 active:scale-[0.99] text-black rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-[0_0_25px_rgba(255,255,255,0.25)] cursor-pointer"
+                    className="w-full py-3 bg-white hover:bg-white/90 active:scale-[0.99] text-black rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] cursor-pointer"
                   >
-                    <RefreshCw size={14} className="text-black" />
-                    <span>{language === 'de' ? 'Jetzt neu starten & anwenden' : 'Restart & Apply Update'}</span>
+                    <RefreshCw size={13} className="text-black" />
+                    <span>{language === 'de' ? 'Jetzt neu starten & anwenden' : 'Restart & Apply'}</span>
                   </button>
                 ) : isDownloadingUpdate ? (
                   <button
                     disabled
-                    className="w-full py-2.5 bg-white/20 text-white/60 rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 cursor-not-allowed"
+                    className="w-full py-3 bg-white/10 text-white/40 rounded-xl font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-2 cursor-not-allowed"
                   >
-                    <RefreshCw size={14} className="animate-spin text-white/60" />
-                    <span>{language === 'de' ? `Herunterladen... (${updateDownloadProgress}%)` : `Downloading... (${updateDownloadProgress}%)`}</span>
+                    <RefreshCw size={13} className="animate-spin text-white/40" />
+                    <span>{language === 'de' ? `Lade herunter... (${updateDownloadProgress}%)` : `Downloading... (${updateDownloadProgress}%)`}</span>
                   </button>
                 ) : (
                   <button
                     onClick={handleStartUpdate}
-                    className="w-full py-2.5 bg-white hover:bg-white/90 active:scale-[0.99] text-black rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-[0_0_25px_rgba(255,255,255,0.25)] cursor-pointer"
+                    className="w-full py-3 bg-white hover:bg-white/90 active:scale-[0.99] text-black rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] cursor-pointer"
                   >
-                    <Download size={14} className="text-black" />
-                    <span>{language === 'de' ? 'Jetzt aktualisieren & installieren' : 'Update & Install Now'}</span>
+                    <Download size={13} className="text-black" />
+                    <span>{language === 'de' ? `Update installieren (v${foundUpdate.version})` : `Install Update (v${foundUpdate.version})`}</span>
                   </button>
                 )}
               </div>
