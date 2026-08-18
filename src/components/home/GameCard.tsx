@@ -120,13 +120,9 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
   }
 
   return (
-    <motion.div
+    <div
       id={`game-card-${appId}`}
       className="group w-44 flex-shrink-0 cursor-pointer"
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       onClick={() => {
         if (appId) handleOpenGamePreview(appId)
       }}
@@ -270,6 +266,6 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 })
