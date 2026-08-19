@@ -147,6 +147,7 @@ export interface AppSettings {
     gpu: boolean
     ping: boolean
     time: boolean
+    layout?: 'vertical' | 'horizontal'
   }
   overlayCrosshair: boolean
   crosshairConfig: {

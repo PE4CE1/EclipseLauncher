@@ -1,15 +1,16 @@
 ﻿import { useEffect, useRef, useState, memo } from 'react'
 
-type MetricsConfig = {
+export type MetricsConfig = {
   fps?: boolean
   cpu?: boolean
   gpu?: boolean
   ram?: boolean
   ping?: boolean
   time?: boolean
+  layout?: 'vertical' | 'horizontal'
 }
 
-type MetricsData = {
+export type MetricsData = {
   cpu: number
   gpu: number
   ram: number
@@ -48,7 +49,8 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
   const displayFps = useFPS()
   const [time, setTime] = useState('')
 
-  const cfg: MetricsConfig = config ?? { fps: true, cpu: true, gpu: true, ram: true, time: true }
+  const cfg: MetricsConfig = config ?? { fps: true, cpu: true, gpu: true, ram: true, time: true, layout: 'vertical' }
+  const isHorizontal = cfg.layout === 'horizontal'
 
   useEffect(() => {
     if (!cfg.time) return
@@ -70,16 +72,78 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
 
   if (items.length === 0) return null
 
+  // Horizontal flat bar layout
+  if (isHorizontal) {
+    return (
+      <div style={{
+        display: 'inline-flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: '3px 7px',
+        borderRadius: 6,
+        backgroundColor: 'rgba(10, 12, 18, 0.88)',
+        backdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif',
+        userSelect: 'none',
+        pointerEvents: 'none',
+        contain: 'layout paint style',
+        transform: 'translateZ(0)',
+      }}>
+        {items.map((item, idx) => (
+          <div key={item.label} style={{ display: 'inline-flex', alignItems: 'center' }}>
+            {idx > 0 && (
+              <div style={{
+                width: 1,
+                height: 10,
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                margin: '0 7px',
+              }} />
+            )}
+            <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4 }}>
+              <span style={{
+                fontSize: 8.5,
+                fontWeight: 500,
+                color: 'rgba(255, 255, 255, 0.42)',
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+              }}>
+                {item.label}
+              </span>
+              <span style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#ffffff',
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: '-0.01em',
+              }}>
+                {item.value}
+                {item.unit && (
+                  <span style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255, 255, 255, 0.55)', marginLeft: 0.5 }}>
+                    {item.unit}
+                  </span>
+                )}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // Vertical compact card layout
   return (
     <div style={{
       display: 'inline-flex',
       flexDirection: 'column',
-      minWidth: 78,
+      minWidth: 76,
       padding: '4px 8px',
       borderRadius: 7,
-      backgroundColor: 'rgba(10, 12, 18, 0.92)',
+      backgroundColor: 'rgba(10, 12, 18, 0.88)',
+      backdropFilter: 'blur(16px)',
       border: '1px solid rgba(255, 255, 255, 0.08)',
-      boxShadow: 'none',
+      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif',
       userSelect: 'none',
       pointerEvents: 'none',
@@ -94,27 +158,32 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 10,
-            height: 18,
-            borderBottom: idx < items.length - 1 ? '1px solid rgba(255, 255, 255, 0.03)' : 'none',
+            height: 17,
+            borderBottom: idx < items.length - 1 ? '1px solid rgba(255, 255, 255, 0.04)' : 'none',
           }}
         >
           <span style={{
             fontSize: 8.5,
-            fontWeight: 600,
-            color: 'rgba(255, 255, 255, 0.40)',
-            letterSpacing: '0.07em',
+            fontWeight: 500,
+            color: 'rgba(255, 255, 255, 0.42)',
+            letterSpacing: '0.06em',
             textTransform: 'uppercase',
           }}>
             {item.label}
           </span>
           <span style={{
-            fontSize: 11.5,
+            fontSize: 11,
             fontWeight: 600,
             color: '#ffffff',
             fontVariantNumeric: 'tabular-nums',
             letterSpacing: '-0.01em',
           }}>
-            {item.value}{item.unit}
+            {item.value}
+            {item.unit && (
+              <span style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255, 255, 255, 0.55)', marginLeft: 0.5 }}>
+                {item.unit}
+              </span>
+            )}
           </span>
         </div>
       ))}

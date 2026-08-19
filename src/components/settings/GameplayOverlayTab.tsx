@@ -120,8 +120,41 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.15 }}>
             <div className="h-px bg-white/[0.06] mx-4" />
+            
+            {/* Layout selector */}
+            <div className="px-4 py-2.5 flex items-center justify-between border-b border-white/[0.06]">
+              <div>
+                <div className="text-[12px] font-medium text-white">Layout Mode</div>
+                <div className="text-[10px] text-white/40">Vertical card or flat horizontal bar</div>
+              </div>
+              <div className="flex items-center p-0.5 rounded-lg bg-white/[0.06] border border-white/[0.08]">
+                <button
+                  type="button"
+                  onClick={() => save('overlayMetrics', { ...metrics, layout: 'vertical' })}
+                  className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all ${
+                    (metrics.layout ?? 'vertical') === 'vertical'
+                      ? 'bg-white text-black font-semibold shadow-sm'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  Vertical
+                </button>
+                <button
+                  type="button"
+                  onClick={() => save('overlayMetrics', { ...metrics, layout: 'horizontal' })}
+                  className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all ${
+                    metrics.layout === 'horizontal'
+                      ? 'bg-white text-black font-semibold shadow-sm'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  Horizontal
+                </button>
+              </div>
+            </div>
+
             <div className="py-1">
-              <MetricItem label="FPS" description="Display refresh rate (real-time via animation frame)" enabled={metrics.fps} onToggle={() => toggleMetric('fps')} icon={<Layers size={12} />} />
+              <MetricItem label="FPS" description="Live frame rate from active game rendering" enabled={metrics.fps} onToggle={() => toggleMetric('fps')} icon={<Layers size={12} />} />
               <MetricItem label="CPU Usage" description="Real system CPU % from OS" enabled={metrics.cpu} onToggle={() => toggleMetric('cpu')} icon={<Cpu size={12} />} />
               <MetricItem label="GPU Usage" description="Real system GPU % from hardware" enabled={metrics.gpu ?? true} onToggle={() => toggleMetric('gpu')} icon={<Gauge size={12} />} />
               <MetricItem label="RAM Usage" description="Real system memory % from OS" enabled={metrics.ram} onToggle={() => toggleMetric('ram')} icon={<MemoryStick size={12} />} />
