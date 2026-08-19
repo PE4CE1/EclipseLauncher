@@ -302,6 +302,7 @@ export function OverlayApp() {
       )}
       {settings.overlayRLController && (editMode || displayGame?.name === 'Rocket League') && renderWidget('rlController',
         <ControllerOverlay 
+          skin={settings.rlControllerSkin}
           url={settings.rlControllerUrl} 
           scale={settings.rlControllerScale} 
           isEditMode={editMode}
