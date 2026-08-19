@@ -164,6 +164,7 @@ export interface AppSettings {
     style: 'cross' | 'x' | 'circle'
   }
   overlayRobloxTimer: boolean
+  overlayRobloxCps: boolean
   overlayRLHud: boolean
   overlayRLSteam: boolean
   rlPlaylist: '1v1' | '2v2' | '3v3'
@@ -192,6 +193,7 @@ export interface AppSettings {
   overlayPositions: {
     performance: { xPct: number; yPct: number }
     robloxTimer: { xPct: number; yPct: number }
+    robloxCps: { xPct: number; yPct: number }
     crosshair: { xPct: number; yPct: number }
     rlHud: { xPct: number; yPct: number }
     rlSteamAvatar: { xPct: number; yPct: number }
@@ -226,6 +228,7 @@ export interface ElectronAPI {
   onOverlayEditStart: (cb: (gameData: any) => void) => () => void
   onOverlayEditEnd: (cb: () => void) => () => void
   onMetricsUpdate: (cb: (data: { cpu: number; gpu: number; ram: number; ramMB: number; totalMB: number; idleTime: number }) => void) => () => void
+  onCPSUpdate?: (cb: (data: { lmb: number; rmb: number; total: number; buttonClicked?: 'lmb' | 'rmb' }) => void) => () => void
   startOverlayEdit: () => Promise<void>
   exitOverlayEdit: () => Promise<void>
   saveOverlayPositions: (positions: any) => Promise<{ success: boolean; error?: string }>

@@ -100,6 +100,7 @@ export const translations = {
     overlayPerformance: 'Performance (FPS & Time)',
     overlayCrosshair: 'Custom Crosshair',
     overlayRobloxTimer: 'Roblox: Game-Session & AFK Timer',
+    overlayRobloxCps: 'Roblox: Live CPS Counter',
 
     // ProfileView
     editProfile: 'Edit Profile',
@@ -355,6 +356,7 @@ export const translations = {
     overlayPerformance: 'Performance (FPS & Zeit)',
     overlayCrosshair: 'Fadenkreuz (Crosshair)',
     overlayRobloxTimer: 'Roblox: Spiel-Session & AFK Timer',
+    overlayRobloxCps: 'Roblox: Live-CPS-Zähler',
 
     // ProfileView
     editProfile: 'Profil bearbeiten',

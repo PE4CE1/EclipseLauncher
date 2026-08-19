@@ -26,6 +26,7 @@ function getAppSettings() {
   const defaultPositions = {
     performance: { xPct: 0.02, yPct: 0.03 },
     robloxTimer: { xPct: 0.75, yPct: 0.03 },
+    robloxCps: { xPct: 0.75, yPct: 0.12 },
     crosshair: { xPct: 0.5, yPct: 0.5 },
     rlHud: { xPct: 0.02, yPct: 0.03 },
     rlSteamAvatar: { xPct: 0.02, yPct: 0.90 }, // Bottom-left default
@@ -43,6 +44,7 @@ function getAppSettings() {
         overlayPerformance: s.overlayPerformance ?? false,
         overlayCrosshair: s.overlayCrosshair ?? false,
         overlayRobloxTimer: s.overlayRobloxTimer ?? false,
+        overlayRobloxCps: s.overlayRobloxCps ?? false,
         overlayRLHud: s.overlayRLHud ?? false,
         overlayRLSteam: s.overlayRLSteam ?? false,
         rlPlaylist: s.rlPlaylist ?? '2v2',
@@ -62,7 +64,7 @@ function getAppSettings() {
 
   cachedSettings = {
     discordEnabled: true, showDownloads: true, showIdle: true,
-    overlayPerformance: false, overlayCrosshair: false, overlayRobloxTimer: false, overlayRLHud: false, overlayRLSteam: false, rlPlaylist: '2v2' as const, trnApiKey: '',
+    overlayPerformance: false, overlayCrosshair: false, overlayRobloxTimer: false, overlayRobloxCps: false, overlayRLHud: false, overlayRLSteam: false, rlPlaylist: '2v2' as const, trnApiKey: '',
     steamProfileUrl: '', rlScoreboardKeyKb: 'Tab', rlScoreboardKeyCtrl: 'Select', rlSteamAvatarScale: 85,
     overlayMetrics: defaultMetrics,
     crosshairConfig: null,
@@ -355,7 +357,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
         }
 
         // Always check and trigger Overlay every cycle if enabled
-        if (appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayRobloxTimer || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam))) {
+        if (appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayRobloxTimer || (detectedName === 'Roblox' && appSettings.overlayRobloxCps) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam))) {
           showOverlay({ 
             name: detectedName, 
             startTime: currentGame?.startTime || Date.now(), 
@@ -364,6 +366,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
               performance: appSettings.overlayPerformance,
               crosshair: appSettings.overlayCrosshair,
               robloxTimer: appSettings.overlayRobloxTimer && detectedName === 'Roblox',
+              robloxCps: appSettings.overlayRobloxCps && detectedName === 'Roblox',
               rlHud: isRL && appSettings.overlayRLHud,
               overlayRLSteam: isRL && appSettings.overlayRLSteam,
               metrics: appSettings.overlayMetrics,

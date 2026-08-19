@@ -291,11 +291,13 @@ export const useGameStore = create<GameStore>()(
         overlayPerformance: false,
         overlayCrosshair: false,
         overlayRobloxTimer: false,
+        overlayRobloxCps: false,
         overlayRLHud: false,
         overlayRLSteam: false,
         overlayPositions: {
           performance: { xPct: 0.02, yPct: 0.03 },
           robloxTimer: { xPct: 0.78, yPct: 0.03 },
+          robloxCps: { xPct: 0.78, yPct: 0.12 },
           crosshair: { xPct: 0.5, yPct: 0.5 },
           rlHud: { xPct: 0.02, yPct: 0.05 },
           rlSteamAvatar: { xPct: 0.65, yPct: 0.50 },

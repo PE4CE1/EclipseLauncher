@@ -2,15 +2,17 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { Crosshair } from './widgets/Crosshair'
 import { Performance } from './widgets/Performance'
 import { RobloxTimer } from './widgets/RobloxTimer'
+import { RobloxCPS } from './widgets/RobloxCPS'
 import { RocketLeagueHUD } from './widgets/RocketLeagueHUD'
 import { RLSteamAvatarHUD } from './widgets/RLSteamAvatarHUD'
 
 type Pos = { xPct: number; yPct: number }
-type Positions = { performance: Pos; robloxTimer: Pos; crosshair: Pos; rlHud: Pos; rlSteamAvatar: Pos }
+type Positions = { performance: Pos; robloxTimer: Pos; robloxCps: Pos; crosshair: Pos; rlHud: Pos; rlSteamAvatar: Pos }
 
 const DEFAULT_POSITIONS: Positions = {
   performance: { xPct: 0.02, yPct: 0.03 },
   robloxTimer: { xPct: 0.75, yPct: 0.03 },
+  robloxCps: { xPct: 0.75, yPct: 0.12 },
   crosshair: { xPct: 0.5, yPct: 0.5 },
   rlHud: { xPct: 0.02, yPct: 0.03 },
   rlSteamAvatar: { xPct: 0.02, yPct: 0.2 },
@@ -19,6 +21,7 @@ const DEFAULT_POSITIONS: Positions = {
 const WIDGET_APPROX_SIZE: Record<string, { w: number; h: number }> = {
   performance: { w: 110, h: 60 },
   robloxTimer: { w: 165, h: 80 },
+  robloxCps: { w: 160, h: 76 },
   crosshair: { w: 30, h: 30 },
   rlHud: { w: 210, h: 155 },
   rlSteamAvatar: { w: 120, h: 120 },
@@ -28,6 +31,7 @@ export function OverlayApp() {
   const [activeGame, setActiveGame] = useState<any>(null)
   const [metrics, setMetrics] = useState({ cpu: 0, gpu: 0, ram: 0, ramMB: 0, totalMB: 0, idleTime: 0 })
   const [rlData, setRlData] = useState<any>(null)
+  const [cpsData, setCpsData] = useState<{ lmb: number; rmb: number; total: number; buttonClicked?: 'lmb' | 'rmb' }>({ lmb: 0, rmb: 0, total: 0 })
   const [editMode, setEditMode] = useState(false)
   const editModeRef = useRef(false)
   const [editGameData, setEditGameData] = useState<any>(null)
@@ -69,6 +73,12 @@ export function OverlayApp() {
     if ((window.electronAPI as any)?.onRLMMRUpdate) {
       cleanups.push((window.electronAPI as any).onRLMMRUpdate((data: any) => {
         setRlData(data)
+      }))
+    }
+
+    if ((window.electronAPI as any)?.onCPSUpdate) {
+      cleanups.push((window.electronAPI as any).onCPSUpdate((data: any) => {
+        setCpsData(data)
       }))
     }
 
@@ -179,6 +189,7 @@ export function OverlayApp() {
     performance: true,
     crosshair: true,
     robloxTimer: false,
+    robloxCps: false,
     metrics: { fps: true, cpu: true, ram: true, gpu: false, ping: false, time: true },
     crosshairConfig: undefined,
     steamProfileUrl: undefined,
@@ -265,6 +276,9 @@ export function OverlayApp() {
       )}
       {settings.robloxTimer && displayGame && renderWidget('robloxTimer',
         <RobloxTimer startTime={displayGame.startTime} idleTime={metrics.idleTime} />
+      )}
+      {settings.robloxCps && displayGame && renderWidget('robloxCps',
+        <RobloxCPS cpsData={cpsData} />
       )}
       {settings.rlHud && renderWidget('rlHud',
         <RocketLeagueHUD data={rlData} />

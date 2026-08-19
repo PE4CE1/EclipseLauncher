@@ -2,7 +2,7 @@ import React, { useState, useEffect, memo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Globe, Gamepad2, Move, Check, Activity, Crosshair as CrosshairIcon, Timer,
-  ChevronDown, Cpu, MemoryStick, Clock, Layers, Edit3
+  ChevronDown, Cpu, MemoryStick, Clock, Layers, Edit3, MousePointerClick
 } from 'lucide-react'
 import type { AppSettings } from '../../types/game'
 import { CROSSHAIR_PRESETS, CrosshairSVG, DEFAULT_CROSSHAIR } from '../overlay/widgets/Crosshair'
@@ -326,22 +326,33 @@ const RobloxLogo = memo(() => (
   <img src={robloxLogoImg} className="w-5 h-5 object-contain" alt="Roblox" />
 ))
 
-const RobloxAccordion = memo(function RobloxAccordion({ robloxTimer, onToggle }: { robloxTimer: boolean; onToggle: () => void }) {
+const RobloxAccordion = memo(function RobloxAccordion({ 
+  robloxTimer, 
+  onToggleTimer,
+  robloxCps,
+  onToggleCps
+}: { 
+  robloxTimer: boolean; 
+  onToggleTimer: () => void;
+  robloxCps: boolean;
+  onToggleCps: () => void;
+}) {
   const [open, setOpen] = useState(false)
+  const activeSubCount = (robloxTimer ? 1 : 0) + (robloxCps ? 1 : 0)
   return (
     <div 
       style={{ contain: 'paint layout style', transform: 'translateZ(0)' }}
       className={`rounded-xl border transition-colors duration-150 ${open ? 'border-white/10 bg-[#0f1015]' : 'border-white/[0.06] hover:border-white/[0.09] bg-[#0c0d12]'}`}
     >
-      <button onClick={() => setOpen(p => !p)} className="w-full flex items-center gap-3 px-4 py-3 text-left">
+      <button onClick={() => setOpen(p => !p)} className="w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer">
         <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center flex-shrink-0 border border-white/10">
           <RobloxLogo />
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-semibold text-white">Roblox</div>
-          <div className="text-[11px] text-white/50">{robloxTimer ? '1 overlay active' : 'No overlays active'}</div>
+          <div className="text-[11px] text-white/50">{activeSubCount > 0 ? `${activeSubCount} overlay${activeSubCount > 1 ? 's' : ''} active` : 'No overlays active'}</div>
         </div>
-        {robloxTimer && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_5px_#ffffff]" />}
+        {activeSubCount > 0 && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_5px_#ffffff]" />}
         <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.15 }}>
           <ChevronDown size={14} className="text-white/50" />
         </motion.div>
@@ -350,15 +361,30 @@ const RobloxAccordion = memo(function RobloxAccordion({ robloxTimer, onToggle }:
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.15 }} className="overflow-hidden">
             <div className="h-px bg-white/[0.06] mx-4" />
-            <div onClick={onToggle} className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.03] transition-colors">
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${robloxTimer ? 'bg-white/10 text-white' : 'bg-white/[0.04] text-white/40'}`}>
-                <Timer size={13} />
+            <div className="divide-y divide-white/[0.04]">
+              {/* Overlay 1: Session & AFK Timer */}
+              <div onClick={onToggleTimer} className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.03] transition-colors">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${robloxTimer ? 'bg-white/10 text-white' : 'bg-white/[0.04] text-white/40'}`}>
+                  <Timer size={13} />
+                </div>
+                <div className="flex-1">
+                  <div className={`text-[12px] font-medium ${robloxTimer ? 'text-white' : 'text-white/60'}`}>Game-Session & AFK Timer</div>
+                  <div className="text-[10px] text-white/40">Session time + AFK kick countdown. Glows red under 2 min.</div>
+                </div>
+                <Toggle checked={robloxTimer} onChange={() => {}} />
               </div>
-              <div className="flex-1">
-                <div className={`text-[12px] font-medium ${robloxTimer ? 'text-white' : 'text-white/60'}`}>Game-Session & AFK Timer</div>
-                <div className="text-[10px] text-white/40">Session time + AFK kick countdown. Glows red under 2 min.</div>
+
+              {/* Overlay 2: Live CPS Counter */}
+              <div onClick={onToggleCps} className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.03] transition-colors">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${robloxCps ? 'bg-white/10 text-white' : 'bg-white/[0.04] text-white/40'}`}>
+                  <MousePointerClick size={13} />
+                </div>
+                <div className="flex-1">
+                  <div className={`text-[12px] font-medium ${robloxCps ? 'text-white' : 'text-white/60'}`}>Live CPS Counter (Clicks/Sec)</div>
+                  <div className="text-[10px] text-white/40">High-precision LMB & RMB clicks per second counter with live click flash.</div>
+                </div>
+                <Toggle checked={robloxCps} onChange={() => {}} />
               </div>
-              <Toggle checked={robloxTimer} onChange={() => {}} />
             </div>
           </motion.div>
         )}
@@ -645,8 +671,14 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
     window.electronAPI?.setSettings({ [key]: value } as any)
   }, [updateSettings])
 
-  const activeCount = [settings.overlayPerformance, settings.overlayCrosshair, settings.overlayRobloxTimer, settings.overlayRLHud]
-    .filter(Boolean).length
+  const activeCount = [
+    settings.overlayPerformance, 
+    settings.overlayCrosshair, 
+    settings.overlayRobloxTimer, 
+    settings.overlayRobloxCps, 
+    settings.overlayRLHud,
+    settings.overlayRLSteam
+  ].filter(Boolean).length
 
   return (
     <div 
@@ -680,7 +712,9 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
         <div className="space-y-2">
           <RobloxAccordion
             robloxTimer={settings.overlayRobloxTimer || false}
-            onToggle={() => save('overlayRobloxTimer', !settings.overlayRobloxTimer)}
+            onToggleTimer={() => save('overlayRobloxTimer', !settings.overlayRobloxTimer)}
+            robloxCps={settings.overlayRobloxCps || false}
+            onToggleCps={() => save('overlayRobloxCps', !settings.overlayRobloxCps)}
           />
           <RocketLeagueAccordion
             rlHud={settings.overlayRLHud || false}

@@ -8,12 +8,27 @@ let isHookRunning = false
 
 let overlayWin: BrowserWindow | null = null
 
-// Simple controller polling since Gamepad API requires a renderer
-// Wait, we can't easily poll controllers in main process without native modules.
-// We will send a message to the hidden scraperWin (or overlay win) to poll controllers
-// Actually, it's easiest to just let the overlay window itself poll for the controller.
-// This inputService will just handle Keyboard, and broadcast the state to the overlay.
-// The overlay will combine it with its own gamepad polling.
+let leftClicks: number[] = []
+let rightClicks: number[] = []
+let cpsDecayInterval: NodeJS.Timeout | null = null
+let lastEmittedLmb = 0
+let lastEmittedRmb = 0
+
+function emitCps(isClickEvent = false, buttonClicked?: 'lmb' | 'rmb') {
+  if (!overlayWin || overlayWin.isDestroyed()) return
+  const now = Date.now()
+  leftClicks = leftClicks.filter(t => now - t <= 1000)
+  rightClicks = rightClicks.filter(t => now - t <= 1000)
+  const lmb = leftClicks.length
+  const rmb = rightClicks.length
+  const total = lmb + rmb
+
+  if (isClickEvent || lmb !== lastEmittedLmb || rmb !== lastEmittedRmb) {
+    lastEmittedLmb = lmb
+    lastEmittedRmb = rmb
+    overlayWin.webContents.send('overlay:cps-update', { lmb, rmb, total, buttonClicked })
+  }
+}
 
 export function startInputService(overlayWindow: BrowserWindow) {
   overlayWin = overlayWindow
@@ -35,13 +50,38 @@ export function startInputService(overlayWindow: BrowserWindow) {
         }
       }
 
+      const handleMouseDown = (e: any) => {
+        if (!overlayWin || overlayWin.isDestroyed()) return
+        const now = Date.now()
+        let btn: 'lmb' | 'rmb' | undefined
+        if (e.button === 1) {
+          leftClicks.push(now)
+          btn = 'lmb'
+        } else if (e.button === 2) {
+          rightClicks.push(now)
+          btn = 'rmb'
+        }
+        if (btn) {
+          emitCps(true, btn)
+        }
+      }
+
       uIOhook.on('keydown', (e) => handleKeyEvent(e, true))
       uIOhook.on('keyup', (e) => handleKeyEvent(e, false))
+      uIOhook.on('mousedown', handleMouseDown)
       uIOhook.start()
       isHookRunning = true
-      console.log('[InputService] uIOhook global keyboard listener started.')
+      console.log('[InputService] uIOhook global keyboard and mouse listeners started.')
+
+      if (!cpsDecayInterval) {
+        cpsDecayInterval = setInterval(() => {
+          if (leftClicks.length > 0 || rightClicks.length > 0 || lastEmittedLmb > 0 || lastEmittedRmb > 0) {
+            emitCps(false)
+          }
+        }, 50)
+      }
     } catch (err) {
-      console.error('[InputService] Failed to start keyboard listener:', err)
+      console.error('[InputService] Failed to start input listeners:', err)
     }
   }
 }
@@ -51,6 +91,14 @@ export function stopInputService() {
     uIOhook.stop()
     isHookRunning = false
   }
+  if (cpsDecayInterval) {
+    clearInterval(cpsDecayInterval)
+    cpsDecayInterval = null
+  }
+  leftClicks = []
+  rightClicks = []
+  lastEmittedLmb = 0
+  lastEmittedRmb = 0
   isScoreboardOpen = false
   overlayWin = null
 }
@@ -59,7 +107,6 @@ export function setInputKeybinds(keyboardKey: string, controllerKey: string) {
   if (keyboardKey) kbBind = keyboardKey
   if (controllerKey) ctrlBind = controllerKey
   console.log(`[InputService] Keybinds updated. KB: ${kbBind}, CTRL: ${ctrlBind}`)
-  // The overlay window will handle the controller keybind via a store or IPC broadcast.
   if (overlayWin && !overlayWin.isDestroyed()) {
     overlayWin.webContents.send('rl:controller-bind-update', ctrlBind)
   }

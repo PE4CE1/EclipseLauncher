@@ -108,6 +108,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('rl:mmr-update', handler)
   },
 
+  onCPSUpdate: (callback: (data: { lmb: number; rmb: number; total: number; buttonClicked?: 'lmb' | 'rmb' }) => void) => {
+    const handler = (_: any, data: any) => callback(data)
+    ipcRenderer.on('overlay:cps-update', handler)
+    return () => ipcRenderer.removeListener('overlay:cps-update', handler)
+  },
+
   setRLPlaylist: (playlist: string) => ipcRenderer.invoke('rl:set-playlist', playlist),
   setRLApiKey: (key: string) => ipcRenderer.invoke('rl:set-api-key', key),
 
