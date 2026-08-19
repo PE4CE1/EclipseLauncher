@@ -499,6 +499,27 @@ const RobloxAccordion = memo(function RobloxAccordion({
   )
 })
 
+export type ControllerSkinId = 'ps4_white' | 'ps5_white' | 'ps4_black' | 'xbox_one'
+
+export const CONTROLLER_SKINS: Record<ControllerSkinId, { label: string; url: string }> = {
+  ps4_white: {
+    label: 'PS4 White / Red',
+    url: 'https://gamepadviewer.com/?p=1&s=8',
+  },
+  ps5_white: {
+    label: 'PS5 DualSense',
+    url: 'https://gamepadviewer.com/?p=1&s=1&editcss=https://justehcupcake.github.io/FPS5_Display_Pics/PS5_White.css',
+  },
+  ps4_black: {
+    label: 'PS4 Classic Black',
+    url: 'https://gamepadviewer.com/?p=1&s=5',
+  },
+  xbox_one: {
+    label: 'Xbox One',
+    url: 'https://gamepadviewer.com/?p=1&s=1',
+  },
+}
+
 // ─── Rocket League Accordion ──────────────────────────────────────────────────
 const RLLogo = memo(() => (
   <img src={rlLogoImg} className="w-5 h-5 object-contain" alt="Rocket League" />
@@ -514,6 +535,7 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
   rlScoreboardKeyCtrl, onKeyCtrlChange,
   rlSteamAvatarScale, onScaleChange,
   overlayRLController, onControllerToggle,
+  rlControllerSkin, onControllerSkinChange,
   rlControllerUrl, onControllerUrlChange,
   rlControllerScale, onControllerScaleChange,
 }: {
@@ -535,6 +557,8 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
   onScaleChange: (scale: number) => void
   overlayRLController: boolean
   onControllerToggle: () => void
+  rlControllerSkin?: ControllerSkinId
+  onControllerSkinChange: (skin: ControllerSkinId) => void
   rlControllerUrl: string
   onControllerUrlChange: (url: string) => void
   rlControllerScale: number
@@ -789,25 +813,31 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                 <div>
                   <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Controller Design</div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                    {[
-                      { label: 'PS4 White / Red', url: 'https://gamepadviewer.com/?p=1&s=8' },
-                      { label: 'PS5 DualSense', url: 'https://gamepadviewer.com/?p=1&editcss=https://justehcupcake.github.io/FPS5_Display_Pics/PS5_White.css' },
-                      { label: 'PS4 Classic Black', url: 'https://gamepadviewer.com/?p=1&s=5' },
-                      { label: 'Xbox One', url: 'https://gamepadviewer.com/?p=1&s=1' },
-                    ].map(p => (
-                      <button
-                        key={p.label}
-                        type="button"
-                        onClick={() => onControllerUrlChange(p.url)}
-                        className={`px-2.5 py-2 rounded-lg text-[10px] font-medium border transition-colors ${
-                          (rlControllerUrl || 'https://gamepadviewer.com/?p=1&s=8') === p.url
-                            ? 'bg-white text-black border-white font-semibold shadow-sm'
-                            : 'bg-white/[0.04] border-white/[0.08] text-white/70 hover:text-white hover:border-white/20'
-                        }`}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
+                    {(Object.keys(CONTROLLER_SKINS) as ControllerSkinId[]).map((key) => {
+                      const skin = CONTROLLER_SKINS[key]
+                      const selectedSkin: ControllerSkinId = (rlControllerSkin as ControllerSkinId) || 
+                        (rlControllerUrl?.includes('FPS5') ? 'ps5_white' :
+                         rlControllerUrl?.includes('s=5') ? 'ps4_black' :
+                         rlControllerUrl?.includes('s=1') ? 'xbox_one' : 'ps4_white')
+                      const isSelected = selectedSkin === key
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => {
+                            onControllerSkinChange(key)
+                            onControllerUrlChange(skin.url)
+                          }}
+                          className={`px-2.5 py-2 rounded-lg text-[10px] font-medium border transition-colors ${
+                            isSelected
+                              ? 'bg-white text-black border-white font-semibold shadow-sm'
+                              : 'bg-white/[0.04] border-white/[0.08] text-white/70 hover:text-white hover:border-white/20'
+                          }`}
+                        >
+                          {skin.label}
+                        </button>
+                      )
+                    })}
                   </div>
                   <div className="text-[9px] text-white/40 mt-2">
                     💡 Drücke im Spiel einmal eine beliebige Taste auf deinem Controller, um das Overlay zu aktivieren.
@@ -954,7 +984,9 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
             onScaleChange={(s) => save('rlSteamAvatarScale', s)}
             overlayRLController={settings.overlayRLController || false}
             onControllerToggle={() => save('overlayRLController', !settings.overlayRLController)}
-            rlControllerUrl={settings.rlControllerUrl || 'https://gamepadviewer.com/?p=1&s=3'}
+            rlControllerSkin={settings.rlControllerSkin || 'ps4_white'}
+            onControllerSkinChange={(skin) => save('rlControllerSkin', skin)}
+            rlControllerUrl={settings.rlControllerUrl || CONTROLLER_SKINS.ps4_white.url}
             onControllerUrlChange={(url) => save('rlControllerUrl', url)}
             rlControllerScale={settings.rlControllerScale || 80}
             onControllerScaleChange={(s) => save('rlControllerScale', s)}

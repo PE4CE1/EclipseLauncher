@@ -33,6 +33,7 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
       }}
     >
       <iframe
+        key={targetUrl}
         src={targetUrl}
         title="Gamepad Controller Website Overlay"
         allow="gamepad *; autoplay *"

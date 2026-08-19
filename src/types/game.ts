@@ -178,6 +178,7 @@ export interface AppSettings {
   rlScoreboardKeyKb?: string
   rlScoreboardKeyCtrl?: string
   rlSteamAvatarScale?: number
+  rlControllerSkin?: 'ps4_white' | 'ps5_white' | 'ps4_black' | 'xbox_one'
   rlControllerUrl?: string
   rlControllerScale?: number
   steamLevel?: number
