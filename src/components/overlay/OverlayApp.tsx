@@ -283,7 +283,7 @@ export function OverlayApp() {
       {settings.robloxTimer && (editMode || displayGame?.name === 'Roblox') && renderWidget('robloxTimer',
         <RobloxTimer startTime={displayGame?.startTime || Date.now()} idleTime={metrics.idleTime} />
       )}
-      {settings.robloxCps && (editMode || displayGame?.name === 'Roblox') && renderWidget('robloxCps',
+      {(settings.cps || settings.robloxCps) && renderWidget('robloxCps',
         <RobloxCPS />
       )}
       {settings.rlHud && (editMode || displayGame?.name === 'Rocket League') && renderWidget('rlHud',

@@ -152,6 +152,7 @@ export interface AppSettings {
     scale?: number
   }
   overlayCrosshair: boolean
+  overlayCps?: boolean
   crosshairConfig: {
     preset: string
     color: string
