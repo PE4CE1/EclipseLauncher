@@ -193,10 +193,10 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 .xbox .abxy { width: 153px; height: 156px; top: 192px; left: 488px; position: absolute; }
 .xbox .button { background: url(https://gamepadviewer.com/xbox-assets/abxy.svg) no-repeat 0 0; width: 48px; height: 48px; position: absolute; opacity: 1; }
 .xbox .button.pressed { background-position-y: -48px; margin-top: 4px; }
-.xbox .button.a { background-position-x: 0; top: 108px; left: 55px; }
-.xbox .button.b { background-position-x: -49px; top: 58px; right: 0px; }
-.xbox .button.x { background-position-x: -98px; top: 58px; left: 4px; }
-.xbox .button.y { background-position-x: 48px; left: 55px; top: 7px; }
+.xbox .button.a { background-position: 0 0; top: 108px; left: 55px; }
+.xbox .button.b { background-position: -49px 0; top: 58px; right: 0px; }
+.xbox .button.x { background-position: -98px 0; top: 58px; left: 4px; }
+.xbox .button.y { background-position: -148px 0; left: 55px; top: 7px; }
 .xbox .sticks { width: 371px; height: 196px; top: 239px; left: 144px; position: absolute; }
 .xbox .stick { background: url(https://gamepadviewer.com/xbox-assets/stick.svg) no-repeat -85px 0; height: 83px; width: 83px; position: absolute; }
 .xbox .stick.pressed { background-position: 0 0; }
