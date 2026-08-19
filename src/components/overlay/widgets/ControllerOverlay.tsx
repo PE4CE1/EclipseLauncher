@@ -33,6 +33,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
     width: 100px;
     height: 100px;
     position: absolute;
+    opacity: 1 !important;
 }
 .ps5 .stick.pressed {
     background-position: -102px 0;
@@ -57,7 +58,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
     width: 58px;
     height: 58px;
     position: absolute;
-    opacity: 1;
+    opacity: 1 !important;
 }
 .ps5 .button.pressed {
     background-position-y: -59px;
@@ -191,6 +192,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
     width: 95px;
     height: 95px;
     position: absolute;
+    opacity: 1 !important;
 }
 .ps5-black .stick.pressed.left, .ps5-black .stick.pressed.right {
     background-position: -95px 0;
@@ -215,7 +217,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
     width: 54px;
     height: 54px;
     position: absolute;
-    opacity: 1;
+    opacity: 1 !important;
 }
 .ps5-black .button.pressed {
     background-position-y: -55px;
@@ -357,14 +359,14 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 .xbox .back { left: 0; }
 .xbox .start { right: 0; background-position: -34px 0; }
 .xbox .abxy { width: 153px; height: 156px; top: 192px; left: 488px; position: absolute; }
-.xbox .button { background: url(https://gamepadviewer.com/xbox-assets/abxy.svg) no-repeat 0 0; width: 48px; height: 48px; position: absolute; opacity: 1; }
+.xbox .button { background: url(https://gamepadviewer.com/xbox-assets/abxy.svg) no-repeat 0 0; width: 48px; height: 48px; position: absolute; opacity: 1 !important; }
 .xbox .button.pressed { background-position-y: -48px; margin-top: 4px; }
 .xbox .button.a { background-position: 0 0; top: 108px; left: 55px; }
 .xbox .button.b { background-position: -49px 0; top: 58px; right: 0px; }
 .xbox .button.x { background-position: -98px 0; top: 58px; left: 4px; }
 .xbox .button.y { background-position: -148px 0; left: 55px; top: 7px; }
 .xbox .sticks { width: 371px; height: 196px; top: 239px; left: 144px; position: absolute; }
-.xbox .stick { background: url(https://gamepadviewer.com/xbox-assets/stick.svg) no-repeat -85px 0; height: 83px; width: 83px; position: absolute; }
+.xbox .stick { background: url(https://gamepadviewer.com/xbox-assets/stick.svg) no-repeat -85px 0; height: 83px; width: 83px; position: absolute; opacity: 1 !important; }
 .xbox .stick.pressed { background-position: 0 0; }
 .xbox .stick.left { top: 0; left: 0; }
 .xbox .stick.right { top: 113px; left: 288px; }
@@ -389,34 +391,35 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 .ds4 .triggers { width: 588px; height: 90px; top: 0; left: 109px; position: absolute; }
 .ds4 .trigger { background: url(https://gamepadviewer.com/${assetFolder}/triggers.svg) no-repeat; width: 99px; height: 90px; opacity: 0; position: absolute; }
 .ds4 .trigger.left { left: 0; }
-.ds4 .trigger.right { right: 0; background-position-x: 99px; }
-.ds4 .bumpers { width: 594px; height: 42px; top: 88px; left: 103px; position: absolute; }
-.ds4 .bumper { background: url(https://gamepadviewer.com/${assetFolder}/bumper.svg) no-repeat; width: 110px; height: 42px; opacity: 0; position: absolute; }
+.ds4 .trigger.right { right: 0; background-position: -100px 0; }
+.ds4 .bumpers { width: 588px; height: 23px; top: 94px; left: 109px; position: absolute; }
+.ds4 .bumper { background: url(https://gamepadviewer.com/${assetFolder}/bumper.svg) no-repeat; width: 99px; height: 23px; opacity: 0; position: absolute; }
 .ds4 .bumper.left { left: 0; }
-.ds4 .bumper.right { right: 0; background-position-x: 110px; }
+.ds4 .bumper.right { right: 0; transform: rotateY(180deg); }
 .ds4 .arrows { width: 352px; height: 46px; top: 142px; left: 227px; position: absolute; }
 .ds4 .back, .ds4 .start { background: url(https://gamepadviewer.com/${assetFolder}/start.svg) no-repeat; width: 28px; height: 46px; opacity: 0; position: absolute; }
 .ds4 .back { left: 0; }
 .ds4 .start { right: 0; transform: rotateY(180deg); }
 .ds4 .abxy { width: 170px; height: 171px; top: 159px; left: 567px; position: absolute; }
-.ds4 .button { width: 55px; height: 55px; background: url(https://gamepadviewer.com/${assetFolder}/face.svg) no-repeat; position: absolute; opacity: 1; }
-.ds4 .button.pressed { background-position-y: 55px; }
-.ds4 .button.a { background-position: 0 0; bottom: 0; left: 58px; }
-.ds4 .button.b { background-position: -57px 0; top: 58px; right: 0px; }
-.ds4 .button.x { background-position: -113px 0; top: 58px; left: 0; }
-.ds4 .button.y { background-position: 55px 0; left: 58px; top: 0; }
+.ds4 .button { width: 56px; height: 56px; background: url(https://gamepadviewer.com/${assetFolder}/face.svg) no-repeat; position: absolute; opacity: 1 !important; }
+.ds4 .button.pressed { background-position-y: -56px; }
+.ds4 .button.a { background-position-x: 0; bottom: 0; left: 57px; }
+.ds4 .button.b { background-position-x: -56px; top: 57px; right: 0px; }
+.ds4 .button.x { background-position-x: -112px; top: 57px; left: 0px; }
+.ds4 .button.y { background-position-x: -168px; left: 57px; top: 0px; }
 .ds4 .sticks { width: 361px; height: 105px; top: 308px; left: 228px; position: absolute; }
-.ds4 .stick { background: url(https://gamepadviewer.com/${assetFolder}/sticks.svg) no-repeat; height: 94px; width: 94px; position: absolute; }
+.ds4 .stick { background: url(https://gamepadviewer.com/${assetFolder}/sticks.svg) no-repeat; height: 94px; width: 94px; position: absolute; opacity: 1 !important; }
 .ds4 .stick.pressed.left { background-position-x: -96px; }
 .ds4 .stick.pressed.right { background-position-x: -192px; }
 .ds4 .stick.left { top: 0; left: 0; }
 .ds4 .stick.right { top: 0; left: 267px; }
 .ds4 .dpad { width: 125px; height: 126px; top: 181px; left: 92px; position: absolute; }
-.ds4 .face { background: url(https://gamepadviewer.com/${assetFolder}/dpad.svg) no-repeat; position: absolute; opacity: 0; }
-.ds4 .face.up { width: 36px; height: 52px; left: 44px; top: 0; background-position: -37px 0px; }
-.ds4 .face.down { width: 36px; height: 52px; left: 44px; bottom: 0; background-position: 0px 0; }
-.ds4 .face.left { width: 52px; height: 36px; top: 45px; left: 0; background-position: 104px 0; }
-.ds4 .face.right { width: 52px; height: 36px; top: 45px; right: 0px; background-position: 52px 0; }
+.ds4 .face { background: url(https://gamepadviewer.com/${assetFolder}/dpad.svg) no-repeat; position: absolute; opacity: 1 !important; }
+.ds4 .face.up { width: 36px; height: 52px; left: 44px; top: 0; background-position: -36px 0; }
+.ds4 .face.down { width: 36px; height: 52px; left: 44px; bottom: 0; background-position: 0 0; }
+.ds4 .face.left { width: 52px; height: 36px; top: 45px; left: 0; background-position: -126px 0; }
+.ds4 .face.right { width: 52px; height: 36px; top: 45px; right: 0; background-position: -73px 0; }
+.ds4 .face.pressed { background-position-y: -52px; }
 `
   }
 
@@ -491,7 +494,7 @@ ${specificCss}
   <script>
     const STICK_OFFSET = 20;
     const DEADZONE = 0.08;
-    const isPs5Black = ${activeSkin === 'ps5_black'};
+    const isDpadGlowSkin = ${activeSkin === 'ps5_white' || activeSkin === 'xbox_one'};
 
     function applyDeadzone(v) {
       return Math.abs(v) < DEADZONE ? 0 : v;
@@ -502,12 +505,12 @@ ${specificCss}
       if (!el) return;
       if (isPressed) {
         el.classList.add('pressed');
-        if (id.includes('bumper') || id.includes('btn-back') || id.includes('btn-start') || (!isPs5Black && id.includes('dpad'))) {
+        if (id.includes('bumper') || id.includes('btn-back') || id.includes('btn-start') || (isDpadGlowSkin && id.includes('dpad'))) {
           el.style.opacity = '1';
         }
       } else {
         el.classList.remove('pressed');
-        if (id.includes('bumper') || id.includes('btn-back') || id.includes('btn-start') || (!isPs5Black && id.includes('dpad'))) {
+        if (id.includes('bumper') || id.includes('btn-back') || id.includes('btn-start') || (isDpadGlowSkin && id.includes('dpad'))) {
           el.style.opacity = '0';
         }
       }
