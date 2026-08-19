@@ -92,6 +92,7 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
         contain: 'layout paint style',
         transform: `scale(${cfg.scale ?? 1}) translateZ(0)`,
         transformOrigin: 'top left',
+        transition: 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease',
       }}>
         {items.map((item, idx) => (
           <div key={item.label} style={{ display: 'inline-flex', alignItems: 'center' }}>
@@ -152,6 +153,7 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
       contain: 'layout paint style',
       transform: `scale(${cfg.scale ?? 1}) translateZ(0)`,
       transformOrigin: 'top left',
+      transition: 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease',
     }}>
       {items.map((item, idx) => (
         <div
