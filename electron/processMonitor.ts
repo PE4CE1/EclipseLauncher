@@ -467,3 +467,52 @@ export function resetCurrentDetectedGame() {
   }
 }
 
+export function syncOverlaySettingsLive() {
+  invalidateSettingsCache()
+  const appSettings = getAppSettings()
+  const overlayWin = getOverlayWindow()
+
+  if (currentGame) {
+    const isRL = currentGame.name === 'Rocket League'
+    const shouldShow = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayRobloxTimer || (currentGame.name === 'Roblox' && appSettings.overlayRobloxCps) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam))
+
+    if (shouldShow) {
+      showOverlay({
+        name: currentGame.name,
+        startTime: currentGame.startTime || Date.now(),
+        positions: appSettings.overlayPositions,
+        settings: {
+          performance: appSettings.overlayPerformance,
+          crosshair: appSettings.overlayCrosshair,
+          robloxTimer: appSettings.overlayRobloxTimer && currentGame.name === 'Roblox',
+          robloxCps: appSettings.overlayRobloxCps && currentGame.name === 'Roblox',
+          rlHud: isRL && appSettings.overlayRLHud,
+          overlayRLSteam: isRL && appSettings.overlayRLSteam,
+          metrics: appSettings.overlayMetrics,
+          crosshairConfig: appSettings.crosshairConfig,
+          steamProfileUrl: appSettings.steamProfileUrl,
+          rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
+        }
+      })
+    } else {
+      hideOverlay()
+    }
+  } else if (overlayWin && !overlayWin.isDestroyed()) {
+    overlayWin.webContents.send('overlay:update', {
+      positions: appSettings.overlayPositions,
+      settings: {
+        performance: appSettings.overlayPerformance,
+        crosshair: appSettings.overlayCrosshair,
+        robloxTimer: appSettings.overlayRobloxTimer,
+        robloxCps: appSettings.overlayRobloxCps,
+        rlHud: appSettings.overlayRLHud,
+        overlayRLSteam: appSettings.overlayRLSteam,
+        metrics: appSettings.overlayMetrics,
+        crosshairConfig: appSettings.crosshairConfig,
+        steamProfileUrl: appSettings.steamProfileUrl,
+        rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
+      }
+    })
+  }
+}
+

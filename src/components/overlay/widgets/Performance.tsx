@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, memo } from 'react'
+import { useEffect, useRef, useState, memo } from 'react'
 
 export type MetricsConfig = {
   fps?: boolean
@@ -8,6 +8,7 @@ export type MetricsConfig = {
   ping?: boolean
   time?: boolean
   layout?: 'vertical' | 'horizontal'
+  scale?: number
 }
 
 export type MetricsData = {
@@ -89,7 +90,8 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
         userSelect: 'none',
         pointerEvents: 'none',
         contain: 'layout paint style',
-        transform: 'translateZ(0)',
+        transform: `scale(${cfg.scale ?? 1}) translateZ(0)`,
+        transformOrigin: 'top left',
       }}>
         {items.map((item, idx) => (
           <div key={item.label} style={{ display: 'inline-flex', alignItems: 'center' }}>
@@ -148,7 +150,8 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
       userSelect: 'none',
       pointerEvents: 'none',
       contain: 'layout paint style',
-      transform: 'translateZ(0)',
+      transform: `scale(${cfg.scale ?? 1}) translateZ(0)`,
+      transformOrigin: 'top left',
     }}>
       {items.map((item, idx) => (
         <div

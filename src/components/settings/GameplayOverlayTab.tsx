@@ -153,6 +153,25 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
               </div>
             </div>
 
+            {/* Scale / Size Slider */}
+            <div className="px-4 py-2.5 border-b border-white/[0.06]">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="text-[12px] font-medium text-white">HUD Size</div>
+                <div className="text-[11px] font-mono text-white/70">
+                  {Math.round((metrics.scale ?? 1) * 100)}%
+                </div>
+              </div>
+              <input
+                type="range"
+                min="0.75"
+                max="1.5"
+                step="0.05"
+                value={metrics.scale ?? 1}
+                onChange={(e) => save('overlayMetrics', { ...metrics, scale: parseFloat(e.target.value) })}
+                className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
+              />
+            </div>
+
             <div className="py-1">
               <MetricItem label="FPS" description="Live frame rate from active game rendering" enabled={metrics.fps} onToggle={() => toggleMetric('fps')} icon={<Layers size={12} />} />
               <MetricItem label="CPU Usage" description="Real system CPU % from OS" enabled={metrics.cpu} onToggle={() => toggleMetric('cpu')} icon={<Cpu size={12} />} />

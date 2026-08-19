@@ -148,6 +148,7 @@ export interface AppSettings {
     ping: boolean
     time: boolean
     layout?: 'vertical' | 'horizontal'
+    scale?: number
   }
   overlayCrosshair: boolean
   crosshairConfig: {

@@ -78,9 +78,10 @@ export function showOverlay(gameData: any) {
     overlayWindow?.show()
     startMetricsService(getOverlayWindow)
     startInputService(overlayWindow!)
-    setTimeout(() => {
-      overlayWindow?.webContents.send('overlay:update', gameData)
-    }, 1000)
+    overlayWindow?.webContents.send('overlay:update', gameData)
+  })
+  overlayWindow!.webContents.once('did-finish-load', () => {
+    overlayWindow?.webContents.send('overlay:update', gameData)
   })
 }
 

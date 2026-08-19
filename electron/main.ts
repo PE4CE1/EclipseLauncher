@@ -13,7 +13,7 @@ import { initTorrentIPC } from './torrentService'
 import { initHttpDownloadIPC } from './httpDownloadService'
 import { initUpdater } from './updaterService'
 import { initDiscordRPC, setDiscordActivity, clearDiscordActivity, setDiscordIdleActivity } from './discordRPC'
-import { startProcessMonitor, registerGameExe, getCurrentDetectedGame, resetCurrentDetectedGame, invalidateSettingsCache } from './processMonitor'
+import { startProcessMonitor, registerGameExe, getCurrentDetectedGame, resetCurrentDetectedGame, invalidateSettingsCache, syncOverlaySettingsLive } from './processMonitor'
 import { loadPlaytimeDb, savePlaytimeDb, addPlaytimeRecord } from './playtimeService'
 import { initOverlayManager, openOverlayEditMode, exitEditMode, getOverlayWindow } from './overlayManager'
 import { setRLPlaylist, setRLApiKey, destroyRLScraper } from './rlService'
@@ -736,6 +736,7 @@ ipcMain.handle('settings:set', (_event, data: Record<string, unknown>) => {
     }
 
     invalidateSettingsCache()
+    syncOverlaySettingsLive()
     return { success: true }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
