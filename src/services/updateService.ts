@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.1.8'
+export const APP_VERSION = '1.1.9'
 export const GITHUB_REPO = 'PE4CE1/EclipseLauncher'
 
 export interface AppReleaseInfo {

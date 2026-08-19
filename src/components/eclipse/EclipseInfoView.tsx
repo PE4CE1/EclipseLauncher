@@ -22,6 +22,26 @@ interface GitHubRelease {
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
   {
+    id: 119,
+    tag_name: 'v1.1.9',
+    name: 'v1.1.9 - Roblox Live CPS Overlay, Zero-Lag Engine & Minimalist Edit Toolbar',
+    published_at: '2026-08-19T14:30:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.1.9',
+    body: `### 🎯 Roblox Live CPS Overlay
+* **Ultra-Minimalist Dual Pills:** Clean, floating keycaps for LMB & RMB clicks per second without bulky banners or distracting shadows.
+* **0% CPU Direct DOM Engine:** Zero React Virtual-DOM re-renders during clicking for buttery-smooth performance.
+* **High Contrast & Clarity:** Solid dark obsidian backdrop ensures 100% sharp readability against any bright sky or background.
+
+### ⚡ Zero-Lag Native Input Engine
+* **Instant Mouse-Move Bypass:** Native hook immediately drops 1000Hz camera movements at 0ms cost, eliminating all camera stutters while clicking.
+* **Microtask Queue Pruning:** Zero memory allocations and instant dispatch for high-speed jitter/butterfly clicking.
+
+### 🎨 Modernized Overlay Edit Toolbar
+* **Monochrome Floating Toolbar:** Sleek, low-profile frosted glass toolbar with crisp white save button and ghost cancel.
+* **Solid Drag Persistence:** Fixed position snapback bug with synchronous ref tracking and settings cache invalidation.`,
+    prerelease: false
+  },
+  {
     id: 118,
     tag_name: 'v1.1.8',
     name: 'v1.1.8 - Real-Time Friend Requests, Bilateral Removal & Minimalist Toast',
