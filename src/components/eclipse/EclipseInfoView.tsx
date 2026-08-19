@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from '../../hooks/useTranslation'
 import { useUIStore } from '../../store/uiStore'
+import { APP_VERSION } from '../../services/updateService'
 
 interface GitHubRelease {
   id: number
@@ -20,6 +21,22 @@ interface GitHubRelease {
 
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
+  {
+    id: 118,
+    tag_name: 'v1.1.8',
+    name: 'v1.1.8 - Real-Time Friend Requests, Bilateral Removal & Minimalist Toast',
+    published_at: '2026-08-19T12:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.1.8',
+    body: `### 👥 Live Friend Request System
+* **Real-Time Requests:** Das Eingeben eines Freundescodes sendet nun eine echte Freundschaftsanfrage statt einer Zwangs-Befreundung.
+* **Instant Notifications:** Live-Benachrichtigung mit Ton beim Eintreffen einer neuen Anfrage.
+* **Pending Requests Tab:** Eleganter Anfragen-Bereich ganz oben im Freunde-Fenster mit 1-Klick Annehmen/Ablehnen.
+
+### 🗑️ Bilateral Friend Removal & Minimalist UI
+* **Vollständiges beidseitiges Entfernen:** Das Entfernen eines Freundes löscht die Verbindung auf beiden Benutzerkonten in Echtzeit.
+* **Minimalistischer Toast:** Sauberes Schwarz-Weiß-Design mit sofortiger Rückgängig-Funktion.`,
+    prerelease: false
+  },
   {
     id: 117,
     tag_name: 'v1.1.7',
@@ -264,13 +281,12 @@ export function EclipseInfoView() {
   const { language } = useTranslation()
   const { showNotification } = useUIStore()
 
+  const currentVersion = `v${APP_VERSION}`
   const [releases, setReleases] = useState<GitHubRelease[]>(FALLBACK_RELEASES)
   const [isLoading, setIsLoading] = useState(false)
   const [expandedReleases, setExpandedReleases] = useState<Record<string, boolean>>({
-    'v1.1.6': true,
+    [currentVersion]: true,
   })
-
-  const currentVersion = 'v1.1.6'
 
   // Fetch live releases from GitHub
   useEffect(() => {

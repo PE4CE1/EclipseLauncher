@@ -10,6 +10,7 @@ import { useScanner } from '../../hooks/useScanner'
 import { useDownloadStore } from '../../store/downloadStore'
 import { getCoverUrl, getHeaderUrl, getPlaceholderCover } from '../../services/assetHelper'
 import { useTranslation } from '../../hooks/useTranslation'
+import { APP_VERSION } from '../../services/updateService'
 import type { ActiveView } from '../../types/game'
 
 interface NavItem {
@@ -357,7 +358,7 @@ export function Sidebar() {
               onClick={() => setActiveView('eclipse-info')}
               className="text-[10px] font-semibold text-white/70 hover:text-white hover:underline transition-colors tracking-wider cursor-pointer"
             >
-              v1.1.6
+              v{APP_VERSION}
             </button>
             <div className="w-1 h-1 rounded-full bg-white/20" />
             <button 
