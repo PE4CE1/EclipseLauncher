@@ -54,6 +54,28 @@ export function startInputService(overlayWindow: BrowserWindow) {
   overlayWin = overlayWindow
   if (!isHookRunning) {
     try {
+      // FAST-PATH: Override uIOhook.handler to immediately drop mousemove (9), mousewheel (11), click (6)
+      // This prevents 1000Hz gaming mouse movement from triggering any V8/JS overhead or micro-stutters in 3D games!
+      ;(uIOhook as any).handler = function (e: any) {
+        if (e.type === 9 || e.type === 11 || e.type === 6) return
+        if (e.type === 7) {
+          this.emit('mousedown', e)
+          return
+        }
+        if (e.type === 8) {
+          this.emit('mouseup', e)
+          return
+        }
+        if (e.type === 4) {
+          this.emit('keydown', e)
+          return
+        }
+        if (e.type === 5) {
+          this.emit('keyup', e)
+          return
+        }
+      }
+
       const handleKeyEvent = (e: any, isDown: boolean) => {
         if (!overlayWin || overlayWin.isDestroyed()) return
         

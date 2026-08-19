@@ -23,29 +23,29 @@ export const RobloxCPS = React.memo(function RobloxCPS() {
       if (data.buttonClicked === 'lmb' && lmbPillRef.current) {
         lmbPillRef.current.style.transform = 'scale(0.95)'
         lmbPillRef.current.style.borderColor = 'rgba(255, 255, 255, 0.4)'
-        lmbPillRef.current.style.backgroundColor = 'rgba(32, 35, 48, 0.96)'
+        lmbPillRef.current.style.backgroundColor = 'rgba(35, 38, 52, 0.98)'
 
         if (lmbTimerRef.current) clearTimeout(lmbTimerRef.current)
         lmbTimerRef.current = setTimeout(() => {
           if (lmbPillRef.current) {
             lmbPillRef.current.style.transform = 'scale(1)'
             lmbPillRef.current.style.borderColor = 'rgba(255, 255, 255, 0.12)'
-            lmbPillRef.current.style.backgroundColor = 'rgba(13, 14, 20, 0.94)'
+            lmbPillRef.current.style.backgroundColor = 'rgba(13, 14, 20, 0.95)'
           }
-        }, 70)
+        }, 65)
       } else if (data.buttonClicked === 'rmb' && rmbPillRef.current) {
         rmbPillRef.current.style.transform = 'scale(0.95)'
         rmbPillRef.current.style.borderColor = 'rgba(255, 255, 255, 0.4)'
-        rmbPillRef.current.style.backgroundColor = 'rgba(32, 35, 48, 0.96)'
+        rmbPillRef.current.style.backgroundColor = 'rgba(35, 38, 52, 0.98)'
 
         if (rmbTimerRef.current) clearTimeout(rmbTimerRef.current)
         rmbTimerRef.current = setTimeout(() => {
           if (rmbPillRef.current) {
             rmbPillRef.current.style.transform = 'scale(1)'
             rmbPillRef.current.style.borderColor = 'rgba(255, 255, 255, 0.12)'
-            rmbPillRef.current.style.backgroundColor = 'rgba(13, 14, 20, 0.94)'
+            rmbPillRef.current.style.backgroundColor = 'rgba(13, 14, 20, 0.95)'
           }
-        }, 70)
+        }, 65)
       }
     })
 
@@ -75,15 +75,15 @@ export const RobloxCPS = React.memo(function RobloxCPS() {
           alignItems: 'center',
           justifyContent: 'center',
           gap: 6,
-          minWidth: 62,
-          height: 30,
-          padding: '0 10px',
-          borderRadius: 8,
-          backgroundColor: 'rgba(13, 14, 20, 0.94)',
+          minWidth: 60,
+          height: 28,
+          padding: '0 9px',
+          borderRadius: 7,
+          backgroundColor: 'rgba(13, 14, 20, 0.95)',
           border: '1px solid rgba(255, 255, 255, 0.12)',
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+          boxShadow: 'none',
           transform: 'scale(1)',
-          transition: 'transform 0.06s ease, border-color 0.06s ease, background-color 0.06s ease',
+          transition: 'transform 0.05s ease, border-color 0.05s ease, background-color 0.05s ease',
           contain: 'layout paint style',
           willChange: 'transform',
         }}
@@ -91,7 +91,7 @@ export const RobloxCPS = React.memo(function RobloxCPS() {
         <span 
           ref={lmbValRef}
           style={{
-            fontSize: 13.5,
+            fontSize: 13,
             fontWeight: 800,
             color: '#ffffff',
             fontVariantNumeric: 'tabular-nums',
@@ -121,15 +121,15 @@ export const RobloxCPS = React.memo(function RobloxCPS() {
           alignItems: 'center',
           justifyContent: 'center',
           gap: 6,
-          minWidth: 62,
-          height: 30,
-          padding: '0 10px',
-          borderRadius: 8,
-          backgroundColor: 'rgba(13, 14, 20, 0.94)',
+          minWidth: 60,
+          height: 28,
+          padding: '0 9px',
+          borderRadius: 7,
+          backgroundColor: 'rgba(13, 14, 20, 0.95)',
           border: '1px solid rgba(255, 255, 255, 0.12)',
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+          boxShadow: 'none',
           transform: 'scale(1)',
-          transition: 'transform 0.06s ease, border-color 0.06s ease, background-color 0.06s ease',
+          transition: 'transform 0.05s ease, border-color 0.05s ease, background-color 0.05s ease',
           contain: 'layout paint style',
           willChange: 'transform',
         }}
@@ -137,7 +137,7 @@ export const RobloxCPS = React.memo(function RobloxCPS() {
         <span 
           ref={rmbValRef}
           style={{
-            fontSize: 13.5,
+            fontSize: 13,
             fontWeight: 800,
             color: '#ffffff',
             fontVariantNumeric: 'tabular-nums',
