@@ -1,6 +1,4 @@
 import React, { useMemo } from 'react'
-import ps5BlackBase from '../../../assets/ps5-black-base.png'
-import ps5WhiteBase from '../../../assets/ps5-white-base.png'
 
 export type ControllerSkinId = 'ps5_white' | 'ps5_black' | 'ps4_white' | 'ps4_black' | 'xbox_one'
 
@@ -15,13 +13,11 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
   let specificCss = ''
   let skinClass = ''
 
-  if (activeSkin === 'ps5_white' || activeSkin === 'ps5_black') {
-    const isBlack = activeSkin === 'ps5_black'
-    const baseImg = isBlack ? ps5BlackBase : (ps5WhiteBase || 'https://i.imgur.com/fJIyBwn.png')
+  if (activeSkin === 'ps5_white') {
     skinClass = 'xbox ps5'
     specificCss = `
 .controller.xbox.ps5 {
-    background: url(${baseImg}) no-repeat 0 0;
+    background: url(https://i.imgur.com/fJIyBwn.png) no-repeat 0 0;
     width: 807px;
     height: 651px;
 }
@@ -174,6 +170,174 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 }
 .ps5 .trigger.left { left: 0; }
 .ps5 .trigger.right { right: 0; background-position: -113px 0; }
+`
+  } else if (activeSkin === 'ps5_black') {
+    // Exact official Philipbry DualSense Midnight Black CSS
+    skinClass = 'ds4 ps5-black'
+    specificCss = `
+.controller.ds4.ps5-black {
+    background: url(https://philipbry.github.io/ZDjUbh0.png) no-repeat 0 0;
+    width: 794px;
+    height: 639px;
+}
+.ps5-black .sticks {
+    width: 367px;
+    height: 95px;
+    left: 222px;
+    top: 294px;
+    position: absolute;
+}
+.ps5-black .stick {
+    background: url(https://philipbry.github.io/3sBwghP.png) no-repeat 0 0;
+    width: 95px;
+    height: 95px;
+    position: absolute;
+}
+.ps5-black .stick.pressed.left, .ps5-black .stick.pressed.right {
+    background-position: -95px 0;
+}
+.ps5-black .stick.left {
+    top: 0;
+    left: 0;
+}
+.ps5-black .stick.right {
+    top: 0;
+    left: 255px;
+}
+.ps5-black .abxy {
+    width: 181px;
+    height: 181px;
+    left: 559px;
+    top: 152px;
+    position: absolute;
+}
+.ps5-black .button {
+    background: url(https://philipbry.github.io/HdHbA0t.png) no-repeat;
+    width: 54px;
+    height: 54px;
+    position: absolute;
+    opacity: 1;
+}
+.ps5-black .button.pressed {
+    background-position-y: -55px;
+}
+.ps5-black .button.a {
+    background-position-x: 0;
+    left: 59px;
+    top: 116px;
+}
+.ps5-black .button.b {
+    background-position-x: -54px;
+    left: 118px;
+    top: 59px;
+}
+.ps5-black .button.x {
+    background-position-x: -108px;
+    left: 0px;
+    top: 58px;
+}
+.ps5-black .button.y {
+    background-position-x: -162px;
+    left: 59px;
+    top: 0px;
+}
+.ps5-black .arrows {
+    left: 195px;
+    top: 140px;
+    width: 416px;
+    height: 57px;
+    position: absolute;
+}
+.ps5-black .back, .ps5-black .start {
+    background: url(https://philipbry.github.io/PrAfLDQ.png) no-repeat;
+    width: 23px;
+    height: 37px;
+    margin-top: -8px;
+    margin-left: 5px;
+    opacity: 0;
+    position: absolute;
+}
+.ps5-black .back { left: 0; }
+.ps5-black .start {
+    background-position: 23px 0;
+    margin-right: 16px;
+    right: 0;
+}
+.ps5-black .bumpers {
+    width: 620px;
+    height: 36px;
+    left: 90px;
+    top: 98px;
+    position: absolute;
+}
+.ps5-black .bumper {
+    background: url(https://philipbry.github.io/wijYAzG.png) no-repeat;
+    width: 114px;
+    height: 36px;
+    opacity: 0;
+    position: absolute;
+}
+.ps5-black .bumper.left { left: 0; }
+.ps5-black .bumper.right { right: 0; margin-right: 6px; }
+.ps5-black .triggers {
+    width: 593px;
+    height: 97px;
+    left: 100px;
+    top: 0;
+    position: absolute;
+}
+.ps5-black .trigger {
+    background: url(https://philipbry.github.io/KcAyIZw.png) no-repeat;
+    width: 100px;
+    height: 97px;
+    opacity: 0;
+    position: absolute;
+}
+.ps5-black .trigger.left { left: 0; }
+.ps5-black .trigger.right { right: 0; background-position: -100px 0; transform: rotateY(0); }
+.ps5-black .dpad {
+    position: absolute;
+    width: 125px;
+    height: 126px;
+    top: 171px;
+    left: 82px;
+}
+.ps5-black .face {
+    background: url(https://philipbry.github.io/548MWGT.png) no-repeat;
+    position: absolute;
+    opacity: 0;
+}
+.ps5-black .face.up, .ps5-black .face.down {
+    width: 44px;
+    height: 58px;
+}
+.ps5-black .face.left, .ps5-black .face.right {
+    width: 57px;
+    height: 44px;
+}
+.ps5-black .face.up {
+    left: 45px;
+    top: 0;
+    background-position: 0px 0;
+}
+.ps5-black .face.down {
+    left: 45px;
+    bottom: -7px;
+    background-position: -44px 0;
+}
+.ps5-black .face.left {
+    top: 45px;
+    left: 0;
+    background-position: -88px 0;
+}
+.ps5-black .face.right {
+    top: 44px;
+    right: -7px;
+    background-position: -144px 0;
+}
+.ps5-black .face.pressed {
+    background-position-y: 58px;
+}
 `
   } else if (activeSkin === 'xbox_one') {
     skinClass = 'xbox'
@@ -433,14 +597,14 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
   // Determine active skin
   const resolvedSkin: ControllerSkinId = useMemo(() => {
     if (skin) return skin
-    if (url?.includes('ps5_black')) return 'ps5_black'
+    if (url?.includes('ps5_black') || url?.includes('philipbry')) return 'ps5_black'
     if (url?.includes('FPS5') || url?.includes('PS5') || url?.includes('ps5_white')) return 'ps5_white'
     if (url?.includes('s=5')) return 'ps4_black'
     if (url?.includes('s=1')) return 'xbox_one'
     return 'ps5_white'
   }, [skin, url])
 
-  // Dimensions
+  // Dimensions (Base sizes: PS5 807x651 / 794x639, PS4 806x598, Xbox 750x630)
   const BASE_WIDTH = 820
   const BASE_HEIGHT = 680
   const containerWidth = Math.round(BASE_WIDTH * (finalScale * 0.52))
