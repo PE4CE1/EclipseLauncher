@@ -172,7 +172,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 .ps5 .trigger.right { right: 0; background-position: -113px 0; }
 `
   } else if (activeSkin === 'ps5_black') {
-    // Exact official Philipbry DualSense Midnight Black CSS
+    // Exact official Philipbry DualSense Midnight Black CSS with full opacity & rotation fixes
     skinClass = 'ds4 ps5-black'
     specificCss = `
 .controller.ds4.ps5-black {
@@ -253,15 +253,13 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
     width: 23px;
     height: 37px;
     margin-top: -8px;
-    margin-left: 5px;
     opacity: 0;
     position: absolute;
 }
-.ps5-black .back { left: 0; }
+.ps5-black .back { left: 5px; }
 .ps5-black .start {
-    background-position: 23px 0;
-    margin-right: 16px;
-    right: 0;
+    background-position: -23px 0;
+    right: 16px;
 }
 .ps5-black .bumpers {
     width: 620px;
@@ -278,7 +276,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
     position: absolute;
 }
 .ps5-black .bumper.left { left: 0; }
-.ps5-black .bumper.right { right: 0; margin-right: 6px; }
+.ps5-black .bumper.right { right: 0; margin-right: 6px; transform: rotateY(180deg); }
 .ps5-black .triggers {
     width: 593px;
     height: 97px;
@@ -305,7 +303,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 .ps5-black .face {
     background: url(https://philipbry.github.io/548MWGT.png) no-repeat;
     position: absolute;
-    opacity: 0;
+    opacity: 1;
 }
 .ps5-black .face.up, .ps5-black .face.down {
     width: 44px;
@@ -333,10 +331,10 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 .ps5-black .face.right {
     top: 44px;
     right: -7px;
-    background-position: -144px 0;
+    background-position: -145px 0;
 }
 .ps5-black .face.pressed {
-    background-position-y: 58px;
+    background-position-y: -58px;
 }
 `
   } else if (activeSkin === 'xbox_one') {
@@ -444,17 +442,17 @@ html, body {
 
 /* Base structural layout */
 .controller .triggers { position: absolute; width: 100%; top: 0; }
-.controller .trigger { position: absolute; }
+.controller .trigger { position: absolute; opacity: 0; }
 .controller .bumpers { position: absolute; width: 100%; }
-.controller .bumper { position: absolute; }
+.controller .bumper { position: absolute; opacity: 0; }
 .controller .arrows { position: absolute; }
-.controller .back, .controller .start { position: absolute; }
+.controller .back, .controller .start { position: absolute; opacity: 0; }
 .controller .abxy { position: absolute; }
-.controller .button { position: absolute; }
+.controller .button { position: absolute; opacity: 1; }
 .controller .dpad { position: absolute; }
 .controller .face { position: absolute; }
 .controller .sticks { position: absolute; }
-.controller .stick { position: absolute; }
+.controller .stick { position: absolute; opacity: 1; }
 
 ${specificCss}
 </style>
@@ -504,13 +502,13 @@ ${specificCss}
       if (!el) return;
       if (isPressed) {
         el.classList.add('pressed');
-        el.style.opacity = '1';
+        if (id.includes('bumper') || id.includes('btn-back') || id.includes('btn-start')) {
+          el.style.opacity = '1';
+        }
       } else {
         el.classList.remove('pressed');
-        if (id.includes('trigger') || id.includes('bumper') || id.includes('dpad') || id.includes('btn-back') || id.includes('btn-start')) {
-          el.style.opacity = '';
-        } else {
-          el.style.opacity = '1';
+        if (id.includes('bumper') || id.includes('btn-back') || id.includes('btn-start')) {
+          el.style.opacity = '0';
         }
       }
     }
@@ -533,11 +531,11 @@ ${specificCss}
         togglePressed('btn-x', btn(2));
         togglePressed('btn-y', btn(3));
 
-        // Bumpers
+        // Bumpers (L1 / R1)
         togglePressed('bumper-l', btn(4));
         togglePressed('bumper-r', btn(5));
 
-        // Triggers
+        // Triggers (L2 / R2)
         const l2 = val(6);
         const r2 = val(7);
         const trigL = document.getElementById('trigger-l');
@@ -551,7 +549,7 @@ ${specificCss}
           if (r2 > 0.1) trigR.classList.add('pressed'); else trigR.classList.remove('pressed');
         }
 
-        // Back / Start
+        // Back / Start (Share / Options)
         togglePressed('btn-back', btn(8));
         togglePressed('btn-start', btn(9));
 
@@ -604,7 +602,7 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
     return 'ps5_white'
   }, [skin, url])
 
-  // Dimensions (Base sizes: PS5 807x651 / 794x639, PS4 806x598, Xbox 750x630)
+  // Dimensions
   const BASE_WIDTH = 820
   const BASE_HEIGHT = 680
   const containerWidth = Math.round(BASE_WIDTH * (finalScale * 0.52))
