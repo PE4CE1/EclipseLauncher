@@ -790,16 +790,16 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                   <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Controller Skin Preset</div>
                   <div className="grid grid-cols-3 gap-1.5">
                     {[
-                      { label: 'PS4 White/Red', url: 'https://gamepadviewer.com/?p=1&s=3' },
-                      { label: 'PS4 Classic', url: 'https://gamepadviewer.com/?p=1&s=4' },
+                      { label: 'PS4 Custom (Built-in)', url: '' },
+                      { label: 'PS4 Classic Black', url: 'https://gamepadviewer.com/?p=1&s=4' },
                       { label: 'Xbox One', url: 'https://gamepadviewer.com/?p=1&s=2' },
                     ].map(p => (
                       <button
-                        key={p.url}
+                        key={p.label}
                         type="button"
                         onClick={() => onControllerUrlChange(p.url)}
                         className={`px-2 py-1.5 rounded-lg text-[10px] font-medium border transition-colors ${
-                          rlControllerUrl === p.url
+                          (rlControllerUrl || '') === p.url
                             ? 'bg-white text-black border-white font-semibold'
                             : 'bg-white/[0.04] border-white/[0.08] text-white/70 hover:text-white'
                         }`}
@@ -813,7 +813,7 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                 {/* Custom GamepadViewer URL */}
                 <div>
                   <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1 flex items-center justify-between">
-                    <span>GamepadViewer URL / Custom Skin</span>
+                    <span>Custom URL (Optional)</span>
                     <button
                       type="button"
                       onClick={() => (window.electronAPI as any)?.openUrl?.('https://gamepadviewer.com')}
@@ -826,11 +826,11 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                     type="text"
                     value={rlControllerUrl}
                     onChange={e => onControllerUrlChange(e.target.value)}
-                    placeholder="https://gamepadviewer.com/?p=1&s=3"
+                    placeholder="Leave empty for Built-in PS4 Custom Skin, or paste URL..."
                     className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
                   />
                   <div className="text-[9px] text-white/40 mt-1">
-                    💡 Drücke im Spiel einmal eine beliebige Taste auf deinem Controller, um GamepadViewer zu aktivieren.
+                    ✨ Das eingebaute PS4 Custom Overlay funktioniert direkt ohne Ladezeiten oder rote Trennungs-Boxen!
                   </div>
                 </div>
 
