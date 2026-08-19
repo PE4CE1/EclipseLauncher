@@ -17,6 +17,11 @@ interface ActiveDetectedGame {
 let cachedSettings: any = null
 let lastSettingsRead = 0
 
+export function invalidateSettingsCache() {
+  cachedSettings = null
+  lastSettingsRead = 0
+}
+
 function getAppSettings() {
   const now = Date.now()
   if (cachedSettings && (now - lastSettingsRead < 15000)) {

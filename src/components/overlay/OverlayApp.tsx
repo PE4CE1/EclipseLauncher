@@ -36,6 +36,7 @@ export function OverlayApp() {
   const editModeRef = useRef(false)
   const [editGameData, setEditGameData] = useState<any>(null)
   const [positions, setPositions] = useState<Positions>(DEFAULT_POSITIONS)
+  const positionsRef = useRef<Positions>(DEFAULT_POSITIONS)
 
   const dragging = useRef<{
     key: string; startMX: number; startMY: number; startPx: number; startPy: number; currentPx: number; currentPy: number
@@ -59,7 +60,9 @@ export function OverlayApp() {
       cleanups.push(window.electronAPI.onOverlayUpdate((data: any) => {
         setActiveGame(data)
         if (!editModeRef.current && data?.positions) {
-          setPositions({ ...DEFAULT_POSITIONS, ...data.positions })
+          const merged = { ...DEFAULT_POSITIONS, ...data.positions }
+          positionsRef.current = merged
+          setPositions(merged)
         }
       }))
     }
@@ -88,7 +91,11 @@ export function OverlayApp() {
         editModeRef.current = true
         if (gameData) {
           setEditGameData(gameData)
-          if (gameData.positions) setPositions({ ...DEFAULT_POSITIONS, ...gameData.positions })
+          if (gameData.positions) {
+            const merged = { ...DEFAULT_POSITIONS, ...gameData.positions }
+            positionsRef.current = merged
+            setPositions(merged)
+          }
         }
       }))
     }
@@ -129,13 +136,20 @@ export function OverlayApp() {
       const newPx = Math.max(0, Math.min(maxX, startPx + dx))
       const newPy = Math.max(0, Math.min(maxY, startPy + dy))
       
+      const xPct = newPx / window.innerWidth
+      const yPct = newPy / window.innerHeight
+
       dragging.current.currentPx = newPx
       dragging.current.currentPy = newPy
+      positionsRef.current = {
+        ...positionsRef.current,
+        [key]: { xPct, yPct }
+      }
       
       const el = document.getElementById(`widget-${key}`)
       if (el) {
-        el.style.left = `${(newPx / window.innerWidth) * 100}%`
-        el.style.top = `${(newPy / window.innerHeight) * 100}%`
+        el.style.left = `${xPct * 100}%`
+        el.style.top = `${yPct * 100}%`
       }
     })
   }, [])
@@ -143,18 +157,16 @@ export function OverlayApp() {
   const onMouseUp = useCallback(() => {
     if (dragging.current) {
       const key = dragging.current.key
-      const el = document.getElementById(`widget-${key}`)
-      if (el) {
-        setPositions(prev => ({
-          ...prev,
-          [key]: { 
-            xPct: parseFloat(el.style.left) / 100, 
-            yPct: parseFloat(el.style.top) / 100 
-          }
-        }))
+      const finalXPct = dragging.current.currentPx / window.innerWidth
+      const finalYPct = dragging.current.currentPy / window.innerHeight
+      const next = {
+        ...positionsRef.current,
+        [key]: { xPct: finalXPct, yPct: finalYPct }
       }
+      positionsRef.current = next
+      setPositions(next)
+      dragging.current = null
     }
-    dragging.current = null
     window.removeEventListener('mousemove', onMouseMove)
     window.removeEventListener('mouseup', onMouseUp)
   }, [onMouseMove])
@@ -162,7 +174,8 @@ export function OverlayApp() {
   const startDrag = (key: string, e: React.MouseEvent) => {
     if (!editMode || key === 'crosshair') return
     e.preventDefault()
-    const pos = positions[key as keyof Positions]
+    e.stopPropagation()
+    const pos = positionsRef.current[key as keyof Positions] || DEFAULT_POSITIONS[key as keyof Positions]
     dragging.current = {
       key,
       startMX: e.clientX,
@@ -177,7 +190,7 @@ export function OverlayApp() {
   }
 
   const handleSave = async () => {
-    await window.electronAPI?.saveOverlayPositions(positions)
+    await window.electronAPI?.saveOverlayPositions(positionsRef.current)
   }
 
   const handleCancel = async () => {
@@ -228,9 +241,9 @@ export function OverlayApp() {
         {editMode && !isCrosshair && (
           <div style={{
             position: 'absolute', inset: -4, borderRadius: 12, zIndex: -1,
-            border: '1px dashed rgba(99,102,241,0.6)',
-            background: 'rgba(99,102,241,0.06)',
-            boxShadow: '0 0 12px rgba(99,102,241,0.15)',
+            border: '1px dashed rgba(255, 255, 255, 0.4)',
+            background: 'rgba(255, 255, 255, 0.03)',
+            boxShadow: '0 0 10px rgba(255, 255, 255, 0.08)',
             pointerEvents: 'none',
           }} />
         )}
@@ -299,45 +312,62 @@ export function OverlayApp() {
       {/* Edit mode UI */}
       {editMode && (
         <div style={{
-          position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
-          pointerEvents: 'auto',
+          position: 'absolute', bottom: 26, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', alignItems: 'center', gap: 14,
+          background: 'rgba(10, 11, 16, 0.88)', backdropFilter: 'blur(20px) saturate(180%)',
+          border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: 12,
+          padding: '7px 10px 7px 16px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+          pointerEvents: 'auto', userSelect: 'none', zIndex: 9999,
         }}>
           <div style={{
-            background: 'rgba(10,10,20,0.9)', backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(99,102,241,0.4)', borderRadius: 16,
-            padding: '12px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-            boxShadow: '0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)',
+            display: 'flex', alignItems: 'center', gap: 8,
+            fontFamily: 'Inter, system-ui, sans-serif', fontSize: 11.5, fontWeight: 600,
+            color: 'rgba(255, 255, 255, 0.8)', letterSpacing: '0.02em',
           }}>
-            <div style={{
-              fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600,
-              color: 'rgba(255,255,255,0.7)', letterSpacing: '0.08em', textTransform: 'uppercase',
-            }}>
-              🖱️ Overlay Edit Mode — Drag widgets to reposition
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={handleSave}
-                style={{
-                  background: '#6366f1', color: 'white', border: 'none',
-                  borderRadius: 9, padding: '8px 20px',
-                  fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600,
-                  cursor: 'pointer', letterSpacing: '0.02em',
-                }}
-              >
-                ✓ Save & Done
-              </button>
-              <button
-                onClick={handleCancel}
-                style={{
-                  background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)',
-                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, padding: '8px 16px',
-                  fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-            </div>
+            <span style={{ fontSize: 13 }}>🖱️</span>
+            <span>Drag widgets to reposition</span>
+          </div>
+
+          <div style={{ width: 1, height: 18, background: 'rgba(255, 255, 255, 0.1)' }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={handleSave}
+              style={{
+                background: '#ffffff', color: '#000000', border: 'none',
+                borderRadius: 8, padding: '6px 14px',
+                fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12, fontWeight: 700,
+                cursor: 'pointer', letterSpacing: '0.01em',
+                boxShadow: '0 2px 8px rgba(255, 255, 255, 0.15)',
+                transition: 'transform 0.08s ease, opacity 0.08s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+              onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.96)')}
+              onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            >
+              ✓ Save & Done
+            </button>
+            <button
+              onClick={handleCancel}
+              style={{
+                background: 'rgba(255, 255, 255, 0.06)', color: 'rgba(255, 255, 255, 0.65)',
+                border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: 8, padding: '6px 12px',
+                fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                transition: 'background 0.08s ease, color 0.08s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
+                e.currentTarget.style.color = '#ffffff'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.65)'
+              }}
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}

@@ -13,7 +13,7 @@ import { initTorrentIPC } from './torrentService'
 import { initHttpDownloadIPC } from './httpDownloadService'
 import { initUpdater } from './updaterService'
 import { initDiscordRPC, setDiscordActivity, clearDiscordActivity, setDiscordIdleActivity } from './discordRPC'
-import { startProcessMonitor, registerGameExe, getCurrentDetectedGame, resetCurrentDetectedGame } from './processMonitor'
+import { startProcessMonitor, registerGameExe, getCurrentDetectedGame, resetCurrentDetectedGame, invalidateSettingsCache } from './processMonitor'
 import { loadPlaytimeDb, savePlaytimeDb, addPlaytimeRecord } from './playtimeService'
 import { initOverlayManager, openOverlayEditMode, exitEditMode, getOverlayWindow } from './overlayManager'
 import { setRLPlaylist, setRLApiKey, destroyRLScraper } from './rlService'
@@ -734,7 +734,8 @@ ipcMain.handle('settings:set', (_event, data: Record<string, unknown>) => {
       const { setInputKeybinds } = require('./inputService')
       setInputKeybinds(newSettings.rlScoreboardKeyKb || 'Tab', newSettings.rlScoreboardKeyCtrl || 'Select')
     }
-    
+
+    invalidateSettingsCache()
     return { success: true }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
@@ -866,6 +867,7 @@ ipcMain.handle('overlay:save-positions', (_event, positions: Record<string, unkn
       ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
       : {}
     fs.writeFileSync(settingsPath, JSON.stringify({ ...existing, overlayPositions: positions }, null, 2))
+    invalidateSettingsCache()
     exitEditMode()
     return { success: true }
   } catch (err: unknown) {
