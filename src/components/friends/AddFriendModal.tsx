@@ -5,7 +5,8 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { useUIStore } from '../../store/uiStore';
 import { useGameStore } from '../../store/gameStore';
 import { fetchSteamUserProfile } from '../../services/steamService';
-import { addFriendByCode, generateEclipseFriendCode, syncMyProfile } from '../../services/firebaseService';
+import { sendFriendRequest, generateEclipseFriendCode, syncMyProfile } from '../../services/firebaseService';
+import { sendAppNotification } from '../../services/notificationService';
 import type { EclipseFriend } from '../../types/game';
 
 export const AddFriendModal: React.FC = () => {
@@ -42,20 +43,26 @@ export const AddFriendModal: React.FC = () => {
     setLoading(true);
 
     try {
-      // 1. Try Firebase Cloud live friendship first
-      const fbResult = await addFriendByCode(friendCodeInput);
+      // 1. Send live friend request in Firebase
+      const fbResult = await sendFriendRequest(friendCodeInput);
       if (fbResult.success) {
         setFriendCodeInput('');
         setIsAddFriendOpen(false);
         setLoading(false);
+        sendAppNotification({
+          title: settings.language === 'de' ? 'Anfrage gesendet! 👥' : 'Request Sent! 👥',
+          body: fbResult.message || (settings.language === 'de' ? 'Freundschaftsanfrage erfolgreich übermittelt.' : 'Friend request sent successfully.'),
+          type: 'success',
+          duration: 5000
+        });
         return;
       }
 
-      // 2. Fallback to Steam Web Profile lookup
+      // 2. Fallback to Steam Web Profile lookup if valid SteamID
       const profile = await fetchSteamUserProfile(friendCodeInput);
       
       if (!profile || !profile.steamId64) {
-        setError(fbResult.error || 'Friend not found. Invalid code or Steam profile.');
+        setError(fbResult.error || (settings.language === 'de' ? 'Spieler nicht gefunden. Bitte Code prüfen.' : 'User not found. Check the code.'));
         setLoading(false);
         return;
       }

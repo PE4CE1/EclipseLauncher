@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, Plus, ChevronRight, ChevronDown, User, MoreVertical, Trash2 } from 'lucide-react';
+import { X, Search, Plus, ChevronRight, ChevronDown, User, MoreVertical, Trash2, Check } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useUIStore } from '../../store/uiStore';
 import { useGameStore } from '../../store/gameStore';
-import { removeFirebaseFriend } from '../../services/firebaseService';
+import { 
+  removeFirebaseFriend, 
+  restoreFirebaseFriend, 
+  acceptFriendRequest, 
+  declineFriendRequest 
+} from '../../services/firebaseService';
 
 interface FriendsWindowProps {
   isStandalone?: boolean;
@@ -44,10 +49,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
 
   const handleUndoRemove = () => {
     if (!removedFriend) return;
-    const currentFriends = settings.eclipseFriends || [];
-    updateSettings({
-      eclipseFriends: [...currentFriends, removedFriend]
-    });
+    restoreFirebaseFriend(removedFriend);
     setRemovedFriend(null);
     if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
   };
@@ -61,6 +63,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
   if (!isFriendsOpen) return null;
 
   const friends = settings.eclipseFriends || [];
+  const incomingRequests = settings.incomingFriendRequests || [];
   const onlineFriends = friends.filter(f => f.status !== 'offline');
   const offlineFriends = friends.filter(f => f.status === 'offline');
 
@@ -106,23 +109,72 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
       <div className="flex-1 flex flex-col p-4 overflow-y-auto custom-scrollbar bg-[#0a0a0c]">
         
         {/* Current User Info */}
-        <div className="flex items-center gap-4 mb-6 bg-[#1f2025] p-3 rounded-xl border border-white/5 shadow-inner">
-          <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-white/10 bg-[#2a2c33]">
+        <div className="flex items-center gap-4 mb-5 bg-[#141518] p-3 rounded-xl border border-white/5 shadow-inner">
+          <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-white/10 bg-[#2a2c33] flex-shrink-0">
             {settings.avatarUrl ? (
               <img src={settings.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-white/50"><User size={20} /></div>
             )}
-            <div className="absolute bottom-1 right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-[#1f2025]"></div>
+            <div className="absolute bottom-1 right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#141518]"></div>
           </div>
-          <div>
-            <h4 className="font-bold text-white text-[15px] uppercase tracking-wide">{settings.username || 'GUEST'}</h4>
-            <p className="text-xs text-white/50">{t('online')}</p>
+          <div className="min-w-0">
+            <h4 className="font-bold text-white text-sm uppercase tracking-wide truncate">{settings.username || 'GUEST'}</h4>
+            <p className="text-[11px] text-white/50">{t('online')}</p>
           </div>
         </div>
 
+        {/* Incoming Friend Requests Section */}
+        {incomingRequests.length > 0 && (
+          <div className="mb-4 bg-white/[0.03] border border-white/10 rounded-xl p-3 shadow-sm" style={{ WebkitAppRegion: 'no-drag' } as any}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <span>{settings.language === 'de' ? 'Freundschaftsanfragen' : 'Friend Requests'}</span>
+                <span className="w-4 h-4 rounded-full bg-white text-black text-[10px] font-extrabold flex items-center justify-center">
+                  {incomingRequests.length}
+                </span>
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {incomingRequests.map((req) => (
+                <div key={req.fromUid} className="flex items-center justify-between bg-[#111215] border border-white/5 p-2 rounded-lg gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg overflow-hidden bg-[#2a2c33] flex-shrink-0 flex items-center justify-center border border-white/10">
+                      {req.fromAvatarUrl ? (
+                        <img src={req.fromAvatarUrl} alt={req.fromUsername} className="w-full h-full object-cover" />
+                      ) : (
+                        <User size={13} className="text-white/50" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h5 className="text-xs font-bold text-white truncate">{req.fromUsername}</h5>
+                      <p className="text-[10px] text-white/40 font-mono truncate">{req.fromFriendCode || 'Eclipse'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => acceptFriendRequest(req.fromUid)}
+                      className="p-1.5 bg-white text-black hover:bg-white/90 rounded-md font-bold text-xs transition-all shadow-sm cursor-pointer"
+                      title={settings.language === 'de' ? 'Annehmen' : 'Accept'}
+                    >
+                      <Check size={13} strokeWidth={2.5} />
+                    </button>
+                    <button
+                      onClick={() => declineFriendRequest(req.fromUid)}
+                      className="p-1.5 bg-white/10 text-white/60 hover:text-white hover:bg-white/20 rounded-md transition-all cursor-pointer"
+                      title={settings.language === 'de' ? 'Ablehnen' : 'Decline'}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Search & Add */}
-        <div className="flex gap-2 mb-6" style={{ WebkitAppRegion: 'no-drag' } as any}>
+        <div className="flex gap-2 mb-5" style={{ WebkitAppRegion: 'no-drag' } as any}>
           <div className="relative flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
             <input 
@@ -130,7 +182,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
               placeholder={t('searchFriends')} 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#1b1c20] text-white text-sm pl-9 pr-3 py-2 rounded-lg outline-none border border-white/5 focus:border-white/20 transition-colors placeholder:text-white/30"
+              className="w-full bg-[#141518] text-white text-xs pl-9 pr-3 py-2 rounded-lg outline-none border border-white/5 focus:border-white/20 transition-colors placeholder:text-white/30"
             />
           </div>
           <button 
@@ -141,15 +193,15 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
                 setIsAddFriendOpen(true)
               }
             }}
-            className="flex items-center gap-1.5 px-4 py-2 bg-white text-black rounded-lg text-sm font-bold hover:bg-white/90 transition-colors shadow-md cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white text-black rounded-lg text-xs font-bold hover:bg-white/90 transition-colors shadow-sm cursor-pointer"
           >
-            <Plus size={16} /> {t('add')}
+            <Plus size={14} /> {t('add')}
           </button>
         </div>
 
         {/* Online Section */}
         {isLoading ? (
-          <div className="flex flex-col gap-2 mt-4">
+          <div className="flex flex-col gap-2 mt-2">
             <div className="h-4 w-24 bg-white/5 rounded skeleton mb-2"></div>
             {[1, 2, 3].map(i => (
               <div key={i} className="flex items-center gap-3 p-2">
@@ -180,7 +232,9 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
                 className="flex flex-col gap-1"
               >
                 {filteredOnline.length === 0 ? (
-                  <p className="text-xs text-white/30 italic pl-5">No friends online</p>
+                  <p className="text-xs text-white/30 italic pl-5">
+                    {settings.language === 'de' ? 'Keine Freunde online' : 'No friends online'}
+                  </p>
                 ) : (
                   <AnimatePresence initial={false}>
                     {filteredOnline.map(friend => (
@@ -252,24 +306,27 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
         )}
         </div>
         
-        {/* Undo Toast */}
+        {/* Minimalist White Undo Toast */}
         <AnimatePresence>
           {removedFriend && (
             <motion.div
-              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              initial={{ opacity: 0, y: 30, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className="absolute bottom-4 left-4 right-4 bg-[#1f2025] border border-white/10 rounded-xl p-3 flex items-center justify-between shadow-2xl z-50"
+              exit={{ opacity: 0, y: 15, scale: 0.96, transition: { duration: 0.15 } }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="absolute bottom-3 left-3 right-3 bg-[#111215]/95 backdrop-blur-xl border border-white/15 rounded-xl px-3.5 py-2.5 flex items-center justify-between shadow-2xl z-50 select-none"
             >
-              <div className="flex items-center gap-2">
-                <Trash2 size={16} className="text-white/50" />
-                <span className="text-sm text-white/80">Removed <b>{removedFriend.username}</b></span>
+              <div className="flex items-center gap-2 min-w-0">
+                <Trash2 size={14} className="text-white/40 flex-shrink-0" />
+                <span className="text-xs text-white/80 truncate">
+                  {settings.language === 'de' ? 'Entfernt:' : 'Removed:'} <b className="text-white font-semibold">{removedFriend.username}</b>
+                </span>
               </div>
               <button 
                 onClick={handleUndoRemove}
-                className="text-xs font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-wide px-3 py-1.5 bg-indigo-500/10 rounded-lg transition-colors"
+                className="text-[11px] font-bold text-black bg-white hover:bg-white/90 uppercase tracking-wider px-2.5 py-1 rounded-md transition-all shadow-sm flex-shrink-0 cursor-pointer"
               >
-                Undo
+                {settings.language === 'de' ? 'Rückgängig' : 'Undo'}
               </button>
             </motion.div>
           )}

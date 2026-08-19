@@ -80,6 +80,14 @@ export interface EclipseFriend {
   steamFavoriteBadge?: SteamFavoriteBadge
 }
 
+export interface FriendRequest {
+  fromUid: string
+  fromUsername: string
+  fromAvatarUrl: string
+  fromFriendCode: string
+  timestamp: number
+}
+
 export type ScanStatus = 'idle' | 'scanning' | 'complete' | 'error'
 
 // ─── Settings ────────────────────────────────────────────────────────────────
@@ -151,6 +159,14 @@ export interface AppSettings {
   steamRecentGames?: SteamRecentGame[]
   steamFavoriteBadge?: SteamFavoriteBadge
   eclipseFriends?: EclipseFriend[]
+  incomingFriendRequests?: FriendRequest[]
+  outgoingFriendRequests?: Array<{
+    toUid: string
+    toUsername: string
+    toAvatarUrl: string
+    toFriendCode: string
+    timestamp: number
+  }>
   friendCode?: string
   profileShowPlaytime?: boolean
   profileShowSteamStats?: boolean

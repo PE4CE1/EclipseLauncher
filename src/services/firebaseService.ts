@@ -23,7 +23,7 @@ import {
 } from 'firebase/firestore'
 import { useGameStore } from '../store/gameStore'
 import { sendAppNotification } from './notificationService'
-import type { EclipseFriend } from '../types/game'
+import type { EclipseFriend, FriendRequest } from '../types/game'
 
 // Firebase Configuration provided by project owner
 const firebaseConfig = {
@@ -44,6 +44,7 @@ const db = getFirestore(app)
 let currentUserUnsub: Unsubscribe | null = null
 let friendsQueryUnsub: Unsubscribe | null = null
 const knownFriendIds = new Set<string>()
+const knownRequestUids = new Set<string>()
 let isInitialized = false
 
 /**
@@ -62,7 +63,7 @@ export function generateEclipseFriendCode(): string {
  * Initialize Firebase Social Network:
  * 1. Anonymously authenticate user
  * 2. Sync local user profile & friend code to Firestore
- * 3. Subscribe in real time to current user doc & friends list
+ * 3. Subscribe in real time to current user doc, incoming friend requests & friends list
  * 4. Handle presence & live status changes
  */
 export async function initFirebaseSocial() {
@@ -121,6 +122,8 @@ export async function syncMyProfile(user?: User | null) {
       await setDoc(userRef, {
         ...baseData,
         friends: [],
+        incomingRequests: [],
+        outgoingRequests: [],
         createdAt: serverTimestamp(),
       })
     } else {
@@ -133,7 +136,7 @@ export async function syncMyProfile(user?: User | null) {
 
 /**
  * Listens to the current user's document in Firestore.
- * When friends array changes, dynamically listens to friends' real-time presence.
+ * Handles incoming friend requests, active friends list, and presence syncing.
  */
 function listenToMyUserDoc(uid: string) {
   if (currentUserUnsub) currentUserUnsub()
@@ -144,12 +147,38 @@ function listenToMyUserDoc(uid: string) {
 
     const data = docSnap.data()
     const friendUids: string[] = Array.isArray(data?.friends) ? data.friends : []
+    const incomingRequests: FriendRequest[] = Array.isArray(data?.incomingRequests) ? data.incomingRequests : []
+    const outgoingRequests = Array.isArray(data?.outgoingRequests) ? data.outgoingRequests : []
 
     // Ensure our local friendCode is synced
     if (data?.friendCode && data.friendCode !== useGameStore.getState().settings.friendCode) {
       useGameStore.getState().updateSettings({ friendCode: data.friendCode })
     }
 
+    // 1. Detect any newly received incoming friend requests and notify user!
+    incomingRequests.forEach((req) => {
+      if (!knownRequestUids.has(req.fromUid)) {
+        knownRequestUids.add(req.fromUid)
+        const lang = useGameStore.getState().settings.language === 'de' ? 'de' : 'en'
+        sendAppNotification({
+          title: lang === 'de' ? 'Freundschaftsanfrage erhalten! 👥' : 'Friend Request Received! 👥',
+          body: lang === 'de' 
+            ? `${req.fromUsername} (${req.fromFriendCode || 'Eclipse'}) möchte dein Freund sein!` 
+            : `${req.fromUsername} (${req.fromFriendCode || 'Eclipse'}) wants to be your friend!`,
+          type: 'info',
+          playSound: true,
+          duration: 7000
+        })
+      }
+    })
+
+    // Update Zustand settings with requests
+    useGameStore.getState().updateSettings({
+      incomingFriendRequests: incomingRequests,
+      outgoingFriendRequests: outgoingRequests
+    })
+
+    // 2. Listen to active confirmed friends presence
     listenToFriendsPresence(friendUids)
   }, (err) => {
     console.warn('[Firebase] listenToMyUserDoc error:', err)
@@ -167,6 +196,7 @@ function listenToFriendsPresence(friendUids: string[]) {
   }
 
   if (!friendUids || friendUids.length === 0) {
+    useGameStore.getState().updateSettings({ eclipseFriends: [] })
     return
   }
 
@@ -190,34 +220,25 @@ function listenToFriendsPresence(friendUids: string[]) {
       }
       liveFriendsMap.set(u.uid, friendObj)
 
-      // Notify if a brand new friend was added by someone else
+      // Notify if an existing friend request was accepted by the other person!
       if (!knownFriendIds.has(u.uid) && knownFriendIds.size > 0) {
         const lang = useGameStore.getState().settings.language === 'de' ? 'de' : 'en'
         sendAppNotification({
-          title: lang === 'de' ? 'Neuer Freund hinzugefügt! 👥' : 'New Friend Added! 👥',
+          title: lang === 'de' ? 'Freundschaftsanfrage angenommen! 🎉' : 'Friend Request Accepted! 🎉',
           body: lang === 'de' 
             ? `${friendObj.username} ist jetzt in deiner Eclipse-Freundesliste!` 
             : `${friendObj.username} is now in your Eclipse friends list!`,
-          type: 'info'
+          type: 'success',
+          playSound: true,
+          duration: 6000
         })
       }
     })
 
-    // Merge live cloud friends with any existing local-only friends
-    const currentLocalFriends = useGameStore.getState().settings.eclipseFriends || []
     const updatedFriends: EclipseFriend[] = []
-
-    // 1. Add all live cloud friends
     liveFriendsMap.forEach((lf) => {
       updatedFriends.push(lf)
       knownFriendIds.add(lf.id)
-    })
-
-    // 2. Keep local friends that are not cloud UIDs (e.g. legacy Steam-only IDs)
-    currentLocalFriends.forEach((lf) => {
-      if (!liveFriendsMap.has(lf.id)) {
-        updatedFriends.push(lf)
-      }
     })
 
     useGameStore.getState().updateSettings({
@@ -229,102 +250,220 @@ function listenToFriendsPresence(friendUids: string[]) {
 }
 
 /**
- * Adds a friend using their Eclipse Friend Code (e.g. "ECL-7X9K" or raw code).
- * Performs a bilateral mutual connection in Firestore!
+ * Sends a Friend Request to another user using their Eclipse Friend Code (or raw UID).
+ * Does NOT auto-befriend; instead puts a pending request into the target's incomingRequests queue!
  */
-export async function addFriendByCode(code: string): Promise<{ success: boolean; friend?: EclipseFriend; error?: string }> {
+export async function sendFriendRequest(codeOrUid: string): Promise<{ success: boolean; message?: string; error?: string }> {
   const currentUid = auth.currentUser?.uid
   if (!currentUid) {
-    return { success: false, error: 'Firebase is not connected yet. Please try again.' }
+    return { success: false, error: 'Firebase ist noch nicht verbunden. Bitte kurz warten.' }
   }
 
-  const cleanCode = code.trim().toUpperCase()
+  const cleanCode = codeOrUid.trim().toUpperCase()
   if (!cleanCode) {
-    return { success: false, error: 'Please enter a valid friend code.' }
+    return { success: false, error: 'Bitte gib einen gültigen Freundes-Code ein.' }
   }
 
   try {
-    // 1. Search for user with this friendCode in Firestore
+    // 1. Search for target user in Firestore
+    let targetDocSnap = null
+    let targetData: any = null
+
     const q = query(collection(db, 'users'), where('friendCode', '==', cleanCode))
     const snap = await getDocs(q)
 
-    if (snap.empty) {
-      // Not found by Eclipse code; check if searching by UID directly
-      const directDoc = await getDoc(doc(db, 'users', code.trim()))
-      if (!directDoc.exists()) {
-        return { success: false, error: 'User not found. Check the code and try again.' }
+    if (!snap.empty) {
+      targetDocSnap = snap.docs[0]
+      targetData = targetDocSnap.data()
+    } else {
+      // Check if raw UID was provided
+      const directDoc = await getDoc(doc(db, 'users', codeOrUid.trim()))
+      if (directDoc.exists()) {
+        targetDocSnap = directDoc
+        targetData = directDoc.data()
       }
-      return await performBilateralAdd(currentUid, directDoc.data().uid, directDoc.data())
     }
 
-    const targetDoc = snap.docs[0]
-    const targetData = targetDoc.data()
-
-    if (targetData.uid === currentUid) {
-      return { success: false, error: 'You cannot add yourself as a friend.' }
+    if (!targetData || !targetData.uid) {
+      return { success: false, error: 'Kein Spieler mit diesem Code gefunden. Überprüfe den Code.' }
     }
 
-    return await performBilateralAdd(currentUid, targetData.uid, targetData)
-  } catch (err: any) {
-    console.error('[Firebase] addFriendByCode error:', err)
-    return { success: false, error: err.message || 'An error occurred while adding friend.' }
-  }
-}
+    const targetUid = targetData.uid
 
-/**
- * Links two users in Firestore symmetrically
- */
-async function performBilateralAdd(myUid: string, targetUid: string, targetData: any): Promise<{ success: boolean; friend?: EclipseFriend; error?: string }> {
-  try {
-    // Add target to my friends array
-    const myRef = doc(db, 'users', myUid)
-    await updateDoc(myRef, {
-      friends: arrayUnion(targetUid)
-    })
+    // Check if adding self
+    if (targetUid === currentUid) {
+      return { success: false, error: 'Du kannst dir nicht selbst eine Freundschaftsanfrage senden.' }
+    }
 
-    // Add myself to target's friends array (instant mutual friendship)
+    // Check my current doc data
+    const myRef = doc(db, 'users', currentUid)
+    const mySnap = await getDoc(myRef)
+    const myData = mySnap.data() || {}
+    const myFriends: string[] = Array.isArray(myData.friends) ? myData.friends : []
+    const myIncoming: FriendRequest[] = Array.isArray(myData.incomingRequests) ? myData.incomingRequests : []
+    const myOutgoing = Array.isArray(myData.outgoingRequests) ? myData.outgoingRequests : []
+
+    // 2. Check if already confirmed friends
+    if (myFriends.includes(targetUid)) {
+      return { success: false, error: `${targetData.username || 'Dieser Spieler'} ist bereits in deiner Freundesliste!` }
+    }
+
+    // 3. If target user already sent ME a request -> instantly accept it!
+    const existingIncoming = myIncoming.find(req => req.fromUid === targetUid)
+    if (existingIncoming) {
+      return await acceptFriendRequest(targetUid)
+    }
+
+    // 4. Check if we already sent a request
+    if (myOutgoing.some((req: any) => req.toUid === targetUid)) {
+      return { success: false, error: 'Freundschaftsanfrage wurde bereits gesendet. Bitte warten.' }
+    }
+
+    const mySettings = useGameStore.getState().settings
+    const now = Date.now()
+
+    // 5. Construct request objects
+    const requestForTarget: FriendRequest = {
+      fromUid: currentUid,
+      fromUsername: mySettings.username || myData.username || 'Eclipse Player',
+      fromAvatarUrl: mySettings.avatarUrl || myData.avatarUrl || '',
+      fromFriendCode: mySettings.friendCode || myData.friendCode || '',
+      timestamp: now
+    }
+
+    const requestForMe = {
+      toUid: targetUid,
+      toUsername: targetData.username || 'Eclipse Player',
+      toAvatarUrl: targetData.avatarUrl || '',
+      toFriendCode: targetData.friendCode || '',
+      timestamp: now
+    }
+
+    // 6. Write request to target user's incomingRequests
     const targetRef = doc(db, 'users', targetUid)
     await updateDoc(targetRef, {
-      friends: arrayUnion(myUid)
+      incomingRequests: arrayUnion(requestForTarget)
     })
 
-    const friendObj: EclipseFriend = {
-      id: targetData.uid,
-      username: targetData.username || 'Eclipse Player',
-      avatarUrl: targetData.avatarUrl || '',
-      status: (targetData.status as any) || 'online',
-      currentGame: targetData.currentGame || undefined,
-      level: targetData.level || 1,
+    // 7. Write to my outgoingRequests
+    await updateDoc(myRef, {
+      outgoingRequests: arrayUnion(requestForMe)
+    })
+
+    const lang = mySettings.language === 'de' ? 'de' : 'en'
+    return {
+      success: true,
+      message: lang === 'de' 
+        ? `Freundschaftsanfrage an ${targetData.username || 'Spieler'} gesendet!` 
+        : `Friend request sent to ${targetData.username || 'player'}!`
     }
-
-    knownFriendIds.add(friendObj.id)
-
-    // Update local store immediately for instant UI feedback
-    const currentFriends = useGameStore.getState().settings.eclipseFriends || []
-    if (!currentFriends.some(f => f.id === friendObj.id)) {
-      useGameStore.getState().updateSettings({
-        eclipseFriends: [...currentFriends, friendObj]
-      })
-    }
-
-    return { success: true, friend: friendObj }
   } catch (err: any) {
-    return { success: false, error: err.message || 'Failed to link friendship in cloud.' }
+    console.error('[Firebase] sendFriendRequest error:', err)
+    return { success: false, error: err.message || 'Fehler beim Senden der Anfrage.' }
   }
 }
 
 /**
- * Removes a friend from Firestore and local store
+ * Accepts an incoming friend request.
+ * Adds both users to each other's friends array and clears the pending requests!
+ */
+export async function acceptFriendRequest(fromUid: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  const currentUid = auth.currentUser?.uid
+  if (!currentUid) return { success: false, error: 'Nicht angemeldet.' }
+
+  try {
+    const myRef = doc(db, 'users', currentUid)
+    const mySnap = await getDoc(myRef)
+    const myData = mySnap.data() || {}
+    const incoming: FriendRequest[] = Array.isArray(myData.incomingRequests) ? myData.incomingRequests : []
+    const matchingReq = incoming.find(r => r.fromUid === fromUid)
+
+    const targetRef = doc(db, 'users', fromUid)
+    const targetSnap = await getDoc(targetRef)
+    const targetData = targetSnap.data() || {}
+
+    // 1. Add target to my friends, remove from my incomingRequests
+    await updateDoc(myRef, {
+      friends: arrayUnion(fromUid),
+      incomingRequests: incoming.filter(r => r.fromUid !== fromUid)
+    })
+
+    // 2. Add me to target's friends, remove from target's outgoingRequests
+    const targetOutgoing = Array.isArray(targetData.outgoingRequests) ? targetData.outgoingRequests : []
+    await updateDoc(targetRef, {
+      friends: arrayUnion(currentUid),
+      outgoingRequests: targetOutgoing.filter((r: any) => r.toUid !== currentUid)
+    })
+
+    // 3. Mark as known friend so we don't trigger self-notification
+    knownFriendIds.add(fromUid)
+
+    const lang = useGameStore.getState().settings.language === 'de' ? 'de' : 'en'
+    sendAppNotification({
+      title: lang === 'de' ? 'Freundschaftsanfrage angenommen! 🎉' : 'Friend Request Accepted! 🎉',
+      body: lang === 'de' 
+        ? `Du bist jetzt mit ${matchingReq?.fromUsername || targetData.username || 'dem Spieler'} befreundet!` 
+        : `You are now friends with ${matchingReq?.fromUsername || targetData.username || 'the player'}!`,
+      type: 'success',
+      playSound: true
+    })
+
+    return { success: true }
+  } catch (err: any) {
+    console.error('[Firebase] acceptFriendRequest error:', err)
+    return { success: false, error: err.message || 'Fehler beim Annehmen der Anfrage.' }
+  }
+}
+
+/**
+ * Declines an incoming friend request.
+ */
+export async function declineFriendRequest(fromUid: string): Promise<{ success: boolean; error?: string }> {
+  const currentUid = auth.currentUser?.uid
+  if (!currentUid) return { success: false, error: 'Nicht angemeldet.' }
+
+  try {
+    const myRef = doc(db, 'users', currentUid)
+    const mySnap = await getDoc(myRef)
+    const myData = mySnap.data() || {}
+    const incoming: FriendRequest[] = Array.isArray(myData.incomingRequests) ? myData.incomingRequests : []
+
+    await updateDoc(myRef, {
+      incomingRequests: incoming.filter(r => r.fromUid !== fromUid)
+    })
+
+    // Clean from target's outgoingRequests
+    const targetRef = doc(db, 'users', fromUid)
+    const targetSnap = await getDoc(targetRef)
+    if (targetSnap.exists()) {
+      const targetData = targetSnap.data() || {}
+      const targetOutgoing = Array.isArray(targetData.outgoingRequests) ? targetData.outgoingRequests : []
+      await updateDoc(targetRef, {
+        outgoingRequests: targetOutgoing.filter((r: any) => r.toUid !== currentUid)
+      }).catch(() => {})
+    }
+
+    return { success: true }
+  } catch (err: any) {
+    console.error('[Firebase] declineFriendRequest error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * Truly removes a friend bilaterally from Firestore on BOTH sides and local Zustand store!
  */
 export async function removeFirebaseFriend(friendId: string) {
   const currentUid = auth.currentUser?.uid
   if (currentUid) {
     try {
+      // 1. Remove from my friends list in Firestore
       const myRef = doc(db, 'users', currentUid)
       await updateDoc(myRef, {
         friends: arrayRemove(friendId)
       })
 
+      // 2. Remove me from target's friends list in Firestore
       const targetRef = doc(db, 'users', friendId)
       await updateDoc(targetRef, {
         friends: arrayRemove(currentUid)
@@ -334,11 +473,41 @@ export async function removeFirebaseFriend(friendId: string) {
     }
   }
 
-  // Update local store
+  // 3. Update local Zustand store immediately
+  knownFriendIds.delete(friendId)
   const currentFriends = useGameStore.getState().settings.eclipseFriends || []
   useGameStore.getState().updateSettings({
     eclipseFriends: currentFriends.filter(f => f.id !== friendId)
   })
+}
+
+/**
+ * Restores a removed friend bilaterally (used by the minimalist Undo action)
+ */
+export async function restoreFirebaseFriend(friend: EclipseFriend) {
+  const currentUid = auth.currentUser?.uid
+  if (currentUid && friend?.id) {
+    try {
+      const myRef = doc(db, 'users', currentUid)
+      await updateDoc(myRef, {
+        friends: arrayUnion(friend.id)
+      })
+
+      const targetRef = doc(db, 'users', friend.id)
+      await updateDoc(targetRef, {
+        friends: arrayUnion(currentUid)
+      }).catch(() => {})
+    } catch (err) {
+      console.warn('[Firebase] restoreFirebaseFriend error:', err)
+    }
+  }
+
+  const currentFriends = useGameStore.getState().settings.eclipseFriends || []
+  if (!currentFriends.some(f => f.id === friend.id)) {
+    useGameStore.getState().updateSettings({
+      eclipseFriends: [...currentFriends, friend]
+    })
+  }
 }
 
 /**
@@ -359,3 +528,6 @@ export async function updateFirebasePresence(status: 'online' | 'ingame' | 'offl
     console.warn('[Firebase] updateFirebasePresence error:', err)
   }
 }
+
+// Backward-compatibility alias
+export const addFriendByCode = sendFriendRequest
