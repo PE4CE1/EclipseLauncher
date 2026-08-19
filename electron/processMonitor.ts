@@ -6,6 +6,7 @@ import * as fs from 'fs'
 import { showOverlay, hideOverlay, getOverlayWindow } from './overlayManager'
 import { startRLService, stopRLService } from './rlService'
 import { addPlaytimeRecord } from './playtimeService'
+import { setActiveGameMetrics } from './metricsService'
 
 interface ActiveDetectedGame {
   name: string
@@ -339,6 +340,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           console.log(`[ProcessMonitor] Detected game started: ${detectedName}`)
           const startTime = Date.now()
           currentGame = { name: detectedName, exeName: detectedExe, startTime }
+          setActiveGameMetrics(detectedName)
           
           // Update Discord RPC
           if (appSettings.discordEnabled) {
@@ -400,6 +402,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
             stopRLService()
           }
           currentGame = null
+          setActiveGameMetrics(null)
           mainWindow?.webContents.send('games:stopped')
           hideOverlay()
         }
