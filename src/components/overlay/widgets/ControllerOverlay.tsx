@@ -172,7 +172,6 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 .ps5 .trigger.right { right: 0; background-position: -113px 0; }
 `
   } else if (activeSkin === 'ps5_black') {
-    // Exact official Philipbry DualSense Midnight Black CSS with full opacity & rotation fixes
     skinClass = 'ds4 ps5-black'
     specificCss = `
 .controller.ds4.ps5-black {
@@ -303,7 +302,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 .ps5-black .face {
     background: url(https://philipbry.github.io/548MWGT.png) no-repeat;
     position: absolute;
-    opacity: 1;
+    opacity: 1 !important;
 }
 .ps5-black .face.up, .ps5-black .face.down {
     width: 44px;
@@ -356,7 +355,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 .xbox .arrows { width: 141px; height: 33px; top: 264px; left: 306px; position: absolute; }
 .xbox .back, .xbox .start { background: url(https://gamepadviewer.com/xbox-assets/start-select.svg) no-repeat 0 0; width: 33px; height: 33px; opacity: 0; position: absolute; }
 .xbox .back { left: 0; }
-.xbox .start { right: 0; background-position: 33px 0; }
+.xbox .start { right: 0; background-position: -34px 0; }
 .xbox .abxy { width: 153px; height: 156px; top: 192px; left: 488px; position: absolute; }
 .xbox .button { background: url(https://gamepadviewer.com/xbox-assets/abxy.svg) no-repeat 0 0; width: 48px; height: 48px; position: absolute; opacity: 1; }
 .xbox .button.pressed { background-position-y: -48px; margin-top: 4px; }
@@ -372,7 +371,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 .xbox .dpad { width: 110px; height: 111px; top: 345px; left: 223px; position: absolute; }
 .xbox .face { background: url(https://gamepadviewer.com/xbox-assets/dpad.svg) no-repeat; position: absolute; opacity: 0; }
 .xbox .face.up { background-position: 34px 0; left: 38px; top: 0px; width: 34px; height: 56px; }
-.xbox .face.down { left: 38px; bottom: 0; width: 34px; height: 56px; }
+.xbox .face.down { background-position: 0 0; left: 38px; bottom: 0; width: 34px; height: 56px; }
 .xbox .face.left { background-position: 0 -93px; width: 55px; height: 35px; top: 38px; left: 0; }
 .xbox .face.right { background-position: 0 -57px; width: 55px; height: 35px; top: 38px; right: 0; }
 `
@@ -492,6 +491,7 @@ ${specificCss}
   <script>
     const STICK_OFFSET = 20;
     const DEADZONE = 0.08;
+    const isPs5Black = ${activeSkin === 'ps5_black'};
 
     function applyDeadzone(v) {
       return Math.abs(v) < DEADZONE ? 0 : v;
@@ -502,12 +502,12 @@ ${specificCss}
       if (!el) return;
       if (isPressed) {
         el.classList.add('pressed');
-        if (id.includes('bumper') || id.includes('btn-back') || id.includes('btn-start')) {
+        if (id.includes('bumper') || id.includes('btn-back') || id.includes('btn-start') || (!isPs5Black && id.includes('dpad'))) {
           el.style.opacity = '1';
         }
       } else {
         el.classList.remove('pressed');
-        if (id.includes('bumper') || id.includes('btn-back') || id.includes('btn-start')) {
+        if (id.includes('bumper') || id.includes('btn-back') || id.includes('btn-start') || (!isPs5Black && id.includes('dpad'))) {
           el.style.opacity = '0';
         }
       }
@@ -549,7 +549,7 @@ ${specificCss}
           if (r2 > 0.1) trigR.classList.add('pressed'); else trigR.classList.remove('pressed');
         }
 
-        // Back / Start (Share / Options)
+        // Back / Start (Share / Options / View / Menu)
         togglePressed('btn-back', btn(8));
         togglePressed('btn-start', btn(9));
 
@@ -558,10 +558,26 @@ ${specificCss}
         togglePressed('stick-r', btn(11));
 
         // D-Pad
-        togglePressed('dpad-up', btn(12));
-        togglePressed('dpad-down', btn(13));
-        togglePressed('dpad-left', btn(14));
-        togglePressed('dpad-right', btn(15));
+        let dpadUp = btn(12);
+        let dpadDown = btn(13);
+        let dpadLeft = btn(14);
+        let dpadRight = btn(15);
+
+        // POV Hat fallback for DirectInput
+        if (gp.axes && gp.axes.length > 9 && !dpadUp && !dpadDown && !dpadLeft && !dpadRight) {
+          const pov = Math.round(gp.axes[9] * 100) / 100;
+          if (pov >= -1.01 && pov <= 1.01) {
+            if (pov >= -1.01 && pov < -0.6) { dpadUp = true; }
+            else if (pov >= -0.6 && pov < -0.1) { dpadRight = true; }
+            else if (pov >= -0.1 && pov < 0.4) { dpadDown = true; }
+            else if (pov >= 0.4 && pov < 0.9) { dpadLeft = true; }
+          }
+        }
+
+        togglePressed('dpad-up', dpadUp);
+        togglePressed('dpad-down', dpadDown);
+        togglePressed('dpad-left', dpadLeft);
+        togglePressed('dpad-right', dpadRight);
 
         // Sticks
         const lx = applyDeadzone(gp.axes[0] || 0) * STICK_OFFSET;
