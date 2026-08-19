@@ -21,7 +21,7 @@ const DEFAULT_POSITIONS: Positions = {
 const WIDGET_APPROX_SIZE: Record<string, { w: number; h: number }> = {
   performance: { w: 110, h: 60 },
   robloxTimer: { w: 165, h: 80 },
-  robloxCps: { w: 160, h: 76 },
+  robloxCps: { w: 130, h: 32 },
   crosshair: { w: 30, h: 30 },
   rlHud: { w: 210, h: 155 },
   rlSteamAvatar: { w: 120, h: 120 },
