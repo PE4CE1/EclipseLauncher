@@ -111,7 +111,7 @@ aside, .border-r {
 }
 
 /* High-Gloss Liquid Glass Primary Action Button */
-.btn-primary, button.bg-white.text-black, button.bg-white {
+.btn-primary, button.bg-white.text-black:not([role="switch"]), button.bg-white:not([role="switch"]) {
   background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%) !important;
   color: #020617 !important;
   font-weight: 800 !important;
@@ -125,7 +125,7 @@ aside, .border-r {
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-.btn-primary:hover, button.bg-white.text-black:hover, button.bg-white:hover {
+.btn-primary:hover, button.bg-white.text-black:hover:not([role="switch"]), button.bg-white:hover:not([role="switch"]) {
   background: #ffffff !important;
   color: #020617 !important;
   box-shadow: 
@@ -134,6 +134,19 @@ aside, .border-r {
     inset 0 2px 3px rgba(255, 255, 255, 1) !important;
   text-shadow: none !important;
   transform: translateY(-2px) scale(1.02) !important;
+}
+
+/* Toggle Switch Protection */
+button[role="switch"] {
+  border-radius: 9999px !important;
+  box-shadow: none !important;
+  border: 2px solid transparent !important;
+  padding: 0 !important;
+}
+
+button[role="switch"] > span {
+  border-radius: 9999px !important;
+  border: none !important;
 }
 
 /* Translucent Frosted Secondary Buttons */

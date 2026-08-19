@@ -35,6 +35,17 @@ button, button *, .btn-primary, .btn-ghost, .badge {
   text-shadow: none;
 }
 
+/* Global Toggle Switch Guard (Ensures pill shape and circular knob across all themes) */
+button[role="switch"] {
+  border-radius: 9999px !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+button[role="switch"] > span {
+  border-radius: 9999px !important;
+}
+
 /* Splash screen overlay is always 100% solid and blocks everything underneath */
 .splash-screen-overlay {
   background-color: #040405 !important;

@@ -98,7 +98,7 @@ aside {
 }
 
 /* High-Contrast Pure White Action Button (Crisp Black Text with ZERO blur) */
-.btn-primary, button.bg-white.text-black, button.bg-white {
+.btn-primary, button.bg-white.text-black:not([role="switch"]), button.bg-white:not([role="switch"]) {
   background: #ffffff !important;
   color: #000000 !important;
   font-weight: 800 !important;
@@ -108,11 +108,41 @@ aside {
   text-shadow: none !important;
 }
 
-.btn-primary:hover, button.bg-white.text-black:hover, button.bg-white:hover {
+.btn-primary:hover, button.bg-white.text-black:hover:not([role="switch"]), button.bg-white:hover:not([role="switch"]) {
   background: #e4e4e7 !important;
   color: #000000 !important;
   box-shadow: 0 0 30px rgba(255, 255, 255, 0.45) !important;
   text-shadow: none !important;
+}
+
+/* Toggle Switch: Keep pill rounded geometry and clean knob */
+button[role="switch"] {
+  border-radius: 9999px !important;
+  box-shadow: none !important;
+  border: 2px solid transparent !important;
+  padding: 0 !important;
+}
+
+button[role="switch"][aria-checked="true"] {
+  background-color: #ffffff !important;
+}
+
+button[role="switch"][aria-checked="false"] {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+button[role="switch"] > span {
+  border-radius: 9999px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  border: none !important;
+}
+
+button[role="switch"][aria-checked="true"] > span {
+  background-color: #000000 !important;
+}
+
+button[role="switch"][aria-checked="false"] > span {
+  background-color: rgba(255, 255, 255, 0.7) !important;
 }
 
 /* OLED Floating Dark Glass Shelf for Carousels */

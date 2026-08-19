@@ -23,12 +23,22 @@ const Toggle = memo(function Toggle({ checked, onChange }: { checked: boolean; o
       className={`relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-150 ease-out focus:outline-none ${
         checked ? 'bg-white' : 'bg-white/15'
       }`}
+      style={{
+        borderRadius: 9999,
+        border: '2px solid transparent',
+        boxShadow: 'none',
+        padding: 0,
+      }}
     >
       <span
         aria-hidden="true"
         className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-sm ring-0 transition duration-150 ease-out ${
           checked ? 'translate-x-5 bg-black' : 'translate-x-0 bg-white/70'
         }`}
+        style={{
+          borderRadius: 9999,
+          border: 'none',
+        }}
       />
     </button>
   )
