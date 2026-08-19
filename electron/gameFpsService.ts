@@ -2,13 +2,18 @@
  * gameFpsService.ts
  *
  * Measures real in-game FPS externally using Windows DWM (Desktop Window Manager)
- * Composition Timing API — the same external, read-only approach used by tools
- * like GPU-Z and many FPS overlays.
+ * Composition Timing API.
  *
- * ✅ Zero DLL injection into game processes
- * ✅ 100% safe vs Byfron/Hyperion (Roblox), EasyAntiCheat, BattlEye, VAC
- * ✅ Works for any game in windowed or borderless-fullscreen (DWM-composited) mode
- * ⚠️  Falls back to 0 for exclusive fullscreen (DWM bypassed by driver directly)
+ * Key fix: use cFramesDisplayed (unique rendered frames shown on screen),
+ * NOT cRefreshesPresented (which equals monitor Hz due to VSync/composition cycles).
+ *
+ * The struct uses NO explicit padding fields — CLR LayoutKind.Sequential adds
+ * natural alignment padding automatically, matching the native C++ layout.
+ *
+ * ✅ Zero DLL injection — pure read-only Windows API call
+ * ✅ 100% safe vs Byfron/Hyperion, EasyAntiCheat, BattlEye, VAC
+ * ✅ Works for any DWM-composited game (windowed / borderless fullscreen)
+ * ✅ Falls back to 0 when game is not in foreground or DWM bypassed
  */
 
 import { ChildProcess, spawn } from 'child_process'
@@ -20,14 +25,20 @@ let fpsProcess: ChildProcess | null = null
 let cachedFps = 0
 let scriptPath: string | null = null
 
-// C# script that uses DWM P/Invoke to count actual frame presents per second
-// for the foreground window owned by the target game PID.
-// cRefreshesPresented = total frames the window has submitted to DWM.
-// Delta over 1 second = actual FPS. Safe, user-mode, no special privileges.
+// The C# script spawned as a background PowerShell process.
+//
+// Critical details:
+// 1. DWM_TIMING_INFO has NO explicit _pad fields — CLR Sequential layout
+//    inserts the same padding as the native C++ compiler automatically.
+// 2. We use cFramesDisplayed (offset ~208), not cRefreshesPresented (offset ~280).
+//    cFramesDisplayed = total UNIQUE frames the window has put on screen.
+//    Delta over 1 second = actual rendered FPS, e.g. 230 on a 280Hz monitor.
+// 3. cbSize must equal Marshal.SizeOf(t) — if it's != 320 the API returns E_INVALIDARG.
 const PS_SCRIPT_CONTENT = `
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 [StructLayout(LayoutKind.Sequential)]
 public struct UNSIGNED_RATIO {
@@ -35,59 +46,54 @@ public struct UNSIGNED_RATIO {
     public uint uiDenominator;
 }
 
+// CLR Sequential layout inserts padding automatically to match native C++ layout.
+// Do NOT add explicit pad fields — that would double the padding and corrupt offsets.
 [StructLayout(LayoutKind.Sequential)]
 public struct DWM_TIMING_INFO {
-    public int              cbSize;
-    public UNSIGNED_RATIO   rateRefresh;
-    public long             qpcRefreshPeriod;
-    public UNSIGNED_RATIO   rateCompose;
-    public int              _pad0;
-    public long             qpcVBlank;
-    public ulong            cRefresh;
-    public uint             cDXRefresh;
-    public uint             _pad1;
-    public long             qpcCompose;
-    public ulong            cFrame;
-    public uint             cDXPresent;
-    public uint             _pad2;
-    public ulong            cRefreshFrame;
-    public ulong            cFrameSubmitted;
-    public uint             cDXPresentSubmitted;
-    public uint             _pad3;
-    public ulong            cFrameConfirmed;
-    public uint             cDXPresentConfirmed;
-    public uint             _pad4;
-    public ulong            cRefreshConfirmed;
-    public uint             cDXPresentConfirmed2;
-    public uint             _pad5;
-    public ulong            cFramesLate;
-    public uint             cFramesOutstanding;
-    public uint             _pad6;
-    public ulong            cFrameDisplayed;
-    public long             qpcFrameDisplayed;
-    public ulong            cRefreshFrameDisplayed;
-    public ulong            cFrameComplete;
-    public long             qpcFrameComplete;
-    public ulong            cFramePending;
-    public long             qpcFramePending;
-    public ulong            cFramesDisplayed;
-    public ulong            cFramesComplete;
-    public ulong            cFramesPending;
-    public ulong            cFramesAvailable;
-    public ulong            cFramesDropped;
-    public ulong            cFramesMissed;
-    public ulong            cRefreshNextDisplayed;
-    public ulong            cRefreshNextPresented;
-    public ulong            cRefreshesDisplayed;
-    public ulong            cRefreshesPresented;
-    public ulong            cRefreshStarted;
-    public ulong            cPixelsReceived;
-    public ulong            cPixelsDrawn;
-    public ulong            cBuffersEmpty;
+    public int            cbSize;
+    public UNSIGNED_RATIO rateRefresh;
+    public long           qpcRefreshPeriod;       // CLR pads 4 bytes before this (to align to 8)
+    public UNSIGNED_RATIO rateCompose;
+    public long           qpcVBlank;
+    public ulong          cRefresh;
+    public uint           cDXRefresh;
+    public long           qpcCompose;              // CLR pads 4 bytes before this
+    public ulong          cFrame;
+    public uint           cDXPresent;
+    public ulong          cRefreshFrame;           // CLR pads 4 bytes before this
+    public ulong          cFrameSubmitted;
+    public uint           cDXPresentSubmitted;
+    public ulong          cFrameConfirmed;         // CLR pads 4 bytes before this
+    public uint           cDXPresentConfirmed;
+    public ulong          cRefreshConfirmed;       // CLR pads 4 bytes before this
+    public uint           cDXPresentAverageConfirmed;
+    public ulong          cFramesLate;             // CLR pads 4 bytes before this
+    public uint           cFramesOutstanding;
+    public ulong          cFrameDisplayed;         // CLR pads 4 bytes before this (singular — last frame)
+    public long           qpcFrameDisplayed;
+    public ulong          cRefreshFrameDisplayed;
+    public ulong          cFrameComplete;
+    public long           qpcFrameComplete;
+    public ulong          cFramePending;
+    public long           qpcFramePending;
+    public ulong          cFramesDisplayed;        // TOTAL UNIQUE FRAMES — delta per sec = real FPS
+    public ulong          cFramesComplete;
+    public ulong          cFramesPending;
+    public ulong          cFramesAvailable;
+    public ulong          cFramesDropped;
+    public ulong          cFramesMissed;
+    public ulong          cRefreshNextDisplayed;
+    public ulong          cRefreshNextPresented;
+    public ulong          cRefreshesDisplayed;
+    public ulong          cRefreshesPresented;     // monitor-sync count, NOT game FPS
+    public ulong          cRefreshStarted;
+    public ulong          cPixelsReceived;
+    public ulong          cPixelsDrawn;
+    public ulong          cBuffersEmpty;
 }
 
 public static class DwmFpsReader {
-    [DllImport("dwmapi.dll")]
+    [DllImport("dwmapi.dll", SetLastError = false)]
     public static extern int DwmGetCompositionTimingInfo(IntPtr hwnd, ref DWM_TIMING_INFO pTimingInfo);
 
     [DllImport("user32.dll")]
@@ -98,6 +104,11 @@ public static class DwmFpsReader {
 
     public static int GetFps(int targetPid) {
         try {
+            int size = Marshal.SizeOf(typeof(DWM_TIMING_INFO));
+            // Validate struct size — must be 320 bytes on 64-bit Windows
+            // If not 320 the layout is wrong; bail out to avoid wrong readings
+            if (size != 320) return -10;
+
             IntPtr hwnd1 = GetForegroundWindow();
             if (hwnd1 == IntPtr.Zero) return 0;
             uint pid1 = 0;
@@ -105,10 +116,11 @@ public static class DwmFpsReader {
             if ((int)pid1 != targetPid) return 0;
 
             var t1 = new DWM_TIMING_INFO();
-            t1.cbSize = System.Runtime.InteropServices.Marshal.SizeOf(t1);
+            t1.cbSize = size;
             if (DwmGetCompositionTimingInfo(hwnd1, ref t1) < 0) return 0;
+            ulong frames1 = t1.cFramesDisplayed;
 
-            System.Threading.Thread.Sleep(1000);
+            Thread.Sleep(1000);
 
             IntPtr hwnd2 = GetForegroundWindow();
             if (hwnd2 == IntPtr.Zero) return 0;
@@ -117,11 +129,13 @@ public static class DwmFpsReader {
             if ((int)pid2 != targetPid) return 0;
 
             var t2 = new DWM_TIMING_INFO();
-            t2.cbSize = System.Runtime.InteropServices.Marshal.SizeOf(t2);
+            t2.cbSize = size;
             if (DwmGetCompositionTimingInfo(hwnd2, ref t2) < 0) return 0;
+            ulong frames2 = t2.cFramesDisplayed;
 
-            long delta = (long)(t2.cRefreshesPresented - t1.cRefreshesPresented);
-            return (int)Math.Max(0, Math.Min(delta, 9999));
+            // Delta of unique frames displayed = actual game FPS
+            long fps = (long)(frames2 - frames1);
+            return (int)Math.Max(0, Math.Min(fps, 9999));
         } catch {
             return 0;
         }
@@ -131,6 +145,7 @@ public static class DwmFpsReader {
 
 param([int]$targetPid)
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
 while ($true) {
     $fps = [DwmFpsReader]::GetFps($targetPid)
     [Console]::WriteLine($fps)
@@ -151,7 +166,6 @@ export function startGameFpsMonitor(pid: number): void {
   if (!pid || pid <= 0) return
 
   cachedFps = 0
-
   const script = ensureScript()
 
   fpsProcess = spawn('powershell.exe', [
