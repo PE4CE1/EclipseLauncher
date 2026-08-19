@@ -106,7 +106,6 @@ public static class DwmFpsReader {
         try {
             int size = Marshal.SizeOf(typeof(DWM_TIMING_INFO));
             // Validate struct size — must be 320 bytes on 64-bit Windows
-            // If not 320 the layout is wrong; bail out to avoid wrong readings
             if (size != 320) return -10;
 
             IntPtr hwnd1 = GetForegroundWindow();
@@ -118,7 +117,6 @@ public static class DwmFpsReader {
             var t1 = new DWM_TIMING_INFO();
             t1.cbSize = size;
             if (DwmGetCompositionTimingInfo(hwnd1, ref t1) < 0) return 0;
-            ulong frames1 = t1.cFramesDisplayed;
 
             Thread.Sleep(1000);
 
@@ -131,13 +129,20 @@ public static class DwmFpsReader {
             var t2 = new DWM_TIMING_INFO();
             t2.cbSize = size;
             if (DwmGetCompositionTimingInfo(hwnd2, ref t2) < 0) return 0;
-            ulong frames2 = t2.cFramesDisplayed;
 
-            // Delta of unique frames displayed = actual game FPS
-            long fps = (long)(frames2 - frames1);
-            return (int)Math.Max(0, Math.Min(fps, 9999));
+            // cFramesDisplayed  = frames that actually reached the monitor
+            // cFramesDropped    = frames the game submitted but DWM discarded
+            //                     (game rendered too fast for the display refresh rate)
+            // Together they equal ALL frames the game submitted to DWM → true render FPS
+            // This is correct for VSync ON (dropped=0, displayed=cap) and
+            // VSync OFF above monitor Hz (displayed<Hz, dropped = overflow frames)
+            long displayed = (long)(t2.cFramesDisplayed - t1.cFramesDisplayed);
+            long dropped   = (long)(t2.cFramesDropped   - t1.cFramesDropped);
+            long totalFps  = Math.Max(0, displayed) + Math.Max(0, dropped);
+            return (int)Math.Min(totalFps, 9999);
         } catch {
             return 0;
+
         }
     }
 }
