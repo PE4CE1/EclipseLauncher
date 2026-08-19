@@ -375,8 +375,10 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           mainWindow?.webContents.send('games:started', { name: detectedName, startTime })
         }
 
-        // Always check and trigger Overlay every cycle if enabled
-        if (appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayRobloxTimer || (detectedName === 'Roblox' && appSettings.overlayRobloxCps) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam))) {
+        // Check if overlay should be visible for active game
+        const hasActiveGameOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || (detectedName === 'Roblox' && (appSettings.overlayRobloxTimer || appSettings.overlayRobloxCps)) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam))
+
+        if (hasActiveGameOverlay) {
           showOverlay({ 
             name: detectedName, 
             startTime: currentGame?.startTime || Date.now(), 
@@ -417,6 +419,28 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           setActiveGameMetrics(null)
           stopGameFpsMonitor()
           mainWindow?.webContents.send('games:stopped')
+        }
+
+        // If user enabled "Always show general overlays on desktop", show only general overlays
+        if (appSettings.overlayGeneralAlwaysOn && (appSettings.overlayPerformance || appSettings.overlayCrosshair)) {
+          showOverlay({
+            name: 'Desktop',
+            startTime: Date.now(),
+            positions: appSettings.overlayPositions,
+            settings: {
+              performance: appSettings.overlayPerformance,
+              crosshair: appSettings.overlayCrosshair,
+              robloxTimer: false,
+              robloxCps: false,
+              rlHud: false,
+              overlayRLSteam: false,
+              metrics: appSettings.overlayMetrics,
+              crosshairConfig: appSettings.crosshairConfig,
+              steamProfileUrl: appSettings.steamProfileUrl,
+              rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
+            }
+          })
+        } else {
           hideOverlay()
         }
 
@@ -474,7 +498,7 @@ export function syncOverlaySettingsLive() {
 
   if (currentGame) {
     const isRL = currentGame.name === 'Rocket League'
-    const shouldShow = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayRobloxTimer || (currentGame.name === 'Roblox' && appSettings.overlayRobloxCps) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam))
+    const shouldShow = appSettings.overlayPerformance || appSettings.overlayCrosshair || (currentGame.name === 'Roblox' && (appSettings.overlayRobloxTimer || appSettings.overlayRobloxCps)) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam))
 
     if (shouldShow) {
       showOverlay({
@@ -497,22 +521,29 @@ export function syncOverlaySettingsLive() {
     } else {
       hideOverlay()
     }
-  } else if (overlayWin && !overlayWin.isDestroyed()) {
-    overlayWin.webContents.send('overlay:update', {
-      positions: appSettings.overlayPositions,
-      settings: {
-        performance: appSettings.overlayPerformance,
-        crosshair: appSettings.overlayCrosshair,
-        robloxTimer: appSettings.overlayRobloxTimer,
-        robloxCps: appSettings.overlayRobloxCps,
-        rlHud: appSettings.overlayRLHud,
-        overlayRLSteam: appSettings.overlayRLSteam,
-        metrics: appSettings.overlayMetrics,
-        crosshairConfig: appSettings.crosshairConfig,
-        steamProfileUrl: appSettings.steamProfileUrl,
-        rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
-      }
-    })
+  } else {
+    // No game active
+    if (appSettings.overlayGeneralAlwaysOn && (appSettings.overlayPerformance || appSettings.overlayCrosshair)) {
+      showOverlay({
+        name: 'Desktop',
+        startTime: Date.now(),
+        positions: appSettings.overlayPositions,
+        settings: {
+          performance: appSettings.overlayPerformance,
+          crosshair: appSettings.overlayCrosshair,
+          robloxTimer: false,
+          robloxCps: false,
+          rlHud: false,
+          overlayRLSteam: false,
+          metrics: appSettings.overlayMetrics,
+          crosshairConfig: appSettings.crosshairConfig,
+          steamProfileUrl: appSettings.steamProfileUrl,
+          rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
+        }
+      })
+    } else {
+      hideOverlay()
+    }
   }
 }
 

@@ -773,7 +773,43 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
 
       {/* SECTION 1: General */}
       <section style={{ contain: 'paint layout style', transform: 'translateZ(0)' }}>
-        <SectionLabel icon={<Globe size={14} className="text-white" />} title="General Overlays" subtitle="Active for all games" />
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/10 text-white border border-white/10">
+              <Globe size={14} className="text-white" />
+            </div>
+            <div>
+              <div className="text-[13px] font-semibold text-white tracking-tight">General Overlays</div>
+              <div className="text-[11px] text-white/50 mt-0.5">Performance & Crosshair display rules</div>
+            </div>
+          </div>
+
+          <div className="flex items-center p-0.5 rounded-lg bg-white/[0.06] border border-white/[0.08]">
+            <button
+              type="button"
+              onClick={() => save('overlayGeneralAlwaysOn', false)}
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all ${
+                !settings.overlayGeneralAlwaysOn
+                  ? 'bg-white text-black font-semibold shadow-sm'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              Only in Game
+            </button>
+            <button
+              type="button"
+              onClick={() => save('overlayGeneralAlwaysOn', true)}
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all ${
+                settings.overlayGeneralAlwaysOn
+                  ? 'bg-white text-black font-semibold shadow-sm'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              Always
+            </button>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <PerformanceSection settings={settings} save={save} />
           <CrosshairSection settings={settings} save={save} />

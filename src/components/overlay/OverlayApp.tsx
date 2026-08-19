@@ -280,16 +280,16 @@ export function OverlayApp() {
       {settings.performance && renderWidget('performance',
         <Performance metrics={metrics} config={settings.metrics} />
       )}
-      {settings.robloxTimer && displayGame && renderWidget('robloxTimer',
-        <RobloxTimer startTime={displayGame.startTime} idleTime={metrics.idleTime} />
+      {settings.robloxTimer && (editMode || displayGame?.name === 'Roblox') && renderWidget('robloxTimer',
+        <RobloxTimer startTime={displayGame?.startTime || Date.now()} idleTime={metrics.idleTime} />
       )}
-      {settings.robloxCps && displayGame && renderWidget('robloxCps',
+      {settings.robloxCps && (editMode || displayGame?.name === 'Roblox') && renderWidget('robloxCps',
         <RobloxCPS />
       )}
-      {settings.rlHud && renderWidget('rlHud',
+      {settings.rlHud && (editMode || displayGame?.name === 'Rocket League') && renderWidget('rlHud',
         <RocketLeagueHUD data={rlData} />
       )}
-      {settings.overlayRLSteam && settings.steamProfileUrl && renderWidget('rlSteamAvatar',
+      {settings.overlayRLSteam && (editMode || displayGame?.name === 'Rocket League') && settings.steamProfileUrl && renderWidget('rlSteamAvatar',
         <RLSteamAvatarHUD 
           steamUrl={settings.steamProfileUrl} 
           scale={settings.rlSteamAvatarScale} 

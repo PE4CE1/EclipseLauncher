@@ -140,6 +140,7 @@ export interface AppSettings {
   discordRpcShowDownloads: boolean
   discordRpcPrivacyMode: boolean
   overlayPerformance: boolean
+  overlayGeneralAlwaysOn?: boolean
   overlayMetrics: {
     fps: boolean
     cpu: boolean
