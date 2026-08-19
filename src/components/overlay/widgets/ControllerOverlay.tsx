@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react'
+import ps5BlackBase from '../../../assets/ps5-black-base.png'
+import ps5WhiteBase from '../../../assets/ps5-white-base.png'
 
-export type ControllerSkinId = 'ps4_white' | 'ps5_white' | 'ps4_black' | 'xbox_one'
+export type ControllerSkinId = 'ps5_white' | 'ps5_black' | 'ps4_white' | 'ps4_black' | 'xbox_one'
 
 interface ControllerOverlayProps {
   url?: string
@@ -13,11 +15,13 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
   let specificCss = ''
   let skinClass = ''
 
-  if (activeSkin === 'ps5_white') {
+  if (activeSkin === 'ps5_white' || activeSkin === 'ps5_black') {
+    const isBlack = activeSkin === 'ps5_black'
+    const baseImg = isBlack ? ps5BlackBase : (ps5WhiteBase || 'https://i.imgur.com/fJIyBwn.png')
     skinClass = 'xbox ps5'
     specificCss = `
 .controller.xbox.ps5 {
-    background: url(https://i.imgur.com/fJIyBwn.png) no-repeat 0 0;
+    background: url(${baseImg}) no-repeat 0 0;
     width: 807px;
     height: 651px;
 }
@@ -57,6 +61,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
     width: 58px;
     height: 58px;
     position: absolute;
+    opacity: 1;
 }
 .ps5 .button.pressed {
     background-position-y: -59px;
@@ -428,10 +433,11 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
   // Determine active skin
   const resolvedSkin: ControllerSkinId = useMemo(() => {
     if (skin) return skin
-    if (url?.includes('FPS5') || url?.includes('PS5')) return 'ps5_white'
+    if (url?.includes('ps5_black')) return 'ps5_black'
+    if (url?.includes('FPS5') || url?.includes('PS5') || url?.includes('ps5_white')) return 'ps5_white'
     if (url?.includes('s=5')) return 'ps4_black'
     if (url?.includes('s=1')) return 'xbox_one'
-    return 'ps4_white'
+    return 'ps5_white'
   }, [skin, url])
 
   // Dimensions

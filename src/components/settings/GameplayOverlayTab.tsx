@@ -499,16 +499,20 @@ const RobloxAccordion = memo(function RobloxAccordion({
   )
 })
 
-export type ControllerSkinId = 'ps4_white' | 'ps5_white' | 'ps4_black' | 'xbox_one'
+export type ControllerSkinId = 'ps5_white' | 'ps5_black' | 'ps4_white' | 'ps4_black' | 'xbox_one'
 
 export const CONTROLLER_SKINS: Record<ControllerSkinId, { label: string; url: string }> = {
+  ps5_white: {
+    label: 'PS5 DualSense (White)',
+    url: 'https://gamepadviewer.com/?p=1&s=ps5_white',
+  },
+  ps5_black: {
+    label: 'PS5 Midnight Black',
+    url: 'https://gamepadviewer.com/?p=1&s=ps5_black',
+  },
   ps4_white: {
     label: 'PS4 White / Red',
     url: 'https://gamepadviewer.com/?p=1&s=8',
-  },
-  ps5_white: {
-    label: 'PS5 DualSense',
-    url: 'https://gamepadviewer.com/?p=1&s=1&editcss=https://justehcupcake.github.io/FPS5_Display_Pics/PS5_White.css',
   },
   ps4_black: {
     label: 'PS4 Classic Black',
@@ -812,13 +816,14 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                 {/* Preset Skins */}
                 <div>
                   <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Controller Design</div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
                     {(Object.keys(CONTROLLER_SKINS) as ControllerSkinId[]).map((key) => {
                       const skin = CONTROLLER_SKINS[key]
                       const selectedSkin: ControllerSkinId = (rlControllerSkin as ControllerSkinId) || 
-                        (rlControllerUrl?.includes('FPS5') ? 'ps5_white' :
+                        (rlControllerUrl?.includes('ps5_black') ? 'ps5_black' :
+                         rlControllerUrl?.includes('FPS5') || rlControllerUrl?.includes('PS5') || rlControllerUrl?.includes('ps5_white') ? 'ps5_white' :
                          rlControllerUrl?.includes('s=5') ? 'ps4_black' :
-                         rlControllerUrl?.includes('s=1') ? 'xbox_one' : 'ps4_white')
+                         rlControllerUrl?.includes('s=1') ? 'xbox_one' : 'ps5_white')
                       const isSelected = selectedSkin === key
                       return (
                         <button
