@@ -78,6 +78,7 @@ export interface EclipseFriend {
   level?: number
   steamRecentGames?: SteamRecentGame[]
   steamFavoriteBadge?: SteamFavoriteBadge
+  lastSeen?: number
 }
 
 export interface FriendRequest {

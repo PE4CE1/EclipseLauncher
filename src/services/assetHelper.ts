@@ -207,3 +207,58 @@ export function getPlaceholderHero(name: string): string {
 
   return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`
 }
+
+/**
+ * Formats timestamps into natural, localized, and well-written relative time strings.
+ * e.g., "Zuletzt online vor 12 Min." or "Last seen 12 mins ago"
+ */
+export function formatLastSeen(timestamp: number | undefined | null, language: string = 'de'): string {
+  if (!timestamp || timestamp <= 0) {
+    return language === 'de' ? 'Offline' : 'Offline'
+  }
+
+  const now = Date.now()
+  const diffSec = Math.max(0, Math.floor((now - timestamp) / 1000))
+  const isDe = language === 'de'
+
+  if (diffSec < 60) {
+    return isDe ? 'Zuletzt online gerade eben' : 'Last seen just now'
+  }
+
+  const minutes = Math.floor(diffSec / 60)
+  if (minutes < 60) {
+    if (isDe) {
+      return minutes === 1 ? 'Zuletzt online vor 1 Min.' : `Zuletzt online vor ${minutes} Min.`
+    }
+    return minutes === 1 ? 'Last seen 1 min ago' : `Last seen ${minutes} mins ago`
+  }
+
+  const hours = Math.floor(diffSec / 3600)
+  if (hours < 24) {
+    if (isDe) {
+      return hours === 1 ? 'Zuletzt online vor 1 Std.' : `Zuletzt online vor ${hours} Std.`
+    }
+    return hours === 1 ? 'Last seen 1 hr ago' : `Last seen ${hours} hrs ago`
+  }
+
+  const days = Math.floor(diffSec / 86400)
+  if (days === 1) {
+    return isDe ? 'Zuletzt online gestern' : 'Last seen yesterday'
+  }
+
+  if (days < 7) {
+    if (isDe) {
+      return `Zuletzt online vor ${days} Tagen`
+    }
+    return `Last seen ${days} days ago`
+  }
+
+  const date = new Date(timestamp)
+  if (isDe) {
+    const formatted = date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
+    return `Zuletzt online am ${formatted}`
+  } else {
+    const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return `Last seen on ${formatted}`
+  }
+}

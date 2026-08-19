@@ -262,6 +262,7 @@ function evaluateFriendsPresence(docs: any[]) {
       currentGame,
       level: u.level || 1,
       steamProfileUrl: u.steamProfileUrl || undefined,
+      lastSeen: lastSeenMs || undefined,
     }
 
     updatedFriends.push(friendObj)

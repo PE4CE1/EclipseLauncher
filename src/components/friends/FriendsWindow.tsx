@@ -10,13 +10,14 @@ import {
   acceptFriendRequest, 
   declineFriendRequest 
 } from '../../services/firebaseService';
+import { formatLastSeen } from '../../services/assetHelper';
 
 interface FriendsWindowProps {
   isStandalone?: boolean;
 }
 
 export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = false }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { isFriendsOpen, setIsFriendsOpen, setIsAddFriendOpen, openFriendProfile } = useUIStore();
   const { settings, updateSettings } = useGameStore();
   const [isOnlineExpanded, setIsOnlineExpanded] = useState(true);
@@ -257,6 +258,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
                           }} 
                           onRemove={() => handleRemoveFriend(friend.id)}
                           t={t} 
+                          language={language}
                         />
                       </motion.div>
                     ))}
@@ -295,6 +297,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
                       }} 
                       onRemove={() => handleRemoveFriend(friend.id)}
                       t={t} 
+                      language={language}
                     />
                   </motion.div>
                 ))}
@@ -338,7 +341,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
   );
 };
 
-const FriendCard = ({ friend, onClick, onRemove, t }: { friend: any, onClick: () => void, onRemove: () => void, t: any }) => {
+const FriendCard = ({ friend, onClick, onRemove, t, language }: { friend: any, onClick: () => void, onRemove: () => void, t: any, language: string }) => {
   const isOnline = friend.status !== 'offline';
   const color = friend.status === 'ingame' ? 'bg-purple-500' : isOnline ? 'bg-green-500' : 'bg-gray-500';
   
@@ -360,7 +363,7 @@ const FriendCard = ({ friend, onClick, onRemove, t }: { friend: any, onClick: ()
       return friend.currentGame ? `Playing ${friend.currentGame}` : 'In-Game';
     }
     if (friend.status === 'online') return t('online');
-    return t('offline');
+    return formatLastSeen(friend.lastSeen, language);
   };
 
   return (

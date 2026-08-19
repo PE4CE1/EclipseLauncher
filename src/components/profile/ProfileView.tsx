@@ -5,11 +5,12 @@ import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
 import { useTranslation } from '../../hooks/useTranslation'
 import { syncMyProfile } from '../../services/firebaseService'
+import { formatLastSeen } from '../../services/assetHelper'
 
 export function ProfileView() {
   const { library, installedGames, settings, updateSettings, activeGame } = useGameStore()
   const { setActiveView, openGameDetails, setActiveSettingsTab, selectedFriendId } = useUIStore()
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   
   const totalLibraryCount = installedGames.length + library.filter(g => !installedGames.some(ig => ig.name === g.name)).length
   
@@ -31,7 +32,7 @@ export function ProfileView() {
     ? (friend.currentGame ? `In-Game: ${friend.currentGame}` : 'In-Game')
     : friend?.status === 'online' 
       ? t('online') 
-      : t('offline')
+      : formatLastSeen(friend?.lastSeen, language)
   const isOnline = friend ? friend.status !== 'offline' : true
 
   // Combine unique games for playtime calculations, preserving playTimeMinutes from both lists
