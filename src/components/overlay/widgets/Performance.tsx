@@ -16,9 +16,10 @@ type MetricsData = {
   ramMB: number
   totalMB: number
   idleTime: number
+  gameFps?: number
 }
 
-// Measure real display refresh rate via requestAnimationFrame
+// Measure display / game frame rate with sub-millisecond precision
 function useFPS() {
   const [fps, setFps] = useState(0)
   const frameCount = useRef(0)
@@ -26,11 +27,11 @@ function useFPS() {
   const rafId = useRef<number>(0)
 
   useEffect(() => {
-    const tick = () => {
+    const tick = (now: number) => {
       frameCount.current++
-      const now = performance.now()
-      if (now - lastTime.current >= 1000) {
-        setFps(Math.round(frameCount.current * 1000 / (now - lastTime.current)))
+      const delta = now - lastTime.current
+      if (delta >= 1000) {
+        setFps(Math.round((frameCount.current * 1000) / delta))
         frameCount.current = 0
         lastTime.current = now
       }
@@ -44,7 +45,7 @@ function useFPS() {
 }
 
 export const Performance = memo(function Performance({ metrics, config }: { metrics: MetricsData; config?: MetricsConfig }) {
-  const fps = useFPS()
+  const displayFps = useFPS()
   const [time, setTime] = useState('')
 
   const cfg: MetricsConfig = config ?? { fps: true, cpu: true, gpu: true, ram: true, time: true }
@@ -57,8 +58,10 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
     return () => clearInterval(id)
   }, [cfg.time])
 
+  const effectiveFps = metrics.gameFps && metrics.gameFps > 0 ? metrics.gameFps : displayFps
+
   const items = [
-    (cfg.fps ?? true) && { label: 'FPS', value: String(fps), unit: '' },
+    (cfg.fps ?? true) && { label: 'FPS', value: String(effectiveFps), unit: '' },
     (cfg.cpu ?? true) && { label: 'CPU', value: String(metrics.cpu ?? 0), unit: '%' },
     (cfg.gpu ?? true) && { label: 'GPU', value: String(metrics.gpu ?? 0), unit: '%' },
     (cfg.ram ?? true) && { label: 'RAM', value: String(metrics.ram ?? 0), unit: '%' },
@@ -71,43 +74,42 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
     <div style={{
       display: 'inline-flex',
       flexDirection: 'column',
-      minWidth: 84,
-      padding: '5px 10px',
-      borderRadius: 8,
-      backgroundColor: 'rgba(11, 12, 18, 0.94)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
+      minWidth: 78,
+      padding: '4px 8px',
+      borderRadius: 7,
+      backgroundColor: 'rgba(10, 12, 18, 0.92)',
+      border: '1px solid rgba(255, 255, 255, 0.08)',
       boxShadow: 'none',
-      fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif',
       userSelect: 'none',
       pointerEvents: 'none',
       contain: 'layout paint style',
       transform: 'translateZ(0)',
-      gap: 3,
     }}>
-      {items.map((item) => (
+      {items.map((item, idx) => (
         <div
           key={item.label}
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 12,
-            lineHeight: 1,
-            padding: '2px 0',
+            gap: 10,
+            height: 18,
+            borderBottom: idx < items.length - 1 ? '1px solid rgba(255, 255, 255, 0.03)' : 'none',
           }}
         >
           <span style={{
-            fontSize: 9,
-            fontWeight: 700,
-            color: 'rgba(255, 255, 255, 0.42)',
-            letterSpacing: '0.06em',
+            fontSize: 8.5,
+            fontWeight: 600,
+            color: 'rgba(255, 255, 255, 0.40)',
+            letterSpacing: '0.07em',
             textTransform: 'uppercase',
           }}>
             {item.label}
           </span>
           <span style={{
-            fontSize: 12,
-            fontWeight: 700,
+            fontSize: 11.5,
+            fontWeight: 600,
             color: '#ffffff',
             fontVariantNumeric: 'tabular-nums',
             letterSpacing: '-0.01em',
