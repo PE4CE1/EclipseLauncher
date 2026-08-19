@@ -31,7 +31,6 @@ export function OverlayApp() {
   const [activeGame, setActiveGame] = useState<any>(null)
   const [metrics, setMetrics] = useState({ cpu: 0, gpu: 0, ram: 0, ramMB: 0, totalMB: 0, idleTime: 0 })
   const [rlData, setRlData] = useState<any>(null)
-  const [cpsData, setCpsData] = useState<{ lmb: number; rmb: number; total: number; buttonClicked?: 'lmb' | 'rmb' }>({ lmb: 0, rmb: 0, total: 0 })
   const [editMode, setEditMode] = useState(false)
   const editModeRef = useRef(false)
   const [editGameData, setEditGameData] = useState<any>(null)
@@ -76,12 +75,6 @@ export function OverlayApp() {
     if ((window.electronAPI as any)?.onRLMMRUpdate) {
       cleanups.push((window.electronAPI as any).onRLMMRUpdate((data: any) => {
         setRlData(data)
-      }))
-    }
-
-    if ((window.electronAPI as any)?.onCPSUpdate) {
-      cleanups.push((window.electronAPI as any).onCPSUpdate((data: any) => {
-        setCpsData(data)
       }))
     }
 
@@ -291,7 +284,7 @@ export function OverlayApp() {
         <RobloxTimer startTime={displayGame.startTime} idleTime={metrics.idleTime} />
       )}
       {settings.robloxCps && displayGame && renderWidget('robloxCps',
-        <RobloxCPS cpsData={cpsData} />
+        <RobloxCPS />
       )}
       {settings.rlHud && renderWidget('rlHud',
         <RocketLeagueHUD data={rlData} />

@@ -13,21 +13,41 @@ let rightClicks: number[] = []
 let cpsDecayInterval: NodeJS.Timeout | null = null
 let lastEmittedLmb = 0
 let lastEmittedRmb = 0
+let pendingDispatch = false
+let latestButtonClicked: 'lmb' | 'rmb' | undefined = undefined
 
-function emitCps(isClickEvent = false, buttonClicked?: 'lmb' | 'rmb') {
+function pruneClicks(now: number) {
+  while (leftClicks.length > 0 && now - leftClicks[0] > 1000) {
+    leftClicks.shift()
+  }
+  while (rightClicks.length > 0 && now - rightClicks[0] > 1000) {
+    rightClicks.shift()
+  }
+}
+
+function flushCps() {
+  pendingDispatch = false
   if (!overlayWin || overlayWin.isDestroyed()) return
   const now = Date.now()
-  leftClicks = leftClicks.filter(t => now - t <= 1000)
-  rightClicks = rightClicks.filter(t => now - t <= 1000)
+  pruneClicks(now)
   const lmb = leftClicks.length
   const rmb = rightClicks.length
   const total = lmb + rmb
+  const btn = latestButtonClicked
+  latestButtonClicked = undefined
 
-  if (isClickEvent || lmb !== lastEmittedLmb || rmb !== lastEmittedRmb) {
+  if (btn !== undefined || lmb !== lastEmittedLmb || rmb !== lastEmittedRmb) {
     lastEmittedLmb = lmb
     lastEmittedRmb = rmb
-    overlayWin.webContents.send('overlay:cps-update', { lmb, rmb, total, buttonClicked })
+    overlayWin.webContents.send('overlay:cps-update', { lmb, rmb, total, buttonClicked: btn })
   }
+}
+
+function scheduleCpsUpdate(button?: 'lmb' | 'rmb') {
+  if (button) latestButtonClicked = button
+  if (pendingDispatch) return
+  pendingDispatch = true
+  setImmediate(flushCps)
 }
 
 export function startInputService(overlayWindow: BrowserWindow) {
@@ -53,16 +73,12 @@ export function startInputService(overlayWindow: BrowserWindow) {
       const handleMouseDown = (e: any) => {
         if (!overlayWin || overlayWin.isDestroyed()) return
         const now = Date.now()
-        let btn: 'lmb' | 'rmb' | undefined
         if (e.button === 1) {
           leftClicks.push(now)
-          btn = 'lmb'
+          scheduleCpsUpdate('lmb')
         } else if (e.button === 2) {
           rightClicks.push(now)
-          btn = 'rmb'
-        }
-        if (btn) {
-          emitCps(true, btn)
+          scheduleCpsUpdate('rmb')
         }
       }
 
@@ -75,10 +91,20 @@ export function startInputService(overlayWindow: BrowserWindow) {
 
       if (!cpsDecayInterval) {
         cpsDecayInterval = setInterval(() => {
+          if (!overlayWin || overlayWin.isDestroyed()) return
           if (leftClicks.length > 0 || rightClicks.length > 0 || lastEmittedLmb > 0 || lastEmittedRmb > 0) {
-            emitCps(false)
+            const now = Date.now()
+            pruneClicks(now)
+            const lmb = leftClicks.length
+            const rmb = rightClicks.length
+            const total = lmb + rmb
+            if (lmb !== lastEmittedLmb || rmb !== lastEmittedRmb) {
+              lastEmittedLmb = lmb
+              lastEmittedRmb = rmb
+              overlayWin.webContents.send('overlay:cps-update', { lmb, rmb, total })
+            }
           }
-        }, 50)
+        }, 40)
       }
     } catch (err) {
       console.error('[InputService] Failed to start input listeners:', err)
@@ -99,6 +125,8 @@ export function stopInputService() {
   rightClicks = []
   lastEmittedLmb = 0
   lastEmittedRmb = 0
+  pendingDispatch = false
+  latestButtonClicked = undefined
   isScoreboardOpen = false
   overlayWin = null
 }
