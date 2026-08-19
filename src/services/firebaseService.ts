@@ -43,9 +43,38 @@ const db = getFirestore(app)
 
 let currentUserUnsub: Unsubscribe | null = null
 let friendsQueryUnsub: Unsubscribe | null = null
+let presenceHeartbeatInterval: any = null
+let friendStalenessInterval: any = null
+let cachedFriendDocs: any[] = []
+
 const knownFriendIds = new Set<string>()
 const knownRequestUids = new Set<string>()
 let isInitialized = false
+
+/**
+ * Starts active heartbeat keeping user presence alive every 25 seconds
+ */
+export function startPresenceHeartbeat() {
+  if (presenceHeartbeatInterval) clearInterval(presenceHeartbeatInterval)
+  
+  presenceHeartbeatInterval = setInterval(() => {
+    const currentUid = auth.currentUser?.uid
+    if (!currentUid) return
+    const activeGame = useGameStore.getState().activeGame
+    updateFirebasePresence(activeGame ? 'ingame' : 'online', activeGame?.name || null)
+  }, 25000)
+}
+
+export function stopPresenceHeartbeat() {
+  if (presenceHeartbeatInterval) {
+    clearInterval(presenceHeartbeatInterval)
+    presenceHeartbeatInterval = null
+  }
+  if (friendStalenessInterval) {
+    clearInterval(friendStalenessInterval)
+    friendStalenessInterval = null
+  }
+}
 
 /**
  * Generates a clean unique Eclipse friend code (e.g. ECL-7X9K)
@@ -73,6 +102,7 @@ export async function initFirebaseSocial() {
   try {
     onAuthStateChanged(auth, async (user: User | null) => {
       if (!user) {
+        stopPresenceHeartbeat()
         try {
           await signInAnonymously(auth)
         } catch (authErr) {
@@ -83,6 +113,7 @@ export async function initFirebaseSocial() {
 
       await syncMyProfile(user)
       listenToMyUserDoc(user.uid)
+      startPresenceHeartbeat()
     })
   } catch (err) {
     console.warn('[Firebase] Init error:', err)
@@ -108,13 +139,16 @@ export async function syncMyProfile(user?: User | null) {
     const userRef = doc(db, 'users', activeUser.uid)
     const snap = await getDoc(userRef)
 
+    const isIngame = !!useGameStore.getState().activeGame
+    const activeGameName = useGameStore.getState().activeGame?.name || null
+
     const baseData = {
       uid: activeUser.uid,
       friendCode: friendCode.toUpperCase().trim(),
       username: settings.username || 'Eclipse Player',
       avatarUrl: settings.avatarUrl || '',
-      status: useGameStore.getState().activeGame ? 'ingame' : 'online',
-      currentGame: useGameStore.getState().activeGame?.name || null,
+      status: isIngame ? 'ingame' : 'online',
+      currentGame: isIngame ? activeGameName : null,
       lastSeen: serverTimestamp(),
     }
 
@@ -186,6 +220,60 @@ function listenToMyUserDoc(uid: string) {
 }
 
 /**
+ * Evaluates friend documents and determines live online/ingame/offline status based on heartbeat
+ */
+function evaluateFriendsPresence(docs: any[]) {
+  const now = Date.now()
+  const updatedFriends: EclipseFriend[] = []
+
+  docs.forEach((docItem) => {
+    const u = typeof docItem.data === 'function' ? docItem.data() : docItem
+    if (!u || !u.uid) return
+
+    let lastSeenMs = 0
+    if (u.lastSeen) {
+      if (typeof u.lastSeen.toMillis === 'function') {
+        lastSeenMs = u.lastSeen.toMillis()
+      } else if (typeof u.lastSeen.toDate === 'function') {
+        lastSeenMs = u.lastSeen.toDate().getTime()
+      } else if (typeof u.lastSeen === 'number') {
+        lastSeenMs = u.lastSeen
+      } else if (u.lastSeen.seconds) {
+        lastSeenMs = u.lastSeen.seconds * 1000
+      }
+    }
+
+    // Heartbeat Timeout: If lastSeen is older than 60s or missing, mark as OFFLINE
+    const isTimedOut = !lastSeenMs || (now - lastSeenMs > 60 * 1000)
+
+    let status: 'online' | 'offline' | 'ingame' = 'offline'
+    if (!isTimedOut) {
+      status = (u.status as 'online' | 'offline' | 'ingame') || 'offline'
+    }
+
+    // Ingame check: currentGame is only valid if status is active 'ingame'
+    const currentGame = (status === 'ingame' && u.currentGame) ? u.currentGame : undefined
+
+    const friendObj: EclipseFriend = {
+      id: u.uid,
+      username: u.username || 'Eclipse Player',
+      avatarUrl: u.avatarUrl || '',
+      status,
+      currentGame,
+      level: u.level || 1,
+      steamProfileUrl: u.steamProfileUrl || undefined,
+    }
+
+    updatedFriends.push(friendObj)
+    knownFriendIds.add(friendObj.id)
+  })
+
+  useGameStore.getState().updateSettings({
+    eclipseFriends: updatedFriends
+  })
+}
+
+/**
  * Sets up a real-time Firestore query for all friend user documents.
  * Updates Zustand store whenever any friend comes online, goes offline, or starts playing a game!
  */
@@ -194,8 +282,13 @@ function listenToFriendsPresence(friendUids: string[]) {
     friendsQueryUnsub()
     friendsQueryUnsub = null
   }
+  if (friendStalenessInterval) {
+    clearInterval(friendStalenessInterval)
+    friendStalenessInterval = null
+  }
 
   if (!friendUids || friendUids.length === 0) {
+    cachedFriendDocs = []
     useGameStore.getState().updateSettings({ eclipseFriends: [] })
     return
   }
@@ -204,30 +297,25 @@ function listenToFriendsPresence(friendUids: string[]) {
   const targetUids = friendUids.slice(0, 30)
   const q = query(collection(db, 'users'), where('uid', 'in', targetUids))
 
+  // Watchdog timer: re-evaluates heartbeat every 10 seconds locally
+  friendStalenessInterval = setInterval(() => {
+    if (cachedFriendDocs.length > 0) {
+      evaluateFriendsPresence(cachedFriendDocs)
+    }
+  }, 10000)
+
   friendsQueryUnsub = onSnapshot(q, (snapshot) => {
-    const liveFriendsMap = new Map<string, EclipseFriend>()
+    cachedFriendDocs = snapshot.docs.map(d => d.data())
 
     snapshot.docs.forEach((docItem) => {
       const u = docItem.data()
-      const friendObj: EclipseFriend = {
-        id: u.uid,
-        username: u.username || 'Eclipse Player',
-        avatarUrl: u.avatarUrl || '',
-        status: (u.status as 'online' | 'offline' | 'ingame') || 'offline',
-        currentGame: u.currentGame || undefined,
-        level: u.level || 1,
-        steamProfileUrl: u.steamProfileUrl || undefined,
-      }
-      liveFriendsMap.set(u.uid, friendObj)
-
-      // Notify if an existing friend request was accepted by the other person!
       if (!knownFriendIds.has(u.uid) && knownFriendIds.size > 0) {
         const lang = useGameStore.getState().settings.language === 'de' ? 'de' : 'en'
         sendAppNotification({
           title: lang === 'de' ? 'Freundschaftsanfrage angenommen! 🎉' : 'Friend Request Accepted! 🎉',
           body: lang === 'de' 
-            ? `${friendObj.username} ist jetzt in deiner Eclipse-Freundesliste!` 
-            : `${friendObj.username} is now in your Eclipse friends list!`,
+            ? `${u.username || 'Ein Spieler'} ist jetzt in deiner Eclipse-Freundesliste!` 
+            : `${u.username || 'A player'} is now in your Eclipse friends list!`,
           type: 'success',
           playSound: true,
           duration: 6000
@@ -235,15 +323,7 @@ function listenToFriendsPresence(friendUids: string[]) {
       }
     })
 
-    const updatedFriends: EclipseFriend[] = []
-    liveFriendsMap.forEach((lf) => {
-      updatedFriends.push(lf)
-      knownFriendIds.add(lf.id)
-    })
-
-    useGameStore.getState().updateSettings({
-      eclipseFriends: updatedFriends
-    })
+    evaluateFriendsPresence(cachedFriendDocs)
   }, (err) => {
     console.warn('[Firebase] listenToFriendsPresence error:', err)
   })
@@ -544,9 +624,10 @@ export async function updateFirebasePresence(status: 'online' | 'ingame' | 'offl
 
   try {
     const userRef = doc(db, 'users', currentUid)
+    const activeGameName = status === 'ingame' && gameName ? gameName : null
     await updateDoc(userRef, {
       status,
-      currentGame: gameName || null,
+      currentGame: activeGameName,
       lastSeen: serverTimestamp()
     })
   } catch (err) {

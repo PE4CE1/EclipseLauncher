@@ -27,7 +27,11 @@ export function ProfileView() {
   const steamBadgesCount = friend ? undefined : settings.steamBadgesCount
   const steamFavoriteBadge = friend ? friend.steamFavoriteBadge : settings.steamFavoriteBadge
   const steamRecentGames = friend ? friend.steamRecentGames : settings.steamRecentGames
-  const friendStatusText = friend?.status === 'online' ? t('online') : friend?.status === 'ingame' ? 'In-Game' : t('offline')
+  const friendStatusText = friend?.status === 'ingame' 
+    ? (friend.currentGame ? `In-Game: ${friend.currentGame}` : 'In-Game')
+    : friend?.status === 'online' 
+      ? t('online') 
+      : t('offline')
   const isOnline = friend ? friend.status !== 'offline' : true
 
   // Combine unique games for playtime calculations, preserving playTimeMinutes from both lists
