@@ -226,6 +226,10 @@ if (startupSettings.hardwareAcceleration === false) {
   app.disableHardwareAcceleration()
 }
 
+// Enable background gamepad polling so gamepads work when games are focused
+app.commandLine.appendSwitch('enable-gamepad-background-polling')
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
+
 let mainWindow: BrowserWindow | null = null
 let friendsWindow: BrowserWindow | null = null
 let tray: Tray | null = null
