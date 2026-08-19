@@ -97,7 +97,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
     position: absolute;
 }
 .ps5 .back { left: 0; }
-.ps5 .start { right: 0; background-position: 27px 0; }
+.ps5 .start { right: 0; background-position: -28px 0; }
 .ps5 .dpad {
     width: 144px;
     height: 144px;
@@ -118,7 +118,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
     top: 0;
 }
 .ps5 .face.down {
-    background-position: -54px 63px;
+    background-position: -54px -68px;
     width: 52px;
     height: 63px;
     left: 46px;
@@ -370,7 +370,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 .xbox .stick.right { top: 113px; left: 288px; }
 .xbox .dpad { width: 110px; height: 111px; top: 345px; left: 223px; position: absolute; }
 .xbox .face { background: url(https://gamepadviewer.com/xbox-assets/dpad.svg) no-repeat; position: absolute; opacity: 0; }
-.xbox .face.up { background-position: 34px 0; left: 38px; top: 0px; width: 34px; height: 56px; }
+.xbox .face.up { background-position: -36px 0; left: 38px; top: 0px; width: 34px; height: 56px; }
 .xbox .face.down { background-position: 0 0; left: 38px; bottom: 0; width: 34px; height: 56px; }
 .xbox .face.left { background-position: 0 -93px; width: 55px; height: 35px; top: 38px; left: 0; }
 .xbox .face.right { background-position: 0 -57px; width: 55px; height: 35px; top: 38px; right: 0; }
@@ -397,7 +397,7 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 .ds4 .arrows { width: 352px; height: 46px; top: 142px; left: 227px; position: absolute; }
 .ds4 .back, .ds4 .start { background: url(https://gamepadviewer.com/${assetFolder}/start.svg) no-repeat; width: 28px; height: 46px; opacity: 0; position: absolute; }
 .ds4 .back { left: 0; }
-.ds4 .start { right: 0; background-position: 28px 0; }
+.ds4 .start { right: 0; transform: rotateY(180deg); }
 .ds4 .abxy { width: 170px; height: 171px; top: 159px; left: 567px; position: absolute; }
 .ds4 .button { width: 55px; height: 55px; background: url(https://gamepadviewer.com/${assetFolder}/face.svg) no-repeat; position: absolute; opacity: 1; }
 .ds4 .button.pressed { background-position-y: 55px; }
