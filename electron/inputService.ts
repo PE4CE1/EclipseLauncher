@@ -16,6 +16,9 @@ let lastEmittedRmb = 0
 let pendingDispatch = false
 let latestButtonClicked: 'lmb' | 'rmb' | undefined = undefined
 
+let lastLmbClickTime = 0
+let lastRmbClickTime = 0
+
 function pruneClicks(now: number) {
   while (leftClicks.length > 0 && now - leftClicks[0] > 1000) {
     leftClicks.shift()
@@ -50,10 +53,49 @@ function scheduleCpsUpdate(button?: 'lmb' | 'rmb') {
   setImmediate(flushCps)
 }
 
+const handleKeyEvent = (e: any, isDown: boolean) => {
+  if (!overlayWin || overlayWin.isDestroyed()) return
+  
+  // Find key name from UiohookKey enum based on keycode
+  const keyName = Object.keys(UiohookKey).find(k => (UiohookKey as any)[k] === e.keycode)
+  const pressedKey = keyName?.toUpperCase()
+  const bindKey = kbBind.toUpperCase()
+
+  if (pressedKey === bindKey) {
+    if (isDown !== isScoreboardOpen) {
+      isScoreboardOpen = isDown
+      overlayWin.webContents.send('rl:scoreboard-toggle', isDown)
+    }
+  }
+}
+
+const handleMouseDown = (e: any) => {
+  if (!overlayWin || overlayWin.isDestroyed()) return
+  const now = Date.now()
+  if (e.button === 1) {
+    // 10ms hardware debounce to prevent duplicate micro-switch bounce events
+    if (now - lastLmbClickTime >= 10) {
+      lastLmbClickTime = now
+      leftClicks.push(now)
+      scheduleCpsUpdate('lmb')
+    }
+  } else if (e.button === 2) {
+    if (now - lastRmbClickTime >= 10) {
+      lastRmbClickTime = now
+      rightClicks.push(now)
+      scheduleCpsUpdate('rmb')
+    }
+  }
+}
+
 export function startInputService(overlayWindow: BrowserWindow) {
   overlayWin = overlayWindow
+
   if (!isHookRunning) {
     try {
+      // Remove any stale listeners first to guarantee strictly ONE listener
+      uIOhook.removeAllListeners()
+
       // FAST-PATH: Override uIOhook.handler to immediately drop mousemove (9), mousewheel (11), click (6)
       // This prevents 1000Hz gaming mouse movement from triggering any V8/JS overhead or micro-stutters in 3D games!
       ;(uIOhook as any).handler = function (e: any) {
@@ -73,34 +115,6 @@ export function startInputService(overlayWindow: BrowserWindow) {
         if (e.type === 5) {
           this.emit('keyup', e)
           return
-        }
-      }
-
-      const handleKeyEvent = (e: any, isDown: boolean) => {
-        if (!overlayWin || overlayWin.isDestroyed()) return
-        
-        // Find key name from UiohookKey enum based on keycode
-        const keyName = Object.keys(UiohookKey).find(k => (UiohookKey as any)[k] === e.keycode)
-        const pressedKey = keyName?.toUpperCase()
-        const bindKey = kbBind.toUpperCase()
-
-        if (pressedKey === bindKey) {
-          if (isDown !== isScoreboardOpen) {
-            isScoreboardOpen = isDown
-            overlayWin.webContents.send('rl:scoreboard-toggle', isDown)
-          }
-        }
-      }
-
-      const handleMouseDown = (e: any) => {
-        if (!overlayWin || overlayWin.isDestroyed()) return
-        const now = Date.now()
-        if (e.button === 1) {
-          leftClicks.push(now)
-          scheduleCpsUpdate('lmb')
-        } else if (e.button === 2) {
-          rightClicks.push(now)
-          scheduleCpsUpdate('rmb')
         }
       }
 
@@ -136,7 +150,10 @@ export function startInputService(overlayWindow: BrowserWindow) {
 
 export function stopInputService() {
   if (isHookRunning) {
-    uIOhook.stop()
+    try {
+      uIOhook.removeAllListeners()
+      uIOhook.stop()
+    } catch (_) {}
     isHookRunning = false
   }
   if (cpsDecayInterval) {
@@ -147,6 +164,8 @@ export function stopInputService() {
   rightClicks = []
   lastEmittedLmb = 0
   lastEmittedRmb = 0
+  lastLmbClickTime = 0
+  lastRmbClickTime = 0
   pendingDispatch = false
   latestButtonClicked = undefined
   isScoreboardOpen = false
