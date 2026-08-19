@@ -5,9 +5,10 @@ import { RobloxTimer } from './widgets/RobloxTimer'
 import { RobloxCPS } from './widgets/RobloxCPS'
 import { RocketLeagueHUD } from './widgets/RocketLeagueHUD'
 import { RLSteamAvatarHUD } from './widgets/RLSteamAvatarHUD'
+import { ControllerOverlay } from './widgets/ControllerOverlay'
 
 type Pos = { xPct: number; yPct: number }
-type Positions = { performance: Pos; robloxTimer: Pos; robloxCps: Pos; crosshair: Pos; rlHud: Pos; rlSteamAvatar: Pos }
+type Positions = { performance: Pos; robloxTimer: Pos; robloxCps: Pos; crosshair: Pos; rlHud: Pos; rlSteamAvatar: Pos; rlController: Pos }
 
 const DEFAULT_POSITIONS: Positions = {
   performance: { xPct: 0.02, yPct: 0.03 },
@@ -16,6 +17,7 @@ const DEFAULT_POSITIONS: Positions = {
   crosshair: { xPct: 0.5, yPct: 0.5 },
   rlHud: { xPct: 0.02, yPct: 0.03 },
   rlSteamAvatar: { xPct: 0.02, yPct: 0.2 },
+  rlController: { xPct: 0.78, yPct: 0.65 },
 }
 
 const WIDGET_APPROX_SIZE: Record<string, { w: number; h: number }> = {
@@ -25,6 +27,7 @@ const WIDGET_APPROX_SIZE: Record<string, { w: number; h: number }> = {
   crosshair: { w: 30, h: 30 },
   rlHud: { w: 210, h: 155 },
   rlSteamAvatar: { w: 120, h: 120 },
+  rlController: { w: 380, h: 270 },
 }
 
 export function OverlayApp() {
@@ -294,6 +297,13 @@ export function OverlayApp() {
           steamUrl={settings.steamProfileUrl} 
           scale={settings.rlSteamAvatarScale} 
           controllerKey={settings.rlScoreboardKeyCtrl || 'Button 8'}
+          isEditMode={editMode}
+        />
+      )}
+      {settings.overlayRLController && (editMode || displayGame?.name === 'Rocket League') && renderWidget('rlController',
+        <ControllerOverlay 
+          url={settings.rlControllerUrl} 
+          scale={settings.rlControllerScale} 
           isEditMode={editMode}
         />
       )}

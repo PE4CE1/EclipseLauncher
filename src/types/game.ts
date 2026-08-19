@@ -171,9 +171,15 @@ export interface AppSettings {
   overlayRobloxCps: boolean
   overlayRLHud: boolean
   overlayRLSteam: boolean
+  overlayRLController?: boolean
   rlPlaylist: '1v1' | '2v2' | '3v3'
   trnApiKey: string
   steamProfileUrl: string
+  rlScoreboardKeyKb?: string
+  rlScoreboardKeyCtrl?: string
+  rlSteamAvatarScale?: number
+  rlControllerUrl?: string
+  rlControllerScale?: number
   steamLevel?: number
   steamGamesCount?: number
   steamBadgesCount?: number
@@ -191,9 +197,6 @@ export interface AppSettings {
   friendCode?: string
   profileShowPlaytime?: boolean
   profileShowSteamStats?: boolean
-  rlScoreboardKeyKb: string
-  rlScoreboardKeyCtrl: string
-  rlSteamAvatarScale: number
   overlayPositions: {
     performance: { xPct: number; yPct: number }
     robloxTimer: { xPct: number; yPct: number }
@@ -201,6 +204,7 @@ export interface AppSettings {
     crosshair: { xPct: number; yPct: number }
     rlHud: { xPct: number; yPct: number }
     rlSteamAvatar: { xPct: number; yPct: number }
+    rlController?: { xPct: number; yPct: number }
   }
 }
 

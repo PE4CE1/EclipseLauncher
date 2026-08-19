@@ -512,7 +512,10 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
   overlayRLSteam, onSteamToggle,
   rlScoreboardKeyKb, onKeyKbChange,
   rlScoreboardKeyCtrl, onKeyCtrlChange,
-  rlSteamAvatarScale, onScaleChange
+  rlSteamAvatarScale, onScaleChange,
+  overlayRLController, onControllerToggle,
+  rlControllerUrl, onControllerUrlChange,
+  rlControllerScale, onControllerScaleChange,
 }: {
   rlHud: boolean
   onToggle: () => void
@@ -530,6 +533,12 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
   onKeyCtrlChange: (key: string) => void
   rlSteamAvatarScale: number
   onScaleChange: (scale: number) => void
+  overlayRLController: boolean
+  onControllerToggle: () => void
+  rlControllerUrl: string
+  onControllerUrlChange: (url: string) => void
+  rlControllerScale: number
+  onControllerScaleChange: (scale: number) => void
 }) {
   const [open, setOpen] = useState(false)
   const [showKey, setShowKey] = useState(false)
@@ -539,6 +548,8 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
   const [listenKb, setListenKb] = useState(false)
   const [listenCtrl, setListenCtrl] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+
+  const activeSubCount = (rlHud ? 1 : 0) + (overlayRLSteam ? 1 : 0) + (overlayRLController ? 1 : 0)
 
   useEffect(() => {
     if (steamProfileUrl) {
@@ -759,6 +770,86 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                 </div>
               </div>
             </div>
+
+            {/* Controller Overlay (GamepadViewer) */}
+            <div className="px-4 pb-4 pt-2 border-t border-white/[0.04] mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[11px] font-bold text-white flex items-center gap-2">
+                  <Gamepad2 size={14} className="text-white" />
+                  Live Controller HUD (GamepadViewer)
+                </div>
+                <Toggle checked={overlayRLController} onChange={onControllerToggle} />
+              </div>
+              <div className="text-[10px] text-white/50 mb-3 leading-relaxed">
+                Live controller visualization (sticks, triggers, buttons) in-game via GamepadViewer.
+              </div>
+
+              <div className="space-y-3">
+                {/* Preset Skins */}
+                <div>
+                  <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Controller Skin Preset</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { label: 'PS4 White/Red', url: 'https://gamepadviewer.com/?p=1&s=3' },
+                      { label: 'PS4 Classic', url: 'https://gamepadviewer.com/?p=1&s=4' },
+                      { label: 'Xbox One', url: 'https://gamepadviewer.com/?p=1&s=2' },
+                    ].map(p => (
+                      <button
+                        key={p.url}
+                        type="button"
+                        onClick={() => onControllerUrlChange(p.url)}
+                        className={`px-2 py-1.5 rounded-lg text-[10px] font-medium border transition-colors ${
+                          rlControllerUrl === p.url
+                            ? 'bg-white text-black border-white font-semibold'
+                            : 'bg-white/[0.04] border-white/[0.08] text-white/70 hover:text-white'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom GamepadViewer URL */}
+                <div>
+                  <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>GamepadViewer URL / Custom Skin</span>
+                    <button
+                      type="button"
+                      onClick={() => (window.electronAPI as any)?.openUrl?.('https://gamepadviewer.com')}
+                      className="text-[9px] text-white/50 hover:text-white transition-colors"
+                    >
+                      gamepadviewer.com ↗
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={rlControllerUrl}
+                    onChange={e => onControllerUrlChange(e.target.value)}
+                    placeholder="https://gamepadviewer.com/?p=1&s=3"
+                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                  />
+                  <div className="text-[9px] text-white/40 mt-1">
+                    💡 Drücke im Spiel einmal eine beliebige Taste auf deinem Controller, um GamepadViewer zu aktivieren.
+                  </div>
+                </div>
+
+                {/* Controller Scale */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">Scale</div>
+                    <div className="text-[10px] text-white font-mono">{rlControllerScale}%</div>
+                  </div>
+                  <input
+                    type="range"
+                    min="50" max="150" step="5"
+                    value={rlControllerScale}
+                    onChange={e => onControllerScaleChange(Number(e.target.value))}
+                    className="w-full accent-white h-1 bg-white/[0.05] rounded-full appearance-none cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -783,7 +874,8 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
     settings.overlayCps ?? settings.overlayRobloxCps,
     settings.overlayRobloxTimer, 
     settings.overlayRLHud,
-    settings.overlayRLSteam
+    settings.overlayRLSteam,
+    settings.overlayRLController,
   ].filter(Boolean).length
 
   return (
@@ -880,6 +972,12 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
             onKeyCtrlChange={(k) => save('rlScoreboardKeyCtrl', k)}
             rlSteamAvatarScale={settings.rlSteamAvatarScale || 85}
             onScaleChange={(s) => save('rlSteamAvatarScale', s)}
+            overlayRLController={settings.overlayRLController || false}
+            onControllerToggle={() => save('overlayRLController', !settings.overlayRLController)}
+            rlControllerUrl={settings.rlControllerUrl || 'https://gamepadviewer.com/?p=1&s=3'}
+            onControllerUrlChange={(url) => save('rlControllerUrl', url)}
+            rlControllerScale={settings.rlControllerScale || 80}
+            onControllerScaleChange={(s) => save('rlControllerScale', s)}
           />
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-white/[0.06]">
             <div className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.07] flex items-center justify-center text-white/40 text-sm font-semibold">+</div>

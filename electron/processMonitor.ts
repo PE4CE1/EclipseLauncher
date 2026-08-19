@@ -37,6 +37,7 @@ function getAppSettings() {
     crosshair: { xPct: 0.5, yPct: 0.5 },
     rlHud: { xPct: 0.02, yPct: 0.03 },
     rlSteamAvatar: { xPct: 0.02, yPct: 0.90 }, // Bottom-left default
+    rlController: { xPct: 0.78, yPct: 0.65 }, // Bottom-right default
   }
   const defaultMetrics = { fps: true, cpu: true, ram: true, gpu: true, ping: false, time: true }
 
@@ -56,12 +57,15 @@ function getAppSettings() {
         overlayRobloxCps: s.overlayCps ?? s.overlayRobloxCps ?? false,
         overlayRLHud: s.overlayRLHud ?? false,
         overlayRLSteam: s.overlayRLSteam ?? false,
+        overlayRLController: s.overlayRLController ?? false,
         rlPlaylist: s.rlPlaylist ?? '2v2',
         trnApiKey: s.trnApiKey ?? '',
         steamProfileUrl: s.steamProfileUrl ?? '',
         rlScoreboardKeyKb: s.rlScoreboardKeyKb ?? 'Tab',
         rlScoreboardKeyCtrl: s.rlScoreboardKeyCtrl ?? 'Select',
         rlSteamAvatarScale: s.rlSteamAvatarScale ?? 85,
+        rlControllerUrl: s.rlControllerUrl ?? 'https://gamepadviewer.com/?p=1&s=3',
+        rlControllerScale: s.rlControllerScale ?? 80,
         overlayMetrics: s.overlayMetrics ?? defaultMetrics,
         crosshairConfig: s.crosshairConfig ?? null,
         overlayPositions: s.overlayPositions ?? defaultPositions,
@@ -73,8 +77,10 @@ function getAppSettings() {
 
   cachedSettings = {
     discordEnabled: true, showDownloads: true, showIdle: true,
-    overlayPerformance: false, overlayCrosshair: false, overlayGeneralAlwaysOn: false, overlayCps: false, overlayRobloxTimer: false, overlayRobloxCps: false, overlayRLHud: false, overlayRLSteam: false, rlPlaylist: '2v2' as const, trnApiKey: '',
+    overlayPerformance: false, overlayCrosshair: false, overlayGeneralAlwaysOn: false, overlayCps: false, overlayRobloxTimer: false, overlayRobloxCps: false, 
+    overlayRLHud: false, overlayRLSteam: false, overlayRLController: false, rlPlaylist: '2v2' as const, trnApiKey: '',
     steamProfileUrl: '', rlScoreboardKeyKb: 'Tab', rlScoreboardKeyCtrl: 'Select', rlSteamAvatarScale: 85,
+    rlControllerUrl: 'https://gamepadviewer.com/?p=1&s=3', rlControllerScale: 80,
     overlayMetrics: defaultMetrics,
     crosshairConfig: null,
     overlayPositions: defaultPositions,
@@ -379,7 +385,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
 
         // Check if overlay should be visible for active game
         const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayRobloxCps
-        const hasActiveGameOverlay = hasGeneralOverlay || (detectedName === 'Roblox' && appSettings.overlayRobloxTimer) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam))
+        const hasActiveGameOverlay = hasGeneralOverlay || (detectedName === 'Roblox' && appSettings.overlayRobloxTimer) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam || appSettings.overlayRLController))
 
         if (hasActiveGameOverlay) {
           showOverlay({ 
@@ -394,6 +400,9 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
               robloxTimer: appSettings.overlayRobloxTimer && detectedName === 'Roblox',
               rlHud: isRL && appSettings.overlayRLHud,
               overlayRLSteam: isRL && appSettings.overlayRLSteam,
+              overlayRLController: isRL && appSettings.overlayRLController,
+              rlControllerUrl: appSettings.rlControllerUrl,
+              rlControllerScale: appSettings.rlControllerScale,
               metrics: appSettings.overlayMetrics,
               crosshairConfig: appSettings.crosshairConfig,
               steamProfileUrl: appSettings.steamProfileUrl,
@@ -509,7 +518,7 @@ export function syncOverlaySettingsLive() {
 
   if (currentGame) {
     const isRL = currentGame.name === 'Rocket League'
-    const shouldShow = hasGeneralOverlay || (currentGame.name === 'Roblox' && appSettings.overlayRobloxTimer) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam))
+    const shouldShow = hasGeneralOverlay || (currentGame.name === 'Roblox' && appSettings.overlayRobloxTimer) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam || appSettings.overlayRLController))
 
     if (shouldShow) {
       showOverlay({
@@ -524,6 +533,9 @@ export function syncOverlaySettingsLive() {
           robloxTimer: appSettings.overlayRobloxTimer && currentGame.name === 'Roblox',
           rlHud: isRL && appSettings.overlayRLHud,
           overlayRLSteam: isRL && appSettings.overlayRLSteam,
+          overlayRLController: isRL && appSettings.overlayRLController,
+          rlControllerUrl: appSettings.rlControllerUrl,
+          rlControllerScale: appSettings.rlControllerScale,
           metrics: appSettings.overlayMetrics,
           crosshairConfig: appSettings.crosshairConfig,
           steamProfileUrl: appSettings.steamProfileUrl,
