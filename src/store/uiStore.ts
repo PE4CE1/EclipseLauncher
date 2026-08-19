@@ -2,6 +2,15 @@ import { create } from 'zustand'
 import type { ActiveView } from '../types/game'
 import type { SteamGame, SteamAppDetails } from '../services/steamService'
 
+export interface EclipseNotificationItem {
+  id: string
+  title: string
+  message: string
+  type: 'success' | 'error' | 'info'
+  timestamp: number
+  read: boolean
+}
+
 interface UIStore {
   activeView: ActiveView
   setActiveView: (view: ActiveView) => void
@@ -61,8 +70,14 @@ interface UIStore {
   toggleCurrency: () => void
 
   notification: { title?: string; message: string; type: 'success' | 'error' | 'info'; duration?: number } | null
+  notificationHistory: EclipseNotificationItem[]
+  isNotificationDropdownOpen: boolean
+  setIsNotificationDropdownOpen: (v: boolean) => void
+  toggleNotificationDropdown: () => void
   showNotification: (message: string, type?: 'success' | 'error' | 'info', title?: string, duration?: number) => void
   clearNotification: () => void
+  markAllNotificationsRead: () => void
+  clearNotificationHistory: () => void
 
   isEclipseCinemaActive: boolean
   triggerEclipseCinema: () => void
@@ -194,14 +209,63 @@ export const useUIStore = create<UIStore>((set) => ({
   setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
 
   notification: null,
+  notificationHistory: (() => {
+    try {
+      const saved = localStorage.getItem('eclipse_notification_history')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })(),
+  isNotificationDropdownOpen: false,
+  setIsNotificationDropdownOpen: (v) => set({ isNotificationDropdownOpen: v }),
+  toggleNotificationDropdown: () => set((state) => ({ isNotificationDropdownOpen: !state.isNotificationDropdownOpen })),
+
   showNotification: (message, type = 'info', title, duration = 5000) => {
     if (notificationTimer) clearTimeout(notificationTimer)
-    set({ notification: { message, type, title, duration } })
+    
+    // Add to persistent notification history
+    const newItem: EclipseNotificationItem = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      title: title || 'Eclipse Launcher',
+      message,
+      type,
+      timestamp: Date.now(),
+      read: false
+    }
+
+    set((state) => {
+      const updatedHistory = [newItem, ...state.notificationHistory].slice(0, 50)
+      try {
+        localStorage.setItem('eclipse_notification_history', JSON.stringify(updatedHistory))
+      } catch {}
+      return {
+        notification: { message, type, title, duration },
+        notificationHistory: updatedHistory
+      }
+    })
+
     notificationTimer = setTimeout(() => {
       set({ notification: null })
       notificationTimer = null
     }, duration)
   },
+
+  markAllNotificationsRead: () => set((state) => {
+    const updated = state.notificationHistory.map(n => ({ ...n, read: true }))
+    try {
+      localStorage.setItem('eclipse_notification_history', JSON.stringify(updated))
+    } catch {}
+    return { notificationHistory: updated }
+  }),
+
+  clearNotificationHistory: () => {
+    try {
+      localStorage.removeItem('eclipse_notification_history')
+    } catch {}
+    set({ notificationHistory: [] })
+  },
+
   clearNotification: () => {
     if (notificationTimer) {
       clearTimeout(notificationTimer)

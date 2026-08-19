@@ -360,6 +360,20 @@ export default function App() {
     }
   }, [activeGame])
 
+  // Clear presence when closing Eclipse
+  useEffect(() => {
+    const handleUnload = () => {
+      updateFirebasePresence('offline', null)
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    window.addEventListener('pagehide', handleUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload)
+      window.removeEventListener('pagehide', handleUnload)
+      updateFirebasePresence('offline', null)
+    }
+  }, [])
+
   return (
     <div className="flex flex-col h-screen bg-hub-base select-none overflow-hidden relative">
       {/* Custom frameless title bar */}

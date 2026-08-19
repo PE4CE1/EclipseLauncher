@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Minus, Square, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useUIStore } from '../../store/uiStore'
+import { updateFirebasePresence } from '../../services/firebaseService'
 // @ts-ignore
 import eclipseLogo from '../../assets/logo.png'
 
@@ -9,7 +10,14 @@ const isElectron = !!window.electronAPI
 
 function minimize() { isElectron && window.electronAPI.minimizeWindow() }
 function maximize() { isElectron && window.electronAPI.maximizeWindow() }
-function close()    { isElectron && window.electronAPI.closeWindow() }
+async function close() {
+  if (isElectron) {
+    try {
+      await updateFirebasePresence('offline', null)
+    } catch {}
+    window.electronAPI.closeWindow()
+  }
+}
 
 export function TitleBar() {
   const [isHovered, setIsHovered] = useState(false)

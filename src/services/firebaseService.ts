@@ -371,6 +371,24 @@ export async function acceptFriendRequest(fromUid: string): Promise<{ success: b
   const currentUid = auth.currentUser?.uid
   if (!currentUid) return { success: false, error: 'Nicht angemeldet.' }
 
+  // 1. Optimistically update local Zustand store immediately so the UI responds in 0ms
+  const curSettings = useGameStore.getState().settings
+  const curIncoming = curSettings.incomingFriendRequests || []
+  const matchingLocalReq = curIncoming.find(r => r.fromUid === fromUid)
+  const updatedIncoming = curIncoming.filter(r => r.fromUid !== fromUid)
+  const curFriends = curSettings.eclipseFriends || []
+  const newFriendObj: EclipseFriend = {
+    id: fromUid,
+    username: matchingLocalReq?.fromUsername || 'Eclipse Player',
+    avatarUrl: matchingLocalReq?.fromAvatarUrl || '',
+    status: 'online',
+  }
+  const updatedFriends = curFriends.some(f => f.id === fromUid) ? curFriends : [...curFriends, newFriendObj]
+  useGameStore.getState().updateSettings({
+    incomingFriendRequests: updatedIncoming,
+    eclipseFriends: updatedFriends
+  })
+
   try {
     const myRef = doc(db, 'users', currentUid)
     const mySnap = await getDoc(myRef)
@@ -382,23 +400,23 @@ export async function acceptFriendRequest(fromUid: string): Promise<{ success: b
     const targetSnap = await getDoc(targetRef)
     const targetData = targetSnap.data() || {}
 
-    // 1. Add target to my friends, remove from my incomingRequests
+    // 2. Add target to my friends, remove from my incomingRequests in Firestore
     await updateDoc(myRef, {
       friends: arrayUnion(fromUid),
       incomingRequests: incoming.filter(r => r.fromUid !== fromUid)
     })
 
-    // 2. Add me to target's friends, remove from target's outgoingRequests
+    // 3. Add me to target's friends, remove from target's outgoingRequests in Firestore
     const targetOutgoing = Array.isArray(targetData.outgoingRequests) ? targetData.outgoingRequests : []
     await updateDoc(targetRef, {
       friends: arrayUnion(currentUid),
       outgoingRequests: targetOutgoing.filter((r: any) => r.toUid !== currentUid)
     })
 
-    // 3. Mark as known friend so we don't trigger self-notification
+    // 4. Mark as known friend so we don't trigger self-notification
     knownFriendIds.add(fromUid)
 
-    const lang = useGameStore.getState().settings.language === 'de' ? 'de' : 'en'
+    const lang = curSettings.language === 'de' ? 'de' : 'en'
     sendAppNotification({
       title: lang === 'de' ? 'Freundschaftsanfrage angenommen! 🎉' : 'Friend Request Accepted! 🎉',
       body: lang === 'de' 
@@ -421,6 +439,13 @@ export async function acceptFriendRequest(fromUid: string): Promise<{ success: b
 export async function declineFriendRequest(fromUid: string): Promise<{ success: boolean; error?: string }> {
   const currentUid = auth.currentUser?.uid
   if (!currentUid) return { success: false, error: 'Nicht angemeldet.' }
+
+  // Optimistic local removal
+  const curSettings = useGameStore.getState().settings
+  const curIncoming = curSettings.incomingFriendRequests || []
+  useGameStore.getState().updateSettings({
+    incomingFriendRequests: curIncoming.filter(r => r.fromUid !== fromUid)
+  })
 
   try {
     const myRef = doc(db, 'users', currentUid)
