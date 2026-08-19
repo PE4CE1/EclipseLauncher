@@ -788,18 +788,19 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                 {/* Preset Skins */}
                 <div>
                   <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Controller Skin Preset</div>
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-4 gap-1.5">
                     {[
-                      { label: 'PS4 White/Red', url: 'https://gamepadviewer.com/?p=1&s=3' },
-                      { label: 'PS4 Classic Black', url: 'https://gamepadviewer.com/?p=1&s=4' },
-                      { label: 'Xbox One', url: 'https://gamepadviewer.com/?p=1&s=2' },
+                      { label: 'PS4 White/Red', url: 'https://gamepadviewer.com/?p=1&s=8' },
+                      { label: 'PS4 Classic', url: 'https://gamepadviewer.com/?p=1&s=5' },
+                      { label: 'Xbox One', url: 'https://gamepadviewer.com/?p=1&s=1' },
+                      { label: 'Xbox 360', url: 'https://gamepadviewer.com/?p=1&s=4' },
                     ].map(p => (
                       <button
                         key={p.label}
                         type="button"
                         onClick={() => onControllerUrlChange(p.url)}
                         className={`px-2 py-1.5 rounded-lg text-[10px] font-medium border transition-colors ${
-                          (rlControllerUrl || 'https://gamepadviewer.com/?p=1&s=3') === p.url
+                          (rlControllerUrl || 'https://gamepadviewer.com/?p=1&s=8') === p.url
                             ? 'bg-white text-black border-white font-semibold'
                             : 'bg-white/[0.04] border-white/[0.08] text-white/70 hover:text-white'
                         }`}
@@ -824,9 +825,9 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                   </div>
                   <input
                     type="text"
-                    value={rlControllerUrl || 'https://gamepadviewer.com/?p=1&s=3'}
+                    value={rlControllerUrl || 'https://gamepadviewer.com/?p=1&s=8'}
                     onChange={e => onControllerUrlChange(e.target.value)}
-                    placeholder="https://gamepadviewer.com/?p=1&s=3"
+                    placeholder="https://gamepadviewer.com/?p=1&s=8"
                     className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
                   />
                   <div className="text-[9px] text-white/40 mt-1">

@@ -12,7 +12,7 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
   isEditMode = false,
 }: ControllerOverlayProps) {
   const finalScale = (scale || 80) / 100
-  const targetUrl = url && url.trim().length > 0 ? url.trim() : 'https://gamepadviewer.com/?p=1&s=3'
+  const targetUrl = url && url.trim().length > 0 ? url.trim() : 'https://gamepadviewer.com/?p=1&s=8'
 
   // Standard GamepadViewer base dimensions are 800x600
   const BASE_WIDTH = 800
