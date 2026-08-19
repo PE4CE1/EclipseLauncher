@@ -407,12 +407,12 @@ function buildControllerHtml(activeSkin: ControllerSkinId): string {
 .ds4 .button.b { background-position-x: -56px; top: 57px; right: 0px; }
 .ds4 .button.x { background-position-x: -112px; top: 57px; left: 0px; }
 .ds4 .button.y { background-position-x: -168px; left: 57px; top: 0px; }
-.ds4 .sticks { width: 361px; height: 105px; top: 308px; left: 228px; position: absolute; }
+.ds4 .sticks { width: 350px; height: 105px; top: 309px; left: 228px; position: absolute; }
 .ds4 .stick { background: url(https://gamepadviewer.com/${assetFolder}/sticks.svg) no-repeat; height: 94px; width: 94px; position: absolute; opacity: 1 !important; }
 .ds4 .stick.pressed.left { background-position-x: -96px; }
 .ds4 .stick.pressed.right { background-position-x: -192px; }
 .ds4 .stick.left { top: 0; left: 0; }
-.ds4 .stick.right { top: 0; left: 267px; }
+.ds4 .stick.right { top: 0; left: 256px; }
 .ds4 .dpad { width: 125px; height: 126px; top: 181px; left: 92px; position: absolute; }
 .ds4 .face { background: url(https://gamepadviewer.com/${assetFolder}/dpad.svg) no-repeat; position: absolute; opacity: 1 !important; }
 .ds4 .face.up { width: 36px; height: 52px; left: 44px; top: 0; background-position: -36px 0; }
