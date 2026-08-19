@@ -7,6 +7,7 @@ import { showOverlay, hideOverlay, getOverlayWindow } from './overlayManager'
 import { startRLService, stopRLService } from './rlService'
 import { addPlaytimeRecord } from './playtimeService'
 import { setActiveGameMetrics } from './metricsService'
+import { startGameFpsMonitor, stopGameFpsMonitor } from './gameFpsService'
 
 interface ActiveDetectedGame {
   name: string
@@ -280,18 +281,23 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
 
     const appSettings = getAppSettings()
 
-    // Run Windows tasklist command to get running process names
+    // Run Windows tasklist command to get running process names + PIDs
     exec('tasklist /FO CSV /NH', { maxBuffer: 1024 * 1024 }, (err, stdout) => {
       const mainWindow = getMainWindow()
       let runningExes = new Set<string>()
+      const runningExePids = new Map<string, number>()
 
       if (!err && stdout) {
         const lines = stdout.split('\r\n')
         for (const line of lines) {
           if (!line) continue
-          const match = line.match(/^"([^"]+)"/)
-          if (match && match[1]) {
-            runningExes.add(match[1].toLowerCase())
+          // CSV format: "name.exe","PID","session","session#","mem usage"
+          const parts = line.match(/"([^"]+)"/g)
+          if (parts && parts.length >= 2) {
+            const exeName = parts[0].replace(/"/g, '').toLowerCase()
+            const pid = parseInt(parts[1].replace(/"/g, ''), 10)
+            runningExes.add(exeName)
+            if (!isNaN(pid)) runningExePids.set(exeName, pid)
           }
         }
       }
@@ -341,7 +347,13 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           const startTime = Date.now()
           currentGame = { name: detectedName, exeName: detectedExe, startTime }
           setActiveGameMetrics(detectedName)
-          
+
+          // Start real external FPS monitor using DWM composition timing (safe, no injection)
+          const gamePid = runningExePids.get(detectedExe) ?? 0
+          if (gamePid > 0) {
+            startGameFpsMonitor(gamePid)
+          }
+
           // Update Discord RPC
           if (appSettings.discordEnabled) {
             setDiscordActivity(detectedName, startTime)
@@ -403,6 +415,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           }
           currentGame = null
           setActiveGameMetrics(null)
+          stopGameFpsMonitor()
           mainWindow?.webContents.send('games:stopped')
           hideOverlay()
         }

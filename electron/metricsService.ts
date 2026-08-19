@@ -1,8 +1,7 @@
 import os from 'os'
 import { BrowserWindow, powerMonitor } from 'electron'
 import { execFile } from 'child_process'
-import * as fs from 'fs'
-import * as path from 'path'
+import { getGameFps } from './gameFpsService'
 
 let prevCpus = os.cpus()
 let metricsInterval: NodeJS.Timeout | null = null
@@ -53,26 +52,7 @@ function queryGpu() {
   })
 }
 
-function getRobloxTargetFps(): number {
-  try {
-    const localAppData = process.env.LOCALAPPDATA || ''
-    const settingsPath = path.join(localAppData, 'Roblox', 'GlobalBasicSettings_13.xml')
-    if (fs.existsSync(settingsPath)) {
-      const xml = fs.readFileSync(settingsPath, 'utf-8')
-      const match = xml.match(/<int name="FramerateCap">(\d+)<\/int>/)
-      if (match && match[1]) {
-        const cap = parseInt(match[1], 10)
-        if (cap > 0) return cap
-      }
-    }
-  } catch (e) {
-    // Ignore error
-  }
-  return 60
-}
-
 let activeGameName: string | null = null
-let fpsVarianceSeed = 0
 
 export function setActiveGameMetrics(gameName: string | null) {
   activeGameName = gameName
@@ -91,30 +71,8 @@ export function startMetricsService(getOverlayWindow: () => BrowserWindow | null
 
     queryGpu()
 
-    let calculatedGameFps: number | undefined = undefined
-    if (activeGameName) {
-      fpsVarianceSeed = (fpsVarianceSeed + 1) % 100
-      const jitterFactor = Math.sin(fpsVarianceSeed * 0.7)
-
-      let baseTarget = 240
-      if (activeGameName === 'Roblox') {
-        const robloxCap = getRobloxTargetFps()
-        baseTarget = robloxCap
-        const jitterRange = robloxCap <= 60 ? 1 : robloxCap <= 144 ? 2 : 4
-        const jitter = Math.round(jitterFactor * jitterRange)
-        const cpuDrop = cpu > 85 ? Math.round((cpu - 85) * (robloxCap / 100)) : 0
-        calculatedGameFps = Math.max(15, Math.min(robloxCap, baseTarget + jitter - cpuDrop))
-      } else if (activeGameName === 'Rocket League') {
-        baseTarget = 240
-        const jitter = Math.round(jitterFactor * 3)
-        const cpuDrop = cpu > 80 ? Math.round((cpu - 80) * 1.5) : 0
-        calculatedGameFps = Math.max(30, Math.min(250, baseTarget + jitter - cpuDrop))
-      } else {
-        baseTarget = 144
-        const jitter = Math.round(jitterFactor * 2)
-        calculatedGameFps = Math.max(30, baseTarget + jitter)
-      }
-    }
+    // Real FPS from DWM composition timing (external, safe, no injection)
+    const gameFps = activeGameName ? (getGameFps() || undefined) : undefined
 
     win.webContents.send('metrics:update', {
       cpu,
@@ -123,7 +81,7 @@ export function startMetricsService(getOverlayWindow: () => BrowserWindow | null
       ramMB: ram.usedMB,
       totalMB: ram.totalMB,
       idleTime,
-      gameFps: calculatedGameFps,
+      gameFps,
     })
   }, 1000)
 }
