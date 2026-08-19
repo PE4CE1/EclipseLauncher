@@ -14,11 +14,11 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
   const finalScale = (scale || 80) / 100
   const targetUrl = url && url.trim().length > 0 ? url.trim() : 'https://gamepadviewer.com/?p=1&s=8'
 
-  // Standard GamepadViewer base dimensions are 800x600
-  const BASE_WIDTH = 800
-  const BASE_HEIGHT = 560
-  const containerWidth = Math.round(BASE_WIDTH * (finalScale * 0.55))
-  const containerHeight = Math.round(BASE_HEIGHT * (finalScale * 0.55))
+  // GamepadViewer canvas dimensions (820x680 ensures full triggers & bottom grips are visible)
+  const BASE_WIDTH = 820
+  const BASE_HEIGHT = 680
+  const containerWidth = Math.round(BASE_WIDTH * (finalScale * 0.52))
+  const containerHeight = Math.round(BASE_HEIGHT * (finalScale * 0.52))
 
   return (
     <div
@@ -29,7 +29,7 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
         pointerEvents: isEditMode ? 'auto' : 'none',
         userSelect: 'none',
         contain: 'paint layout',
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
     >
       <iframe
@@ -43,7 +43,7 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
           left: 0,
           width: BASE_WIDTH,
           height: BASE_HEIGHT,
-          transform: `scale(${finalScale * 0.55})`,
+          transform: `scale(${finalScale * 0.52})`,
           transformOrigin: 'top left',
           border: 'none',
           backgroundColor: 'transparent',

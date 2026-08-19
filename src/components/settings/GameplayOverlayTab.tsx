@@ -787,51 +787,30 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
               <div className="space-y-3">
                 {/* Preset Skins */}
                 <div>
-                  <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Controller Skin Preset</div>
-                  <div className="grid grid-cols-4 gap-1.5">
+                  <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Controller Design</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {[
-                      { label: 'PS4 White/Red', url: 'https://gamepadviewer.com/?p=1&s=8' },
-                      { label: 'PS4 Classic', url: 'https://gamepadviewer.com/?p=1&s=5' },
+                      { label: 'PS4 White / Red', url: 'https://gamepadviewer.com/?p=1&s=8' },
+                      { label: 'PS5 DualSense', url: 'https://gamepadviewer.com/?p=1&editcss=https://justehcupcake.github.io/FPS5_Display_Pics/PS5_White.css' },
+                      { label: 'PS4 Classic Black', url: 'https://gamepadviewer.com/?p=1&s=5' },
                       { label: 'Xbox One', url: 'https://gamepadviewer.com/?p=1&s=1' },
-                      { label: 'Xbox 360', url: 'https://gamepadviewer.com/?p=1&s=4' },
                     ].map(p => (
                       <button
                         key={p.label}
                         type="button"
                         onClick={() => onControllerUrlChange(p.url)}
-                        className={`px-2 py-1.5 rounded-lg text-[10px] font-medium border transition-colors ${
+                        className={`px-2.5 py-2 rounded-lg text-[10px] font-medium border transition-colors ${
                           (rlControllerUrl || 'https://gamepadviewer.com/?p=1&s=8') === p.url
-                            ? 'bg-white text-black border-white font-semibold'
-                            : 'bg-white/[0.04] border-white/[0.08] text-white/70 hover:text-white'
+                            ? 'bg-white text-black border-white font-semibold shadow-sm'
+                            : 'bg-white/[0.04] border-white/[0.08] text-white/70 hover:text-white hover:border-white/20'
                         }`}
                       >
                         {p.label}
                       </button>
                     ))}
                   </div>
-                </div>
-
-                {/* Custom GamepadViewer URL */}
-                <div>
-                  <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1 flex items-center justify-between">
-                    <span>GamepadViewer URL / Custom Skin</span>
-                    <button
-                      type="button"
-                      onClick={() => (window.electronAPI as any)?.openUrl?.('https://gamepadviewer.com')}
-                      className="text-[9px] text-white/50 hover:text-white transition-colors"
-                    >
-                      gamepadviewer.com ↗
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    value={rlControllerUrl || 'https://gamepadviewer.com/?p=1&s=8'}
-                    onChange={e => onControllerUrlChange(e.target.value)}
-                    placeholder="https://gamepadviewer.com/?p=1&s=8"
-                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
-                  />
-                  <div className="text-[9px] text-white/40 mt-1">
-                    💡 Drücke im Spiel einmal eine beliebige Taste auf deinem Controller, um GamepadViewer im Spiel zu aktivieren.
+                  <div className="text-[9px] text-white/40 mt-2">
+                    💡 Drücke im Spiel einmal eine beliebige Taste auf deinem Controller, um das Overlay zu aktivieren.
                   </div>
                 </div>
 
