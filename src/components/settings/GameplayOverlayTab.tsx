@@ -774,7 +774,7 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
       {/* SECTION 1: General */}
       <section style={{ contain: 'paint layout style', transform: 'translateZ(0)' }}>
         <SectionLabel icon={<Globe size={14} className="text-white" />} title="General Overlays" subtitle="Active for all games" />
-        <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] overflow-hidden divide-y divide-white/[0.05]">
+        <div className="space-y-2">
           <PerformanceSection settings={settings} save={save} />
           <CrosshairSection settings={settings} save={save} />
         </div>
