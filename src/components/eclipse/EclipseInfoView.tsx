@@ -27,14 +27,18 @@ const FALLBACK_RELEASES = [
     name: 'v1.1.8 - Real-Time Friend Requests, Bilateral Removal & Minimalist Toast',
     published_at: '2026-08-19T12:00:00Z',
     html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.1.8',
-    body: `### 👥 Live Friend Request System
-* **Real-Time Requests:** Das Eingeben eines Freundescodes sendet nun eine echte Freundschaftsanfrage statt einer Zwangs-Befreundung.
-* **Instant Notifications:** Live-Benachrichtigung mit Ton beim Eintreffen einer neuen Anfrage.
-* **Pending Requests Tab:** Eleganter Anfragen-Bereich ganz oben im Freunde-Fenster mit 1-Klick Annehmen/Ablehnen.
+    body: `### 👥 Live Friends & Presence System
+* **Real-Time Requests:** Entering a friend code now sends an interactive request with 0ms accept/decline.
+* **Presence Watchdog:** 25s keep-alive heartbeat & 60s timeout watchdog prevent stuck "In-Game" status.
+* **Smart "Last Seen":** Localized relative time indicators (e.g. *Last seen 15 mins ago*, *Last seen yesterday*).
+* **Bilateral Removal:** Removing a friend immediately unlinks both accounts with a sleek undo toast.
 
-### 🗑️ Bilateral Friend Removal & Minimalist UI
-* **Vollständiges beidseitiges Entfernen:** Das Entfernen eines Freundes löscht die Verbindung auf beiden Benutzerkonten in Echtzeit.
-* **Minimalistischer Toast:** Sauberes Schwarz-Weiß-Design mit sofortiger Rückgängig-Funktion.`,
+### 🌐 Cloud Profile Sync & Pre-Add Preview
+* **Full Profile Sync:** Synchronized playtime, Steam level, badges, and top played games across all players.
+* **Instant Profile Preview:** View full player profiles directly from the Add Friend menu before sending a request.
+
+### 🔔 Notification Center
+* **Persistent History:** TopBar notification bell with quick dropdown and one-click friend shortcuts.`,
     prerelease: false
   },
   {
