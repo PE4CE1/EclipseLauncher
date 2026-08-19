@@ -2,7 +2,7 @@ import React, { useState, useEffect, memo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Globe, Gamepad2, Move, Check, Activity, Crosshair as CrosshairIcon, Timer,
-  ChevronDown, Cpu, MemoryStick, Clock, Layers, Edit3, MousePointerClick
+  ChevronDown, Cpu, MemoryStick, Clock, Layers, Edit3, MousePointerClick, Gauge
 } from 'lucide-react'
 import type { AppSettings } from '../../types/game'
 import { CROSSHAIR_PRESETS, CrosshairSVG, DEFAULT_CROSSHAIR } from '../overlay/widgets/Crosshair'
@@ -75,7 +75,7 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
   const [open, setOpen] = useState(false)
 
   const metrics = settings.overlayMetrics ?? {
-    fps: true, cpu: true, ram: true, gpu: false, ping: false, time: true,
+    fps: true, cpu: true, gpu: true, ram: true, ping: false, time: true,
   }
 
   const toggleMetric = useCallback((key: keyof typeof metrics) => {
@@ -123,6 +123,7 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
             <div className="py-1">
               <MetricItem label="FPS" description="Display refresh rate (real-time via animation frame)" enabled={metrics.fps} onToggle={() => toggleMetric('fps')} icon={<Layers size={12} />} />
               <MetricItem label="CPU Usage" description="Real system CPU % from OS" enabled={metrics.cpu} onToggle={() => toggleMetric('cpu')} icon={<Cpu size={12} />} />
+              <MetricItem label="GPU Usage" description="Real system GPU % from hardware" enabled={metrics.gpu ?? true} onToggle={() => toggleMetric('gpu')} icon={<Gauge size={12} />} />
               <MetricItem label="RAM Usage" description="Real system memory % from OS" enabled={metrics.ram} onToggle={() => toggleMetric('ram')} icon={<MemoryStick size={12} />} />
               <MetricItem label="System Time" description="Current local time" enabled={metrics.time} onToggle={() => toggleMetric('time')} icon={<Clock size={12} />} />
             </div>

@@ -1,8 +1,11 @@
 import os from 'os'
 import { BrowserWindow, powerMonitor } from 'electron'
+import { execFile } from 'child_process'
 
 let prevCpus = os.cpus()
 let metricsInterval: NodeJS.Timeout | null = null
+let cachedGpuPercent = 0
+let isGpuQueryRunning = false
 
 function getCpuPercent(): number {
   const cpus = os.cpus()
@@ -34,6 +37,20 @@ function getRamInfo() {
   }
 }
 
+function queryGpu() {
+  if (isGpuQueryRunning) return
+  isGpuQueryRunning = true
+  execFile('nvidia-smi', ['--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'], { timeout: 1000 }, (err, stdout) => {
+    isGpuQueryRunning = false
+    if (!err && stdout) {
+      const val = parseInt(stdout.trim(), 10)
+      if (!isNaN(val)) {
+        cachedGpuPercent = Math.max(0, Math.min(100, val))
+      }
+    }
+  })
+}
+
 export function startMetricsService(getOverlayWindow: () => BrowserWindow | null) {
   if (metricsInterval) return
 
@@ -45,10 +62,11 @@ export function startMetricsService(getOverlayWindow: () => BrowserWindow | null
     const ram = getRamInfo()
     const idleTime = powerMonitor.getSystemIdleTime() // in seconds
 
-    // We send gpu: 0 because WMI queries for GPU cause system-wide micro-stutters
+    queryGpu()
+
     win.webContents.send('metrics:update', {
       cpu,
-      gpu: 0,
+      gpu: cachedGpuPercent,
       ram: ram.percent,
       ramMB: ram.usedMB,
       totalMB: ram.totalMB,

@@ -36,7 +36,7 @@ function getAppSettings() {
     rlHud: { xPct: 0.02, yPct: 0.03 },
     rlSteamAvatar: { xPct: 0.02, yPct: 0.90 }, // Bottom-left default
   }
-  const defaultMetrics = { fps: true, cpu: true, ram: true, gpu: false, ping: false, time: true }
+  const defaultMetrics = { fps: true, cpu: true, ram: true, gpu: true, ping: false, time: true }
 
   try {
     const settingsPath = path.join(app.getPath('userData'), 'settings.json')

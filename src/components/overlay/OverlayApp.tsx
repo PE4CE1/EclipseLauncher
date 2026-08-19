@@ -196,7 +196,7 @@ export function OverlayApp() {
     crosshair: true,
     robloxTimer: false,
     robloxCps: false,
-    metrics: { fps: true, cpu: true, ram: true, gpu: false, ping: false, time: true },
+    metrics: { fps: true, cpu: true, ram: true, gpu: true, ping: false, time: true },
     crosshairConfig: undefined,
     steamProfileUrl: undefined,
     rlSteamAvatarScale: 1,
