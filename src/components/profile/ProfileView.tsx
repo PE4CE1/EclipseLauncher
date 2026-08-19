@@ -1,59 +1,135 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { User, Library, Clock, Save, Edit3, Settings, Trophy, Gamepad2, Award } from 'lucide-react'
+import { User, Library, Clock, Save, Edit3, Settings, Trophy, Gamepad2, Award, UserPlus, Check, ArrowLeft, Loader2 } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
 import { useTranslation } from '../../hooks/useTranslation'
-import { syncMyProfile } from '../../services/firebaseService'
+import { syncMyProfile, fetchUserProfile, sendFriendRequest } from '../../services/firebaseService'
+import { fetchSteamUserProfile } from '../../services/steamService'
 import { formatLastSeen } from '../../services/assetHelper'
+import { sendAppNotification } from '../../services/notificationService'
 
 export function ProfileView() {
   const { library, installedGames, settings, updateSettings, activeGame } = useGameStore()
-  const { setActiveView, openGameDetails, setActiveSettingsTab, selectedFriendId } = useUIStore()
+  const { setActiveView, openGameDetails, setActiveSettingsTab, selectedFriendId, setSelectedFriendId } = useUIStore()
   const { t, language } = useTranslation()
   
-  const totalLibraryCount = installedGames.length + library.filter(g => !installedGames.some(ig => ig.name === g.name)).length
-  
+  const [fetchedProfile, setFetchedProfile] = useState<any | null>(null)
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false)
+  const [isSendingRequest, setIsSendingRequest] = useState(false)
+  const [requestSent, setRequestSent] = useState(false)
+
   const friend = selectedFriendId ? settings.eclipseFriends?.find(f => f.id === selectedFriendId) : null
-  const isViewingFriend = !!friend
-  
+  const isViewingFriend = !!selectedFriendId
+  const isAlreadyFriend = isViewingFriend && (!!friend || (settings.eclipseFriends?.some(f => f.id === selectedFriendId) ?? false))
+
+  // Fetch full live profile data when viewing a friend or searched player
+  useEffect(() => {
+    if (selectedFriendId) {
+      setIsLoadingProfile(true)
+      setRequestSent(false)
+      fetchUserProfile(selectedFriendId).then(async (data) => {
+        if (data) {
+          setFetchedProfile(data)
+        } else {
+          // Fallback to Steam profile lookup if numeric ID
+          const steamData = await fetchSteamUserProfile(selectedFriendId)
+          if (steamData && steamData.steamId64) {
+            setFetchedProfile({
+              username: steamData.username,
+              avatarUrl: steamData.avatarFull,
+              level: steamData.steamLevel,
+              steamLevel: steamData.steamLevel,
+              steamGamesCount: steamData.steamGamesCount,
+              steamBadgesCount: steamData.steamBadgesCount,
+              steamFavoriteBadge: steamData.steamFavoriteBadge,
+              steamRecentGames: steamData.steamRecentGames,
+              steamProfileUrl: `https://steamcommunity.com/profiles/${steamData.steamId64}`,
+              status: steamData.onlineState === 'in-game' ? 'ingame' : steamData.onlineState === 'online' ? 'online' : 'offline',
+            })
+          }
+        }
+        setIsLoadingProfile(false)
+      }).catch(() => setIsLoadingProfile(false))
+    } else {
+      setFetchedProfile(null)
+      // When viewing own profile, sync latest playtime & games to Firebase
+      syncMyProfile()
+    }
+  }, [selectedFriendId])
+
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(settings.username || 'User')
   const [editAvatar, setEditAvatar] = useState(settings.avatarUrl || '')
 
-  const displayName = friend ? friend.username : (settings.username || 'User')
-  const displayAvatar = friend ? friend.avatarUrl : settings.avatarUrl
-  const steamLevel = friend ? friend.level : settings.steamLevel
-  const steamGamesCount = friend ? undefined : settings.steamGamesCount
-  const steamBadgesCount = friend ? undefined : settings.steamBadgesCount
-  const steamFavoriteBadge = friend ? friend.steamFavoriteBadge : settings.steamFavoriteBadge
-  const steamRecentGames = friend ? friend.steamRecentGames : settings.steamRecentGames
-  const friendStatusText = friend?.status === 'ingame' 
-    ? (friend.currentGame ? `In-Game: ${friend.currentGame}` : 'In-Game')
-    : friend?.status === 'online' 
-      ? t('online') 
-      : formatLastSeen(friend?.lastSeen, language)
-  const isOnline = friend ? friend.status !== 'offline' : true
+  // Combined stats resolution
+  const profileData = fetchedProfile || friend
 
-  // Combine unique games for playtime calculations, preserving playTimeMinutes from both lists
+  const displayName = isViewingFriend 
+    ? (profileData?.username || friend?.username || 'Eclipse Player') 
+    : (settings.username || 'User')
+  
+  const displayAvatar = isViewingFriend 
+    ? (profileData?.avatarUrl || friend?.avatarUrl || '') 
+    : settings.avatarUrl
+
+  const steamLevel = isViewingFriend 
+    ? (profileData?.steamLevel ?? profileData?.level ?? friend?.steamLevel ?? friend?.level) 
+    : settings.steamLevel
+
+  const steamGamesCount = isViewingFriend 
+    ? (profileData?.steamGamesCount ?? friend?.steamGamesCount) 
+    : settings.steamGamesCount
+
+  const steamBadgesCount = isViewingFriend 
+    ? (profileData?.steamBadgesCount ?? friend?.steamBadgesCount) 
+    : settings.steamBadgesCount
+
+  const steamFavoriteBadge = isViewingFriend 
+    ? (profileData?.steamFavoriteBadge || friend?.steamFavoriteBadge) 
+    : settings.steamFavoriteBadge
+
+  const steamRecentGames = isViewingFriend 
+    ? (profileData?.steamRecentGames || friend?.steamRecentGames || []) 
+    : (settings.steamRecentGames || [])
+
+  const friendStatus = profileData?.status || friend?.status || 'offline'
+  const friendCurrentGame = friendStatus === 'ingame' ? (profileData?.currentGame || friend?.currentGame) : null
+  
+  let friendLastSeen: number | undefined = friend?.lastSeen
+  if (profileData?.lastSeen) {
+    if (typeof profileData.lastSeen.toMillis === 'function') {
+      friendLastSeen = profileData.lastSeen.toMillis()
+    } else if (typeof profileData.lastSeen.toDate === 'function') {
+      friendLastSeen = profileData.lastSeen.toDate().getTime()
+    } else if (typeof profileData.lastSeen === 'number') {
+      friendLastSeen = profileData.lastSeen
+    } else if (profileData.lastSeen.seconds) {
+      friendLastSeen = profileData.lastSeen.seconds * 1000
+    }
+  }
+
+  const friendStatusText = friendStatus === 'ingame' 
+    ? (friendCurrentGame ? `In-Game: ${friendCurrentGame}` : 'In-Game')
+    : friendStatus === 'online' 
+      ? t('online') 
+      : formatLastSeen(friendLastSeen, language)
+
+  const isOnline = isViewingFriend ? friendStatus !== 'offline' : true
+
+  // Local Playtime Calculations (for own profile)
   const allUserGamesMap = new Map<string, any>()
-  
   library.forEach(g => allUserGamesMap.set(g.id || g.name, { ...g }))
-  
   installedGames.forEach(g => {
     const key = g.id || g.name
     let base = allUserGamesMap.get(key)
-    
-    // Also try to match by name if ID didn't match
     if (!base) {
       const foundEntry = Array.from(allUserGamesMap.entries()).find(([k, lg]) => lg.name.toLowerCase() === g.name.toLowerCase())
       if (foundEntry) {
         base = foundEntry[1]
-        // Delete the old key to prevent duplicates
         allUserGamesMap.delete(foundEntry[0])
       }
     }
-    
     const existingData = base || {}
     allUserGamesMap.set(key, {
       ...existingData,
@@ -64,18 +140,41 @@ export function ProfileView() {
   })
 
   const allUserGames = Array.from(allUserGamesMap.values())
-
-  // Calculate total playtime
   const totalPlaytimeMins = Math.round(allUserGames.reduce((acc, g) => acc + (g.playTimeMinutes || 0), 0))
   const totalPlaytimeHours = totalPlaytimeMins >= 60 
     ? (totalPlaytimeMins / 60).toFixed(1) + 'h' 
     : `${totalPlaytimeMins}m`
 
-  // Top played games
   const topPlayedGames = [...allUserGames]
     .sort((a, b) => (b.playTimeMinutes || 0) - (a.playTimeMinutes || 0))
     .filter(g => (g.playTimeMinutes || 0) > 0)
     .slice(0, 5)
+
+  const totalLibraryCount = installedGames.length + library.filter(g => !installedGames.some(ig => ig.name === g.name)).length
+
+  // Profile Display Values (seamlessly bridging cloud-synced friends and local user)
+  const displayTotalPlaytime = isViewingFriend 
+    ? (profileData?.totalPlaytimeHours || friend?.totalPlaytimeHours || (steamRecentGames.length > 0 ? (() => {
+        let hrs = 0
+        steamRecentGames.forEach((g: any) => {
+          const m = g.playtime ? g.playtime.match(/([\d.,]+)\s*hrs?/i) : null
+          if (m) hrs += parseFloat(m[1].replace(',', '.')) || 0
+        })
+        return hrs > 0 ? `${hrs.toFixed(1)}h` : '0h'
+      })() : '0h'))
+    : totalPlaytimeHours
+
+  const displayLibraryCount = isViewingFriend
+    ? (profileData?.totalLibraryCount ?? friend?.totalLibraryCount ?? steamGamesCount ?? (steamRecentGames.length || 0))
+    : totalLibraryCount
+
+  const displayInstalledCount = isViewingFriend
+    ? (profileData?.totalInstalledCount ?? friend?.totalInstalledCount ?? (friendStatus === 'ingame' ? (friendCurrentGame || 'In-Game') : (friendStatus === 'online' ? 'Online' : 'Offline')))
+    : installedGames.filter(g => g.installed !== false).length
+
+  const displayTopGames = isViewingFriend
+    ? (profileData?.topPlayedGames || friend?.topPlayedGames || [])
+    : topPlayedGames
 
   function handleSave() {
     if (window.electronAPI?.setSettings) {
@@ -90,6 +189,35 @@ export function ProfileView() {
       updateSettings({ username: editName, avatarUrl: editAvatar })
       syncMyProfile()
       setIsEditing(false)
+    }
+  }
+
+  async function handleSendFriendReq() {
+    if (!profileData?.friendCode && !selectedFriendId) return
+    setIsSendingRequest(true)
+    try {
+      const codeOrUid = profileData?.friendCode || selectedFriendId
+      const res = await sendFriendRequest(codeOrUid)
+      if (res.success) {
+        setRequestSent(true)
+        sendAppNotification({
+          title: language === 'de' ? 'Anfrage gesendet! 👥' : 'Request Sent! 👥',
+          body: res.message || (language === 'de' ? 'Freundschaftsanfrage erfolgreich übermittelt.' : 'Friend request sent.'),
+          type: 'success',
+          duration: 5000
+        })
+      } else {
+        sendAppNotification({
+          title: 'Hinweis',
+          body: res.error || 'Konnte Anfrage nicht senden.',
+          type: 'info',
+          duration: 5000
+        })
+      }
+    } catch (err: any) {
+      console.warn('sendFriendReq error:', err)
+    } finally {
+      setIsSendingRequest(false)
     }
   }
 
@@ -146,7 +274,7 @@ export function ProfileView() {
                 <div className="flex justify-center md:justify-start gap-3 pt-2">
                   <button 
                     onClick={handleSave}
-                    className="bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                    className="bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 cursor-pointer shadow-sm"
                   >
                     <Save size={16} /> {t('save')}
                   </button>
@@ -156,7 +284,7 @@ export function ProfileView() {
                       setEditAvatar(settings.avatarUrl || '')
                       setIsEditing(false)
                     }}
-                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 cursor-pointer"
                   >
                     {t('cancel')}
                   </button>
@@ -164,7 +292,15 @@ export function ProfileView() {
               </div>
             ) : (
               <div>
-                <h1 className="text-4xl font-black text-white uppercase tracking-tight mb-2">{displayName}</h1>
+                <div className="flex flex-wrap items-center gap-3 justify-center md:justify-start mb-2">
+                  <h1 className="text-4xl font-black text-white uppercase tracking-tight">{displayName}</h1>
+                  {profileData?.friendCode && (
+                    <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-white/70">
+                      {profileData.friendCode}
+                    </span>
+                  )}
+                </div>
+                
                 <div className="flex flex-wrap items-center gap-4 justify-center md:justify-start">
                   
                   {/* Status & Member Type */}
@@ -174,7 +310,7 @@ export function ProfileView() {
                       {isViewingFriend ? friendStatusText : t('online')}
                     </p>
                     <div className="w-[1px] h-4 bg-white/10"></div>
-                    {isViewingFriend && friend?.steamProfileUrl ? (
+                    {(isViewingFriend ? (profileData?.steamProfileUrl || friend?.steamProfileUrl) : settings.steamProfileUrl) ? (
                       <span className="text-sm font-bold text-[#66c0f4] flex items-center gap-1.5">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-3.5 h-3.5" alt="Steam" />
                         Steam Player
@@ -195,34 +331,34 @@ export function ProfileView() {
                       🎮 Currently Playing: {activeGame.name}
                     </span>
                   )}
-                  {isViewingFriend && friend?.currentGame && (
+                  {isViewingFriend && friendCurrentGame && (
                     <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 animate-pulse">
-                      🎮 In Game: {friend.currentGame}
+                      🎮 In Game: {friendCurrentGame}
                     </span>
                   )}
                   
                   {/* Steam Stats Grouping */}
                   <div className="flex flex-wrap items-center gap-3 border-l border-white/10 pl-4 ml-1">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-5 h-5 opacity-50" alt="Steam Stats" title="Steam Profile Stats" />
-                    {steamLevel !== undefined && (!isViewingFriend ? settings.profileShowSteamStats !== false : true) && (
+                    {steamLevel !== undefined && (
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1b2838] border border-[#2a475e] text-[#66c0f4] shadow-sm">
                         <Trophy size={13} />
                         <span className="text-xs font-bold tracking-wide">Level {steamLevel}</span>
                       </div>
                     )}
-                    {steamGamesCount !== undefined && (!isViewingFriend ? settings.profileShowSteamStats !== false : true) && (
+                    {steamGamesCount !== undefined && steamGamesCount > 0 && (
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1b2838] border border-[#2a475e] text-[#66c0f4] shadow-sm">
                         <Gamepad2 size={13} />
                         <span className="text-xs font-bold tracking-wide">{steamGamesCount} Games</span>
                       </div>
                     )}
-                    {steamBadgesCount !== undefined && (!isViewingFriend ? settings.profileShowSteamStats !== false : true) && (
+                    {steamBadgesCount !== undefined && steamBadgesCount > 0 && (
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1b2838] border border-[#2a475e] text-[#66c0f4] shadow-sm">
                         <Award size={13} />
                         <span className="text-xs font-bold tracking-wide">{steamBadgesCount} Badges</span>
                       </div>
                     )}
-                    {steamFavoriteBadge && (!isViewingFriend ? settings.profileShowSteamStats !== false : true) && (
+                    {steamFavoriteBadge && (
                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1b2838]/60 border border-[#2a475e]/50 hover:bg-[#1b2838] transition-colors cursor-pointer group" title={steamFavoriteBadge.name}>
                         <img src={steamFavoriteBadge.iconUrl} alt="Badge" className="w-6 h-6 drop-shadow-md group-hover:scale-110 transition-transform" />
                         <div className="flex flex-col justify-center h-full">
@@ -233,25 +369,58 @@ export function ProfileView() {
                     )}
                   </div>
                 </div>
-                {!isViewingFriend && (
-                  <div className="mt-6 flex flex-wrap gap-3 justify-center md:justify-start">
-                    <button 
-                      onClick={() => setIsEditing(true)}
-                      className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2"
-                    >
-                      <Edit3 size={16} /> {t('editProfile')}
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setActiveSettingsTab('profile')
-                        setActiveView('settings')
-                      }}
-                      className="bg-transparent hover:bg-white/5 text-hub-muted hover:text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2"
-                    >
-                      <Settings size={16} /> {t('settings')}
-                    </button>
-                  </div>
-                )}
+
+                {/* Profile Action Buttons */}
+                <div className="mt-6 flex flex-wrap gap-3 justify-center md:justify-start">
+                  {!isViewingFriend ? (
+                    <>
+                      <button 
+                        onClick={() => setIsEditing(true)}
+                        className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 cursor-pointer"
+                      >
+                        <Edit3 size={16} /> {t('editProfile')}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setActiveSettingsTab('profile')
+                          setActiveView('settings')
+                        }}
+                        className="bg-transparent hover:bg-white/5 text-hub-muted hover:text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 cursor-pointer"
+                      >
+                        <Settings size={16} /> {t('settings')}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {!isAlreadyFriend && (
+                        <button 
+                          onClick={handleSendFriendReq}
+                          disabled={isSendingRequest || requestSent}
+                          className="bg-white text-black font-bold hover:bg-white/90 px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-60"
+                        >
+                          {isSendingRequest ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : requestSent ? (
+                            <Check size={16} className="text-green-600" />
+                          ) : (
+                            <UserPlus size={16} />
+                          )}
+                          {requestSent 
+                            ? (language === 'de' ? 'Anfrage gesendet' : 'Request Sent') 
+                            : (language === 'de' ? 'Freund hinzufügen' : 'Add Friend')}
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => {
+                          setSelectedFriendId(null)
+                        }}
+                        className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 cursor-pointer"
+                      >
+                        <ArrowLeft size={16} /> {language === 'de' ? 'Mein Profil' : 'My Profile'}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -270,18 +439,7 @@ export function ProfileView() {
                 <Clock className="text-indigo-400" size={24} />
               </div>
               <h3 className="text-3xl font-bold text-white mb-1">
-                {isViewingFriend 
-                  ? (friend?.steamRecentGames && friend.steamRecentGames.length > 0 
-                      ? (() => {
-                          let hrs = 0
-                          friend.steamRecentGames.forEach(g => {
-                            const m = g.playtime ? g.playtime.match(/([\d.,]+)\s*hrs?/i) : null
-                            if (m) hrs += parseFloat(m[1].replace(',', '.')) || 0
-                          })
-                          return hrs > 0 ? `${hrs.toFixed(1)}h` : '8.5h'
-                        })()
-                      : '0h')
-                  : totalPlaytimeHours}
+                {displayTotalPlaytime}
               </h3>
               <p className="text-sm font-medium text-hub-muted uppercase tracking-wider">{t('totalPlaytime')}</p>
             </motion.div>
@@ -297,10 +455,10 @@ export function ProfileView() {
               <Library className="text-pink-400" size={24} />
             </div>
             <h3 className="text-3xl font-bold text-white mb-1">
-              {isViewingFriend ? (friend?.level ? `Lvl ${friend.level}` : (friend?.steamRecentGames?.length || 0)) : totalLibraryCount}
+              {displayLibraryCount}
             </h3>
             <p className="text-sm font-medium text-hub-muted uppercase tracking-wider">
-              {isViewingFriend ? (friend?.level ? 'Steam Level' : t('gamesInLibrary')) : t('gamesInLibrary')}
+              {t('gamesInLibrary')}
             </p>
           </motion.div>
 
@@ -314,34 +472,34 @@ export function ProfileView() {
               <Save className="text-green-400" size={24} />
             </div>
             <h3 className="text-3xl font-bold text-white mb-1">
-              {isViewingFriend 
-                ? (friend?.status === 'ingame' ? (friend.currentGame || 'In-Game') : (friend?.status === 'online' ? 'Online' : 'Offline'))
-                : installedGames.filter(g => g.installed !== false).length}
+              {displayInstalledCount}
             </h3>
             <p className="text-sm font-medium text-hub-muted uppercase tracking-wider">
-              {isViewingFriend ? 'Activity Status' : t('installedGames')}
+              {isViewingFriend ? 'Activity / Installed' : t('installedGames')}
             </p>
           </motion.div>
         </div>
 
         {/* Most Played Games Section */}
-        {!isViewingFriend && topPlayedGames.length > 0 && (
+        {displayTopGames.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="bg-[#111317] border border-white/10 rounded-2xl p-6 mb-12"
           >
-            <h3 className="text-lg font-bold text-white mb-4">Most Played Games</h3>
+            <h3 className="text-lg font-bold text-white mb-4">
+              {language === 'de' ? 'Meistgespielte Spiele' : 'Most Played Games'}
+            </h3>
             <div className="space-y-3">
-              {topPlayedGames.map((game, idx) => {
+              {displayTopGames.map((game: any, idx: number) => {
                 const mins = Math.round(game.playTimeMinutes || 0)
                 const hrs = mins >= 60 ? (mins / 60).toFixed(1) + ' hrs' : `${mins} mins`
                 const sId = 'steamId' in game ? game.steamId : undefined
 
                 return (
                   <div
-                    key={game.id}
+                    key={game.id || game.name}
                     onClick={() => {
                       if (sId) openGameDetails(sId, game.name)
                     }}
@@ -361,8 +519,9 @@ export function ProfileView() {
             </div>
           </motion.div>
         )}
+
         {/* Steam Recent Activity Showcase */}
-        {steamRecentGames && steamRecentGames.length > 0 && (!isViewingFriend ? settings.profileShowSteamStats !== false : true) && (
+        {steamRecentGames && steamRecentGames.length > 0 && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -374,8 +533,8 @@ export function ProfileView() {
               <div className="h-[1px] flex-1 bg-gradient-to-r from-white/10 to-transparent"></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {(isViewingFriend ? (friend.steamRecentGames || []) : (steamRecentGames || [])).slice(0, 3).map((game) => (
-                <div key={game.appId} className="bg-black/20 rounded-xl overflow-hidden border border-white/5 hover:border-white/20 transition-all cursor-default">
+              {steamRecentGames.slice(0, 3).map((game: any) => (
+                <div key={game.appId || game.name} className="bg-black/20 rounded-xl overflow-hidden border border-white/5 hover:border-white/20 transition-all cursor-default">
                   <div className="relative h-24 overflow-hidden">
                     <img src={game.iconUrl} alt={game.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#111317] to-transparent"></div>
@@ -393,3 +552,4 @@ export function ProfileView() {
     </div>
   )
 }
+

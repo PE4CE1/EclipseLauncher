@@ -5,13 +5,13 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { useUIStore } from '../../store/uiStore';
 import { useGameStore } from '../../store/gameStore';
 import { fetchSteamUserProfile } from '../../services/steamService';
-import { sendFriendRequest, generateEclipseFriendCode, syncMyProfile } from '../../services/firebaseService';
+import { sendFriendRequest, generateEclipseFriendCode, syncMyProfile, fetchUserProfile } from '../../services/firebaseService';
 import { sendAppNotification } from '../../services/notificationService';
 import type { EclipseFriend } from '../../types/game';
 
 export const AddFriendModal: React.FC = () => {
   const { t } = useTranslation();
-  const { isAddFriendOpen, setIsAddFriendOpen } = useUIStore();
+  const { isAddFriendOpen, setIsAddFriendOpen, openFriendProfile } = useUIStore();
   const { settings, updateSettings } = useGameStore();
   const [friendCodeInput, setFriendCodeInput] = useState('');
   const [copied, setCopied] = useState(false);
@@ -35,6 +35,36 @@ export const AddFriendModal: React.FC = () => {
     navigator.clipboard.writeText(settings.friendCode || '');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleViewProfile = async () => {
+    if (!friendCodeInput.trim()) return;
+    setError('');
+    setLoading(true);
+
+    try {
+      // 1. Look up in Firebase
+      const profile = await fetchUserProfile(friendCodeInput.trim());
+      if (profile && profile.uid) {
+        setIsAddFriendOpen(false);
+        openFriendProfile(profile.uid);
+        return;
+      }
+
+      // 2. Steam Profile fallback
+      const steamProfile = await fetchSteamUserProfile(friendCodeInput.trim());
+      if (steamProfile && steamProfile.steamId64) {
+        setIsAddFriendOpen(false);
+        openFriendProfile(steamProfile.steamId64);
+        return;
+      }
+
+      setError(settings.language === 'de' ? 'Spieler nicht gefunden. Bitte Code prüfen.' : 'User not found. Check the code.');
+    } catch (err: any) {
+      setError(err?.message || 'Fehler beim Laden des Profils.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddFriend = async () => {
@@ -114,7 +144,7 @@ export const AddFriendModal: React.FC = () => {
           <h2 className="text-base font-bold text-white">{t('addFriendTitle')}</h2>
           <button 
             onClick={() => setIsAddFriendOpen(false)}
-            className="text-white/50 hover:text-white transition-colors p-1"
+            className="text-white/50 hover:text-white transition-colors p-1 cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -128,7 +158,7 @@ export const AddFriendModal: React.FC = () => {
             </div>
             <button 
               onClick={handleCopy}
-              className="text-white/40 hover:text-white transition-colors"
+              className="text-white/40 hover:text-white transition-colors cursor-pointer"
               title="Copy code"
             >
               {copied ? <Check size={18} className="text-green-400" /> : <Copy size={18} />}
@@ -143,17 +173,21 @@ export const AddFriendModal: React.FC = () => {
                 value={friendCodeInput}
                 onChange={(e) => setFriendCodeInput(e.target.value)}
                 placeholder={t('friendCodePlaceholder')}
-                className="flex-[2] bg-[#111317] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm outline-none focus:border-indigo-500 transition-colors"
+                className="flex-[2] bg-[#111317] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm outline-none focus:border-white/40 transition-colors font-mono"
                 onKeyDown={(e) => e.key === 'Enter' && handleAddFriend()}
               />
               <button 
                 onClick={handleAddFriend}
                 disabled={loading || !friendCodeInput.trim()}
-                className="flex-1 bg-[#a3a3a3] text-black font-bold px-4 py-2.5 rounded-lg text-sm hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center min-w-[100px]"
+                className="flex-1 bg-white text-black font-bold px-4 py-2.5 rounded-lg text-sm hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center min-w-[100px] cursor-pointer shadow-sm"
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : t('add')}
               </button>
-              <button className="flex-1 bg-transparent border border-white/20 text-white font-semibold px-4 py-2.5 rounded-lg text-sm hover:bg-white/5 transition-colors min-w-[110px] whitespace-nowrap overflow-hidden text-ellipsis">
+              <button 
+                onClick={handleViewProfile}
+                disabled={loading || !friendCodeInput.trim()}
+                className="flex-1 bg-transparent border border-white/20 text-white font-semibold px-4 py-2.5 rounded-lg text-sm hover:bg-white/10 transition-colors min-w-[110px] whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 {t('viewProfile')}
               </button>
             </div>

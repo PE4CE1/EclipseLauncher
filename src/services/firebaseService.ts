@@ -121,14 +121,14 @@ export async function initFirebaseSocial() {
 }
 
 /**
- * Syncs the local user's current settings (username, avatar, friend code) to Firestore
+ * Syncs the local user's full profile (stats, playtime, steam level, badges, top games) to Firestore
  */
 export async function syncMyProfile(user?: User | null) {
   const activeUser = user || auth.currentUser
   if (!activeUser) return
 
   try {
-    const settings = useGameStore.getState().settings
+    const { settings, library, installedGames, activeGame } = useGameStore.getState()
     let friendCode = settings.friendCode
 
     if (!friendCode) {
@@ -139,8 +139,54 @@ export async function syncMyProfile(user?: User | null) {
     const userRef = doc(db, 'users', activeUser.uid)
     const snap = await getDoc(userRef)
 
-    const isIngame = !!useGameStore.getState().activeGame
-    const activeGameName = useGameStore.getState().activeGame?.name || null
+    const isIngame = !!activeGame
+    const activeGameName = activeGame?.name || null
+
+    // Combine unique games for playtime calculations
+    const allUserGamesMap = new Map<string, any>()
+    const lib = library || []
+    const inst = installedGames || []
+
+    lib.forEach(g => allUserGamesMap.set(g.id || g.name, { ...g }))
+    inst.forEach(g => {
+      const key = g.id || g.name
+      let base = allUserGamesMap.get(key)
+      if (!base) {
+        const found = Array.from(allUserGamesMap.entries()).find(([_, lg]) => lg.name.toLowerCase() === g.name.toLowerCase())
+        if (found) {
+          base = found[1]
+          allUserGamesMap.delete(found[0])
+        }
+      }
+      const existing = base || {}
+      allUserGamesMap.set(key, {
+        ...existing,
+        ...g,
+        playTimeMinutes: Math.max(existing.playTimeMinutes || 0, g.playTimeMinutes || 0),
+        lastPlayed: Math.max(existing.lastPlayed || 0, g.lastPlayed || 0)
+      })
+    })
+
+    const allUserGames = Array.from(allUserGamesMap.values())
+    const totalPlaytimeMins = Math.round(allUserGames.reduce((acc, g) => acc + (g.playTimeMinutes || 0), 0))
+    const totalPlaytimeHours = totalPlaytimeMins >= 60 
+      ? (totalPlaytimeMins / 60).toFixed(1) + 'h' 
+      : `${totalPlaytimeMins}m`
+
+    const topPlayedGames = [...allUserGames]
+      .sort((a, b) => (b.playTimeMinutes || 0) - (a.playTimeMinutes || 0))
+      .filter(g => (g.playTimeMinutes || 0) > 0)
+      .slice(0, 5)
+      .map(g => ({
+        id: g.id || g.name,
+        name: g.name,
+        steamId: g.steamId || null,
+        playTimeMinutes: g.playTimeMinutes || 0,
+        lastPlayed: g.lastPlayed || 0
+      }))
+
+    const totalLibraryCount = inst.length + lib.filter(g => !inst.some(ig => ig.name === g.name)).length
+    const totalInstalledCount = inst.filter(g => g.installed !== false).length
 
     const baseData = {
       uid: activeUser.uid,
@@ -150,6 +196,18 @@ export async function syncMyProfile(user?: User | null) {
       status: isIngame ? 'ingame' : 'online',
       currentGame: isIngame ? activeGameName : null,
       lastSeen: serverTimestamp(),
+      level: settings.steamLevel || 1,
+      steamLevel: settings.steamLevel || 1,
+      steamProfileUrl: settings.steamProfileUrl || '',
+      steamGamesCount: settings.steamGamesCount || 0,
+      steamBadgesCount: settings.steamBadgesCount || 0,
+      steamFavoriteBadge: settings.steamFavoriteBadge || null,
+      steamRecentGames: settings.steamRecentGames || [],
+      totalPlaytimeMins,
+      totalPlaytimeHours,
+      totalLibraryCount,
+      totalInstalledCount,
+      topPlayedGames,
     }
 
     if (!snap.exists()) {
@@ -165,6 +223,34 @@ export async function syncMyProfile(user?: User | null) {
     }
   } catch (err) {
     console.warn('[Firebase] syncMyProfile error:', err)
+  }
+}
+
+/**
+ * Fetches a user's full public profile from Firestore by either their UID or their Eclipse Friend Code.
+ */
+export async function fetchUserProfile(uidOrCode: string): Promise<any | null> {
+  if (!uidOrCode || typeof uidOrCode !== 'string') return null
+  const clean = uidOrCode.trim()
+
+  try {
+    // 1. Try direct UID lookup
+    const directDoc = await getDoc(doc(db, 'users', clean))
+    if (directDoc.exists()) {
+      return directDoc.data()
+    }
+
+    // 2. Try Friend Code lookup
+    const q = query(collection(db, 'users'), where('friendCode', '==', clean.toUpperCase()))
+    const snap = await getDocs(q)
+    if (!snap.empty) {
+      return snap.docs[0].data()
+    }
+
+    return null
+  } catch (err) {
+    console.warn('[Firebase] fetchUserProfile error:', err)
+    return null
   }
 }
 
@@ -260,9 +346,20 @@ function evaluateFriendsPresence(docs: any[]) {
       avatarUrl: u.avatarUrl || '',
       status,
       currentGame,
-      level: u.level || 1,
+      level: u.steamLevel || u.level || 1,
+      steamLevel: u.steamLevel || u.level || 1,
       steamProfileUrl: u.steamProfileUrl || undefined,
+      steamGamesCount: u.steamGamesCount || 0,
+      steamBadgesCount: u.steamBadgesCount || 0,
+      steamRecentGames: u.steamRecentGames || [],
+      steamFavoriteBadge: u.steamFavoriteBadge || undefined,
       lastSeen: lastSeenMs || undefined,
+      totalPlaytimeHours: u.totalPlaytimeHours || undefined,
+      totalPlaytimeMins: u.totalPlaytimeMins || 0,
+      totalLibraryCount: u.totalLibraryCount || 0,
+      totalInstalledCount: u.totalInstalledCount || 0,
+      topPlayedGames: u.topPlayedGames || [],
+      friendCode: u.friendCode || undefined,
     }
 
     updatedFriends.push(friendObj)

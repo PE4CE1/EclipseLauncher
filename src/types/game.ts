@@ -76,9 +76,24 @@ export interface EclipseFriend {
   currentGame?: string
   steamProfileUrl?: string
   level?: number
+  steamLevel?: number
+  steamGamesCount?: number
+  steamBadgesCount?: number
   steamRecentGames?: SteamRecentGame[]
   steamFavoriteBadge?: SteamFavoriteBadge
   lastSeen?: number
+  totalPlaytimeHours?: string
+  totalPlaytimeMins?: number
+  totalLibraryCount?: number
+  totalInstalledCount?: number
+  topPlayedGames?: Array<{
+    id: string
+    name: string
+    steamId?: number | null
+    playTimeMinutes: number
+    lastPlayed: number
+  }>
+  friendCode?: string
 }
 
 export interface FriendRequest {
