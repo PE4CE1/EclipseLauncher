@@ -616,8 +616,9 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
     if (skin) return skin
     if (url?.includes('ps5_black') || url?.includes('philipbry')) return 'ps5_black'
     if (url?.includes('FPS5') || url?.includes('PS5') || url?.includes('ps5_white')) return 'ps5_white'
-    if (url?.includes('s=5')) return 'ps4_black'
-    if (url?.includes('s=1')) return 'xbox_one'
+    if (url?.includes('s=8') || url?.includes('ps4_white')) return 'ps4_white'
+    if (url?.includes('s=5') || url?.includes('ps4_black')) return 'ps4_black'
+    if (url?.includes('s=1') || url?.includes('xbox')) return 'xbox_one'
     return 'ps5_white'
   }, [skin, url])
 

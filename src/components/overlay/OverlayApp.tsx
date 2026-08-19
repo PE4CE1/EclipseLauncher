@@ -54,6 +54,22 @@ export function OverlayApp() {
     if (root) root.style.backgroundColor = 'transparent'
   }, [])
 
+  const [initialSettings, setInitialSettings] = useState<any>(null)
+
+  // Load exact persisted settings from main process immediately on mount
+  useEffect(() => {
+    window.electronAPI?.getSettings?.().then((s: any) => {
+      if (s) {
+        setInitialSettings(s)
+        if (s.overlayPositions && !editModeRef.current) {
+          const merged = { ...DEFAULT_POSITIONS, ...s.overlayPositions }
+          positionsRef.current = merged
+          setPositions(merged)
+        }
+      }
+    })
+  }, [])
+
   // Subscribe to IPC events
   useEffect(() => {
     const cleanups: (() => void)[] = []
@@ -195,14 +211,20 @@ export function OverlayApp() {
 
   const displayGame = activeGame || editGameData
   const settings = displayGame?.settings || {
-    performance: true,
-    crosshair: true,
-    robloxTimer: false,
-    robloxCps: false,
-    metrics: { fps: true, cpu: true, ram: true, gpu: true, ping: false, time: true },
-    crosshairConfig: undefined,
-    steamProfileUrl: undefined,
-    rlSteamAvatarScale: 1,
+    performance: initialSettings?.overlayPerformance ?? true,
+    crosshair: initialSettings?.overlayCrosshair ?? true,
+    robloxTimer: initialSettings?.overlayRobloxTimer ?? false,
+    robloxCps: (initialSettings?.overlayCps || initialSettings?.overlayRobloxCps) ?? false,
+    overlayRLHud: initialSettings?.overlayRLHud ?? false,
+    overlayRLSteam: initialSettings?.overlayRLSteam ?? false,
+    overlayRLController: initialSettings?.overlayRLController ?? false,
+    rlControllerSkin: initialSettings?.rlControllerSkin ?? 'ps5_white',
+    rlControllerUrl: initialSettings?.rlControllerUrl ?? 'https://gamepadviewer.com/?p=1&s=ps5_white',
+    rlControllerScale: initialSettings?.rlControllerScale ?? 80,
+    metrics: initialSettings?.overlayMetrics ?? { fps: true, cpu: true, ram: true, gpu: true, ping: false, time: true },
+    crosshairConfig: initialSettings?.crosshairConfig,
+    steamProfileUrl: initialSettings?.steamProfileUrl,
+    rlSteamAvatarScale: initialSettings?.rlSteamAvatarScale ?? 85,
   }
 
   const renderWidget = (key: string, children: React.ReactNode) => {

@@ -857,9 +857,29 @@ ipcMain.handle('notification:show', (_event, { title, body }: { title: string; b
   return { success: true }
 })
 
-// ─── Overlay Edit Mode ────────────────────────────────────────────────────────
 ipcMain.handle('overlay:open-edit', () => {
-  openOverlayEditMode()
+  const s = getSavedSettings()
+  openOverlayEditMode({
+    name: 'Rocket League',
+    positions: s.overlayPositions,
+    settings: {
+      performance: s.overlayPerformance,
+      crosshair: s.overlayCrosshair,
+      cps: s.overlayCps || s.overlayRobloxCps,
+      robloxCps: s.overlayCps || s.overlayRobloxCps,
+      robloxTimer: s.overlayRobloxTimer,
+      rlHud: s.overlayRLHud,
+      overlayRLSteam: s.overlayRLSteam,
+      overlayRLController: s.overlayRLController,
+      rlControllerSkin: s.rlControllerSkin || 'ps5_white',
+      rlControllerUrl: s.rlControllerUrl || 'https://gamepadviewer.com/?p=1&s=ps5_white',
+      rlControllerScale: s.rlControllerScale || 80,
+      metrics: s.overlayMetrics,
+      crosshairConfig: s.crosshairConfig,
+      steamProfileUrl: s.steamProfileUrl,
+      rlSteamAvatarScale: s.rlSteamAvatarScale,
+    }
+  })
 })
 
 ipcMain.handle('overlay:exit-edit', () => {
