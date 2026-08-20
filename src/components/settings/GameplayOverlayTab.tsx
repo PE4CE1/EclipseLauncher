@@ -200,9 +200,14 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save, la
                   >
                     <Minus size={12} />
                   </button>
-                  <span className="w-10 text-center text-[11px] font-semibold font-mono text-white select-none">
+                  <button
+                    type="button"
+                    onClick={() => save('overlayMetrics', { ...metrics, scale: 100 })}
+                    className="w-11 py-0.5 rounded text-center text-[11px] font-semibold font-mono text-white hover:bg-white/10 hover:text-white transition-all cursor-pointer select-none"
+                    title={language === 'de' ? 'Klicken für 100%' : 'Click to reset to 100%'}
+                  >
                     {(typeof metrics.scale === 'number' ? (metrics.scale <= 3 ? Math.round(metrics.scale * 100) : metrics.scale) : 100)}%
-                  </span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {

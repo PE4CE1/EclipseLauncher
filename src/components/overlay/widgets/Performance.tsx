@@ -61,7 +61,8 @@ export const Performance = memo(function Performance({
   const cfg: MetricsConfig = config ?? { fps: true, cpu: true, gpu: true, ram: true, time: true, layout: 'vertical' }
   const isHorizontal = cfg.layout === 'horizontal'
   const rawScale = cfg.scale ?? 100
-  const finalScale = typeof rawScale === 'number' ? (rawScale > 3 ? rawScale / 100 : rawScale) : 1
+  const normalizedScale = typeof rawScale === 'number' ? (rawScale > 3 ? rawScale / 100 : rawScale) : 1
+  const finalScale = normalizedScale * 1.15
 
   useEffect(() => {
     if (!cfg.time) return
