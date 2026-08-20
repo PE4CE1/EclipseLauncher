@@ -116,7 +116,7 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
               Performance Overlay
             </div>
             <div className="text-[11px] text-white/40 truncate">
-              {settings.overlayPerformance ? `${activeCount} metrics enabled · FPS, CPU, RAM, GPU` : 'Disabled'}
+              {settings.overlayPerformance ? `${activeCount} Metriken aktiviert · FPS, CPU, RAM, GPU` : 'Deaktiviert'}
             </div>
           </div>
         </div>
@@ -218,36 +218,36 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
             <div className="h-px bg-white/[0.06] mx-4" />
             <div className="divide-y divide-white/[0.04]">
               <MetricItem 
-                label="Frames Per Second (FPS)" 
-                description="Live game frame rate tracker" 
+                label="Bildwiederholrate (FPS)" 
+                description="Live Game Frame-Rate Tracker" 
                 enabled={metrics.fps ?? true} 
                 onToggle={() => toggleMetric('fps')} 
                 icon={<Gauge size={13} />} 
               />
               <MetricItem 
-                label="CPU Usage" 
-                description="Processor load in %" 
+                label="CPU-Auslastung" 
+                description="Prozessorlast in %" 
                 enabled={metrics.cpu ?? true} 
                 onToggle={() => toggleMetric('cpu')} 
                 icon={<Cpu size={13} />} 
               />
               <MetricItem 
-                label="GPU Usage" 
-                description="Graphics card load in %" 
+                label="GPU-Auslastung" 
+                description="Grafikkartenlast in %" 
                 enabled={metrics.gpu ?? true} 
                 onToggle={() => toggleMetric('gpu')} 
                 icon={<Activity size={13} />} 
               />
               <MetricItem 
-                label="RAM Usage" 
-                description="Memory usage & percentage" 
+                label="RAM-Auslastung" 
+                description="Arbeitsspeicher-Verbrauch & %" 
                 enabled={metrics.ram ?? true} 
                 onToggle={() => toggleMetric('ram')} 
                 icon={<MemoryStick size={13} />} 
               />
               <MetricItem 
-                label="Time & Clock" 
-                description="Current system time" 
+                label="Uhrzeit" 
+                description="Aktuelle Systemzeit" 
                 enabled={metrics.time ?? true} 
                 onToggle={() => toggleMetric('time')} 
                 icon={<Clock size={13} />} 
@@ -286,10 +286,10 @@ const CrosshairSection = memo(function CrosshairSection({ settings, save }: {
           </div>
           <div className="flex-1 min-w-0">
             <div className={`text-[13px] font-semibold ${settings.overlayCrosshair ? 'text-white' : 'text-white/70'}`}>
-              Custom Crosshair
+              Fadenkreuz (Crosshair)
             </div>
             <div className="text-[11px] text-white/40 truncate">
-              {settings.overlayCrosshair ? `${cfg.style || 'cross'} · ${cfg.color} · ${cfg.size}px` : 'Disabled'}
+              {settings.overlayCrosshair ? `${cfg.preset || cfg.style || 'Kreuz'} · ${cfg.color} · ${cfg.size}px` : 'Deaktiviert'}
             </div>
           </div>
         </div>
@@ -318,7 +318,7 @@ const CrosshairSection = memo(function CrosshairSection({ settings, save }: {
             <div className="p-4 space-y-4">
               {/* Presets */}
               <div>
-                <div className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-2">Preset Crosshairs</div>
+                <div className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-2">Fadenkreuz-Vorlagen</div>
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
                   {Object.entries(CROSSHAIR_PRESETS).map(([key, preset]) => {
                     const isSelected = cfg.preset === key
@@ -344,7 +344,7 @@ const CrosshairSection = memo(function CrosshairSection({ settings, save }: {
               {/* Color & Size */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Color</div>
+                  <div className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Farbe</div>
                   <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5">
                     <input
                       type="color"
@@ -358,7 +358,7 @@ const CrosshairSection = memo(function CrosshairSection({ settings, save }: {
 
                 <div>
                   <div className="flex justify-between text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">
-                    <span>Size</span>
+                    <span>Größe</span>
                     <span className="text-white font-mono">{cfg.size}px</span>
                   </div>
                   <input
@@ -401,10 +401,10 @@ const CPSSection = memo(function CPSSection({ settings, save }: {
           </div>
           <div className="flex-1 min-w-0">
             <div className={`text-[13px] font-semibold ${isEnabled ? 'text-white' : 'text-white/70'}`}>
-              Clicks Per Second (CPS)
+              Klicks pro Sekunde (CPS)
             </div>
             <div className="text-[11px] text-white/40 truncate">
-              {isEnabled ? 'LMB & RMB live click tracker with click animation' : 'Disabled'}
+              {isEnabled ? 'LMB- & RMB-Klick-Tracker mit Live-Animation' : 'Deaktiviert'}
             </div>
           </div>
         </div>
@@ -431,7 +431,7 @@ const CPSSection = memo(function CPSSection({ settings, save }: {
           >
             <div className="h-px bg-white/[0.06] mx-4" />
             <div className="p-4 space-y-2">
-              <div className="text-[12px] font-medium text-white">Live Mouse Click Counter</div>
+              <div className="text-[12px] font-medium text-white">Live-Mausklick-Zähler</div>
               <div className="text-[11px] text-white/50 leading-relaxed">
                 Zeigt die Klicks pro Sekunde (LMB & RMB) mit reaktionsschneller Klickanimation live auf dem Bildschirm an. Funktioniert auf dem Desktop und in allen Spielen.
               </div>
@@ -492,10 +492,10 @@ const GeneralControllerSection = memo(function GeneralControllerSection({ settin
           </div>
           <div className="flex-1 min-w-0">
             <div className={`text-[13px] font-semibold ${isEnabled ? 'text-white' : 'text-white/70'}`}>
-              Live Controller HUD (GamepadViewer)
+              Controller Overlay (Live-HUD)
             </div>
             <div className="text-[11px] text-white/40 truncate">
-              {isEnabled ? `${CONTROLLER_SKINS[activeSkin]?.label || activeSkin} · Scale ${scale}%` : 'Disabled'}
+              {isEnabled ? `${CONTROLLER_SKINS[activeSkin]?.label || activeSkin} · Skalierung ${scale}%` : 'Deaktiviert'}
             </div>
           </div>
         </div>
@@ -524,7 +524,7 @@ const GeneralControllerSection = memo(function GeneralControllerSection({ settin
             <div className="p-4 space-y-3">
               {/* Preset Skins */}
               <div>
-                <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Controller Design</div>
+                <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Controller-Design</div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
                   {(Object.keys(CONTROLLER_SKINS) as ControllerSkinId[]).map((key) => {
                     const skin = CONTROLLER_SKINS[key]
@@ -556,7 +556,7 @@ const GeneralControllerSection = memo(function GeneralControllerSection({ settin
               {/* Controller Scale */}
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">Scale</div>
+                  <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">Skalierung</div>
                   <div className="text-[10px] text-white font-mono">{scale}%</div>
                 </div>
                 <input
@@ -607,12 +607,12 @@ const RobloxAccordion = memo(function RobloxAccordion({
           <div className="text-[13px] font-semibold text-white">Roblox</div>
           <div className="text-[11px] text-white/50">
             {activeCount === 2 
-              ? 'Timer & CPS Counter active'
+              ? 'Timer & CPS-Zähler aktiv'
               : robloxTimer 
-                ? 'Game-Session & AFK Timer active'
+                ? 'Spiel-Session & AFK-Timer aktiv'
                 : robloxCps 
-                  ? 'CPS Counter active'
-                  : 'No overlays active'}
+                  ? 'CPS-Zähler aktiv'
+                  : 'Keine Overlays aktiv'}
           </div>
         </div>
         {activeCount > 0 && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_5px_#ffffff]" />}
@@ -631,8 +631,8 @@ const RobloxAccordion = memo(function RobloxAccordion({
                   <Timer size={13} />
                 </div>
                 <div className="flex-1">
-                  <div className={`text-[12px] font-medium ${robloxTimer ? 'text-white' : 'text-white/60'}`}>Game-Session & AFK Timer</div>
-                  <div className="text-[10px] text-white/40">Session time + AFK kick countdown. Glows red under 2 min.</div>
+                  <div className={`text-[12px] font-medium ${robloxTimer ? 'text-white' : 'text-white/60'}`}>Spiel-Session & AFK-Timer</div>
+                  <div className="text-[10px] text-white/40">Session-Zeit & AFK-Kick-Countdown. Leuchtet unter 2 Min. rot.</div>
                 </div>
                 <Toggle checked={robloxTimer} onChange={onToggleTimer} />
               </div>
@@ -643,8 +643,8 @@ const RobloxAccordion = memo(function RobloxAccordion({
                   <MousePointerClick size={13} />
                 </div>
                 <div className="flex-1">
-                  <div className={`text-[12px] font-medium ${robloxCps ? 'text-white' : 'text-white/60'}`}>Clicks Per Second (CPS)</div>
-                  <div className="text-[10px] text-white/40">Live LMB & RMB click tracker specifically in Roblox.</div>
+                  <div className={`text-[12px] font-medium ${robloxCps ? 'text-white' : 'text-white/60'}`}>Klicks pro Sekunde (CPS)</div>
+                  <div className="text-[10px] text-white/40">Live-Klick-Tracker für LMB & RMB speziell in Roblox.</div>
                 </div>
                 <Toggle checked={robloxCps} onChange={onToggleCps} />
               </div>
@@ -775,8 +775,8 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
           <div className="text-[13px] font-semibold text-white">Rocket League</div>
           <div className="text-[11px] text-white/50">
             {activeSubCount > 0 
-              ? `${activeSubCount} overlay${activeSubCount > 1 ? 's' : ''} active · MMR, Controller & Steam`
-              : 'No overlays active'}
+              ? `${activeSubCount} Overlay${activeSubCount > 1 ? 's' : ''} aktiv · MMR, Controller & Steam`
+              : 'Keine Overlays aktiv'}
           </div>
         </div>
         {activeSubCount > 0 && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_5px_#ffffff]" />}
@@ -802,8 +802,8 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                       <Activity size={13} />
                     </div>
                     <div>
-                      <div className={`text-[12px] font-semibold ${rlHud ? 'text-white' : 'text-white/70'}`}>MMR & Rank Tracker</div>
-                      <div className="text-[10px] text-white/40">{playlist} · {hasKey ? '🔑 API Key' : '🌐 Browser'}</div>
+                      <div className={`text-[12px] font-semibold ${rlHud ? 'text-white' : 'text-white/70'}`}>MMR & Rang-Tracker</div>
+                      <div className="text-[10px] text-white/40">{playlist} · {hasKey ? '🔑 API-Schlüssel' : '🌐 Browser'}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
@@ -821,7 +821,7 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                       <div className="p-3 space-y-3">
                         {/* Playlist Selector */}
                         <div>
-                          <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Ranked Playlist</div>
+                          <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Gewertete Playlist</div>
                           <div className="flex gap-2">
                             {playlists.map(p => (
                               <button
@@ -843,13 +843,13 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                         <div>
                           <div className="flex items-center justify-between mb-1">
                             <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">
-                              TRN API Key <span className={`ml-1 ${hasKey ? 'text-white font-bold' : 'text-white/40'}`}>{hasKey ? '✓ Active' : '○ Optional'}</span>
+                              TRN API-Schlüssel <span className={`ml-1 ${hasKey ? 'text-white font-bold' : 'text-white/40'}`}>{hasKey ? '✓ Aktiv' : '○ Optional'}</span>
                             </div>
                             <button
                               onClick={() => (window.electronAPI as any)?.openUrl?.('https://tracker.gg/developers')}
-                              className="text-[9px] text-white/60 hover:text-white transition-colors"
+                              className="text-[9px] text-white/60 hover:text-white transition-colors cursor-pointer"
                             >
-                              Get free key ↗
+                              Kostenlosen Key holen ↗
                             </button>
                           </div>
                           <div className="relative flex items-center">
@@ -857,18 +857,18 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                               type={showKey ? 'text' : 'password'}
                               value={trnApiKey}
                               onChange={e => onApiKeyChange(e.target.value)}
-                              placeholder="Paste your free TRN API Key here..."
+                              placeholder="Kostenlosen TRN API-Key hier einfügen..."
                               className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 pr-14"
                             />
                             <button
                               onClick={() => setShowKey(s => !s)}
-                              className="absolute right-2 text-[9px] text-white/50 hover:text-white transition-colors"
+                              className="absolute right-2 text-[9px] text-white/50 hover:text-white transition-colors cursor-pointer"
                             >
-                              {showKey ? 'Hide' : 'Show'}
+                              {showKey ? 'Verstecken' : 'Anzeigen'}
                             </button>
                           </div>
                           <div className="text-[9px] text-white/40 mt-1">
-                            {hasKey ? '🔑 Using official API — fastest & most reliable' : '🌐 No key: using browser session'}
+                            {hasKey ? '🔑 Offizielle API aktiv — schnell & zuverlässig' : '🌐 Kein Key: nutzt Browser-Sitzung'}
                           </div>
                         </div>
                       </div>
@@ -888,8 +888,8 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                       <Gamepad2 size={13} />
                     </div>
                     <div>
-                      <div className={`text-[12px] font-semibold ${overlayRLController ? 'text-white' : 'text-white/70'}`}>Live Controller HUD (GamepadViewer)</div>
-                      <div className="text-[10px] text-white/40">{CONTROLLER_SKINS[(rlControllerSkin as ControllerSkinId) || 'ps5_white']?.label || 'Controller HUD'} · Scale {rlControllerScale}%</div>
+                      <div className={`text-[12px] font-semibold ${overlayRLController ? 'text-white' : 'text-white/70'}`}>Controller Overlay (Live-HUD)</div>
+                      <div className="text-[10px] text-white/40">{CONTROLLER_SKINS[(rlControllerSkin as ControllerSkinId) || 'ps5_white']?.label || 'Controller HUD'} · Skalierung {rlControllerScale}%</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
@@ -907,7 +907,7 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                       <div className="p-3 space-y-3">
                         {/* Preset Skins */}
                         <div>
-                          <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Controller Design</div>
+                          <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Controller-Design</div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
                             {(Object.keys(CONTROLLER_SKINS) as ControllerSkinId[]).map((key) => {
                               const skin = CONTROLLER_SKINS[key]
@@ -940,7 +940,7 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                         {/* Controller Scale */}
                         <div>
                           <div className="flex justify-between items-center mb-1">
-                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">Scale</div>
+                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">Skalierung</div>
                             <div className="text-[10px] text-white font-mono">{rlControllerScale}%</div>
                           </div>
                           <input
@@ -968,8 +968,8 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                       <img src={steamLogoImg} className="w-3.5 h-3.5 object-contain opacity-90" alt="Steam" />
                     </div>
                     <div>
-                      <div className={`text-[12px] font-semibold ${overlayRLSteam ? 'text-white' : 'text-white/70'}`}>Steam Profile In-Game</div>
-                      <div className="text-[10px] text-white/40">{steamProfileUrl ? 'Profile connected' : 'Hold Scoreboard key in-game'}</div>
+                      <div className={`text-[12px] font-semibold ${overlayRLSteam ? 'text-white' : 'text-white/70'}`}>Steam-Profil im Spiel</div>
+                      <div className="text-[10px] text-white/40">{steamProfileUrl ? 'Profil verknüpft' : 'Scoreboard-Taste im Spiel halten'}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
@@ -988,14 +988,14 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                         <div className="flex gap-2.5 items-end">
                           <div className="flex-1">
                             <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                              Steam Profile URL or ID
+                              Steam Profil-URL oder ID
                               {avatarPreview && <span className="text-white font-bold">✓</span>}
                             </div>
                             <input
                               type="text"
                               value={steamProfileUrl}
                               onChange={e => onSteamUrlChange(e.target.value)}
-                              placeholder="e.g. https://steamcommunity.com/id/myprofile"
+                              placeholder="z. B. https://steamcommunity.com/id/meinprofil"
                               className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
                             />
                           </div>
@@ -1008,28 +1008,28 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                         
                         <div className="flex gap-2.5">
                           <div className="flex-1">
-                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1">Scoreboard Key (KB)</div>
+                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1">Scoreboard-Taste (Tastatur)</div>
                             <button
                               onClick={() => setListenKb(true)}
                               className={`w-full text-left border rounded-lg px-2.5 py-1.5 text-[10px] font-medium transition-colors ${listenKb ? 'bg-white text-black border-white' : 'bg-white/[0.04] border-white/[0.08] text-white hover:border-white/[0.15]'}`}
                             >
-                              {listenKb ? 'Press any key...' : rlScoreboardKeyKb}
+                              {listenKb ? 'Taste drücken...' : rlScoreboardKeyKb}
                             </button>
                           </div>
                           <div className="flex-1">
-                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1">Scoreboard Key (Ctrl)</div>
+                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1">Scoreboard-Taste (Controller)</div>
                             <button
                               onClick={() => setListenCtrl(true)}
                               className={`w-full text-left border rounded-lg px-2.5 py-1.5 text-[10px] font-medium transition-colors ${listenCtrl ? 'bg-white text-black border-white' : 'bg-white/[0.04] border-white/[0.08] text-white hover:border-white/[0.15]'}`}
                             >
-                              {listenCtrl ? 'Press any button...' : rlScoreboardKeyCtrl}
+                              {listenCtrl ? 'Knopf drücken...' : rlScoreboardKeyCtrl}
                             </button>
                           </div>
                         </div>
 
                         <div>
                           <div className="flex justify-between items-center mb-1">
-                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">UI Scale</div>
+                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">UI-Skalierung</div>
                             <div className="text-[10px] text-white font-mono">{rlSteamAvatarScale}%</div>
                           </div>
                           <input
@@ -1085,11 +1085,11 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
       <div className="flex items-start justify-between pb-3 border-b border-white/[0.07]">
         <div>
           <h2 className="text-lg font-bold text-white tracking-tight">Gameplay Overlay</h2>
-          <p className="text-[12px] text-white/50 mt-0.5">Real-time HUD displayed over your games & desktop</p>
+          <p className="text-[12px] text-white/50 mt-0.5">Echtzeit-HUD über deinen Spielen & auf dem Desktop</p>
         </div>
         <div className="flex items-center gap-2 mt-0.5 px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.07]">
           <div className={`w-1.5 h-1.5 rounded-full transition-colors ${activeCount > 0 ? 'bg-white shadow-[0_0_5px_#ffffff]' : 'bg-white/20'}`} />
-          <span className="text-[11px] font-medium text-white/60">{activeCount} active</span>
+          <span className="text-[11px] font-medium text-white/60">{activeCount} aktiv</span>
         </div>
       </div>
 
@@ -1101,8 +1101,8 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
               <Globe size={14} className="text-white" />
             </div>
             <div>
-              <div className="text-[13px] font-semibold text-white tracking-tight">General Overlays</div>
-              <div className="text-[11px] text-white/50 mt-0.5">Performance, Crosshair, CPS & Controller HUD rules</div>
+              <div className="text-[13px] font-semibold text-white tracking-tight">Allgemeine Overlays</div>
+              <div className="text-[11px] text-white/50 mt-0.5">Performance-, Fadenkreuz-, CPS- & Controller-Regeln</div>
             </div>
           </div>
 
@@ -1116,7 +1116,7 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
                   : 'text-white/60 hover:text-white'
               }`}
             >
-              Only in Game
+              Nur im Spiel
             </button>
             <button
               type="button"
@@ -1127,7 +1127,7 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
                   : 'text-white/60 hover:text-white'
               }`}
             >
-              Always
+              Immer
             </button>
           </div>
         </div>
@@ -1142,7 +1142,7 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
 
       {/* SECTION 2: Game-specific Overlays */}
       <section style={{ contain: 'paint layout style', transform: 'translateZ(0)' }}>
-        <SectionLabel icon={<Gamepad2 size={14} className="text-white" />} title="Game-Specific Overlays" subtitle="Configurable per game" />
+        <SectionLabel icon={<Gamepad2 size={14} className="text-white" />} title="Spielspezifische Overlays" subtitle="Individuell pro Spiel konfigurierbar" />
         <div className="space-y-2">
           <RobloxAccordion
             robloxTimer={settings.overlayRobloxTimer || false}
@@ -1184,19 +1184,19 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
           />
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-white/[0.06]">
             <div className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.07] flex items-center justify-center text-white/40 text-sm font-semibold">+</div>
-            <span className="text-[11px] text-white/40">More games coming in future updates...</span>
+            <span className="text-[11px] text-white/40">Weitere Spiele folgen in zukünftigen Updates...</span>
           </div>
         </div>
       </section>
 
       {/* SECTION 3: Edit Layout button */}
       <section style={{ contain: 'paint layout style', transform: 'translateZ(0)' }}>
-        <SectionLabel icon={<Move size={14} className="text-white" />} title="Overlay Layout" subtitle="Reposition widgets directly on screen (Discord-style)" />
+        <SectionLabel icon={<Move size={14} className="text-white" />} title="Overlay-Layout" subtitle="Widgets direkt auf dem Bildschirm verschieben (Discord-Stil)" />
         <div className="rounded-xl border border-white/10 bg-[#0f1015] p-4 flex items-center justify-between gap-4">
           <div className="space-y-0.5 flex-1">
-            <div className="text-sm font-semibold text-white">Edit Overlay Positions</div>
+            <div className="text-sm font-semibold text-white">Overlay-Positionen anpassen</div>
             <div className="text-xs text-white/50 leading-relaxed">
-              Opens the overlay window. Drag each widget to your desired screen position, then click "Save & Done".
+              Öffnet das Overlay-Fenster. Ziehe jedes Widget an die gewünschte Position und klicke auf „Speichern & Fertig“.
             </div>
           </div>
           <button
@@ -1204,7 +1204,7 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
             className="flex items-center gap-2 px-4 py-2 bg-white text-black hover:bg-white/90 rounded-lg font-semibold text-xs transition-all shadow-sm hover:scale-[1.01] flex-shrink-0 cursor-pointer"
           >
             <Edit3 size={13} className="text-black" />
-            Edit Layout
+            Layout bearbeiten
           </button>
         </div>
       </section>

@@ -291,39 +291,22 @@ export function OverlayApp() {
         pointerEvents: editMode ? 'auto' : 'none',
       }}
     >
-      {/* Grid overlay in Edit Mode */}
+      {/* Grid overlay in Edit Mode (Clean Dots) */}
       {editMode && (
         <div style={{
           position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
           background: 'rgba(0, 0, 0, 0.45)',
         }}>
-          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.15 }}>
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1" />
+              <pattern id="dot-grid" width="36" height="36" patternUnits="userSpaceOnUse">
+                <circle cx="18" cy="18" r="1.2" fill="rgba(255, 255, 255, 0.22)" />
               </pattern>
             </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
+            <rect width="100%" height="100%" fill="url(#dot-grid)" />
             {/* Center crosshair guide */}
-            <line x1="50%" y1="0" x2="50%" y2="100%" stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="6 4" />
-            <line x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="6 4" />
-            {/* Rule of thirds */}
-            <line x1="33.33%" y1="0" x2="33.33%" y2="100%" stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="3 3" />
-            <line x1="66.66%" y1="0" x2="66.66%" y2="100%" stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="3 3" />
-            <line x1="0" y1="33.33%" x2="100%" y2="33.33%" stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="3 3" />
-            <line x1="0" y1="66.66%" x2="100%" y2="66.66%" stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="3 3" />
-            {/* Dot grid points */}
-            {[...Array(9)].map((_, i) =>
-              [...Array(16)].map((_, j) => (
-                <circle
-                  key={`dot-${i}-${j}`}
-                  cx={`${(j + 1) * (100 / 17)}%`}
-                  cy={`${(i + 1) * (100 / 10)}%`}
-                  r="1.5"
-                  fill="rgba(255,255,255,0.08)"
-                />
-              ))
-            )}
+            <line x1="50%" y1="0" x2="50%" y2="100%" stroke="rgba(255,255,255,0.2)" strokeWidth="1" strokeDasharray="5 5" />
+            <line x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(255,255,255,0.2)" strokeWidth="1" strokeDasharray="5 5" />
           </svg>
         </div>
       )}
@@ -357,7 +340,6 @@ export function OverlayApp() {
           isEditMode={editMode}
         />
       )}
-
       {settings.crosshair && renderWidget('crosshair',
         <Crosshair config={settings.crosshairConfig} />
       )}
@@ -379,7 +361,7 @@ export function OverlayApp() {
             color: 'rgba(255, 255, 255, 0.8)', letterSpacing: '0.02em',
           }}>
             <span style={{ fontSize: 13 }}>🖱️</span>
-            <span>Drag widgets to reposition</span>
+            <span>Widgets ziehen zum Positionieren</span>
           </div>
 
           <div style={{ width: 1, height: 18, background: 'rgba(255, 255, 255, 0.1)' }} />
@@ -400,7 +382,7 @@ export function OverlayApp() {
               onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.96)')}
               onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
             >
-              ✓ Save & Done
+              ✓ Speichern & Fertig
             </button>
             <button
               onClick={handleCancel}
@@ -419,7 +401,7 @@ export function OverlayApp() {
                 e.currentTarget.style.color = 'rgba(255, 255, 255, 0.65)'
               }}
             >
-              Cancel
+              Abbrechen
             </button>
           </div>
         </div>

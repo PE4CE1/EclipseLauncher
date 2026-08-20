@@ -335,7 +335,7 @@ export function SettingsView() {
                 <div className="space-y-3.5">
                   <CleanCheckbox
                     checked={settings.scanUninstalledSteam ?? false}
-                    label="Show uninstalled Steam games in library"
+                    label={language === 'de' ? 'Nicht installierte Steam-Spiele in Bibliothek anzeigen' : 'Show uninstalled Steam games in library'}
                     onChange={() => {
                       updateSettings({ scanUninstalledSteam: !settings.scanUninstalledSteam })
                       set('scanUninstalledSteam', !settings.scanUninstalledSteam)
@@ -345,7 +345,7 @@ export function SettingsView() {
 
                   <CleanCheckbox
                     checked={settings.autoScanSplash ?? false}
-                    label="Automatically start scanning on Splash Screen"
+                    label={language === 'de' ? 'Spiele-Scan automatisch beim Startbildschirm ausführen' : 'Automatically start scanning on Splash Screen'}
                     onChange={() => {
                       updateSettings({ autoScanSplash: !settings.autoScanSplash })
                       set('autoScanSplash', !settings.autoScanSplash)
@@ -1081,7 +1081,7 @@ export function SettingsView() {
                   <CleanCheckbox
                     checked={settings.discordRpc ?? true}
                     label="Discord Rich Presence"
-                    description="Automatically show your currently played game as a status on Discord."
+                    description={language === 'de' ? 'Zeigt dein aktuell gespieltes Spiel automatisch als Status auf Discord an.' : 'Automatically show your currently played game as a status on Discord.'}
                     onChange={() => {
                       const val = !(settings.discordRpc ?? true)
                       updateSettings({ discordRpc: val })
@@ -1093,8 +1093,8 @@ export function SettingsView() {
 
                   <CleanCheckbox
                     checked={settings.discordRpcIdle ?? false}
-                    label="Show Idle Status"
-                    description="Show 'Browsing Library' on Discord when you are not playing any game."
+                    label={language === 'de' ? 'Idle-Status anzeigen' : 'Show Idle Status'}
+                    description={language === 'de' ? 'Zeigt „Stöbert in der Bibliothek“ auf Discord an, wenn kein Spiel aktiv ist.' : 'Show \'Browsing Library\' on Discord when you are not playing any game.'}
                     onChange={() => {
                       const val = !(settings.discordRpcIdle ?? false)
                       updateSettings({ discordRpcIdle: val })
@@ -1106,8 +1106,8 @@ export function SettingsView() {
 
                   <CleanCheckbox
                     checked={settings.discordRpcShowDownloads ?? true}
-                    label="Show Active Downloads"
-                    description="Display download progress and speed on Discord when downloading games."
+                    label={language === 'de' ? 'Aktive Downloads anzeigen' : 'Show Active Downloads'}
+                    description={language === 'de' ? 'Zeigt Download-Fortschritt und Geschwindigkeit auf Discord beim Herunterladen von Spielen an.' : 'Display download progress and speed on Discord when downloading games.'}
                     onChange={() => {
                       const val = !(settings.discordRpcShowDownloads ?? true)
                       updateSettings({ discordRpcShowDownloads: val })
@@ -1119,8 +1119,8 @@ export function SettingsView() {
 
                   <CleanCheckbox
                     checked={settings.discordRpcPrivacyMode ?? false}
-                    label="Privacy / Stealth Mode"
-                    description="Hide specific game titles on Discord and show 'Playing a Game' instead."
+                    label={language === 'de' ? 'Privatsphäre- / Stealth-Modus' : 'Privacy / Stealth Mode'}
+                    description={language === 'de' ? 'Versteckt Spieltitel auf Discord und zeigt stattdessen nur „Spielt ein Spiel“ an.' : 'Hide specific game titles on Discord and show \'Playing a Game\' instead.'}
                     onChange={() => {
                       const val = !(settings.discordRpcPrivacyMode ?? false)
                       updateSettings({ discordRpcPrivacyMode: val })
@@ -1145,14 +1145,14 @@ export function SettingsView() {
                 <div className="space-y-6">
                   {/* Steam Sync Section */}
                   <div className="bg-[#0f1015] border border-white/10 rounded-xl p-5 relative overflow-hidden">
-                    <h3 className="font-semibold text-white mb-2 flex items-center gap-2"><User size={16} className="text-white"/> Steam Integration</h3>
-                    <p className="text-xs text-hub-muted mb-4">Link your Steam profile to automatically sync your avatar, username, level, and library stats.</p>
+                    <h3 className="font-semibold text-white mb-2 flex items-center gap-2"><User size={16} className="text-white"/> {language === 'de' ? 'Steam-Integration' : 'Steam Integration'}</h3>
+                    <p className="text-xs text-hub-muted mb-4">{language === 'de' ? 'Verknüpfe dein Steam-Profil, um Avatar, Benutzernamen, Level und Statistiken automatisch zu synchronisieren.' : 'Link your Steam profile to automatically sync your avatar, username, level, and library stats.'}</p>
                     
-                    <label className="block text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-2">Steam Profile URL or ID</label>
+                    <label className="block text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-2">{language === 'de' ? 'Steam Profil-URL oder ID' : 'Steam Profile URL or ID'}</label>
                     <div className="flex gap-2">
                       <input 
                         type="text" 
-                        placeholder="https://steamcommunity.com/id/... or your SteamID64"
+                        placeholder={language === 'de' ? 'https://steamcommunity.com/id/... oder deine SteamID64' : 'https://steamcommunity.com/id/... or your SteamID64'}
                         value={localSettings.steamProfileUrl || ''}
                         onChange={e => set('steamProfileUrl', e.target.value)}
                         className="flex-1 bg-[#16181c] border border-white/10 rounded-lg py-2 px-4 text-xs text-white focus:outline-none focus:border-white/30"
@@ -1187,26 +1187,26 @@ export function SettingsView() {
                               window.electronAPI.setSettings(newSettings)
                             }
                             
-                            showNotification('Steam profile synced!', 'success')
+                            showNotification(language === 'de' ? 'Steam-Profil synchronisiert!' : 'Steam profile synced!', 'success')
                           } else {
-                            showNotification('Failed to sync Steam profile.', 'error')
+                            showNotification(language === 'de' ? 'Fehler beim Synchronisieren des Steam-Profils.' : 'Failed to sync Steam profile.', 'error')
                           }
                         }}
                         className="px-4 py-2 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 whitespace-nowrap shadow-sm hover:scale-[1.01]"
                       >
-                        <RefreshCw size={13} className="text-black" /> Sync Profile
+                        <RefreshCw size={13} className="text-black" /> {language === 'de' ? 'Profil synchronisieren' : 'Sync Profile'}
                       </button>
                     </div>
                   </div>
 
                   {/* Privacy Section */}
                   <div className="bg-[#0f1015] border border-white/10 rounded-xl p-5 space-y-4">
-                    <h3 className="font-semibold text-white text-sm flex items-center gap-2"><Shield size={16} className="text-white"/> Profile Privacy</h3>
+                    <h3 className="font-semibold text-white text-sm flex items-center gap-2"><Shield size={16} className="text-white"/> {language === 'de' ? 'Privatsphäre-Einstellungen' : 'Profile Privacy'}</h3>
                     
                     <CleanCheckbox
                       checked={localSettings.profileShowPlaytime !== false}
-                      label="Show Total Playtime"
-                      description="Display your accumulated playtime across all games on your profile."
+                      label={language === 'de' ? 'Gesamte Spielzeit anzeigen' : 'Show Total Playtime'}
+                      description={language === 'de' ? 'Zeigt deine gesamte Spielzeit über alle Spiele auf deinem Profil an.' : 'Display your accumulated playtime across all games on your profile.'}
                       onChange={() => {
                         const val = !(localSettings.profileShowPlaytime !== false)
                         set('profileShowPlaytime', val)
@@ -1217,8 +1217,8 @@ export function SettingsView() {
 
                     <CleanCheckbox
                       checked={localSettings.profileShowSteamStats !== false}
-                      label="Show Steam Badges"
-                      description="Display your synced Steam Level, Games, and Badges on your profile."
+                      label={language === 'de' ? 'Steam-Abzeichen anzeigen' : 'Show Steam Badges'}
+                      description={language === 'de' ? 'Zeigt dein synchronisiertes Steam-Level, Spiele und Abzeichen auf deinem Profil an.' : 'Display your synced Steam Level, Games, and Badges on your profile.'}
                       onChange={() => {
                         const val = !(localSettings.profileShowSteamStats !== false)
                         set('profileShowSteamStats', val)
