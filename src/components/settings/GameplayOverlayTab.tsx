@@ -309,32 +309,61 @@ const CPSSection = memo(function CPSSection({ settings, save }: {
   settings: Partial<AppSettings>
   save: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
 }) {
+  const [open, setOpen] = useState(false)
   const isEnabled = settings.overlayCps ?? false
 
   return (
     <div 
       style={{ contain: 'paint layout style', transform: 'translateZ(0)' }}
-      className="rounded-xl border border-white/[0.06] hover:border-white/[0.1] bg-[#0c0d12] transition-colors duration-150 overflow-hidden"
+      className={`rounded-xl border transition-colors duration-150 ${open ? 'border-white/10 bg-[#0f1015]' : 'border-white/[0.06] hover:border-white/[0.09] bg-[#0c0d12]'}`}
     >
-      <div 
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer"
-        onClick={() => save('overlayCps', !isEnabled)}
-      >
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-          isEnabled ? 'bg-white/15 text-white' : 'bg-white/[0.04] text-white/40'
-        }`}>
-          <MousePointerClick size={15} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className={`text-[13px] font-semibold ${isEnabled ? 'text-white' : 'text-white/70'}`}>
-            Clicks Per Second (CPS)
+      <div className="flex items-center justify-between px-4 py-3 cursor-pointer select-none" onClick={() => setOpen(p => !p)}>
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+            isEnabled ? 'bg-white/15 text-white' : 'bg-white/[0.04] text-white/40'
+          }`}>
+            <MousePointerClick size={15} />
           </div>
-          <div className="text-[11px] text-white/40">
-            {isEnabled ? 'LMB & RMB live click tracker for all games & desktop' : 'Disabled'}
+          <div className="flex-1 min-w-0">
+            <div className={`text-[13px] font-semibold ${isEnabled ? 'text-white' : 'text-white/70'}`}>
+              Clicks Per Second (CPS)
+            </div>
+            <div className="text-[11px] text-white/40 truncate">
+              {isEnabled ? 'LMB & RMB live click tracker with click animation' : 'Disabled'}
+            </div>
           </div>
         </div>
-        <Toggle checked={isEnabled} onChange={() => save('overlayCps', !isEnabled)} />
+
+        <div className="flex items-center gap-3">
+          <Toggle 
+            checked={isEnabled} 
+            onChange={() => save('overlayCps', !isEnabled)} 
+          />
+          <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.15 }} className="text-white/40">
+            <ChevronDown size={14} />
+          </motion.div>
+        </div>
       </div>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="overflow-hidden"
+          >
+            <div className="h-px bg-white/[0.06] mx-4" />
+            <div className="p-4 space-y-2">
+              <div className="text-[12px] font-medium text-white">Live Mouse Click Counter</div>
+              <div className="text-[11px] text-white/50 leading-relaxed">
+                Zeigt die Klicks pro Sekunde (LMB & RMB) mit reaktionsschneller Klickanimation live auf dem Bildschirm an. Funktioniert auf dem Desktop und in allen Spielen.
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 })

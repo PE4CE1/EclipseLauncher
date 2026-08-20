@@ -440,7 +440,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
         }
 
         // If user enabled "Always show general overlays on desktop", show only general overlays
-        const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayRobloxCps
+        const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayController
         if (appSettings.overlayGeneralAlwaysOn && hasGeneralOverlay) {
           showOverlay({
             name: 'Desktop',
@@ -449,11 +449,16 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
             settings: {
               performance: appSettings.overlayPerformance,
               crosshair: appSettings.overlayCrosshair,
-              cps: appSettings.overlayCps || appSettings.overlayRobloxCps,
-              robloxCps: appSettings.overlayCps || appSettings.overlayRobloxCps,
+              cps: appSettings.overlayCps,
+              robloxCps: appSettings.overlayCps,
               robloxTimer: false,
               rlHud: false,
               overlayRLSteam: false,
+              overlayController: appSettings.overlayController,
+              overlayRLController: appSettings.overlayController,
+              rlControllerSkin: appSettings.rlControllerSkin,
+              rlControllerUrl: appSettings.rlControllerUrl,
+              rlControllerScale: appSettings.rlControllerScale,
               metrics: appSettings.overlayMetrics,
               crosshairConfig: appSettings.crosshairConfig,
               steamProfileUrl: appSettings.steamProfileUrl,
