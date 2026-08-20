@@ -516,108 +516,82 @@ ${specificCss}
       }
     }
 
-    function applyState(buttons, axes) {
-      if (!buttons || !axes) return;
-      const btn = (i) => Boolean(buttons[i]?.pressed || (typeof buttons[i]?.value === 'number' && buttons[i].value > 0.25) || buttons[i] === true);
-      const val = (i) => typeof buttons[i]?.value === 'number' ? buttons[i].value : (buttons[i]?.pressed ? 1 : (buttons[i] === true ? 1 : 0));
-
-      // ABXY / Action buttons
-      togglePressed('btn-a', btn(0));
-      togglePressed('btn-b', btn(1));
-      togglePressed('btn-x', btn(2));
-      togglePressed('btn-y', btn(3));
-
-      // Bumpers (L1 / R1)
-      togglePressed('bumper-l', btn(4));
-      togglePressed('bumper-r', btn(5));
-
-      // Triggers (L2 / R2)
-      const l2 = val(6);
-      const r2 = val(7);
-      const trigL = document.getElementById('trigger-l');
-      const trigR = document.getElementById('trigger-r');
-      if (trigL) {
-        trigL.style.opacity = l2 > 0.05 ? Math.max(0.2, l2) : '0';
-        if (l2 > 0.1) trigL.classList.add('pressed'); else trigL.classList.remove('pressed');
-      }
-      if (trigR) {
-        trigR.style.opacity = r2 > 0.05 ? Math.max(0.2, r2) : '0';
-        if (r2 > 0.1) trigR.classList.add('pressed'); else trigR.classList.remove('pressed');
-      }
-
-      // Back / Start (Share / Options / View / Menu)
-      togglePressed('btn-back', btn(8));
-      togglePressed('btn-start', btn(9));
-
-      // L3 / R3
-      togglePressed('stick-l', btn(10));
-      togglePressed('stick-r', btn(11));
-
-      // D-Pad
-      let dpadUp = btn(12);
-      let dpadDown = btn(13);
-      let dpadLeft = btn(14);
-      let dpadRight = btn(15);
-
-      // POV Hat fallback for DirectInput
-      if (axes.length > 9 && !dpadUp && !dpadDown && !dpadLeft && !dpadRight) {
-        const pov = Math.round(axes[9] * 100) / 100;
-        if (pov >= -1.01 && pov <= 1.01) {
-          if (pov >= -1.01 && pov < -0.6) { dpadUp = true; }
-          else if (pov >= -0.6 && pov < -0.1) { dpadRight = true; }
-          else if (pov >= -0.1 && pov < 0.4) { dpadDown = true; }
-          else if (pov >= 0.4 && pov < 0.9) { dpadLeft = true; }
-        }
-      }
-
-      togglePressed('dpad-up', dpadUp);
-      togglePressed('dpad-down', dpadDown);
-      togglePressed('dpad-left', dpadLeft);
-      togglePressed('dpad-right', dpadRight);
-
-      // Sticks
-      const lx = applyDeadzone(axes[0] || 0) * STICK_OFFSET;
-      const ly = applyDeadzone(axes[1] || 0) * STICK_OFFSET;
-      const rx = applyDeadzone(axes[2] || 0) * STICK_OFFSET;
-      const ry = applyDeadzone(axes[3] || 0) * STICK_OFFSET;
-
-      const stickL = document.getElementById('stick-l');
-      const stickR = document.getElementById('stick-r');
-      if (stickL) stickL.style.transform = 'translate(' + lx + 'px, ' + ly + 'px)';
-      if (stickR) stickR.style.transform = 'translate(' + rx + 'px, ' + ry + 'px)';
-    }
-
-    window.addEventListener('message', function(e) {
-      if (e.data && e.data.type === 'gamepad-state') {
-        applyState(e.data.buttons, e.data.axes);
-      }
-    });
-
     function loop() {
       const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
       let gp = null;
       for (let i = 0; i < gamepads.length; i++) {
-        const g = gamepads[i];
-        if (g && g.connected) {
-          const hasPress = g.buttons.some(b => b && (b.pressed || b.value > 0.1));
-          const hasAxis = g.axes.some(a => Math.abs(a) > 0.15);
-          if (hasPress || hasAxis) {
-            gp = g;
-            break;
-          }
-        }
-      }
-      if (!gp) {
-        for (let i = 0; i < gamepads.length; i++) {
-          if (gamepads[i] && gamepads[i].connected) {
-            gp = gamepads[i];
-            break;
-          }
-        }
+        if (gamepads[i]) { gp = gamepads[i]; break; }
       }
 
       if (gp) {
-        applyState(gp.buttons, gp.axes);
+        const b = gp.buttons;
+        const btn = (i) => Boolean(b[i]?.pressed || (b[i]?.value && b[i].value > 0.25));
+        const val = (i) => b[i]?.value !== undefined ? b[i].value : (b[i]?.pressed ? 1 : 0);
+
+        // ABXY / Action buttons
+        togglePressed('btn-a', btn(0));
+        togglePressed('btn-b', btn(1));
+        togglePressed('btn-x', btn(2));
+        togglePressed('btn-y', btn(3));
+
+        // Bumpers (L1 / R1)
+        togglePressed('bumper-l', btn(4));
+        togglePressed('bumper-r', btn(5));
+
+        // Triggers (L2 / R2)
+        const l2 = val(6);
+        const r2 = val(7);
+        const trigL = document.getElementById('trigger-l');
+        const trigR = document.getElementById('trigger-r');
+        if (trigL) {
+          trigL.style.opacity = l2 > 0.05 ? Math.max(0.2, l2) : '0';
+          if (l2 > 0.1) trigL.classList.add('pressed'); else trigL.classList.remove('pressed');
+        }
+        if (trigR) {
+          trigR.style.opacity = r2 > 0.05 ? Math.max(0.2, r2) : '0';
+          if (r2 > 0.1) trigR.classList.add('pressed'); else trigR.classList.remove('pressed');
+        }
+
+        // Back / Start (Share / Options / View / Menu)
+        togglePressed('btn-back', btn(8));
+        togglePressed('btn-start', btn(9));
+
+        // L3 / R3
+        togglePressed('stick-l', btn(10));
+        togglePressed('stick-r', btn(11));
+
+        // D-Pad
+        let dpadUp = btn(12);
+        let dpadDown = btn(13);
+        let dpadLeft = btn(14);
+        let dpadRight = btn(15);
+
+        // POV Hat fallback for DirectInput
+        if (gp.axes && gp.axes.length > 9 && !dpadUp && !dpadDown && !dpadLeft && !dpadRight) {
+          const pov = Math.round(gp.axes[9] * 100) / 100;
+          if (pov >= -1.01 && pov <= 1.01) {
+            if (pov >= -1.01 && pov < -0.6) { dpadUp = true; }
+            else if (pov >= -0.6 && pov < -0.1) { dpadRight = true; }
+            else if (pov >= -0.1 && pov < 0.4) { dpadDown = true; }
+            else if (pov >= 0.4 && pov < 0.9) { dpadLeft = true; }
+          }
+        }
+
+        togglePressed('dpad-up', dpadUp);
+        togglePressed('dpad-down', dpadDown);
+        togglePressed('dpad-left', dpadLeft);
+        togglePressed('dpad-right', dpadRight);
+
+        // Sticks
+        const lx = applyDeadzone(gp.axes[0] || 0) * STICK_OFFSET;
+        const ly = applyDeadzone(gp.axes[1] || 0) * STICK_OFFSET;
+        const rx = applyDeadzone(gp.axes[2] || 0) * STICK_OFFSET;
+        const ry = applyDeadzone(gp.axes[3] || 0) * STICK_OFFSET;
+
+        const stickL = document.getElementById('stick-l');
+        const stickR = document.getElementById('stick-r');
+        if (stickL) stickL.style.transform = 'translate(' + lx + 'px, ' + ly + 'px)';
+        if (stickR) stickR.style.transform = 'translate(' + rx + 'px, ' + ry + 'px)';
       }
 
       requestAnimationFrame(loop);
@@ -635,7 +609,6 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
   scale = 80,
   isEditMode = false,
 }: ControllerOverlayProps) {
-  const iframeRef = React.useRef<HTMLIFrameElement>(null)
   const finalScale = (scale || 80) / 100
 
   // Determine active skin
@@ -657,60 +630,6 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
 
   const htmlContent = useMemo(() => buildControllerHtml(resolvedSkin), [resolvedSkin])
 
-  // Receive gamepad state from Main Process (via hidden gamepadService window).
-  // This works even when Rocket League is focused because the main process
-  // relays state from a separate focusable window that always has gamepad access.
-  React.useEffect(() => {
-    const api = (window as any).electronAPI
-
-    const sendToIframe = (state: any) => {
-      if (!state || !iframeRef.current?.contentWindow) return
-      try {
-        iframeRef.current.contentWindow.postMessage({
-          type: 'gamepad-state',
-          buttons: state.buttons,
-          axes: state.axes,
-        }, '*')
-      } catch {}
-    }
-
-    // Primary: IPC from main process gamepad relay
-    let ipcUnsub: (() => void) | null = null
-    if (api?.on) {
-      ipcUnsub = api.on('overlay:gamepad-state', sendToIframe)
-    }
-
-    // Fallback: direct poll via setInterval (works in Eclipse Launcher window context)
-    const intervalId = setInterval(() => {
-      const gamepads = navigator.getGamepads ? navigator.getGamepads() : []
-      let bestGp: Gamepad | null = null
-      for (let i = 0; i < gamepads.length; i++) {
-        const g = gamepads[i]
-        if (g && g.connected) {
-          const active = g.buttons.some(b => b && (b.pressed || b.value > 0.05)) || g.axes.some(a => Math.abs(a) > 0.1)
-          if (active) { bestGp = g; break }
-        }
-      }
-      if (!bestGp) {
-        for (let i = 0; i < gamepads.length; i++) {
-          const g = gamepads[i]
-          if (g && g.connected) { bestGp = g; break }
-        }
-      }
-      if (bestGp) {
-        sendToIframe({
-          buttons: bestGp.buttons.map(b => ({ pressed: b.pressed, value: b.value })),
-          axes: Array.from(bestGp.axes),
-        })
-      }
-    }, 16) // ~60fps
-
-    return () => {
-      clearInterval(intervalId)
-      if (ipcUnsub) ipcUnsub()
-    }
-  }, [])
-
   return (
     <div
       style={{
@@ -724,7 +643,6 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
       }}
     >
       <iframe
-        ref={iframeRef}
         key={resolvedSkin}
         srcDoc={htmlContent}
         title="Gamepad Controller Overlay"

@@ -748,16 +748,6 @@ ipcMain.handle('settings:set', (_event, data: Record<string, unknown>) => {
   }
 })
 
-// ─── Gamepad State Relay (Main Process Bridge) ───────────────────────────────
-// Hidden gamepad reader window polls navigator.getGamepads() and sends state here.
-// Relayed directly to the overlay window renderer.
-ipcMain.on('gamepad:state', (_event, state) => {
-  const overlayWin = getOverlayWindow()
-  if (overlayWin && !overlayWin.isDestroyed()) {
-    overlayWin.webContents.send('overlay:gamepad-state', state)
-  }
-})
-
 // ─── VPN Service IPC ────────────────────────────────────────────────────────
 import { detectInstalledVpns, getVpnStatus, connectVpn, disconnectVpn } from './vpnService'
 
