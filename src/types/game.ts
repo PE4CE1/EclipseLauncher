@@ -153,6 +153,7 @@ export interface AppSettings {
   }
   overlayCrosshair: boolean
   overlayCps?: boolean
+  overlayController?: boolean
   crosshairConfig: {
     preset: string
     color: string

@@ -214,10 +214,12 @@ export function OverlayApp() {
     performance: initialSettings?.overlayPerformance ?? true,
     crosshair: initialSettings?.overlayCrosshair ?? true,
     robloxTimer: initialSettings?.overlayRobloxTimer ?? false,
-    robloxCps: (initialSettings?.overlayCps || initialSettings?.overlayRobloxCps) ?? false,
+    robloxCps: initialSettings?.overlayRobloxCps ?? false,
+    cps: initialSettings?.overlayCps ?? false,
     overlayRLHud: initialSettings?.overlayRLHud ?? false,
     overlayRLSteam: initialSettings?.overlayRLSteam ?? false,
-    overlayRLController: initialSettings?.overlayRLController ?? false,
+    overlayController: initialSettings?.overlayController ?? false,
+    overlayRLController: (initialSettings?.overlayRLController || initialSettings?.overlayController) ?? false,
     rlControllerSkin: initialSettings?.rlControllerSkin ?? 'ps5_white',
     rlControllerUrl: initialSettings?.rlControllerUrl ?? 'https://gamepadviewer.com/?p=1&s=ps5_white',
     rlControllerScale: initialSettings?.rlControllerScale ?? 80,
@@ -271,27 +273,42 @@ export function OverlayApp() {
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      overflow: 'hidden', userSelect: 'none', background: 'transparent',
-      pointerEvents: editMode ? 'auto' : 'none',
-    }}>
-      {/* Edit mode background */}
+    <div 
+      className="relative w-screen h-screen overflow-hidden select-none"
+      style={{
+        backgroundColor: 'transparent',
+        backgroundImage: 'none',
+        pointerEvents: editMode ? 'auto' : 'none',
+      }}
+    >
+      {/* Grid overlay in Edit Mode */}
       {editMode && (
         <div style={{
-          position: 'absolute', inset: 0,
-          background: 'rgba(0,0,0,0.55)',
-          backdropFilter: 'blur(2px)',
-          pointerEvents: 'none',
+          position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+          background: 'rgba(0, 0, 0, 0.45)',
         }}>
-          {/* Grid */}
-          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-            {Array.from({ length: 30 }).map((_, xi) =>
-              Array.from({ length: 18 }).map((_, yi) => (
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.15 }}>
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+            {/* Center crosshair guide */}
+            <line x1="50%" y1="0" x2="50%" y2="100%" stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="6 4" />
+            <line x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="6 4" />
+            {/* Rule of thirds */}
+            <line x1="33.33%" y1="0" x2="33.33%" y2="100%" stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="3 3" />
+            <line x1="66.66%" y1="0" x2="66.66%" y2="100%" stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="3 3" />
+            <line x1="0" y1="33.33%" x2="100%" y2="33.33%" stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="3 3" />
+            <line x1="0" y1="66.66%" x2="100%" y2="66.66%" stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="3 3" />
+            {/* Dot grid points */}
+            {[...Array(9)].map((_, i) =>
+              [...Array(16)].map((_, j) => (
                 <circle
-                  key={`${xi}-${yi}`}
-                  cx={`${(xi + 0.5) * (100 / 30)}%`}
-                  cy={`${(yi + 0.5) * (100 / 18)}%`}
+                  key={`dot-${i}-${j}`}
+                  cx={`${(j + 1) * (100 / 17)}%`}
+                  cy={`${(i + 1) * (100 / 10)}%`}
                   r="1.5"
                   fill="rgba(255,255,255,0.08)"
                 />
@@ -308,7 +325,7 @@ export function OverlayApp() {
       {settings.robloxTimer && (editMode || displayGame?.name === 'Roblox') && renderWidget('robloxTimer',
         <RobloxTimer startTime={displayGame?.startTime || Date.now()} idleTime={metrics.idleTime} />
       )}
-      {(settings.cps || settings.robloxCps) && renderWidget('robloxCps',
+      {(settings.cps || (settings.robloxCps && (editMode || displayGame?.name === 'Roblox')) || (editMode && (settings.cps || settings.robloxCps))) && renderWidget('robloxCps',
         <RobloxCPS />
       )}
       {settings.rlHud && (editMode || displayGame?.name === 'Rocket League') && renderWidget('rlHud',
@@ -322,7 +339,7 @@ export function OverlayApp() {
           isEditMode={editMode}
         />
       )}
-      {settings.overlayRLController && (editMode || displayGame?.name === 'Rocket League') && renderWidget('rlController',
+      {(settings.overlayController || (settings.overlayRLController && (editMode || displayGame?.name === 'Rocket League')) || (editMode && (settings.overlayController || settings.overlayRLController))) && renderWidget('rlController',
         <ControllerOverlay 
           skin={settings.rlControllerSkin}
           url={settings.rlControllerUrl} 
