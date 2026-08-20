@@ -516,15 +516,41 @@ ${specificCss}
       }
     }
 
-    function loop() {
-      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-      let gp = null;
-      for (let i = 0; i < gamepads.length; i++) {
-        if (gamepads[i]) { gp = gamepads[i]; break; }
-      }
+    window.addEventListener('gamepadconnected', () => {});
+    window.addEventListener('gamepaddisconnected', () => {});
 
+    function scanGamepad() {
+      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+      let best = null;
+      // 1. Search for a gamepad with active input (button press or stick movement)
+      for (let i = 0; i < gamepads.length; i++) {
+        const g = gamepads[i];
+        if (g && (g.connected || g.buttons)) {
+          const active = (g.buttons && g.buttons.some(b => b && (b.pressed || b.value > 0.05))) ||
+                         (g.axes && g.axes.some(a => Math.abs(a) > 0.1));
+          if (active) {
+            best = g;
+            break;
+          }
+        }
+      }
+      // 2. If none active right now, take the first connected gamepad
+      if (!best) {
+        for (let i = 0; i < gamepads.length; i++) {
+          const g = gamepads[i];
+          if (g && (g.connected || g.buttons)) {
+            best = g;
+            break;
+          }
+        }
+      }
+      return best;
+    }
+
+    function update() {
+      const gp = scanGamepad();
       if (gp) {
-        const b = gp.buttons;
+        const b = gp.buttons || [];
         const btn = (i) => Boolean(b[i]?.pressed || (b[i]?.value && b[i].value > 0.25));
         const val = (i) => b[i]?.value !== undefined ? b[i].value : (b[i]?.pressed ? 1 : 0);
 
@@ -583,20 +609,23 @@ ${specificCss}
         togglePressed('dpad-right', dpadRight);
 
         // Sticks
-        const lx = applyDeadzone(gp.axes[0] || 0) * STICK_OFFSET;
-        const ly = applyDeadzone(gp.axes[1] || 0) * STICK_OFFSET;
-        const rx = applyDeadzone(gp.axes[2] || 0) * STICK_OFFSET;
-        const ry = applyDeadzone(gp.axes[3] || 0) * STICK_OFFSET;
+        const lx = applyDeadzone(gp.axes ? (gp.axes[0] || 0) : 0) * STICK_OFFSET;
+        const ly = applyDeadzone(gp.axes ? (gp.axes[1] || 0) : 0) * STICK_OFFSET;
+        const rx = applyDeadzone(gp.axes ? (gp.axes[2] || 0) : 0) * STICK_OFFSET;
+        const ry = applyDeadzone(gp.axes ? (gp.axes[3] || 0) : 0) * STICK_OFFSET;
 
         const stickL = document.getElementById('stick-l');
         const stickR = document.getElementById('stick-r');
         if (stickL) stickL.style.transform = 'translate(' + lx + 'px, ' + ly + 'px)';
         if (stickR) stickR.style.transform = 'translate(' + rx + 'px, ' + ry + 'px)';
       }
-
-      requestAnimationFrame(loop);
     }
 
+    setInterval(update, 16);
+    function loop() {
+      update();
+      requestAnimationFrame(loop);
+    }
     requestAnimationFrame(loop);
   </script>
 </body>
