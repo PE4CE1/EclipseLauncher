@@ -6,4 +6,4 @@ compatibility_date = "2024-04-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "eclipse-db"
-database_id = "PASTE_YOUR_D1_DATABASE_ID_HERE"
+database_id = "5cc48683-6d15-4fe9-8478-4b32e4d004c4"

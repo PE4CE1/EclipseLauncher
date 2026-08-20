@@ -3,7 +3,7 @@ import { sendAppNotification } from './notificationService'
 import type { EclipseFriend, FriendRequest } from '../types/game'
 
 // Default fallback API URL (can be customized in settings)
-export const DEFAULT_SOCIAL_API_URL = 'https://eclipse-social-api.workers.dev'
+export const DEFAULT_SOCIAL_API_URL = 'https://eclipse-social-api.eclipse-launcher.workers.dev'
 
 let pollingInterval: any = null
 let presenceHeartbeatInterval: any = null
