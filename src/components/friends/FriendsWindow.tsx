@@ -8,8 +8,8 @@ import {
   removeFirebaseFriend, 
   restoreFirebaseFriend, 
   acceptFriendRequest, 
-  declineFriendRequest 
-} from '../../services/firebaseService';
+  declineFriendRequest,
+} from '../../services/socialService';
 import { formatLastSeen } from '../../services/assetHelper';
 
 interface FriendsWindowProps {

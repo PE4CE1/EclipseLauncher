@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Minus, Square, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useUIStore } from '../../store/uiStore'
-import { updateFirebasePresence } from '../../services/firebaseService'
+import { updateSocialPresence } from '../../services/socialService'
 // @ts-ignore
 import eclipseLogo from '../../assets/logo.png'
 
@@ -13,7 +13,7 @@ function maximize() { isElectron && window.electronAPI.maximizeWindow() }
 async function close() {
   if (isElectron) {
     try {
-      await updateFirebasePresence('offline', null)
+      await updateSocialPresence('offline', null)
     } catch {}
     window.electronAPI.closeWindow()
   }

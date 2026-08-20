@@ -22,7 +22,7 @@ import { useGameStore } from './store/gameStore'
 import { useDownloadStore } from './store/downloadStore'
 import { useScanner } from './hooks/useScanner'
 import { sendAppNotification } from './services/notificationService'
-import { initFirebaseSocial, updateFirebasePresence } from './services/firebaseService'
+import { initSocialNetwork, updateSocialPresence } from './services/socialService'
 import { useThemeStore } from './store/themeStore'
 
 const pageVariants = {
@@ -111,9 +111,9 @@ export default function App() {
     }
   }, [])
 
-  // Initialize Firebase Real-Time Social Sync
+  // Initialize Cloudflare D1 Real-Time Social Sync
   useEffect(() => {
-    initFirebaseSocial()
+    initSocialNetwork()
   }, [])
 
   // Listen to standalone Friends Window events
@@ -354,23 +354,23 @@ export default function App() {
   // Live Cloud Presence (Online / In-Game / Game Name)
   useEffect(() => {
     if (activeGame) {
-      updateFirebasePresence('ingame', activeGame.name)
+      updateSocialPresence('ingame', activeGame.name)
     } else {
-      updateFirebasePresence('online', null)
+      updateSocialPresence('online', null)
     }
   }, [activeGame])
 
   // Clear presence when closing Eclipse
   useEffect(() => {
     const handleUnload = () => {
-      updateFirebasePresence('offline', null)
+      updateSocialPresence('offline', null)
     }
     window.addEventListener('beforeunload', handleUnload)
     window.addEventListener('pagehide', handleUnload)
     return () => {
       window.removeEventListener('beforeunload', handleUnload)
       window.removeEventListener('pagehide', handleUnload)
-      updateFirebasePresence('offline', null)
+      updateSocialPresence('offline', null)
     }
   }, [])
 

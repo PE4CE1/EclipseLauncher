@@ -196,6 +196,8 @@ export interface AppSettings {
     timestamp: number
   }>
   friendCode?: string
+  userUid?: string
+  socialApiUrl?: string
   profileShowPlaytime?: boolean
   profileShowSteamStats?: boolean
   overlayPositions: {

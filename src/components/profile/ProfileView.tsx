@@ -4,7 +4,7 @@ import { User, Library, Clock, Save, Edit3, Settings, Trophy, Gamepad2, Award, U
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
 import { useTranslation } from '../../hooks/useTranslation'
-import { syncMyProfile, fetchUserProfile, sendFriendRequest } from '../../services/firebaseService'
+import { syncMyProfile, fetchUserProfile, sendFriendRequest } from '../../services/socialService'
 import { fetchSteamUserProfile } from '../../services/steamService'
 import { formatLastSeen } from '../../services/assetHelper'
 import { sendAppNotification } from '../../services/notificationService'

@@ -1,0 +1,9 @@
+name = "eclipse-social-api"
+main = "src/index.ts"
+compatibility_date = "2024-04-01"
+
+# Cloudflare D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "eclipse-db"
+database_id = "PASTE_YOUR_D1_DATABASE_ID_HERE"

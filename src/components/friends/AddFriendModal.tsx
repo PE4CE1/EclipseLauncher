@@ -5,7 +5,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { useUIStore } from '../../store/uiStore';
 import { useGameStore } from '../../store/gameStore';
 import { fetchSteamUserProfile } from '../../services/steamService';
-import { sendFriendRequest, generateEclipseFriendCode, syncMyProfile, fetchUserProfile } from '../../services/firebaseService';
+import { sendFriendRequest, generateEclipseFriendCode, syncMyProfile, fetchUserProfile } from '../../services/socialService';
 import { sendAppNotification } from '../../services/notificationService';
 import type { EclipseFriend } from '../../types/game';
 
