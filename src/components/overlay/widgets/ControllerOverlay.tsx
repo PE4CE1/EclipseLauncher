@@ -657,59 +657,57 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
 
   const htmlContent = useMemo(() => buildControllerHtml(resolvedSkin), [resolvedSkin])
 
-  // Bridge gamepad polling from top-level window into iframe
+  // Receive gamepad state from Main Process (via hidden gamepadService window).
+  // This works even when Rocket League is focused because the main process
+  // relays state from a separate focusable window that always has gamepad access.
   React.useEffect(() => {
-    let reqId: number
+    const api = (window as any).electronAPI
 
-    const handleGamepadConnected = () => {
-      // Wakes up gamepad subsystem in Chromium
+    const sendToIframe = (state: any) => {
+      if (!state || !iframeRef.current?.contentWindow) return
+      try {
+        iframeRef.current.contentWindow.postMessage({
+          type: 'gamepad-state',
+          buttons: state.buttons,
+          axes: state.axes,
+        }, '*')
+      } catch {}
     }
-    window.addEventListener('gamepadconnected', handleGamepadConnected)
 
-    const poll = () => {
+    // Primary: IPC from main process gamepad relay
+    let ipcUnsub: (() => void) | null = null
+    if (api?.on) {
+      ipcUnsub = api.on('overlay:gamepad-state', sendToIframe)
+    }
+
+    // Fallback: direct poll via setInterval (works in Eclipse Launcher window context)
+    const intervalId = setInterval(() => {
       const gamepads = navigator.getGamepads ? navigator.getGamepads() : []
       let bestGp: Gamepad | null = null
-
       for (let i = 0; i < gamepads.length; i++) {
         const g = gamepads[i]
         if (g && g.connected) {
-          const hasPress = g.buttons.some(b => b && (b.pressed || b.value > 0.1))
-          const hasAxis = g.axes.some(a => Math.abs(a) > 0.15)
-          if (hasPress || hasAxis) {
-            bestGp = g
-            break
-          }
+          const active = g.buttons.some(b => b && (b.pressed || b.value > 0.05)) || g.axes.some(a => Math.abs(a) > 0.1)
+          if (active) { bestGp = g; break }
         }
       }
       if (!bestGp) {
         for (let i = 0; i < gamepads.length; i++) {
           const g = gamepads[i]
-          if (g && g.connected) {
-            bestGp = g
-            break
-          }
+          if (g && g.connected) { bestGp = g; break }
         }
       }
-
-      if (bestGp && iframeRef.current?.contentWindow) {
-        const btns = bestGp.buttons.map(b => ({ pressed: b.pressed, value: b.value }))
-        const axes = Array.from(bestGp.axes)
-        try {
-          iframeRef.current.contentWindow.postMessage({
-            type: 'gamepad-state',
-            buttons: btns,
-            axes: axes,
-          }, '*')
-        } catch {}
+      if (bestGp) {
+        sendToIframe({
+          buttons: bestGp.buttons.map(b => ({ pressed: b.pressed, value: b.value })),
+          axes: Array.from(bestGp.axes),
+        })
       }
+    }, 16) // ~60fps
 
-      reqId = requestAnimationFrame(poll)
-    }
-
-    reqId = requestAnimationFrame(poll)
     return () => {
-      cancelAnimationFrame(reqId)
-      window.removeEventListener('gamepadconnected', handleGamepadConnected)
+      clearInterval(intervalId)
+      if (ipcUnsub) ipcUnsub()
     }
   }, [])
 

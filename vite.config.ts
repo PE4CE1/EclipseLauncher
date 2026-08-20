@@ -41,6 +41,22 @@ export default defineConfig({
           },
         },
       },
+      {
+        // Gamepad reader preload
+        entry: 'electron/gamepadPreload.ts',
+        onstart(options) {
+          options.reload()
+        },
+        vite: {
+          build: {
+            outDir: 'dist-electron',
+            sourcemap: true,
+            rollupOptions: {
+              external: ['electron'],
+            },
+          },
+        },
+      },
     ]),
     renderer(),
   ],

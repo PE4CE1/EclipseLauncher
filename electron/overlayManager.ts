@@ -2,6 +2,7 @@ import { BrowserWindow, screen, ipcMain } from 'electron'
 import path from 'path'
 import { startMetricsService, stopMetricsService } from './metricsService'
 import { startInputService, stopInputService } from './inputService'
+import { startGamepadService, stopGamepadService } from './gamepadService'
 
 let overlayWindow: BrowserWindow | null = null
 let isEditMode = false
@@ -79,6 +80,7 @@ export function showOverlay(gameData: any) {
     overlayWindow?.show()
     startMetricsService(getOverlayWindow)
     startInputService(overlayWindow!)
+    startGamepadService(getOverlayWindow)
     overlayWindow?.webContents.send('overlay:update', gameData)
   })
   overlayWindow!.webContents.once('did-finish-load', () => {
@@ -93,6 +95,7 @@ export function hideOverlay() {
   }
   stopMetricsService()
   stopInputService()
+  stopGamepadService()
   isEditMode = false
 }
 
@@ -106,6 +109,7 @@ export function openOverlayEditMode(gameData?: any) {
       overlayWindow?.show()
       startMetricsService(getOverlayWindow)
       startInputService(overlayWindow!)
+      startGamepadService(getOverlayWindow)
       overlayWindow?.webContents.send('overlay:edit-mode', true)
       setTimeout(() => {
         enterEditMode(gameData)
