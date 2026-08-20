@@ -8,6 +8,7 @@ import {
 import type { AppSettings } from '../../types/game'
 import { CROSSHAIR_PRESETS, CrosshairSVG, DEFAULT_CROSSHAIR } from '../overlay/widgets/Crosshair'
 import type { CrosshairConfig } from '../overlay/widgets/Crosshair'
+import { useTranslation } from '../../hooks/useTranslation'
 
 import robloxLogoImg from '../../assets/Roblox-Logo-Icon.png'
 import rlLogoImg from '../../assets/Rocket-League-Logo.png'
@@ -82,9 +83,10 @@ const MetricItem = memo(function MetricItem({ label, description, enabled, onTog
 })
 
 // ─── Performance Dropdown ─────────────────────────────────────────────────────
-const PerformanceSection = memo(function PerformanceSection({ settings, save }: {
+const PerformanceSection = memo(function PerformanceSection({ settings, save, language }: {
   settings: Partial<AppSettings>
   save: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
+  language: string
 }) {
   const [open, setOpen] = useState(false)
 
@@ -116,7 +118,9 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
               Performance Overlay
             </div>
             <div className="text-[11px] text-white/40 truncate">
-              {settings.overlayPerformance ? `${activeCount} Metriken aktiviert · FPS, CPU, RAM, GPU` : 'Deaktiviert'}
+              {settings.overlayPerformance 
+                ? (language === 'de' ? `${activeCount} Metriken aktiviert · FPS, CPU, RAM, GPU` : `${activeCount} metrics enabled · FPS, CPU, RAM, GPU`)
+                : (language === 'de' ? 'Deaktiviert' : 'Disabled')}
             </div>
           </div>
         </div>
@@ -161,7 +165,7 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
                     }`}
                   >
                     <Layers size={12} />
-                    Vertikal
+                    {language === 'de' ? 'Vertikal' : 'Vertical'}
                   </button>
                   <button
                     type="button"
@@ -181,7 +185,7 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
               {/* Right: Clean Size / Scale Stepper with Minus & Plus */}
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-semibold text-white/50 uppercase tracking-wider">
-                  Größe
+                  {language === 'de' ? 'Größe' : 'Size'}
                 </span>
                 <div className="flex items-center gap-1 p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">
                   <button
@@ -192,7 +196,7 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
                       save('overlayMetrics', { ...metrics, scale: next })
                     }}
                     className="w-6 h-6 rounded-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-                    title="Verkleinern (-5%)"
+                    title={language === 'de' ? 'Verkleinern (-5%)' : 'Decrease (-5%)'}
                   >
                     <Minus size={12} />
                   </button>
@@ -207,7 +211,7 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
                       save('overlayMetrics', { ...metrics, scale: next })
                     }}
                     className="w-6 h-6 rounded-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-                    title="Vergrößern (+5%)"
+                    title={language === 'de' ? 'Vergrößern (+5%)' : 'Increase (+5%)'}
                   >
                     <Plus size={12} />
                   </button>
@@ -218,36 +222,36 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
             <div className="h-px bg-white/[0.06] mx-4" />
             <div className="divide-y divide-white/[0.04]">
               <MetricItem 
-                label="Bildwiederholrate (FPS)" 
-                description="Live Game Frame-Rate Tracker" 
+                label={language === 'de' ? 'Bildwiederholrate (FPS)' : 'Frames Per Second (FPS)'} 
+                description={language === 'de' ? 'Live Game Frame-Rate Tracker' : 'Live game frame rate tracker'} 
                 enabled={metrics.fps ?? true} 
                 onToggle={() => toggleMetric('fps')} 
                 icon={<Gauge size={13} />} 
               />
               <MetricItem 
-                label="CPU-Auslastung" 
-                description="Prozessorlast in %" 
+                label={language === 'de' ? 'CPU-Auslastung' : 'CPU Usage'} 
+                description={language === 'de' ? 'Prozessorlast in %' : 'Processor load in %'} 
                 enabled={metrics.cpu ?? true} 
                 onToggle={() => toggleMetric('cpu')} 
                 icon={<Cpu size={13} />} 
               />
               <MetricItem 
-                label="GPU-Auslastung" 
-                description="Grafikkartenlast in %" 
+                label={language === 'de' ? 'GPU-Auslastung' : 'GPU Usage'} 
+                description={language === 'de' ? 'Grafikkartenlast in %' : 'Graphics card load in %'} 
                 enabled={metrics.gpu ?? true} 
                 onToggle={() => toggleMetric('gpu')} 
                 icon={<Activity size={13} />} 
               />
               <MetricItem 
-                label="RAM-Auslastung" 
-                description="Arbeitsspeicher-Verbrauch & %" 
+                label={language === 'de' ? 'RAM-Auslastung' : 'RAM Usage'} 
+                description={language === 'de' ? 'Arbeitsspeicher-Verbrauch & %' : 'Memory usage & percentage'} 
                 enabled={metrics.ram ?? true} 
                 onToggle={() => toggleMetric('ram')} 
                 icon={<MemoryStick size={13} />} 
               />
               <MetricItem 
-                label="Uhrzeit" 
-                description="Aktuelle Systemzeit" 
+                label={language === 'de' ? 'Uhrzeit' : 'Time & Clock'} 
+                description={language === 'de' ? 'Aktuelle Systemzeit' : 'Current system time'} 
                 enabled={metrics.time ?? true} 
                 onToggle={() => toggleMetric('time')} 
                 icon={<Clock size={13} />} 
@@ -261,9 +265,10 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
 })
 
 // ─── Crosshair Section (General Overlays) ─────────────────────────────────────
-const CrosshairSection = memo(function CrosshairSection({ settings, save }: {
+const CrosshairSection = memo(function CrosshairSection({ settings, save, language }: {
   settings: Partial<AppSettings>
   save: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
+  language: string
 }) {
   const [open, setOpen] = useState(false)
   const cfg = settings.crosshairConfig ?? DEFAULT_CROSSHAIR
@@ -286,10 +291,10 @@ const CrosshairSection = memo(function CrosshairSection({ settings, save }: {
           </div>
           <div className="flex-1 min-w-0">
             <div className={`text-[13px] font-semibold ${settings.overlayCrosshair ? 'text-white' : 'text-white/70'}`}>
-              Fadenkreuz (Crosshair)
+              {language === 'de' ? 'Fadenkreuz (Crosshair)' : 'Custom Crosshair'}
             </div>
             <div className="text-[11px] text-white/40 truncate">
-              {settings.overlayCrosshair ? `${cfg.preset || cfg.style || 'Kreuz'} · ${cfg.color} · ${cfg.size}px` : 'Deaktiviert'}
+              {settings.overlayCrosshair ? `${cfg.preset || cfg.style || 'Cross'} · ${cfg.color} · ${cfg.size}px` : (language === 'de' ? 'Deaktiviert' : 'Disabled')}
             </div>
           </div>
         </div>
@@ -318,7 +323,9 @@ const CrosshairSection = memo(function CrosshairSection({ settings, save }: {
             <div className="p-4 space-y-4">
               {/* Presets */}
               <div>
-                <div className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-2">Fadenkreuz-Vorlagen</div>
+                <div className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-2">
+                  {language === 'de' ? 'Fadenkreuz-Vorlagen' : 'Preset Crosshairs'}
+                </div>
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
                   {Object.entries(CROSSHAIR_PRESETS).map(([key, preset]) => {
                     const isSelected = cfg.preset === key
@@ -344,7 +351,9 @@ const CrosshairSection = memo(function CrosshairSection({ settings, save }: {
               {/* Color & Size */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Farbe</div>
+                  <div className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">
+                    {language === 'de' ? 'Farbe' : 'Color'}
+                  </div>
                   <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5">
                     <input
                       type="color"
@@ -358,7 +367,7 @@ const CrosshairSection = memo(function CrosshairSection({ settings, save }: {
 
                 <div>
                   <div className="flex justify-between text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">
-                    <span>Größe</span>
+                    <span>{language === 'de' ? 'Größe' : 'Size'}</span>
                     <span className="text-white font-mono">{cfg.size}px</span>
                   </div>
                   <input
@@ -380,9 +389,10 @@ const CrosshairSection = memo(function CrosshairSection({ settings, save }: {
 })
 
 // ─── CPS Counter Section (General Overlays) ──────────────────────────────────
-const CPSSection = memo(function CPSSection({ settings, save }: {
+const CPSSection = memo(function CPSSection({ settings, save, language }: {
   settings: Partial<AppSettings>
   save: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
+  language: string
 }) {
   const [open, setOpen] = useState(false)
   const isEnabled = settings.overlayCps ?? false
@@ -401,10 +411,12 @@ const CPSSection = memo(function CPSSection({ settings, save }: {
           </div>
           <div className="flex-1 min-w-0">
             <div className={`text-[13px] font-semibold ${isEnabled ? 'text-white' : 'text-white/70'}`}>
-              Klicks pro Sekunde (CPS)
+              {language === 'de' ? 'Klicks pro Sekunde (CPS)' : 'Clicks Per Second (CPS)'}
             </div>
             <div className="text-[11px] text-white/40 truncate">
-              {isEnabled ? 'LMB- & RMB-Klick-Tracker mit Live-Animation' : 'Deaktiviert'}
+              {isEnabled 
+                ? (language === 'de' ? 'LMB- & RMB-Klick-Tracker mit Live-Animation' : 'LMB & RMB live click tracker with click animation')
+                : (language === 'de' ? 'Deaktiviert' : 'Disabled')}
             </div>
           </div>
         </div>
@@ -431,9 +443,13 @@ const CPSSection = memo(function CPSSection({ settings, save }: {
           >
             <div className="h-px bg-white/[0.06] mx-4" />
             <div className="p-4 space-y-2">
-              <div className="text-[12px] font-medium text-white">Live-Mausklick-Zähler</div>
+              <div className="text-[12px] font-medium text-white">
+                {language === 'de' ? 'Live-Mausklick-Zähler' : 'Live Mouse Click Counter'}
+              </div>
               <div className="text-[11px] text-white/50 leading-relaxed">
-                Zeigt die Klicks pro Sekunde (LMB & RMB) mit reaktionsschneller Klickanimation live auf dem Bildschirm an. Funktioniert auf dem Desktop und in allen Spielen.
+                {language === 'de' 
+                  ? 'Zeigt die Klicks pro Sekunde (LMB & RMB) mit reaktionsschneller Klickanimation live auf dem Bildschirm an. Funktioniert auf dem Desktop und in allen Spielen.'
+                  : 'Shows clicks per second (LMB & RMB) with responsive click animation live on screen. Works on desktop and in all games.'}
               </div>
             </div>
           </motion.div>
@@ -445,38 +461,40 @@ const CPSSection = memo(function CPSSection({ settings, save }: {
 
 export type ControllerSkinId = 'ps5_white' | 'ps5_black' | 'ps4_white' | 'ps4_black' | 'xbox_one'
 
-export const CONTROLLER_SKINS: Record<ControllerSkinId, { label: string; url: string }> = {
+export const getControllerSkins = (language: string): Record<ControllerSkinId, { label: string; url: string }> => ({
   ps5_white: {
-    label: 'PS5 DualSense (Weiß)',
+    label: language === 'de' ? 'PS5 DualSense (Weiß)' : 'PS5 DualSense (White)',
     url: 'https://gamepadviewer.com/?p=1&s=ps5_white',
   },
   ps5_black: {
-    label: 'PS5 Midnight Schwarz',
+    label: language === 'de' ? 'PS5 Midnight Schwarz' : 'PS5 Midnight Black',
     url: 'https://gamepadviewer.com/?p=1&s=ps5_black',
   },
   ps4_white: {
-    label: 'PS4 Weiß / Rot',
+    label: language === 'de' ? 'PS4 Weiß / Rot' : 'PS4 White / Red',
     url: 'https://gamepadviewer.com/?p=1&s=8',
   },
   ps4_black: {
-    label: 'PS4 Klassisch Schwarz',
+    label: language === 'de' ? 'PS4 Klassisch Schwarz' : 'PS4 Classic Black',
     url: 'https://gamepadviewer.com/?p=1&s=5',
   },
   xbox_one: {
     label: 'Xbox One',
     url: 'https://gamepadviewer.com/?p=1&s=1',
   },
-}
+})
 
 // ─── Controller HUD Dropdown (General Overlays) ────────────────────────────────
-const GeneralControllerSection = memo(function GeneralControllerSection({ settings, save }: {
+const GeneralControllerSection = memo(function GeneralControllerSection({ settings, save, language }: {
   settings: Partial<AppSettings>
   save: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
+  language: string
 }) {
   const [open, setOpen] = useState(false)
   const isEnabled = settings.overlayController ?? false
   const activeSkin: ControllerSkinId = (settings.rlControllerSkin as ControllerSkinId) || 'ps5_white'
   const scale = settings.rlControllerScale || 80
+  const skins = getControllerSkins(language)
 
   return (
     <div 
@@ -492,10 +510,12 @@ const GeneralControllerSection = memo(function GeneralControllerSection({ settin
           </div>
           <div className="flex-1 min-w-0">
             <div className={`text-[13px] font-semibold ${isEnabled ? 'text-white' : 'text-white/70'}`}>
-              Controller Overlay (Live-HUD)
+              {language === 'de' ? 'Controller Overlay (Live-HUD)' : 'Live Controller HUD (GamepadViewer)'}
             </div>
             <div className="text-[11px] text-white/40 truncate">
-              {isEnabled ? `${CONTROLLER_SKINS[activeSkin]?.label || activeSkin} · Skalierung ${scale}%` : 'Deaktiviert'}
+              {isEnabled 
+                ? `${skins[activeSkin]?.label || activeSkin} · ${language === 'de' ? 'Skalierung' : 'Scale'} ${scale}%` 
+                : (language === 'de' ? 'Deaktiviert' : 'Disabled')}
             </div>
           </div>
         </div>
@@ -524,10 +544,12 @@ const GeneralControllerSection = memo(function GeneralControllerSection({ settin
             <div className="p-4 space-y-3">
               {/* Preset Skins */}
               <div>
-                <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Controller-Design</div>
+                <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">
+                  {language === 'de' ? 'Controller-Design' : 'Controller Design'}
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
-                  {(Object.keys(CONTROLLER_SKINS) as ControllerSkinId[]).map((key) => {
-                    const skin = CONTROLLER_SKINS[key]
+                  {(Object.keys(skins) as ControllerSkinId[]).map((key) => {
+                    const skin = skins[key]
                     const isSelected = activeSkin === key
                     return (
                       <button
@@ -549,14 +571,18 @@ const GeneralControllerSection = memo(function GeneralControllerSection({ settin
                   })}
                 </div>
                 <div className="text-[9px] text-white/40 mt-2">
-                  💡 Drücke im Spiel oder auf dem Desktop einmal eine beliebige Taste auf deinem Controller, um das Overlay zu aktivieren.
+                  {language === 'de'
+                    ? '💡 Drücke im Spiel oder auf dem Desktop einmal eine beliebige Taste auf deinem Controller, um das Overlay zu aktivieren.'
+                    : '💡 Press any button on your controller in-game or on desktop once to activate the overlay.'}
                 </div>
               </div>
 
               {/* Controller Scale */}
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">Skalierung</div>
+                  <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">
+                    {language === 'de' ? 'Skalierung' : 'Scale'}
+                  </div>
                   <div className="text-[10px] text-white font-mono">{scale}%</div>
                 </div>
                 <input
@@ -585,11 +611,13 @@ const RobloxAccordion = memo(function RobloxAccordion({
   onToggleTimer,
   robloxCps,
   onToggleCps,
+  language,
 }: { 
   robloxTimer: boolean; 
   onToggleTimer: () => void;
   robloxCps: boolean;
   onToggleCps: () => void;
+  language: string;
 }) {
   const [open, setOpen] = useState(false)
   const activeCount = (robloxTimer ? 1 : 0) + (robloxCps ? 1 : 0)
@@ -607,12 +635,12 @@ const RobloxAccordion = memo(function RobloxAccordion({
           <div className="text-[13px] font-semibold text-white">Roblox</div>
           <div className="text-[11px] text-white/50">
             {activeCount === 2 
-              ? 'Timer & CPS-Zähler aktiv'
+              ? (language === 'de' ? 'Timer & CPS-Zähler aktiv' : 'Timer & CPS Counter active')
               : robloxTimer 
-                ? 'Spiel-Session & AFK-Timer aktiv'
+                ? (language === 'de' ? 'Spiel-Session & AFK-Timer aktiv' : 'Game-Session & AFK Timer active')
                 : robloxCps 
-                  ? 'CPS-Zähler aktiv'
-                  : 'Keine Overlays aktiv'}
+                  ? (language === 'de' ? 'CPS-Zähler aktiv' : 'CPS Counter active')
+                  : (language === 'de' ? 'Keine Overlays aktiv' : 'No overlays active')}
           </div>
         </div>
         {activeCount > 0 && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_5px_#ffffff]" />}
@@ -631,8 +659,14 @@ const RobloxAccordion = memo(function RobloxAccordion({
                   <Timer size={13} />
                 </div>
                 <div className="flex-1">
-                  <div className={`text-[12px] font-medium ${robloxTimer ? 'text-white' : 'text-white/60'}`}>Spiel-Session & AFK-Timer</div>
-                  <div className="text-[10px] text-white/40">Session-Zeit & AFK-Kick-Countdown. Leuchtet unter 2 Min. rot.</div>
+                  <div className={`text-[12px] font-medium ${robloxTimer ? 'text-white' : 'text-white/60'}`}>
+                    {language === 'de' ? 'Spiel-Session & AFK-Timer' : 'Game-Session & AFK Timer'}
+                  </div>
+                  <div className="text-[10px] text-white/40">
+                    {language === 'de' 
+                      ? 'Session-Zeit & AFK-Kick-Countdown. Leuchtet unter 2 Min. rot.' 
+                      : 'Session time + AFK kick countdown. Glows red under 2 min.'}
+                  </div>
                 </div>
                 <Toggle checked={robloxTimer} onChange={onToggleTimer} />
               </div>
@@ -643,8 +677,14 @@ const RobloxAccordion = memo(function RobloxAccordion({
                   <MousePointerClick size={13} />
                 </div>
                 <div className="flex-1">
-                  <div className={`text-[12px] font-medium ${robloxCps ? 'text-white' : 'text-white/60'}`}>Klicks pro Sekunde (CPS)</div>
-                  <div className="text-[10px] text-white/40">Live-Klick-Tracker für LMB & RMB speziell in Roblox.</div>
+                  <div className={`text-[12px] font-medium ${robloxCps ? 'text-white' : 'text-white/60'}`}>
+                    {language === 'de' ? 'Klicks pro Sekunde (CPS)' : 'Clicks Per Second (CPS)'}
+                  </div>
+                  <div className="text-[10px] text-white/40">
+                    {language === 'de' 
+                      ? 'Live-Klick-Tracker für LMB & RMB speziell in Roblox.' 
+                      : 'Live LMB & RMB click tracker specifically in Roblox.'}
+                  </div>
                 </div>
                 <Toggle checked={robloxCps} onChange={onToggleCps} />
               </div>
@@ -674,6 +714,7 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
   rlControllerSkin, onControllerSkinChange,
   rlControllerUrl, onControllerUrlChange,
   rlControllerScale, onControllerScaleChange,
+  language,
 }: {
   rlHud: boolean
   onToggle: () => void
@@ -699,12 +740,14 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
   onControllerUrlChange: (url: string) => void
   rlControllerScale: number
   onControllerScaleChange: (scale: number) => void
+  language: string
 }) {
   const [open, setOpen] = useState(false)
   const [openSub, setOpenSub] = useState<'mmr' | 'controller' | 'steam' | null>('mmr')
   const [showKey, setShowKey] = useState(false)
   const playlists: Array<'1v1' | '2v2' | '3v3'> = ['1v1', '2v2', '3v3']
   const hasKey = trnApiKey && trnApiKey.length > 10
+  const skins = getControllerSkins(language)
 
   const [listenKb, setListenKb] = useState(false)
   const [listenCtrl, setListenCtrl] = useState(false)
@@ -775,8 +818,10 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
           <div className="text-[13px] font-semibold text-white">Rocket League</div>
           <div className="text-[11px] text-white/50">
             {activeSubCount > 0 
-              ? `${activeSubCount} Overlay${activeSubCount > 1 ? 's' : ''} aktiv · MMR, Controller & Steam`
-              : 'Keine Overlays aktiv'}
+              ? (language === 'de' 
+                  ? `${activeSubCount} Overlay${activeSubCount > 1 ? 's' : ''} aktiv · MMR, Controller & Steam` 
+                  : `${activeSubCount} overlay${activeSubCount > 1 ? 's' : ''} active · MMR, Controller & Steam`)
+              : (language === 'de' ? 'Keine Overlays aktiv' : 'No overlays active')}
           </div>
         </div>
         {activeSubCount > 0 && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_5px_#ffffff]" />}
@@ -802,8 +847,12 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                       <Activity size={13} />
                     </div>
                     <div>
-                      <div className={`text-[12px] font-semibold ${rlHud ? 'text-white' : 'text-white/70'}`}>MMR & Rang-Tracker</div>
-                      <div className="text-[10px] text-white/40">{playlist} · {hasKey ? '🔑 API-Schlüssel' : '🌐 Browser'}</div>
+                      <div className={`text-[12px] font-semibold ${rlHud ? 'text-white' : 'text-white/70'}`}>
+                        {language === 'de' ? 'MMR & Rang-Tracker' : 'MMR & Rank Tracker'}
+                      </div>
+                      <div className="text-[10px] text-white/40">
+                        {playlist} · {hasKey ? (language === 'de' ? '🔑 API-Schlüssel' : '🔑 API Key') : (language === 'de' ? '🌐 Browser' : '🌐 Browser')}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
@@ -821,7 +870,9 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                       <div className="p-3 space-y-3">
                         {/* Playlist Selector */}
                         <div>
-                          <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Gewertete Playlist</div>
+                          <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">
+                            {language === 'de' ? 'Gewertete Playlist' : 'Ranked Playlist'}
+                          </div>
                           <div className="flex gap-2">
                             {playlists.map(p => (
                               <button
@@ -843,13 +894,16 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                         <div>
                           <div className="flex items-center justify-between mb-1">
                             <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">
-                              TRN API-Schlüssel <span className={`ml-1 ${hasKey ? 'text-white font-bold' : 'text-white/40'}`}>{hasKey ? '✓ Aktiv' : '○ Optional'}</span>
+                              {language === 'de' ? 'TRN API-Schlüssel' : 'TRN API Key'}{' '}
+                              <span className={`ml-1 ${hasKey ? 'text-white font-bold' : 'text-white/40'}`}>
+                                {hasKey ? (language === 'de' ? '✓ Aktiv' : '✓ Active') : (language === 'de' ? '○ Optional' : '○ Optional')}
+                              </span>
                             </div>
                             <button
                               onClick={() => (window.electronAPI as any)?.openUrl?.('https://tracker.gg/developers')}
                               className="text-[9px] text-white/60 hover:text-white transition-colors cursor-pointer"
                             >
-                              Kostenlosen Key holen ↗
+                              {language === 'de' ? 'Kostenlosen Key holen ↗' : 'Get free key ↗'}
                             </button>
                           </div>
                           <div className="relative flex items-center">
@@ -857,18 +911,20 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                               type={showKey ? 'text' : 'password'}
                               value={trnApiKey}
                               onChange={e => onApiKeyChange(e.target.value)}
-                              placeholder="Kostenlosen TRN API-Key hier einfügen..."
+                              placeholder={language === 'de' ? 'Kostenlosen TRN API-Key hier einfügen...' : 'Paste your free TRN API Key here...'}
                               className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 pr-14"
                             />
                             <button
                               onClick={() => setShowKey(s => !s)}
                               className="absolute right-2 text-[9px] text-white/50 hover:text-white transition-colors cursor-pointer"
                             >
-                              {showKey ? 'Verstecken' : 'Anzeigen'}
+                              {showKey ? (language === 'de' ? 'Verstecken' : 'Hide') : (language === 'de' ? 'Anzeigen' : 'Show')}
                             </button>
                           </div>
                           <div className="text-[9px] text-white/40 mt-1">
-                            {hasKey ? '🔑 Offizielle API aktiv — schnell & zuverlässig' : '🌐 Kein Key: nutzt Browser-Sitzung'}
+                            {hasKey 
+                              ? (language === 'de' ? '🔑 Offizielle API aktiv — schnell & zuverlässig' : '🔑 Using official API — fastest & most reliable')
+                              : (language === 'de' ? '🌐 Kein Key: nutzt Browser-Sitzung' : '🌐 No key: using browser session')}
                           </div>
                         </div>
                       </div>
@@ -888,8 +944,12 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                       <Gamepad2 size={13} />
                     </div>
                     <div>
-                      <div className={`text-[12px] font-semibold ${overlayRLController ? 'text-white' : 'text-white/70'}`}>Controller Overlay (Live-HUD)</div>
-                      <div className="text-[10px] text-white/40">{CONTROLLER_SKINS[(rlControllerSkin as ControllerSkinId) || 'ps5_white']?.label || 'Controller HUD'} · Skalierung {rlControllerScale}%</div>
+                      <div className={`text-[12px] font-semibold ${overlayRLController ? 'text-white' : 'text-white/70'}`}>
+                        {language === 'de' ? 'Controller Overlay (Live-HUD)' : 'Live Controller HUD (GamepadViewer)'}
+                      </div>
+                      <div className="text-[10px] text-white/40">
+                        {skins[(rlControllerSkin as ControllerSkinId) || 'ps5_white']?.label || 'Controller HUD'} · {language === 'de' ? 'Skalierung' : 'Scale'} {rlControllerScale}%
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
@@ -907,10 +967,12 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                       <div className="p-3 space-y-3">
                         {/* Preset Skins */}
                         <div>
-                          <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Controller-Design</div>
+                          <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">
+                            {language === 'de' ? 'Controller-Design' : 'Controller Design'}
+                          </div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
-                            {(Object.keys(CONTROLLER_SKINS) as ControllerSkinId[]).map((key) => {
-                              const skin = CONTROLLER_SKINS[key]
+                            {(Object.keys(skins) as ControllerSkinId[]).map((key) => {
+                              const skin = skins[key]
                               const selectedSkin: ControllerSkinId = (rlControllerSkin as ControllerSkinId) || 'ps5_white'
                               const isSelected = selectedSkin === key
                               return (
@@ -933,14 +995,18 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                             })}
                           </div>
                           <div className="text-[9px] text-white/40 mt-1.5">
-                            💡 Drücke im Spiel einmal eine beliebige Taste auf deinem Controller, um das Overlay zu aktivieren.
+                            {language === 'de'
+                              ? '💡 Drücke im Spiel einmal eine beliebige Taste auf deinem Controller, um das Overlay zu aktivieren.'
+                              : '💡 Press any button on your controller in-game once to activate the overlay.'}
                           </div>
                         </div>
 
                         {/* Controller Scale */}
                         <div>
                           <div className="flex justify-between items-center mb-1">
-                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">Skalierung</div>
+                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">
+                              {language === 'de' ? 'Skalierung' : 'Scale'}
+                            </div>
                             <div className="text-[10px] text-white font-mono">{rlControllerScale}%</div>
                           </div>
                           <input
@@ -968,8 +1034,14 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                       <img src={steamLogoImg} className="w-3.5 h-3.5 object-contain opacity-90" alt="Steam" />
                     </div>
                     <div>
-                      <div className={`text-[12px] font-semibold ${overlayRLSteam ? 'text-white' : 'text-white/70'}`}>Steam-Profil im Spiel</div>
-                      <div className="text-[10px] text-white/40">{steamProfileUrl ? 'Profil verknüpft' : 'Scoreboard-Taste im Spiel halten'}</div>
+                      <div className={`text-[12px] font-semibold ${overlayRLSteam ? 'text-white' : 'text-white/70'}`}>
+                        {language === 'de' ? 'Steam-Profil im Spiel' : 'Steam Profile In-Game'}
+                      </div>
+                      <div className="text-[10px] text-white/40">
+                        {steamProfileUrl 
+                          ? (language === 'de' ? 'Profil verknüpft' : 'Profile connected') 
+                          : (language === 'de' ? 'Scoreboard-Taste im Spiel halten' : 'Hold Scoreboard key in-game')}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
@@ -988,14 +1060,14 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                         <div className="flex gap-2.5 items-end">
                           <div className="flex-1">
                             <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                              Steam Profil-URL oder ID
+                              {language === 'de' ? 'Steam Profil-URL oder ID' : 'Steam Profile URL or ID'}
                               {avatarPreview && <span className="text-white font-bold">✓</span>}
                             </div>
                             <input
                               type="text"
                               value={steamProfileUrl}
                               onChange={e => onSteamUrlChange(e.target.value)}
-                              placeholder="z. B. https://steamcommunity.com/id/meinprofil"
+                              placeholder={language === 'de' ? 'z. B. https://steamcommunity.com/id/meinprofil' : 'e.g. https://steamcommunity.com/id/myprofile'}
                               className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
                             />
                           </div>
@@ -1008,28 +1080,34 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                         
                         <div className="flex gap-2.5">
                           <div className="flex-1">
-                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1">Scoreboard-Taste (Tastatur)</div>
+                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1">
+                              {language === 'de' ? 'Scoreboard-Taste (Tastatur)' : 'Scoreboard Key (KB)'}
+                            </div>
                             <button
                               onClick={() => setListenKb(true)}
                               className={`w-full text-left border rounded-lg px-2.5 py-1.5 text-[10px] font-medium transition-colors ${listenKb ? 'bg-white text-black border-white' : 'bg-white/[0.04] border-white/[0.08] text-white hover:border-white/[0.15]'}`}
                             >
-                              {listenKb ? 'Taste drücken...' : rlScoreboardKeyKb}
+                              {listenKb ? (language === 'de' ? 'Taste drücken...' : 'Press any key...') : rlScoreboardKeyKb}
                             </button>
                           </div>
                           <div className="flex-1">
-                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1">Scoreboard-Taste (Controller)</div>
+                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1">
+                              {language === 'de' ? 'Scoreboard-Taste (Controller)' : 'Scoreboard Key (Ctrl)'}
+                            </div>
                             <button
                               onClick={() => setListenCtrl(true)}
                               className={`w-full text-left border rounded-lg px-2.5 py-1.5 text-[10px] font-medium transition-colors ${listenCtrl ? 'bg-white text-black border-white' : 'bg-white/[0.04] border-white/[0.08] text-white hover:border-white/[0.15]'}`}
                             >
-                              {listenCtrl ? 'Knopf drücken...' : rlScoreboardKeyCtrl}
+                              {listenCtrl ? (language === 'de' ? 'Knopf drücken...' : 'Press any button...') : rlScoreboardKeyCtrl}
                             </button>
                           </div>
                         </div>
 
                         <div>
                           <div className="flex justify-between items-center mb-1">
-                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">UI-Skalierung</div>
+                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">
+                              {language === 'de' ? 'UI-Skalierung' : 'UI Scale'}
+                            </div>
                             <div className="text-[10px] text-white font-mono">{rlSteamAvatarScale}%</div>
                           </div>
                           <input
@@ -1059,6 +1137,9 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
   settings: Partial<AppSettings>
   updateSettings: (data: Partial<AppSettings>) => void
 }) {
+  const { language } = useTranslation()
+  const lang = (settings.language || language || 'en') as string
+
   const save = useCallback(<K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     updateSettings({ [key]: value })
     window.electronAPI?.setSettings({ [key]: value } as any)
@@ -1085,11 +1166,15 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
       <div className="flex items-start justify-between pb-3 border-b border-white/[0.07]">
         <div>
           <h2 className="text-lg font-bold text-white tracking-tight">Gameplay Overlay</h2>
-          <p className="text-[12px] text-white/50 mt-0.5">Echtzeit-HUD über deinen Spielen & auf dem Desktop</p>
+          <p className="text-[12px] text-white/50 mt-0.5">
+            {lang === 'de' ? 'Echtzeit-HUD über deinen Spielen & auf dem Desktop' : 'Real-time HUD displayed over your games & desktop'}
+          </p>
         </div>
         <div className="flex items-center gap-2 mt-0.5 px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.07]">
           <div className={`w-1.5 h-1.5 rounded-full transition-colors ${activeCount > 0 ? 'bg-white shadow-[0_0_5px_#ffffff]' : 'bg-white/20'}`} />
-          <span className="text-[11px] font-medium text-white/60">{activeCount} aktiv</span>
+          <span className="text-[11px] font-medium text-white/60">
+            {activeCount} {lang === 'de' ? 'aktiv' : 'active'}
+          </span>
         </div>
       </div>
 
@@ -1101,8 +1186,12 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
               <Globe size={14} className="text-white" />
             </div>
             <div>
-              <div className="text-[13px] font-semibold text-white tracking-tight">Allgemeine Overlays</div>
-              <div className="text-[11px] text-white/50 mt-0.5">Performance-, Fadenkreuz-, CPS- & Controller-Regeln</div>
+              <div className="text-[13px] font-semibold text-white tracking-tight">
+                {lang === 'de' ? 'Allgemeine Overlays' : 'General Overlays'}
+              </div>
+              <div className="text-[11px] text-white/50 mt-0.5">
+                {lang === 'de' ? 'Performance-, Fadenkreuz-, CPS- & Controller-Regeln' : 'Performance, Crosshair, CPS & Controller HUD rules'}
+              </div>
             </div>
           </div>
 
@@ -1116,7 +1205,7 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
                   : 'text-white/60 hover:text-white'
               }`}
             >
-              Nur im Spiel
+              {lang === 'de' ? 'Nur im Spiel' : 'Only in Game'}
             </button>
             <button
               type="button"
@@ -1127,28 +1216,33 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
                   : 'text-white/60 hover:text-white'
               }`}
             >
-              Immer
+              {lang === 'de' ? 'Immer' : 'Always'}
             </button>
           </div>
         </div>
 
         <div className="space-y-2">
-          <PerformanceSection settings={settings} save={save} />
-          <CrosshairSection settings={settings} save={save} />
-          <CPSSection settings={settings} save={save} />
-          <GeneralControllerSection settings={settings} save={save} />
+          <PerformanceSection settings={settings} save={save} language={lang} />
+          <CrosshairSection settings={settings} save={save} language={lang} />
+          <CPSSection settings={settings} save={save} language={lang} />
+          <GeneralControllerSection settings={settings} save={save} language={lang} />
         </div>
       </section>
 
       {/* SECTION 2: Game-specific Overlays */}
       <section style={{ contain: 'paint layout style', transform: 'translateZ(0)' }}>
-        <SectionLabel icon={<Gamepad2 size={14} className="text-white" />} title="Spielspezifische Overlays" subtitle="Individuell pro Spiel konfigurierbar" />
+        <SectionLabel 
+          icon={<Gamepad2 size={14} className="text-white" />} 
+          title={lang === 'de' ? 'Spielspezifische Overlays' : 'Game-Specific Overlays'} 
+          subtitle={lang === 'de' ? 'Individuell pro Spiel konfigurierbar' : 'Configurable per game'} 
+        />
         <div className="space-y-2">
           <RobloxAccordion
             robloxTimer={settings.overlayRobloxTimer || false}
             onToggleTimer={() => save('overlayRobloxTimer', !settings.overlayRobloxTimer)}
             robloxCps={settings.overlayRobloxCps || false}
             onToggleCps={() => save('overlayRobloxCps', !settings.overlayRobloxCps)}
+            language={lang}
           />
           <RocketLeagueAccordion
             rlHud={settings.overlayRLHud || false}
@@ -1177,26 +1271,37 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
             onControllerToggle={() => save('overlayRLController', !settings.overlayRLController)}
             rlControllerSkin={settings.rlControllerSkin || 'ps5_white'}
             onControllerSkinChange={(skin) => save('rlControllerSkin', skin)}
-            rlControllerUrl={settings.rlControllerUrl || CONTROLLER_SKINS.ps5_white.url}
+            rlControllerUrl={settings.rlControllerUrl || getControllerSkins(lang).ps5_white.url}
             onControllerUrlChange={(url) => save('rlControllerUrl', url)}
             rlControllerScale={settings.rlControllerScale || 80}
             onControllerScaleChange={(s) => save('rlControllerScale', s)}
+            language={lang}
           />
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-white/[0.06]">
             <div className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.07] flex items-center justify-center text-white/40 text-sm font-semibold">+</div>
-            <span className="text-[11px] text-white/40">Weitere Spiele folgen in zukünftigen Updates...</span>
+            <span className="text-[11px] text-white/40">
+              {lang === 'de' ? 'Weitere Spiele folgen in zukünftigen Updates...' : 'More games coming in future updates...'}
+            </span>
           </div>
         </div>
       </section>
 
       {/* SECTION 3: Edit Layout button */}
       <section style={{ contain: 'paint layout style', transform: 'translateZ(0)' }}>
-        <SectionLabel icon={<Move size={14} className="text-white" />} title="Overlay-Layout" subtitle="Widgets direkt auf dem Bildschirm verschieben (Discord-Stil)" />
+        <SectionLabel 
+          icon={<Move size={14} className="text-white" />} 
+          title={lang === 'de' ? 'Overlay-Layout & Positionen' : 'Overlay Layout & Positions'} 
+          subtitle={lang === 'de' ? 'Widgets direkt auf dem Bildschirm verschieben (Discord-Stil)' : 'Reposition widgets directly on screen (Discord-style)'} 
+        />
         <div className="rounded-xl border border-white/10 bg-[#0f1015] p-4 flex items-center justify-between gap-4">
           <div className="space-y-0.5 flex-1">
-            <div className="text-sm font-semibold text-white">Overlay-Positionen anpassen</div>
+            <div className="text-sm font-semibold text-white">
+              {lang === 'de' ? 'Overlay-Positionen anpassen' : 'Edit Overlay Positions'}
+            </div>
             <div className="text-xs text-white/50 leading-relaxed">
-              Öffnet das Overlay-Fenster. Ziehe jedes Widget an die gewünschte Position und klicke auf „Speichern & Fertig“.
+              {lang === 'de' 
+                ? 'Öffnet das Overlay-Fenster. Ziehe jedes Widget an die gewünschte Position und klicke auf „Speichern & Fertig“.'
+                : 'Opens the overlay window. Drag each widget to your desired screen position, then click "Save & Done".'}
             </div>
           </div>
           <button
@@ -1204,7 +1309,7 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
             className="flex items-center gap-2 px-4 py-2 bg-white text-black hover:bg-white/90 rounded-lg font-semibold text-xs transition-all shadow-sm hover:scale-[1.01] flex-shrink-0 cursor-pointer"
           >
             <Edit3 size={13} className="text-black" />
-            Layout bearbeiten
+            {lang === 'de' ? 'Layout bearbeiten' : 'Edit Layout'}
           </button>
         </div>
       </section>

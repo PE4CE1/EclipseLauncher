@@ -345,67 +345,70 @@ export function OverlayApp() {
       )}
 
       {/* Edit mode UI */}
-      {editMode && (
-        <div style={{
-          position: 'absolute', bottom: 26, left: '50%', transform: 'translateX(-50%)',
-          display: 'flex', alignItems: 'center', gap: 14,
-          background: 'rgba(10, 11, 16, 0.88)', backdropFilter: 'blur(20px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: 12,
-          padding: '7px 10px 7px 16px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
-          pointerEvents: 'auto', userSelect: 'none', zIndex: 9999,
-        }}>
+      {editMode && (() => {
+        const isDe = (initialSettings?.language || 'en') === 'de'
+        return (
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            fontFamily: 'Inter, system-ui, sans-serif', fontSize: 11.5, fontWeight: 600,
-            color: 'rgba(255, 255, 255, 0.8)', letterSpacing: '0.02em',
+            position: 'absolute', bottom: 26, left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', gap: 14,
+            background: 'rgba(10, 11, 16, 0.88)', backdropFilter: 'blur(20px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: 12,
+            padding: '7px 10px 7px 16px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+            pointerEvents: 'auto', userSelect: 'none', zIndex: 9999,
           }}>
-            <span style={{ fontSize: 13 }}>🖱️</span>
-            <span>Widgets ziehen zum Positionieren</span>
-          </div>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              fontFamily: 'Inter, system-ui, sans-serif', fontSize: 11.5, fontWeight: 600,
+              color: 'rgba(255, 255, 255, 0.8)', letterSpacing: '0.02em',
+            }}>
+              <span style={{ fontSize: 13 }}>🖱️</span>
+              <span>{isDe ? 'Widgets ziehen zum Positionieren' : 'Drag widgets to reposition'}</span>
+            </div>
 
-          <div style={{ width: 1, height: 18, background: 'rgba(255, 255, 255, 0.1)' }} />
+            <div style={{ width: 1, height: 18, background: 'rgba(255, 255, 255, 0.1)' }} />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button
-              onClick={handleSave}
-              style={{
-                background: '#ffffff', color: '#000000', border: 'none',
-                borderRadius: 8, padding: '6px 14px',
-                fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12, fontWeight: 700,
-                cursor: 'pointer', letterSpacing: '0.01em',
-                boxShadow: '0 2px 8px rgba(255, 255, 255, 0.15)',
-                transition: 'transform 0.08s ease, opacity 0.08s ease',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-              onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.96)')}
-              onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-            >
-              ✓ Speichern & Fertig
-            </button>
-            <button
-              onClick={handleCancel}
-              style={{
-                background: 'rgba(255, 255, 255, 0.06)', color: 'rgba(255, 255, 255, 0.65)',
-                border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: 8, padding: '6px 12px',
-                fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                transition: 'background 0.08s ease, color 0.08s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
-                e.currentTarget.style.color = '#ffffff'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
-                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.65)'
-              }}
-            >
-              Abbrechen
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button
+                onClick={handleSave}
+                style={{
+                  background: '#ffffff', color: '#000000', border: 'none',
+                  borderRadius: 8, padding: '6px 14px',
+                  fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer', letterSpacing: '0.01em',
+                  boxShadow: '0 2px 8px rgba(255, 255, 255, 0.15)',
+                  transition: 'transform 0.08s ease, opacity 0.08s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.96)')}
+                onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+              >
+                {isDe ? '✓ Speichern & Fertig' : '✓ Save & Done'}
+              </button>
+              <button
+                onClick={handleCancel}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.06)', color: 'rgba(255, 255, 255, 0.65)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: 8, padding: '6px 12px',
+                  fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                  transition: 'background 0.08s ease, color 0.08s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
+                  e.currentTarget.style.color = '#ffffff'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+                  e.currentTarget.style.color = 'rgba(255, 255, 255, 0.65)'
+                }}
+              >
+                {isDe ? 'Abbrechen' : 'Cancel'}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
