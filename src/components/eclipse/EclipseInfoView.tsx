@@ -22,6 +22,24 @@ interface GitHubRelease {
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
   {
+    id: 120,
+    tag_name: 'v1.2.0',
+    name: 'v1.2.0 - Steam-Style Game Context Menu, Performance Baseline 100% & Multilingual Gameplay Overlay',
+    published_at: '2026-08-21T00:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.2.0',
+    body: `### 🎮 Steam-Style Game Quick Actions
+* **Minimalist Context Menu:** 3-dots button and right-click menu for sidebar games.
+* **White Play Button:** Instant game start & stop with sleek monochrome aesthetics.
+* **Direct File Browsing & Uninstall:** Open game directories directly or uninstall native Steam & custom games with 1-click.
+* **Instant Favorite Toggle:** Quick star button to toggle favorites.
+
+### ⚡ Performance Overlay & Customization
+* **New 100% Baseline Scale:** 115% size is now the crisp new 100% standard baseline.
+* **1-Click Reset to 100%:** Clicking the percentage number resets the overlay scale immediately.
+* **Full Bilingual Support:** Complete English & German localization across all overlay tabs and widgets.`,
+    prerelease: false
+  },
+  {
     id: 119,
     tag_name: 'v1.1.9',
     name: 'v1.1.9 - Roblox Live CPS Overlay, Zero-Lag Engine & Minimalist Edit Toolbar',
