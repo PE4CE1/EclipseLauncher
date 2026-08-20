@@ -141,6 +141,46 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
             className="overflow-hidden"
           >
             <div className="h-px bg-white/[0.06] mx-4" />
+
+            {/* Layout Switcher (Vertical vs Horizontal) */}
+            <div className="px-4 py-3 bg-white/[0.02]">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[11px] font-semibold text-white/70 uppercase tracking-wider">
+                  Layout
+                </div>
+                <div className="text-[10px] text-white/40">
+                  {metrics.layout === 'horizontal' ? 'Horizontal (Kompakt-Leiste)' : 'Vertikal (Klassisch)'}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => save('overlayMetrics', { ...metrics, layout: 'vertical' })}
+                  className={`flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-[11px] font-semibold transition-all border ${
+                    (metrics.layout ?? 'vertical') === 'vertical'
+                      ? 'bg-white text-black border-white shadow-sm'
+                      : 'bg-white/[0.04] border-white/[0.08] text-white/70 hover:text-white hover:border-white/20'
+                  }`}
+                >
+                  <Layers size={13} />
+                  Vertikal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => save('overlayMetrics', { ...metrics, layout: 'horizontal' })}
+                  className={`flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-[11px] font-semibold transition-all border ${
+                    metrics.layout === 'horizontal'
+                      ? 'bg-white text-black border-white shadow-sm'
+                      : 'bg-white/[0.04] border-white/[0.08] text-white/70 hover:text-white hover:border-white/20'
+                  }`}
+                >
+                  <Move size={13} />
+                  Horizontal
+                </button>
+              </div>
+            </div>
+
+            <div className="h-px bg-white/[0.06] mx-4" />
             <div className="divide-y divide-white/[0.04]">
               <MetricItem 
                 label="Frames Per Second (FPS)" 
