@@ -3,7 +3,7 @@ import {
   Home, BookOpen, Library, Download, Settings,
   Bell, Gamepad2, Zap, Search, ChevronDown, User, Users, LogOut,
   Star, Clock, Loader2, ScanLine, Github, Play, Square,
-  FolderCog, FolderOpen, Trash2, MoreVertical, ChevronRight,
+  FolderOpen, Trash2, MoreVertical,
   type LucideIcon,
 } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
@@ -114,7 +114,6 @@ export function Sidebar() {
 
   // Context Menu State
   const [contextMenu, setContextMenu] = React.useState<{ game: InstalledGame; x: number; y: number } | null>(null)
-  const [isManageHovered, setIsManageHovered] = React.useState(false)
   const contextMenuRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
@@ -124,14 +123,12 @@ export function Sidebar() {
       }
       if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
         setContextMenu(null)
-        setIsManageHovered(false)
       }
     }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setContextMenu(null)
-        setIsManageHovered(false)
       }
     }
 
@@ -146,24 +143,22 @@ export function Sidebar() {
   const handleContextMenu = (e: React.MouseEvent, game: InstalledGame) => {
     e.preventDefault()
     e.stopPropagation()
-    const menuWidth = 220
-    const menuHeight = 220
+    const menuWidth = 195
+    const menuHeight = 160
     const x = Math.min(e.clientX, window.innerWidth - menuWidth - 10)
     const y = Math.min(e.clientY, window.innerHeight - menuHeight - 10)
     setContextMenu({ game, x, y })
-    setIsManageHovered(false)
   }
 
   const handleThreeDotsClick = (e: React.MouseEvent, game: InstalledGame) => {
     e.preventDefault()
     e.stopPropagation()
     const rect = e.currentTarget.getBoundingClientRect()
-    const menuWidth = 220
-    const menuHeight = 220
+    const menuWidth = 195
+    const menuHeight = 160
     const x = Math.min(rect.right + 6, window.innerWidth - menuWidth - 10)
     const y = Math.min(rect.top, window.innerHeight - menuHeight - 10)
     setContextMenu({ game, x, y })
-    setIsManageHovered(false)
   }
 
   const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
@@ -495,95 +490,58 @@ export function Sidebar() {
                 <span>{isFavoriteSelected ? t('removeFromFavorites') : t('addToFavorites')}</span>
               </button>
 
-              {/* ─── Manage (Flyout Submenu to the right) ─── */}
-              <div 
-                className="relative"
-                onMouseEnter={() => setIsManageHovered(true)}
-                onMouseLeave={() => setIsManageHovered(false)}
+              {/* ─── Browse Local Files ─── */}
+              <button
+                onClick={async () => {
+                  if (contextMenu.game.installPath) {
+                    await window.electronAPI?.openPath(contextMenu.game.installPath)
+                  } else {
+                    showNotification(t('pathNotFound'), 'error')
+                  }
+                  setContextMenu(null)
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/[0.05] transition-colors text-left cursor-pointer font-medium"
               >
-                <button
-                  onClick={() => setIsManageHovered(prev => !prev)}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-colors text-left cursor-pointer font-medium ${
-                    isManageHovered ? 'bg-white/[0.08] text-white' : 'text-white/75 hover:text-white hover:bg-white/[0.05]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <FolderCog size={13} className="text-white/40" />
-                    <span>{t('manage')}</span>
-                  </div>
-                  <ChevronRight size={12} className="text-white/30" />
-                </button>
+                <FolderOpen size={13} className="text-white/40" />
+                <span>{t('browseLocalFiles')}</span>
+              </button>
 
-                {/* Submenu flyout */}
-                <AnimatePresence>
-                  {isManageHovered && (
-                    <motion.div
-                      initial={{ opacity: 0, x: -4, scale: 0.96 }}
-                      animate={{ opacity: 1, x: 0, scale: 1 }}
-                      exit={{ opacity: 0, x: -4, scale: 0.96 }}
-                      transition={{ duration: 0.08, ease: 'easeOut' }}
-                      className={`absolute top-0 bg-[#0b0c10]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl shadow-[0_16px_36px_rgba(0,0,0,0.85),0_0_1px_rgba(255,255,255,0.12)] p-1.5 w-48 text-[11.5px] font-sans z-[1000000] ${
-                        contextMenu.x + 192 + 200 > window.innerWidth
-                          ? 'right-full mr-1.5 left-auto'
-                          : 'left-full ml-1.5'
-                      }`}
-                    >
-                      {/* Browse Local Files */}
-                      <button
-                        onClick={async () => {
-                          if (contextMenu.game.installPath) {
-                            await window.electronAPI?.openPath(contextMenu.game.installPath)
-                          } else {
-                            showNotification(t('pathNotFound'), 'error')
-                          }
-                          setContextMenu(null)
-                        }}
-                        className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/[0.05] transition-colors text-left cursor-pointer font-medium"
-                      >
-                        <FolderOpen size={13} className="text-white/40" />
-                        <span>{t('browseLocalFiles')}</span>
-                      </button>
+              <div className="h-px bg-white/[0.06] my-1 mx-1" />
 
-                      <div className="h-px bg-white/[0.06] my-1 mx-1" />
+              {/* ─── Fully Functional Uninstall ─── */}
+              <button
+                onClick={async () => {
+                  const targetGame = contextMenu.game
+                  setContextMenu(null)
 
-                      {/* Fully Functional Uninstall */}
-                      <button
-                        onClick={async () => {
-                          const targetGame = contextMenu.game
-                          setContextMenu(null)
+                  if (window.electronAPI?.uninstallGame) {
+                    const res = await window.electronAPI.uninstallGame({
+                      id: targetGame.id,
+                      name: targetGame.name,
+                      installPath: targetGame.installPath,
+                      launchUrl: targetGame.launchUrl,
+                      steamId: targetGame.steamId,
+                      appId: targetGame.appId,
+                      platform: targetGame.platform,
+                    })
 
-                          if (window.electronAPI?.uninstallGame) {
-                            const res = await window.electronAPI.uninstallGame({
-                              id: targetGame.id,
-                              name: targetGame.name,
-                              installPath: targetGame.installPath,
-                              launchUrl: targetGame.launchUrl,
-                              steamId: targetGame.steamId,
-                              appId: targetGame.appId,
-                              platform: targetGame.platform,
-                            })
+                    if (!res?.success && res?.error) {
+                      showNotification(res.error, 'error')
+                      return
+                    }
+                  }
 
-                            if (!res?.success && res?.error) {
-                              showNotification(res.error, 'error')
-                              return
-                            }
-                          }
-
-                          // Remove from installed games and library in launcher
-                          const state = useGameStore.getState()
-                          state.setInstalledGames(state.installedGames.filter(g => g.id !== targetGame.id && g.name !== targetGame.name))
-                          state.removeFromLibrary(targetGame.id)
-                          showNotification(t('gameRemoved'), 'info')
-                        }}
-                        className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-red-400/90 hover:text-red-300 hover:bg-red-500/[0.08] transition-colors text-left cursor-pointer font-medium"
-                      >
-                        <Trash2 size={13} className="text-red-400/70" />
-                        <span>{t('uninstallGame')}</span>
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                  // Remove from installed games and library in launcher
+                  const state = useGameStore.getState()
+                  state.setInstalledGames(state.installedGames.filter(g => g.id !== targetGame.id && g.name !== targetGame.name))
+                  state.removeFromLibrary(targetGame.id)
+                  showNotification(t('gameRemoved'), 'info')
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-red-400/90 hover:text-red-300 hover:bg-red-500/[0.08] transition-colors text-left cursor-pointer font-medium"
+              >
+                <Trash2 size={13} className="text-red-400/70" />
+                <span>{t('uninstallGame')}</span>
+              </button>
             </motion.div>
           </div>
         )}
