@@ -447,13 +447,13 @@ export function Sidebar() {
             }}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: -4 }}
+              initial={{ opacity: 0, scale: 0.96, y: -2 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.12 }}
-              className="bg-[#12141a]/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.85),0_0_1px_rgba(255,255,255,0.2)] p-1.5 w-52 text-xs"
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.1, ease: 'easeOut' }}
+              className="bg-[#0b0c10]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl shadow-[0_16px_36px_rgba(0,0,0,0.85),0_0_1px_rgba(255,255,255,0.12)] p-1.5 w-48 text-[11.5px] font-sans"
             >
-              {/* ─── Primary Play / Stop Banner ─── */}
+              {/* ─── Minimalist Clean Play / Stop Button ─── */}
               <button
                 onClick={() => {
                   if (isPlayingSelected) {
@@ -464,14 +464,18 @@ export function Sidebar() {
                   }
                   setContextMenu(null)
                 }}
-                className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-bold text-xs transition-all shadow-md mb-1 cursor-pointer ${
+                className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-[11.5px] font-semibold transition-all mb-1.5 cursor-pointer active:scale-[0.98] ${
                   isPlayingSelected
-                    ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-950/40'
-                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40'
+                    ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/20'
+                    : 'bg-white text-black hover:bg-white/90 shadow-sm'
                 }`}
               >
-                {isPlayingSelected ? <Square size={13} fill="currentColor" /> : <Play size={13} fill="currentColor" />}
-                <span className="tracking-wide uppercase">
+                {isPlayingSelected ? (
+                  <Square size={11} fill="currentColor" strokeWidth={0} />
+                ) : (
+                  <Play size={11} fill="currentColor" strokeWidth={0} />
+                )}
+                <span className="tracking-wide">
                   {isPlayingSelected ? t('stopGame') : t('playGame')}
                 </span>
               </button>
@@ -482,11 +486,11 @@ export function Sidebar() {
                   toggleFavorite(contextMenu.game.id)
                   setContextMenu(null)
                 }}
-                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors text-left cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/[0.05] transition-colors text-left cursor-pointer font-medium"
               >
                 <Star 
-                  size={14} 
-                  className={isFavoriteSelected ? 'text-amber-400 fill-amber-400' : 'text-white/60'} 
+                  size={13} 
+                  className={isFavoriteSelected ? 'text-amber-400 fill-amber-400' : 'text-white/40'} 
                 />
                 <span>{isFavoriteSelected ? t('removeFromFavorites') : t('addToFavorites')}</span>
               </button>
@@ -499,27 +503,27 @@ export function Sidebar() {
               >
                 <button
                   onClick={() => setIsManageHovered(prev => !prev)}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-colors text-left cursor-pointer ${
-                    isManageHovered ? 'bg-white/[0.08] text-white' : 'text-white/80 hover:text-white hover:bg-white/[0.06]'
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-colors text-left cursor-pointer font-medium ${
+                    isManageHovered ? 'bg-white/[0.08] text-white' : 'text-white/75 hover:text-white hover:bg-white/[0.05]'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <FolderCog size={14} className="text-white/60" />
+                    <FolderCog size={13} className="text-white/40" />
                     <span>{t('manage')}</span>
                   </div>
-                  <ChevronRight size={13} className="text-white/40" />
+                  <ChevronRight size={12} className="text-white/30" />
                 </button>
 
                 {/* Submenu flyout */}
                 <AnimatePresence>
                   {isManageHovered && (
                     <motion.div
-                      initial={{ opacity: 0, x: -6, scale: 0.95 }}
+                      initial={{ opacity: 0, x: -4, scale: 0.96 }}
                       animate={{ opacity: 1, x: 0, scale: 1 }}
-                      exit={{ opacity: 0, x: -6, scale: 0.95 }}
-                      transition={{ duration: 0.1 }}
-                      className={`absolute top-0 bg-[#12141a]/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.85),0_0_1px_rgba(255,255,255,0.2)] p-1.5 w-56 text-xs z-[1000000] ${
-                        contextMenu.x + 220 + 230 > window.innerWidth
+                      exit={{ opacity: 0, x: -4, scale: 0.96 }}
+                      transition={{ duration: 0.08, ease: 'easeOut' }}
+                      className={`absolute top-0 bg-[#0b0c10]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl shadow-[0_16px_36px_rgba(0,0,0,0.85),0_0_1px_rgba(255,255,255,0.12)] p-1.5 w-52 text-[11.5px] font-sans z-[1000000] ${
+                        contextMenu.x + 192 + 210 > window.innerWidth
                           ? 'right-full mr-1.5 left-auto'
                           : 'left-full ml-1.5'
                       }`}
@@ -541,9 +545,9 @@ export function Sidebar() {
                           }
                           setContextMenu(null)
                         }}
-                        className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors text-left cursor-pointer"
+                        className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/[0.05] transition-colors text-left cursor-pointer font-medium"
                       >
-                        <ExternalLink size={13} className="text-white/60" />
+                        <ExternalLink size={13} className="text-white/40" />
                         <span>{t('addDesktopShortcut')}</span>
                       </button>
 
@@ -557,13 +561,13 @@ export function Sidebar() {
                           }
                           setContextMenu(null)
                         }}
-                        className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors text-left cursor-pointer"
+                        className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/[0.05] transition-colors text-left cursor-pointer font-medium"
                       >
-                        <FolderOpen size={13} className="text-white/60" />
+                        <FolderOpen size={13} className="text-white/40" />
                         <span>{t('browseLocalFiles')}</span>
                       </button>
 
-                      <div className="h-px bg-white/[0.08] my-1 mx-1.5" />
+                      <div className="h-px bg-white/[0.06] my-1 mx-1" />
 
                       {/* Uninstall / Remove from Library */}
                       <button
@@ -572,9 +576,9 @@ export function Sidebar() {
                           showNotification(t('gameRemoved'), 'info')
                           setContextMenu(null)
                         }}
-                        className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors text-left cursor-pointer"
+                        className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-red-400/90 hover:text-red-300 hover:bg-red-500/[0.08] transition-colors text-left cursor-pointer font-medium"
                       >
-                        <Trash2 size={13} className="text-red-400/80" />
+                        <Trash2 size={13} className="text-red-400/70" />
                         <span>{t('uninstallGame')}</span>
                       </button>
                     </motion.div>
@@ -582,7 +586,7 @@ export function Sidebar() {
                 </AnimatePresence>
               </div>
 
-              <div className="h-px bg-white/[0.08] my-1 mx-1.5" />
+              <div className="h-px bg-white/[0.06] my-1 mx-1" />
 
               {/* ─── Properties / Game Details ─── */}
               <button
@@ -595,9 +599,9 @@ export function Sidebar() {
                   }
                   setContextMenu(null)
                 }}
-                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors text-left cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/[0.05] transition-colors text-left cursor-pointer font-medium"
               >
-                <SlidersHorizontal size={13} className="text-white/60" />
+                <SlidersHorizontal size={13} className="text-white/40" />
                 <span>{t('gameProperties')}</span>
               </button>
             </motion.div>
