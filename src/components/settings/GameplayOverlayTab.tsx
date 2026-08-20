@@ -2,7 +2,8 @@ import React, { useState, useEffect, memo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Globe, Gamepad2, Move, Check, Activity, Crosshair as CrosshairIcon, Timer,
-  ChevronDown, Cpu, MemoryStick, Clock, Layers, Edit3, MousePointerClick, Gauge
+  ChevronDown, Cpu, MemoryStick, Clock, Layers, Edit3, MousePointerClick, Gauge,
+  Plus, Minus
 } from 'lucide-react'
 import type { AppSettings } from '../../types/game'
 import { CROSSHAIR_PRESETS, CrosshairSVG, DEFAULT_CROSSHAIR } from '../overlay/widgets/Crosshair'
@@ -142,41 +143,75 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
           >
             <div className="h-px bg-white/[0.06] mx-4" />
 
-            {/* Layout Switcher (Vertical vs Horizontal) */}
-            <div className="px-4 py-3 bg-white/[0.02]">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-[11px] font-semibold text-white/70 uppercase tracking-wider">
+            {/* Layout & Scale Control Row */}
+            <div className="px-4 py-2.5 bg-white/[0.02] flex items-center justify-between gap-3 flex-wrap">
+              {/* Left: Compact Layout Segmented Control */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-semibold text-white/50 uppercase tracking-wider">
                   Layout
-                </div>
-                <div className="text-[10px] text-white/40">
-                  {metrics.layout === 'horizontal' ? 'Horizontal (Kompakt-Leiste)' : 'Vertikal (Klassisch)'}
+                </span>
+                <div className="inline-flex p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">
+                  <button
+                    type="button"
+                    onClick={() => save('overlayMetrics', { ...metrics, layout: 'vertical' })}
+                    className={`flex items-center gap-1.5 py-1 px-2.5 rounded-md text-[11px] font-medium transition-all ${
+                      (metrics.layout ?? 'vertical') === 'vertical'
+                        ? 'bg-white text-black font-semibold shadow-sm'
+                        : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <Layers size={12} />
+                    Vertikal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => save('overlayMetrics', { ...metrics, layout: 'horizontal' })}
+                    className={`flex items-center gap-1.5 py-1 px-2.5 rounded-md text-[11px] font-medium transition-all ${
+                      metrics.layout === 'horizontal'
+                        ? 'bg-white text-black font-semibold shadow-sm'
+                        : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <Move size={12} />
+                    Horizontal
+                  </button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => save('overlayMetrics', { ...metrics, layout: 'vertical' })}
-                  className={`flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-[11px] font-semibold transition-all border ${
-                    (metrics.layout ?? 'vertical') === 'vertical'
-                      ? 'bg-white text-black border-white shadow-sm'
-                      : 'bg-white/[0.04] border-white/[0.08] text-white/70 hover:text-white hover:border-white/20'
-                  }`}
-                >
-                  <Layers size={13} />
-                  Vertikal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => save('overlayMetrics', { ...metrics, layout: 'horizontal' })}
-                  className={`flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-[11px] font-semibold transition-all border ${
-                    metrics.layout === 'horizontal'
-                      ? 'bg-white text-black border-white shadow-sm'
-                      : 'bg-white/[0.04] border-white/[0.08] text-white/70 hover:text-white hover:border-white/20'
-                  }`}
-                >
-                  <Move size={13} />
-                  Horizontal
-                </button>
+
+              {/* Right: Clean Size / Scale Stepper with Minus & Plus */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-semibold text-white/50 uppercase tracking-wider">
+                  Größe
+                </span>
+                <div className="flex items-center gap-1 p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = typeof metrics.scale === 'number' ? (metrics.scale <= 3 ? Math.round(metrics.scale * 100) : metrics.scale) : 100
+                      const next = Math.max(50, cur - 5)
+                      save('overlayMetrics', { ...metrics, scale: next })
+                    }}
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+                    title="Verkleinern (-5%)"
+                  >
+                    <Minus size={12} />
+                  </button>
+                  <span className="w-10 text-center text-[11px] font-semibold font-mono text-white select-none">
+                    {(typeof metrics.scale === 'number' ? (metrics.scale <= 3 ? Math.round(metrics.scale * 100) : metrics.scale) : 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = typeof metrics.scale === 'number' ? (metrics.scale <= 3 ? Math.round(metrics.scale * 100) : metrics.scale) : 100
+                      const next = Math.min(200, cur + 5)
+                      save('overlayMetrics', { ...metrics, scale: next })
+                    }}
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+                    title="Vergrößern (+5%)"
+                  >
+                    <Plus size={12} />
+                  </button>
+                </div>
               </div>
             </div>
 

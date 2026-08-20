@@ -52,6 +52,8 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
 
   const cfg: MetricsConfig = config ?? { fps: true, cpu: true, gpu: true, ram: true, time: true, layout: 'vertical' }
   const isHorizontal = cfg.layout === 'horizontal'
+  const rawScale = cfg.scale ?? 100
+  const finalScale = typeof rawScale === 'number' ? (rawScale > 3 ? rawScale / 100 : rawScale) : 1
 
   useEffect(() => {
     if (!cfg.time) return
@@ -90,7 +92,7 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
         userSelect: 'none',
         pointerEvents: 'none',
         contain: 'layout paint style',
-        transform: `scale(${cfg.scale ?? 1}) translateZ(0)`,
+        transform: `scale(${finalScale}) translateZ(0)`,
         transformOrigin: 'top left',
         transition: 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease',
       }}>
@@ -151,7 +153,7 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
       userSelect: 'none',
       pointerEvents: 'none',
       contain: 'layout paint style',
-      transform: `scale(${cfg.scale ?? 1}) translateZ(0)`,
+      transform: `scale(${finalScale}) translateZ(0)`,
       transformOrigin: 'top left',
       transition: 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease',
     }}>
