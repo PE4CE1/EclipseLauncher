@@ -603,6 +603,48 @@ ipcMain.handle('games:scan', async (_event) => {
   }
 })
 
+ipcMain.handle('games:uninstall', async (_event, game: { id: string; name: string; installPath?: string; launchUrl?: string; steamId?: number; appId?: string; platform?: string }) => {
+  try {
+    // 1. Steam game: trigger Steam's native uninstaller dialog
+    const steamId = game.steamId || (game.launchUrl?.startsWith('steam://rungameid/') ? game.launchUrl.replace('steam://rungameid/', '') : (game.appId ? game.appId : null))
+    if (steamId) {
+      await shell.openExternal(`steam://uninstall/${steamId}`)
+      return { success: true }
+    }
+
+    // 2. Non-Steam / Custom game
+    if (game.installPath && fs.existsSync(game.installPath)) {
+      const stat = fs.statSync(game.installPath)
+      const folderPath = stat.isFile() ? path.dirname(game.installPath) : game.installPath
+
+      if (fs.existsSync(folderPath)) {
+        try {
+          const files = fs.readdirSync(folderPath)
+          const uninstaller = files.find(f => {
+            const l = f.toLowerCase()
+            return (l.startsWith('unins') && l.endsWith('.exe')) || l === 'uninstall.exe'
+          })
+
+          if (uninstaller) {
+            const uninstallerPath = path.join(folderPath, uninstaller)
+            await shell.openPath(uninstallerPath)
+            return { success: true, uninstallerLaunched: true }
+          }
+        } catch {}
+
+        // Fallback: move game folder safely to Recycle Bin
+        await shell.trashItem(stat.isFile() ? game.installPath : folderPath)
+        return { success: true, trashed: true }
+      }
+    }
+
+    return { success: true }
+  } catch (err: any) {
+    console.error('Failed to uninstall game:', err)
+    return { success: false, error: err.message || String(err) }
+  }
+})
+
 // ─── Game Launch ─────────────────────────────────────────────────────────────
 let runningGameProcess: ChildProcess | null = null
 

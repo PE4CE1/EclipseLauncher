@@ -63,9 +63,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('games:scan-progress', handler)
   },
 
-  // Game launching
+  // Game launching & uninstall
   getCurrentGame: () => ipcRenderer.invoke('games:current'),
   launchGame: (launchUrl: string) => ipcRenderer.invoke('games:launch', launchUrl),
+  uninstallGame: (game: { id: string; name: string; installPath?: string; launchUrl?: string; steamId?: number; appId?: string; platform?: string }) =>
+    ipcRenderer.invoke('games:uninstall', game),
   stopGame: () => ipcRenderer.invoke('games:stop'),
   onGameStopped: (callback: () => void) => {
     const handler = () => callback()

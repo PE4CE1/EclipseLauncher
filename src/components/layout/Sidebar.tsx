@@ -3,8 +3,8 @@ import {
   Home, BookOpen, Library, Download, Settings,
   Bell, Gamepad2, Zap, Search, ChevronDown, User, Users, LogOut,
   Star, Clock, Loader2, ScanLine, Github, Play, Square,
-  FolderCog, FolderOpen, ExternalLink, Trash2, MoreVertical, ChevronRight,
-  SlidersHorizontal, type LucideIcon,
+  FolderCog, FolderOpen, Trash2, MoreVertical, ChevronRight,
+  type LucideIcon,
 } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { useGameStore } from '../../store/gameStore'
@@ -522,35 +522,12 @@ export function Sidebar() {
                       animate={{ opacity: 1, x: 0, scale: 1 }}
                       exit={{ opacity: 0, x: -4, scale: 0.96 }}
                       transition={{ duration: 0.08, ease: 'easeOut' }}
-                      className={`absolute top-0 bg-[#0b0c10]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl shadow-[0_16px_36px_rgba(0,0,0,0.85),0_0_1px_rgba(255,255,255,0.12)] p-1.5 w-52 text-[11.5px] font-sans z-[1000000] ${
-                        contextMenu.x + 192 + 210 > window.innerWidth
+                      className={`absolute top-0 bg-[#0b0c10]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl shadow-[0_16px_36px_rgba(0,0,0,0.85),0_0_1px_rgba(255,255,255,0.12)] p-1.5 w-48 text-[11.5px] font-sans z-[1000000] ${
+                        contextMenu.x + 192 + 200 > window.innerWidth
                           ? 'right-full mr-1.5 left-auto'
                           : 'left-full ml-1.5'
                       }`}
                     >
-                      {/* Desktop Shortcut */}
-                      <button
-                        onClick={async () => {
-                          const res = await window.electronAPI?.createGameShortcut?.({
-                            name: contextMenu.game.name,
-                            installPath: contextMenu.game.installPath,
-                            launchUrl: contextMenu.game.launchUrl,
-                            steamId: contextMenu.game.steamId,
-                            appId: contextMenu.game.appId,
-                          })
-                          if (res?.success) {
-                            showNotification(t('shortcutCreated'), 'success')
-                          } else {
-                            showNotification(t('shortcutFailed'), 'error')
-                          }
-                          setContextMenu(null)
-                        }}
-                        className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/[0.05] transition-colors text-left cursor-pointer font-medium"
-                      >
-                        <ExternalLink size={13} className="text-white/40" />
-                        <span>{t('addDesktopShortcut')}</span>
-                      </button>
-
                       {/* Browse Local Files */}
                       <button
                         onClick={async () => {
@@ -569,12 +546,34 @@ export function Sidebar() {
 
                       <div className="h-px bg-white/[0.06] my-1 mx-1" />
 
-                      {/* Uninstall / Remove from Library */}
+                      {/* Fully Functional Uninstall */}
                       <button
-                        onClick={() => {
-                          removeFromLibrary(contextMenu.game.id)
-                          showNotification(t('gameRemoved'), 'info')
+                        onClick={async () => {
+                          const targetGame = contextMenu.game
                           setContextMenu(null)
+
+                          if (window.electronAPI?.uninstallGame) {
+                            const res = await window.electronAPI.uninstallGame({
+                              id: targetGame.id,
+                              name: targetGame.name,
+                              installPath: targetGame.installPath,
+                              launchUrl: targetGame.launchUrl,
+                              steamId: targetGame.steamId,
+                              appId: targetGame.appId,
+                              platform: targetGame.platform,
+                            })
+
+                            if (!res?.success && res?.error) {
+                              showNotification(res.error, 'error')
+                              return
+                            }
+                          }
+
+                          // Remove from installed games and library in launcher
+                          const state = useGameStore.getState()
+                          state.setInstalledGames(state.installedGames.filter(g => g.id !== targetGame.id && g.name !== targetGame.name))
+                          state.removeFromLibrary(targetGame.id)
+                          showNotification(t('gameRemoved'), 'info')
                         }}
                         className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-red-400/90 hover:text-red-300 hover:bg-red-500/[0.08] transition-colors text-left cursor-pointer font-medium"
                       >
@@ -585,25 +584,6 @@ export function Sidebar() {
                   )}
                 </AnimatePresence>
               </div>
-
-              <div className="h-px bg-white/[0.06] my-1 mx-1" />
-
-              {/* ─── Properties / Game Details ─── */}
-              <button
-                onClick={() => {
-                  const steamId = contextMenu.game.steamId ?? (contextMenu.game.platform === 'steam' && contextMenu.game.appId ? Number(contextMenu.game.appId) : undefined)
-                  if (steamId) {
-                    openGameDetails(steamId)
-                  } else {
-                    setActiveView('library')
-                  }
-                  setContextMenu(null)
-                }}
-                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/[0.05] transition-colors text-left cursor-pointer font-medium"
-              >
-                <SlidersHorizontal size={13} className="text-white/40" />
-                <span>{t('gameProperties')}</span>
-              </button>
             </motion.div>
           </div>
         )}

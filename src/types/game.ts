@@ -231,6 +231,7 @@ export interface ElectronAPI {
   onScanProgress: (cb: (p: { stage: string; message: string; count: number }) => void) => () => void
   getCurrentGame: () => Promise<{ name: string; startTime: number } | null>
   launchGame: (launchUrl: string) => Promise<{ success: boolean; error?: string }>
+  uninstallGame?: (game: { id: string; name: string; installPath?: string; launchUrl?: string; steamId?: number; appId?: string; platform?: string }) => Promise<{ success: boolean; error?: string; uninstallerLaunched?: boolean; trashed?: boolean }>
   stopGame: () => Promise<{ success: boolean; error?: string }>
   onGameStopped: (callback: () => void) => () => void
   onGameStarted?: (callback: (data: { name: string; startTime: number }) => void) => () => void
