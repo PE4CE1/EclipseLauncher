@@ -46,7 +46,15 @@ function useFPS() {
   return fps
 }
 
-export const Performance = memo(function Performance({ metrics, config }: { metrics: MetricsData; config?: MetricsConfig }) {
+export const Performance = memo(function Performance({ 
+  metrics, 
+  config,
+  editMode = false,
+}: { 
+  metrics: MetricsData; 
+  config?: MetricsConfig;
+  editMode?: boolean;
+}) {
   const displayFps = useFPS()
   const [time, setTime] = useState('')
 
@@ -87,7 +95,9 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
         backgroundColor: 'rgba(10, 12, 18, 0.88)',
         backdropFilter: 'blur(16px)',
         border: '1px solid rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
+        outline: editMode ? '1.5px dashed rgba(255, 255, 255, 0.7)' : 'none',
+        outlineOffset: '3px',
+        boxShadow: editMode ? '0 0 12px rgba(255, 255, 255, 0.15), 0 4px 16px rgba(0, 0, 0, 0.25)' : '0 4px 16px rgba(0, 0, 0, 0.25)',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif',
         userSelect: 'none',
         pointerEvents: 'none',
@@ -148,7 +158,9 @@ export const Performance = memo(function Performance({ metrics, config }: { metr
       backgroundColor: 'rgba(10, 12, 18, 0.88)',
       backdropFilter: 'blur(16px)',
       border: '1px solid rgba(255, 255, 255, 0.08)',
-      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
+      outline: editMode ? '1.5px dashed rgba(255, 255, 255, 0.7)' : 'none',
+      outlineOffset: '3px',
+      boxShadow: editMode ? '0 0 12px rgba(255, 255, 255, 0.15), 0 4px 16px rgba(0, 0, 0, 0.25)' : '0 4px 16px rgba(0, 0, 0, 0.25)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif',
       userSelect: 'none',
       pointerEvents: 'none',

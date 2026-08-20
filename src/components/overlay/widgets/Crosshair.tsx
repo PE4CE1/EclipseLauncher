@@ -18,18 +18,18 @@ export type CrosshairConfig = {
 }
 
 export const CROSSHAIR_PRESETS: Record<string, Partial<CrosshairConfig> & { label: string }> = {
-  classic:      { label: 'Classic',       size: 8,  thickness: 1, gap: 3,  dot: false, dotSize: 0, tStyle: false, style: 'cross' },
-  classicDot:   { label: 'Classic + Dot', size: 8,  thickness: 1, gap: 3,  dot: true,  dotSize: 2, tStyle: false, style: 'cross' },
-  small:        { label: 'Small',         size: 4,  thickness: 1, gap: 2,  dot: false, dotSize: 0, tStyle: false, style: 'cross' },
-  dot:          { label: 'Dot Only',      size: 0,  thickness: 0, gap: 0,  dot: true,  dotSize: 3, tStyle: false, style: 'cross' },
-  cs2:          { label: 'CS2',           size: 7,  thickness: 1, gap: 3,  dot: true,  dotSize: 2, tStyle: false, style: 'cross' },
-  valorant:     { label: 'Valorant',      size: 5,  thickness: 2, gap: 2,  dot: false, dotSize: 0, tStyle: false, style: 'cross' },
-  tStyle:       { label: 'T-Style',       size: 8,  thickness: 1, gap: 3,  dot: false, dotSize: 0, tStyle: true,  style: 'cross' },
-  circle:       { label: 'Circle',        size: 12, thickness: 1, gap: 0,  dot: false, dotSize: 0, tStyle: false, style: 'circle' },
-  circleDot:    { label: 'Circle + Dot',  size: 12, thickness: 1, gap: 0,  dot: true,  dotSize: 2, tStyle: false, style: 'circle' },
-  x:            { label: 'X Shape',       size: 7,  thickness: 1, gap: 3,  dot: false, dotSize: 0, tStyle: false, style: 'x' },
-  large:        { label: 'Large',         size: 14, thickness: 2, gap: 5,  dot: false, dotSize: 0, tStyle: false, style: 'cross' },
-  sniper:       { label: 'Sniper',        size: 22, thickness: 1, gap: 8,  dot: true,  dotSize: 1, tStyle: false, style: 'cross' },
+  classic:      { label: 'Klassisch',         size: 8,  thickness: 1, gap: 3,  dot: false, dotSize: 0, tStyle: false, style: 'cross' },
+  classicDot:   { label: 'Klassisch + Punkt', size: 8,  thickness: 1, gap: 3,  dot: true,  dotSize: 2, tStyle: false, style: 'cross' },
+  small:        { label: 'Klein',             size: 4,  thickness: 1, gap: 2,  dot: false, dotSize: 0, tStyle: false, style: 'cross' },
+  dot:          { label: 'Nur Punkt',         size: 0,  thickness: 0, gap: 0,  dot: true,  dotSize: 3, tStyle: false, style: 'cross' },
+  cs2:          { label: 'CS2',               size: 7,  thickness: 1, gap: 3,  dot: true,  dotSize: 2, tStyle: false, style: 'cross' },
+  valorant:     { label: 'Valorant',          size: 5,  thickness: 2, gap: 2,  dot: false, dotSize: 0, tStyle: false, style: 'cross' },
+  tStyle:       { label: 'T-Form',            size: 8,  thickness: 1, gap: 3,  dot: false, dotSize: 0, tStyle: true,  style: 'cross' },
+  circle:       { label: 'Kreis',             size: 12, thickness: 1, gap: 0,  dot: false, dotSize: 0, tStyle: false, style: 'circle' },
+  circleDot:    { label: 'Kreis + Punkt',     size: 12, thickness: 1, gap: 0,  dot: true,  dotSize: 2, tStyle: false, style: 'circle' },
+  x:            { label: 'X-Form',            size: 7,  thickness: 1, gap: 3,  dot: false, dotSize: 0, tStyle: false, style: 'x' },
+  large:        { label: 'Groß',              size: 14, thickness: 2, gap: 5,  dot: false, dotSize: 0, tStyle: false, style: 'cross' },
+  sniper:       { label: 'Scharfschütze',     size: 22, thickness: 1, gap: 8,  dot: true,  dotSize: 1, tStyle: false, style: 'cross' },
 }
 
 export const DEFAULT_CROSSHAIR: CrosshairConfig = {

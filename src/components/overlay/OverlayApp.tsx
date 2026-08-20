@@ -268,12 +268,12 @@ export function OverlayApp() {
           zIndex: 10,
         }}
       >
-        {editMode && !isCrosshair && (
+        {editMode && !isCrosshair && key !== 'performance' && (
           <div style={{
-            position: 'absolute', inset: -4, borderRadius: 12, zIndex: -1,
-            border: '1px dashed rgba(255, 255, 255, 0.4)',
+            position: 'absolute', inset: -4, borderRadius: 10, zIndex: -1,
+            border: '1.5px dashed rgba(255, 255, 255, 0.6)',
             background: 'rgba(255, 255, 255, 0.03)',
-            boxShadow: '0 0 10px rgba(255, 255, 255, 0.08)',
+            boxShadow: '0 0 12px rgba(255, 255, 255, 0.08)',
             pointerEvents: 'none',
           }} />
         )}
@@ -313,7 +313,7 @@ export function OverlayApp() {
 
       {/* Widgets */}
       {settings.performance && renderWidget('performance',
-        <Performance metrics={metrics} config={settings.metrics} />
+        <Performance metrics={metrics} config={settings.metrics} editMode={editMode} />
       )}
       {settings.robloxTimer && (editMode || displayGame?.name === 'Roblox') && renderWidget('robloxTimer',
         <RobloxTimer startTime={displayGame?.startTime || Date.now()} idleTime={metrics.idleTime} />

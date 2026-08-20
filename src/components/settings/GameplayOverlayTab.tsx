@@ -447,19 +447,19 @@ export type ControllerSkinId = 'ps5_white' | 'ps5_black' | 'ps4_white' | 'ps4_bl
 
 export const CONTROLLER_SKINS: Record<ControllerSkinId, { label: string; url: string }> = {
   ps5_white: {
-    label: 'PS5 DualSense (White)',
+    label: 'PS5 DualSense (Weiß)',
     url: 'https://gamepadviewer.com/?p=1&s=ps5_white',
   },
   ps5_black: {
-    label: 'PS5 Midnight Black',
+    label: 'PS5 Midnight Schwarz',
     url: 'https://gamepadviewer.com/?p=1&s=ps5_black',
   },
   ps4_white: {
-    label: 'PS4 White / Red',
+    label: 'PS4 Weiß / Rot',
     url: 'https://gamepadviewer.com/?p=1&s=8',
   },
   ps4_black: {
-    label: 'PS4 Classic Black',
+    label: 'PS4 Klassisch Schwarz',
     url: 'https://gamepadviewer.com/?p=1&s=5',
   },
   xbox_one: {
