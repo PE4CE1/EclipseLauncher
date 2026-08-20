@@ -1050,6 +1050,65 @@ ipcMain.handle('system:create-desktop-shortcut', () => {
   }
 })
 
+ipcMain.handle('games:create-shortcut', async (_event, game: { name: string; installPath?: string; launchUrl?: string; steamId?: number; appId?: string }) => {
+  try {
+    const desktopPath = app.getPath('desktop')
+    const safeName = (game.name || 'Game').replace(/[/\\?%*:|"<>]/g, '').trim() || 'Game'
+
+    // 1. Steam game shortcut (.url)
+    const steamId = game.steamId || (game.launchUrl?.startsWith('steam://rungameid/') ? game.launchUrl.replace('steam://rungameid/', '') : (game.appId ? game.appId : null))
+    if (steamId) {
+      const urlContent = `[{000214A0-0000-0000-C000-000000000046}]\nProp3=19,0\n[InternetShortcut]\nIDList=\nURL=steam://rungameid/${steamId}\nIconIndex=0\n`
+      const shortcutPath = path.join(desktopPath, `${safeName}.url`)
+      fs.writeFileSync(shortcutPath, urlContent, 'utf-8')
+      return { success: true }
+    }
+
+    // 2. Executable / folder shortcut (.lnk)
+    if (game.installPath && fs.existsSync(game.installPath)) {
+      const stat = fs.statSync(game.installPath)
+      const isFile = stat.isFile()
+      let exePath = isFile ? game.installPath : ''
+      let workDir = isFile ? path.dirname(game.installPath) : game.installPath
+
+      if (!isFile) {
+        try {
+          const files = fs.readdirSync(game.installPath)
+          const found = files.find(f => f.toLowerCase().endsWith('.exe') && !f.toLowerCase().includes('unins') && !f.toLowerCase().includes('crash'))
+          if (found) {
+            exePath = path.join(game.installPath, found)
+          }
+        } catch {}
+      }
+
+      if (exePath && fs.existsSync(exePath)) {
+        const shortcutPath = path.join(desktopPath, `${safeName}.lnk`)
+        const success = shell.writeShortcutLink(shortcutPath, 'create', {
+          target: exePath,
+          cwd: workDir,
+          icon: exePath,
+          iconIndex: 0,
+          description: game.name
+        })
+        return { success }
+      }
+    }
+
+    // 3. Fallback: URL shortcut
+    if (game.launchUrl) {
+      const urlContent = `[InternetShortcut]\nURL=${game.launchUrl}\nIconIndex=0\n`
+      const shortcutPath = path.join(desktopPath, `${safeName}.url`)
+      fs.writeFileSync(shortcutPath, urlContent, 'utf-8')
+      return { success: true }
+    }
+
+    return { success: false, error: 'Executable or URL not found' }
+  } catch (error: any) {
+    console.error('Failed to create game desktop shortcut:', error)
+    return { success: false, error: error?.message || 'Failed' }
+  }
+})
+
 ipcMain.handle('rl:fetch-steam-avatar', async (_, url: string) => {
   return await fetchSteamAvatar(url)
 })

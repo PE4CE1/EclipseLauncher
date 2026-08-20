@@ -224,6 +224,7 @@ export interface ElectronAPI {
   setWindowResizable: (resizable: boolean) => void
   setAutoLaunch: (enabled: boolean, startMinimized: boolean) => Promise<void>
   createDesktopShortcut?: () => Promise<{ success: boolean; error?: string }>
+  createGameShortcut?: (game: { name: string; installPath?: string; launchUrl?: string; steamId?: number; appId?: string }) => Promise<{ success: boolean; error?: string }>
   relaunchApp?: () => Promise<void>
   showNativeNotification?: (options: { title: string; body: string }) => Promise<{ success: boolean }>
   scanGames: () => Promise<{ success: boolean; games: InstalledGame[]; error?: string }>

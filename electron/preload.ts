@@ -38,6 +38,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setWindowResizable: (resizable: boolean) => ipcRenderer.send('window:set-resizable', resizable),
   setAutoLaunch:  (enabled: boolean, startMinimized: boolean) => ipcRenderer.invoke('system:set-auto-launch', { enabled, startMinimized }),
   createDesktopShortcut: () => ipcRenderer.invoke('system:create-desktop-shortcut'),
+  createGameShortcut: (game: { name: string; installPath?: string; launchUrl?: string; steamId?: number; appId?: string }) =>
+    ipcRenderer.invoke('games:create-shortcut', game),
   relaunchApp:    () => ipcRenderer.invoke('app:relaunch'),
   showNativeNotification: (options: { title: string; body: string }) => ipcRenderer.invoke('notification:show', options),
   openUrl:        (url: string) => ipcRenderer.invoke('system:open-url', url),

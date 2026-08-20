@@ -2,7 +2,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, BookOpen, Library, Download, Settings,
   Bell, Gamepad2, Zap, Search, ChevronDown, User, Users, LogOut,
-  Star, Clock, Loader2, ScanLine, Github, type LucideIcon,
+  Star, Clock, Loader2, ScanLine, Github, Play, Square,
+  FolderCog, FolderOpen, ExternalLink, Trash2, MoreVertical, ChevronRight,
+  SlidersHorizontal, type LucideIcon,
 } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { useGameStore } from '../../store/gameStore'
@@ -11,7 +13,7 @@ import { useDownloadStore } from '../../store/downloadStore'
 import { getCoverUrl, getHeaderUrl, getPlaceholderCover } from '../../services/assetHelper'
 import { useTranslation } from '../../hooks/useTranslation'
 import { APP_VERSION } from '../../services/updateService'
-import type { ActiveView } from '../../types/game'
+import type { ActiveView, InstalledGame } from '../../types/game'
 
 interface NavItem {
   id: ActiveView
@@ -80,12 +82,12 @@ function SidebarIcon({ sources, name, initial }: { sources: string[]; name: stri
 import React from 'react'
 
 export function Sidebar() {
-  const { activeView, setActiveView, setIsSearchOpen, updateStatus, updateProgress, updateInfo, isFriendsOpen, setIsFriendsOpen } = useUIStore()
-  const { installedGames, library, isScanning, scanMessage, settings, activeGame } = useGameStore()
+  const { activeView, setActiveView, setIsSearchOpen, updateStatus, updateProgress, updateInfo, isFriendsOpen, setIsFriendsOpen, openGameDetails, showNotification } = useUIStore()
+  const { installedGames, library, isScanning, scanMessage, settings, activeGame, toggleFavorite, favoriteIds, removeFromLibrary, stopPlaySession } = useGameStore()
   
   // Calculate total library size (installed + custom uninstalled games)
   const totalLibraryCount = installedGames.length + library.filter(g => !installedGames.some(ig => ig.name === g.name)).length
-  const { scan } = useScanner()
+  const { scan, launchGame } = useScanner()
   const downloads = useDownloadStore(state => state.downloads)
   const activeDownloads = Object.values(downloads).filter(d => d.status !== 'done')
   const activeDownloadCount = activeDownloads.length
@@ -110,15 +112,63 @@ export function Sidebar() {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = React.useState(false)
   const dropdownRef = React.useRef<HTMLDivElement>(null)
 
+  // Context Menu State
+  const [contextMenu, setContextMenu] = React.useState<{ game: InstalledGame; x: number; y: number } | null>(null)
+  const [isManageHovered, setIsManageHovered] = React.useState(false)
+  const contextMenuRef = React.useRef<HTMLDivElement>(null)
+
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsProfileDropdownOpen(false)
       }
+      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
+        setContextMenu(null)
+        setIsManageHovered(false)
+      }
     }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setContextMenu(null)
+        setIsManageHovered(false)
+      }
+    }
+
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [])
+
+  const handleContextMenu = (e: React.MouseEvent, game: InstalledGame) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const menuWidth = 220
+    const menuHeight = 220
+    const x = Math.min(e.clientX, window.innerWidth - menuWidth - 10)
+    const y = Math.min(e.clientY, window.innerHeight - menuHeight - 10)
+    setContextMenu({ game, x, y })
+    setIsManageHovered(false)
+  }
+
+  const handleThreeDotsClick = (e: React.MouseEvent, game: InstalledGame) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const rect = e.currentTarget.getBoundingClientRect()
+    const menuWidth = 220
+    const menuHeight = 220
+    const x = Math.min(rect.right + 6, window.innerWidth - menuWidth - 10)
+    const y = Math.min(rect.top, window.innerHeight - menuHeight - 10)
+    setContextMenu({ game, x, y })
+    setIsManageHovered(false)
+  }
+
+  const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
+  const isPlayingSelected = contextMenu ? !!(activeGame && (normalize(activeGame.name) === normalize(contextMenu.game.name) || activeGame.id === String(contextMenu.game.steamId) || activeGame.id === contextMenu.game.launchUrl || activeGame.id === contextMenu.game.id)) : false
+  const isFavoriteSelected = contextMenu ? favoriteIds.includes(contextMenu.game.id) : false
 
   return (
     <aside className="w-64 flex-shrink-0 bg-transparent flex flex-col h-full overflow-hidden border-r border-white/[0.02]">
@@ -293,8 +343,6 @@ export function Sidebar() {
             </div>
           ) : (
             (() => {
-              const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
-              
               const sortedGames = [...installedGames.filter(g => g.installed !== false)].sort((a, b) => {
                 const aPlaying = activeGame && (normalize(activeGame.name) === normalize(a.name) || activeGame.id === String(a.steamId) || activeGame.id === a.launchUrl || activeGame.id === a.id)
                 const bPlaying = activeGame && (normalize(activeGame.name) === normalize(b.name) || activeGame.id === String(b.steamId) || activeGame.id === b.launchUrl || activeGame.id === b.id)
@@ -307,22 +355,26 @@ export function Sidebar() {
               return sortedGames.slice(0, 50).map((game, i) => {
                 const steamId = game.steamId ?? (game.platform === 'steam' && game.appId ? Number(game.appId) : undefined)
                 const isPlaying = !!(activeGame && (normalize(activeGame.name) === normalize(game.name) || activeGame.id === String(game.steamId) || activeGame.id === game.launchUrl || activeGame.id === game.id))
+                const isMenuOpen = contextMenu?.game.id === game.id
 
                 return (
-                  <motion.button
+                  <motion.div
                     key={game.id}
                     id={`sidebar-game-${game.id}`}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.02, ease: [0.16, 1, 0.3, 1] }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all group text-left ${isPlaying ? 'bg-white/10 shadow-lg border border-white/10' : 'hover:bg-white/[0.03]'}`}
+                    onContextMenu={(e) => handleContextMenu(e, game)}
                     onClick={() => {
                       if (steamId) {
-                        useUIStore.getState().openGameDetails(steamId)
+                        openGameDetails(steamId)
                       } else {
-                        useUIStore.getState().setActiveView('library')
+                        setActiveView('library')
                       }
                     }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all group text-left cursor-pointer relative ${
+                      isPlaying ? 'bg-white/10 shadow-lg border border-white/10' : 'hover:bg-white/[0.04]'
+                    } ${isMenuOpen ? 'bg-white/[0.08] ring-1 ring-white/10' : ''}`}
                   >
                     <GameIcon name={game.name} steamId={steamId} iconUrl={game.iconUrl} />
                     <span className={`text-xs transition-colors truncate flex-1 ${isPlaying ? 'text-white font-bold' : 'text-hub-text-secondary group-hover:text-hub-text'}`}>
@@ -330,13 +382,25 @@ export function Sidebar() {
                     </span>
                     
                     {isPlaying && (
-                      <div className="flex gap-0.5 items-end h-3 flex-shrink-0">
+                      <div className="flex gap-0.5 items-end h-3 flex-shrink-0 mr-0.5">
                         <motion.div animate={{ height: ["4px", "12px"] }} transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.0 }} className="w-1 bg-green-400 rounded-sm opacity-90" />
                         <motion.div animate={{ height: ["3px", "10px"] }} transition={{ duration: 0.7, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.2 }} className="w-1 bg-green-400 rounded-sm opacity-90" />
                         <motion.div animate={{ height: ["5px", "11px"] }} transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.4 }} className="w-1 bg-green-400 rounded-sm opacity-90" />
                       </div>
                     )}
-                  </motion.button>
+
+                    {/* 3-dots button (visible on hover or when context menu is open) */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleThreeDotsClick(e, game)}
+                      className={`p-1 rounded-md hover:bg-white/15 text-white/40 hover:text-white transition-all flex-shrink-0 ${
+                        isMenuOpen ? 'opacity-100 bg-white/15 text-white' : 'opacity-0 group-hover:opacity-100'
+                      }`}
+                      title={t('manage')}
+                    >
+                      <MoreVertical size={13} />
+                    </button>
+                  </motion.div>
                 )
               })
             })()
@@ -370,6 +434,176 @@ export function Sidebar() {
           </div>
         </div>
       </div>
+
+      {/* ─── Steam-Style Game Context Menu & Submenus ─────────────────── */}
+      <AnimatePresence>
+        {contextMenu && (
+          <div
+            ref={contextMenuRef}
+            className="fixed z-[999999] select-none"
+            style={{
+              left: contextMenu.x,
+              top: contextMenu.y,
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.12 }}
+              className="bg-[#12141a]/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.85),0_0_1px_rgba(255,255,255,0.2)] p-1.5 w-52 text-xs"
+            >
+              {/* ─── Primary Play / Stop Banner ─── */}
+              <button
+                onClick={() => {
+                  if (isPlayingSelected) {
+                    window.electronAPI?.stopGame?.()
+                    stopPlaySession()
+                  } else {
+                    launchGame(contextMenu.game.launchUrl || contextMenu.game.installPath, contextMenu.game.name)
+                  }
+                  setContextMenu(null)
+                }}
+                className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-bold text-xs transition-all shadow-md mb-1 cursor-pointer ${
+                  isPlayingSelected
+                    ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-950/40'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40'
+                }`}
+              >
+                {isPlayingSelected ? <Square size={13} fill="currentColor" /> : <Play size={13} fill="currentColor" />}
+                <span className="tracking-wide uppercase">
+                  {isPlayingSelected ? t('stopGame') : t('playGame')}
+                </span>
+              </button>
+
+              {/* ─── Add / Remove Favorite ─── */}
+              <button
+                onClick={() => {
+                  toggleFavorite(contextMenu.game.id)
+                  setContextMenu(null)
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors text-left cursor-pointer"
+              >
+                <Star 
+                  size={14} 
+                  className={isFavoriteSelected ? 'text-amber-400 fill-amber-400' : 'text-white/60'} 
+                />
+                <span>{isFavoriteSelected ? t('removeFromFavorites') : t('addToFavorites')}</span>
+              </button>
+
+              {/* ─── Manage (Flyout Submenu to the right) ─── */}
+              <div 
+                className="relative"
+                onMouseEnter={() => setIsManageHovered(true)}
+                onMouseLeave={() => setIsManageHovered(false)}
+              >
+                <button
+                  onClick={() => setIsManageHovered(prev => !prev)}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-colors text-left cursor-pointer ${
+                    isManageHovered ? 'bg-white/[0.08] text-white' : 'text-white/80 hover:text-white hover:bg-white/[0.06]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <FolderCog size={14} className="text-white/60" />
+                    <span>{t('manage')}</span>
+                  </div>
+                  <ChevronRight size={13} className="text-white/40" />
+                </button>
+
+                {/* Submenu flyout */}
+                <AnimatePresence>
+                  {isManageHovered && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -6, scale: 0.95 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      exit={{ opacity: 0, x: -6, scale: 0.95 }}
+                      transition={{ duration: 0.1 }}
+                      className={`absolute top-0 bg-[#12141a]/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.85),0_0_1px_rgba(255,255,255,0.2)] p-1.5 w-56 text-xs z-[1000000] ${
+                        contextMenu.x + 220 + 230 > window.innerWidth
+                          ? 'right-full mr-1.5 left-auto'
+                          : 'left-full ml-1.5'
+                      }`}
+                    >
+                      {/* Desktop Shortcut */}
+                      <button
+                        onClick={async () => {
+                          const res = await window.electronAPI?.createGameShortcut?.({
+                            name: contextMenu.game.name,
+                            installPath: contextMenu.game.installPath,
+                            launchUrl: contextMenu.game.launchUrl,
+                            steamId: contextMenu.game.steamId,
+                            appId: contextMenu.game.appId,
+                          })
+                          if (res?.success) {
+                            showNotification(t('shortcutCreated'), 'success')
+                          } else {
+                            showNotification(t('shortcutFailed'), 'error')
+                          }
+                          setContextMenu(null)
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors text-left cursor-pointer"
+                      >
+                        <ExternalLink size={13} className="text-white/60" />
+                        <span>{t('addDesktopShortcut')}</span>
+                      </button>
+
+                      {/* Browse Local Files */}
+                      <button
+                        onClick={async () => {
+                          if (contextMenu.game.installPath) {
+                            await window.electronAPI?.openPath(contextMenu.game.installPath)
+                          } else {
+                            showNotification(t('pathNotFound'), 'error')
+                          }
+                          setContextMenu(null)
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors text-left cursor-pointer"
+                      >
+                        <FolderOpen size={13} className="text-white/60" />
+                        <span>{t('browseLocalFiles')}</span>
+                      </button>
+
+                      <div className="h-px bg-white/[0.08] my-1 mx-1.5" />
+
+                      {/* Uninstall / Remove from Library */}
+                      <button
+                        onClick={() => {
+                          removeFromLibrary(contextMenu.game.id)
+                          showNotification(t('gameRemoved'), 'info')
+                          setContextMenu(null)
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors text-left cursor-pointer"
+                      >
+                        <Trash2 size={13} className="text-red-400/80" />
+                        <span>{t('uninstallGame')}</span>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="h-px bg-white/[0.08] my-1 mx-1.5" />
+
+              {/* ─── Properties / Game Details ─── */}
+              <button
+                onClick={() => {
+                  const steamId = contextMenu.game.steamId ?? (contextMenu.game.platform === 'steam' && contextMenu.game.appId ? Number(contextMenu.game.appId) : undefined)
+                  if (steamId) {
+                    openGameDetails(steamId)
+                  } else {
+                    setActiveView('library')
+                  }
+                  setContextMenu(null)
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors text-left cursor-pointer"
+              >
+                <SlidersHorizontal size={13} className="text-white/60" />
+                <span>{t('gameProperties')}</span>
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </aside>
   )
 }
