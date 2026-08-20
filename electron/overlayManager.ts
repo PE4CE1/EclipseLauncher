@@ -15,6 +15,10 @@ export function getOverlayWindow() {
   return overlayWindow
 }
 
+export function isEditModeActive() {
+  return isEditMode
+}
+
 function loadOverlay() {
   const devServerUrl = process.env['VITE_DEV_SERVER_URL']
   if (devServerUrl) {

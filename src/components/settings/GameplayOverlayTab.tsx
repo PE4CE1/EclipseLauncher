@@ -144,7 +144,7 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save }: 
             <div className="h-px bg-white/[0.06] mx-4" />
 
             {/* Layout & Scale Control Row */}
-            <div className="px-4 py-2.5 bg-white/[0.02] flex items-center justify-between gap-3 flex-wrap">
+            <div className="px-4 py-2.5 bg-white/[0.02] flex items-center justify-between gap-3 flex-nowrap">
               {/* Left: Compact Layout Segmented Control */}
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-semibold text-white/50 uppercase tracking-wider">

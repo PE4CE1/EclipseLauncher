@@ -3,7 +3,7 @@ import { BrowserWindow, app } from 'electron'
 import { setDiscordActivity, setDiscordIdleActivity, setDiscordDownloadActivity, clearDiscordActivity } from './discordRPC'
 import * as path from 'path'
 import * as fs from 'fs'
-import { showOverlay, hideOverlay, getOverlayWindow } from './overlayManager'
+import { showOverlay, hideOverlay, getOverlayWindow, isEditModeActive } from './overlayManager'
 import { startRLService, stopRLService } from './rlService'
 import { addPlaytimeRecord } from './playtimeService'
 import { setActiveGameMetrics } from './metricsService'
@@ -524,11 +524,40 @@ export function resetCurrentDetectedGame() {
 export function syncOverlaySettingsLive() {
   invalidateSettingsCache()
   const appSettings = getAppSettings()
-  const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayRobloxCps
+  const overlayWin = getOverlayWindow()
+  const isRL = currentGame?.name === 'Rocket League'
+  const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayController
+
+  const overlaySettings = {
+    performance: appSettings.overlayPerformance,
+    crosshair: appSettings.overlayCrosshair,
+    cps: appSettings.overlayCps || (currentGame?.name === 'Roblox' && appSettings.overlayRobloxCps),
+    robloxCps: appSettings.overlayCps || (currentGame?.name === 'Roblox' && appSettings.overlayRobloxCps),
+    robloxTimer: appSettings.overlayRobloxTimer && currentGame?.name === 'Roblox',
+    rlHud: isRL && appSettings.overlayRLHud,
+    overlayRLSteam: isRL && appSettings.overlayRLSteam,
+    overlayController: appSettings.overlayController,
+    overlayRLController: (isRL && appSettings.overlayRLController) || appSettings.overlayController,
+    rlControllerSkin: appSettings.rlControllerSkin,
+    rlControllerUrl: appSettings.rlControllerUrl,
+    rlControllerScale: appSettings.rlControllerScale,
+    metrics: appSettings.overlayMetrics,
+    crosshairConfig: appSettings.crosshairConfig,
+    steamProfileUrl: appSettings.steamProfileUrl,
+    rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
+  }
+
+  // If overlay window is already open (e.g. edit mode or running), immediately push live settings
+  if (overlayWin && !overlayWin.isDestroyed()) {
+    overlayWin.webContents.send('overlay:update', {
+      name: currentGame?.name || 'Desktop',
+      startTime: currentGame?.startTime || Date.now(),
+      positions: appSettings.overlayPositions,
+      settings: overlaySettings,
+    })
+  }
 
   if (currentGame) {
-    const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayController
-    const isRL = currentGame.name === 'Rocket League'
     const shouldShow = hasGeneralOverlay || (currentGame.name === 'Roblox' && (appSettings.overlayRobloxTimer || appSettings.overlayRobloxCps)) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam || appSettings.overlayRLController))
 
     if (shouldShow) {
@@ -536,58 +565,23 @@ export function syncOverlaySettingsLive() {
         name: currentGame.name,
         startTime: currentGame.startTime || Date.now(),
         positions: appSettings.overlayPositions,
-        settings: {
-          performance: appSettings.overlayPerformance,
-          crosshair: appSettings.overlayCrosshair,
-          cps: appSettings.overlayCps || (currentGame.name === 'Roblox' && appSettings.overlayRobloxCps),
-          robloxCps: appSettings.overlayCps || (currentGame.name === 'Roblox' && appSettings.overlayRobloxCps),
-          robloxTimer: appSettings.overlayRobloxTimer && currentGame.name === 'Roblox',
-          rlHud: isRL && appSettings.overlayRLHud,
-          overlayRLSteam: isRL && appSettings.overlayRLSteam,
-          overlayController: appSettings.overlayController,
-          overlayRLController: (isRL && appSettings.overlayRLController) || appSettings.overlayController,
-          rlControllerSkin: appSettings.rlControllerSkin,
-          rlControllerUrl: appSettings.rlControllerUrl,
-          rlControllerScale: appSettings.rlControllerScale,
-          metrics: appSettings.overlayMetrics,
-          crosshairConfig: appSettings.crosshairConfig,
-          steamProfileUrl: appSettings.steamProfileUrl,
-          rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
-        }
+        settings: overlaySettings,
       })
-    } else {
+    } else if (!isEditModeActive()) {
       hideOverlay()
     }
   } else {
-    // No game active
-    const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayController
     if (appSettings.overlayGeneralAlwaysOn && hasGeneralOverlay) {
       showOverlay({
         name: 'Desktop',
         startTime: Date.now(),
         positions: appSettings.overlayPositions,
-        settings: {
-          performance: appSettings.overlayPerformance,
-          crosshair: appSettings.overlayCrosshair,
-          cps: appSettings.overlayCps,
-          robloxCps: appSettings.overlayCps,
-          robloxTimer: false,
-          rlHud: false,
-          overlayRLSteam: false,
-          overlayController: appSettings.overlayController,
-          overlayRLController: appSettings.overlayController,
-          rlControllerSkin: appSettings.rlControllerSkin,
-          rlControllerUrl: appSettings.rlControllerUrl,
-          rlControllerScale: appSettings.rlControllerScale,
-          metrics: appSettings.overlayMetrics,
-          crosshairConfig: appSettings.crosshairConfig,
-          steamProfileUrl: appSettings.steamProfileUrl,
-          rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
-        }
+        settings: overlaySettings,
       })
-    } else {
+    } else if (!isEditModeActive()) {
       hideOverlay()
     }
   }
 }
+
 

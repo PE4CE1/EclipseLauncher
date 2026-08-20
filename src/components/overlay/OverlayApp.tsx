@@ -77,6 +77,13 @@ export function OverlayApp() {
     if (window.electronAPI?.onOverlayUpdate) {
       cleanups.push(window.electronAPI.onOverlayUpdate((data: any) => {
         setActiveGame(data)
+        if (data?.settings) {
+          setInitialSettings((prev: any) => ({
+            ...prev,
+            ...(data.settings.metrics ? { overlayMetrics: data.settings.metrics } : {}),
+            ...data.settings
+          }))
+        }
         if (!editModeRef.current && data?.positions) {
           const merged = { ...DEFAULT_POSITIONS, ...data.positions }
           positionsRef.current = merged
@@ -210,23 +217,26 @@ export function OverlayApp() {
   }
 
   const displayGame = activeGame || editGameData
-  const settings = displayGame?.settings || {
-    performance: initialSettings?.overlayPerformance ?? true,
-    crosshair: initialSettings?.overlayCrosshair ?? true,
-    robloxTimer: initialSettings?.overlayRobloxTimer ?? false,
-    robloxCps: initialSettings?.overlayRobloxCps ?? false,
-    cps: initialSettings?.overlayCps ?? false,
-    overlayRLHud: initialSettings?.overlayRLHud ?? false,
-    overlayRLSteam: initialSettings?.overlayRLSteam ?? false,
-    overlayController: initialSettings?.overlayController ?? false,
-    overlayRLController: (initialSettings?.overlayRLController || initialSettings?.overlayController) ?? false,
-    rlControllerSkin: initialSettings?.rlControllerSkin ?? 'ps5_white',
-    rlControllerUrl: initialSettings?.rlControllerUrl ?? 'https://gamepadviewer.com/?p=1&s=ps5_white',
-    rlControllerScale: initialSettings?.rlControllerScale ?? 80,
-    metrics: initialSettings?.overlayMetrics ?? { fps: true, cpu: true, ram: true, gpu: true, ping: false, time: true },
-    crosshairConfig: initialSettings?.crosshairConfig,
-    steamProfileUrl: initialSettings?.steamProfileUrl,
-    rlSteamAvatarScale: initialSettings?.rlSteamAvatarScale ?? 85,
+  const ds = displayGame?.settings || {}
+  const settings = {
+    performance: ds.performance ?? initialSettings?.overlayPerformance ?? true,
+    crosshair: ds.crosshair ?? initialSettings?.overlayCrosshair ?? true,
+    robloxTimer: ds.robloxTimer ?? initialSettings?.overlayRobloxTimer ?? false,
+    robloxCps: ds.robloxCps ?? initialSettings?.overlayRobloxCps ?? false,
+    cps: ds.cps ?? initialSettings?.overlayCps ?? false,
+    rlHud: ds.rlHud ?? initialSettings?.overlayRLHud ?? false,
+    overlayRLHud: ds.rlHud ?? initialSettings?.overlayRLHud ?? false,
+    overlayRLSteam: ds.overlayRLSteam ?? initialSettings?.overlayRLSteam ?? false,
+    overlayController: ds.overlayController ?? initialSettings?.overlayController ?? false,
+    overlayRLController: ds.overlayRLController ?? (initialSettings?.overlayRLController || initialSettings?.overlayController) ?? false,
+    rlControllerSkin: ds.rlControllerSkin ?? initialSettings?.rlControllerSkin ?? 'ps5_white',
+    rlControllerUrl: ds.rlControllerUrl ?? initialSettings?.rlControllerUrl ?? 'https://gamepadviewer.com/?p=1&s=ps5_white',
+    rlControllerScale: ds.rlControllerScale ?? initialSettings?.rlControllerScale ?? 80,
+    metrics: ds.metrics ?? initialSettings?.overlayMetrics ?? { fps: true, cpu: true, ram: true, gpu: true, ping: false, time: true, layout: 'vertical' },
+    crosshairConfig: ds.crosshairConfig ?? initialSettings?.crosshairConfig,
+    steamProfileUrl: ds.steamProfileUrl ?? initialSettings?.steamProfileUrl,
+    rlScoreboardKeyCtrl: ds.rlScoreboardKeyCtrl ?? initialSettings?.rlScoreboardKeyCtrl ?? 'Button 8',
+    rlSteamAvatarScale: ds.rlSteamAvatarScale ?? initialSettings?.rlSteamAvatarScale ?? 85,
   }
 
   const renderWidget = (key: string, children: React.ReactNode) => {
