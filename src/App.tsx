@@ -76,6 +76,26 @@ export default function App() {
       }).catch(() => {})
     }
 
+    // Load Electron persisted settings and merge into Zustand store.
+    // This ensures userUid and friendCode survive across app restarts.
+    if (window.electronAPI?.getSettings) {
+      window.electronAPI.getSettings().then((saved: any) => {
+        if (!saved) return
+        const current = useGameStore.getState().settings
+        const patch: Record<string, any> = {}
+        // Prefer Electron-saved userUid/friendCode over localStorage defaults
+        if (saved.userUid && !current.userUid) patch.userUid = saved.userUid
+        if (saved.friendCode && (!current.friendCode || current.friendCode === 'AK25EF0B')) patch.friendCode = saved.friendCode
+        if (saved.username && (current.username === 'User' || !current.username)) patch.username = saved.username
+        if (saved.avatarUrl && !current.avatarUrl) patch.avatarUrl = saved.avatarUrl
+        if (saved.steamProfileUrl && !current.steamProfileUrl) patch.steamProfileUrl = saved.steamProfileUrl
+        if (saved.steamLevel && !current.steamLevel) patch.steamLevel = saved.steamLevel
+        if (Object.keys(patch).length > 0) {
+          useGameStore.getState().updateSettings(patch)
+        }
+      }).catch(() => {})
+    }
+
     const unsubStart = window.electronAPI?.onGameStarted?.((data) => {
       if (data?.name) {
         useGameStore.getState().startPlaySession(data.name, data.name)
@@ -115,6 +135,7 @@ export default function App() {
   useEffect(() => {
     initSocialNetwork()
   }, [])
+
 
   // Listen to standalone Friends Window events
   useEffect(() => {
