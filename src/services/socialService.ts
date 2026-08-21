@@ -208,6 +208,34 @@ export async function syncMyProfile() {
       useGameStore.getState().updateSettings({ friendCode })
     }
 
+    // AUTO-REFRESH: If we still have default username but a Steam URL is set,
+    // fetch fresh Steam data now so the real name/avatar gets synced
+    const isDefaultUsername = !settings.username || settings.username === 'User' || settings.username === 'Eclipse Player'
+    if (isDefaultUsername && settings.steamProfileUrl) {
+      try {
+        const { fetchSteamUserProfile } = await import('./steamService')
+        const steamData = await fetchSteamUserProfile(settings.steamProfileUrl)
+        if (steamData && steamData.username && steamData.username !== 'Unknown') {
+          const steamUpdate = {
+            username: steamData.username,
+            avatarUrl: steamData.avatarFull || settings.avatarUrl || '',
+            steamLevel: steamData.steamLevel ?? settings.steamLevel ?? 0,
+            steamGamesCount: steamData.steamGamesCount ?? settings.steamGamesCount ?? 0,
+            steamBadgesCount: steamData.steamBadgesCount ?? settings.steamBadgesCount ?? 0,
+            steamRecentGames: steamData.steamRecentGames || settings.steamRecentGames || [],
+            steamFavoriteBadge: steamData.steamFavoriteBadge ?? settings.steamFavoriteBadge ?? null,
+          }
+          useGameStore.getState().updateSettings(steamUpdate)
+          // Persist to electron settings as well
+          if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
+            window.electronAPI.setSettings(steamUpdate)
+          }
+          // Re-read updated settings
+          Object.assign(settings, steamUpdate)
+        }
+      } catch (_) { /* ignore steam fetch errors, proceed with what we have */ }
+    }
+
     const isIngame = !!activeGame
     const activeGameName = activeGame?.name || null
 
@@ -257,20 +285,23 @@ export async function syncMyProfile() {
     const totalLibraryCount = inst.length + lib.filter(g => !inst.some(ig => ig.name === g.name)).length
     const totalInstalledCount = inst.filter(g => g.installed !== false).length
 
+    // Re-read settings after potential Steam auto-refresh above
+    const latestSettings = useGameStore.getState().settings
+
     const payload = {
       uid,
       friendCode: friendCode.toUpperCase().trim(),
-      username: settings.username || 'Eclipse Player',
-      avatarUrl: settings.avatarUrl || '',
+      username: latestSettings.username || 'Eclipse Player',
+      avatarUrl: latestSettings.avatarUrl || '',
       status: isIngame ? 'ingame' : 'online',
       currentGame: isIngame ? activeGameName : null,
-      level: settings.steamLevel || 1,
-      steamLevel: settings.steamLevel || 1,
-      steamProfileUrl: settings.steamProfileUrl || '',
-      steamGamesCount: settings.steamGamesCount || 0,
-      steamBadgesCount: settings.steamBadgesCount || 0,
-      steamFavoriteBadge: settings.steamFavoriteBadge || null,
-      steamRecentGames: settings.steamRecentGames || [],
+      level: latestSettings.steamLevel || 1,
+      steamLevel: latestSettings.steamLevel || 1,
+      steamProfileUrl: latestSettings.steamProfileUrl || '',
+      steamGamesCount: latestSettings.steamGamesCount || 0,
+      steamBadgesCount: latestSettings.steamBadgesCount || 0,
+      steamFavoriteBadge: latestSettings.steamFavoriteBadge || null,
+      steamRecentGames: latestSettings.steamRecentGames || [],
       totalPlaytimeMins,
       totalPlaytimeHours,
       totalLibraryCount,
