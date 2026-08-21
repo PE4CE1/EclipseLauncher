@@ -271,33 +271,6 @@ export async function syncMyProfile() {
 
   try {
     const { settings, library, installedGames, activeGame } = useGameStore.getState()
-
-    // AUTO-REFRESH: If we still have default username but a Steam URL is set,
-    // fetch fresh Steam data now so the real name/avatar gets synced
-    const isDefaultUsername = !settings.username || settings.username === 'User' || settings.username === 'Eclipse Player'
-    if (isDefaultUsername && settings.steamProfileUrl) {
-      try {
-        const { fetchSteamUserProfile } = await import('./steamService')
-        const steamData = await fetchSteamUserProfile(settings.steamProfileUrl)
-        if (steamData && steamData.username && steamData.username !== 'Unknown') {
-          const steamUpdate = {
-            username: steamData.username,
-            avatarUrl: steamData.avatarFull || settings.avatarUrl || '',
-            steamLevel: steamData.steamLevel ?? settings.steamLevel ?? 0,
-            steamGamesCount: steamData.steamGamesCount ?? settings.steamGamesCount ?? 0,
-            steamBadgesCount: steamData.steamBadgesCount ?? settings.steamBadgesCount ?? 0,
-            steamRecentGames: steamData.steamRecentGames || settings.steamRecentGames || [],
-            steamFavoriteBadge: steamData.steamFavoriteBadge ?? settings.steamFavoriteBadge ?? null,
-          }
-          useGameStore.getState().updateSettings(steamUpdate)
-          if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
-            window.electronAPI.setSettings(steamUpdate)
-          }
-          Object.assign(settings, steamUpdate)
-        }
-      } catch (_) { /* ignore steam fetch errors */ }
-    }
-
     const isIngame = !!activeGame
     const activeGameName = activeGame?.name || null
 
@@ -346,22 +319,20 @@ export async function syncMyProfile() {
     const totalLibraryCount = inst.length + lib.filter(g => !inst.some(ig => ig.name === g.name)).length
     const totalInstalledCount = inst.filter(g => g.installed !== false).length
 
-    const latestSettings = useGameStore.getState().settings
-
     const payload = {
       uid,
       friendCode: friendCode.toUpperCase().trim(),
-      username: latestSettings.username || 'Eclipse Player',
-      avatarUrl: latestSettings.avatarUrl || '',
+      username: settings.username || 'Eclipse Player',
+      avatarUrl: settings.avatarUrl || '',
       status: isIngame ? 'ingame' : 'online',
       currentGame: isIngame ? activeGameName : null,
-      level: latestSettings.steamLevel || 1,
-      steamLevel: latestSettings.steamLevel || 1,
-      steamProfileUrl: latestSettings.steamProfileUrl || '',
-      steamGamesCount: latestSettings.steamGamesCount || 0,
-      steamBadgesCount: latestSettings.steamBadgesCount || 0,
-      steamFavoriteBadge: latestSettings.steamFavoriteBadge || null,
-      steamRecentGames: latestSettings.steamRecentGames || [],
+      level: settings.steamLevel || 1,
+      steamLevel: settings.steamLevel || 1,
+      steamProfileUrl: settings.steamProfileUrl || '',
+      steamGamesCount: settings.steamGamesCount || 0,
+      steamBadgesCount: settings.steamBadgesCount || 0,
+      steamFavoriteBadge: settings.steamFavoriteBadge || null,
+      steamRecentGames: settings.steamRecentGames || [],
       totalPlaytimeMins,
       totalPlaytimeHours,
       totalLibraryCount,
@@ -369,11 +340,42 @@ export async function syncMyProfile() {
       topPlayedGames,
     }
 
+    // Direct, fast sync to Cloudflare D1
     await fetch(`${getApiUrl()}/api/user/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
+
+    // Background Steam enrich if needed
+    const isDefaultUsername = !settings.username || settings.username === 'User' || settings.username === 'Eclipse Player'
+    if (isDefaultUsername && settings.steamProfileUrl) {
+      import('./steamService').then(async ({ fetchSteamUserProfile }) => {
+        try {
+          const steamData = await fetchSteamUserProfile(settings.steamProfileUrl!)
+          if (steamData && steamData.username && steamData.username !== 'Unknown') {
+            const steamUpdate = {
+              username: steamData.username,
+              avatarUrl: steamData.avatarFull || settings.avatarUrl || '',
+              steamLevel: steamData.steamLevel ?? settings.steamLevel ?? 0,
+              steamGamesCount: steamData.steamGamesCount ?? settings.steamGamesCount ?? 0,
+              steamBadgesCount: steamData.steamBadgesCount ?? settings.steamBadgesCount ?? 0,
+              steamRecentGames: steamData.steamRecentGames || settings.steamRecentGames || [],
+              steamFavoriteBadge: steamData.steamFavoriteBadge ?? settings.steamFavoriteBadge ?? null,
+            }
+            useGameStore.getState().updateSettings(steamUpdate)
+            if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
+              window.electronAPI.setSettings(steamUpdate)
+            }
+            await fetch(`${getApiUrl()}/api/user/sync`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...payload, ...steamUpdate }),
+            })
+          }
+        } catch (_) {}
+      }).catch(() => {})
+    }
   } catch (err) {
     console.warn('[SocialService] syncMyProfile error:', err)
   }
@@ -385,26 +387,18 @@ export async function syncMyProfile() {
 export async function fetchUserProfile(uidOrCode: string): Promise<any | null> {
   if (!uidOrCode || typeof uidOrCode !== 'string') return null
   const raw = uidOrCode.trim()
-  const cleanUpper = raw.toUpperCase().replace(/\s+/g, '')
+  if (!raw) return null
 
-  // Generate lookup candidates (direct, without ECL-, with ECL-)
-  const candidates = Array.from(new Set([
-    raw,
-    cleanUpper,
-    cleanUpper.replace(/^ECL-/, ''),
-    cleanUpper.startsWith('ECL-') ? cleanUpper : `ECL-${cleanUpper}`,
-  ]))
-
-  for (const candidate of candidates) {
-    try {
-      const res = await fetch(`${getApiUrl()}/api/user/${encodeURIComponent(candidate)}`)
-      if (res.ok) {
-        const data = await res.json()
-        if (data.success && data.user) {
-          return data.user
-        }
+  try {
+    const res = await fetch(`${getApiUrl()}/api/user/${encodeURIComponent(raw)}`)
+    if (res.ok) {
+      const data = await res.json()
+      if (data.success && data.user) {
+        return data.user
       }
-    } catch {}
+    }
+  } catch (e) {
+    console.warn('[SocialService] fetchUserProfile error:', e)
   }
 
   return null
@@ -419,53 +413,31 @@ export async function sendFriendRequest(codeOrUid: string): Promise<{ success: b
     return { success: false, error: 'Keine Benutzer-ID gefunden.' }
   }
 
-  // Ensure current user profile is synced so recipient gets our username & avatar
-  syncMyProfile().catch(() => {})
-
   const raw = codeOrUid.trim()
-  const cleanCode = raw.toUpperCase().replace(/\s+/g, '')
-  if (!cleanCode) {
+  if (!raw) {
     return { success: false, error: 'Bitte gib einen gültigen Freundes-Code ein.' }
   }
 
-  const candidates = Array.from(new Set([
-    cleanCode,
-    cleanCode.replace(/^ECL-/, ''),
-    cleanCode.startsWith('ECL-') ? cleanCode : `ECL-${cleanCode}`,
-  ]))
+  try {
+    const res = await fetch(`${getApiUrl()}/api/friends/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fromUid: myUid, toCodeOrUid: raw }),
+    })
 
-  let lastError = 'Kein Spieler mit diesem Code gefunden.'
-
-  for (const candidate of candidates) {
-    try {
-      const res = await fetch(`${getApiUrl()}/api/friends/request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fromUid: myUid, toCodeOrUid: candidate }),
-      })
-
-      const data = await res.json()
-      if (res.ok && data.success) {
-        // Refresh poll immediately
-        pollFriendsAndRequests()
-        return {
-          success: true,
-          message: data.message || 'Freundschaftsanfrage gesendet!',
-        }
+    const data = await res.json()
+    if (res.ok && data.success) {
+      pollFriendsAndRequests()
+      return {
+        success: true,
+        message: data.message || 'Freundschaftsanfrage gesendet!',
       }
-
-      if (data?.error) {
-        lastError = data.error
-        if (data.error.includes('selbst') || data.error.includes('befreundet') || data.error.includes('ausstehend')) {
-          break
-        }
-      }
-    } catch (err: any) {
-      lastError = err?.message || 'Server nicht erreichbar.'
     }
-  }
 
-  return { success: false, error: lastError }
+    return { success: false, error: data?.error || 'Kein Spieler mit diesem Code gefunden.' }
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Server nicht erreichbar.' }
+  }
 }
 
 /**
@@ -485,27 +457,16 @@ export async function addFriendByCode(codeOrUid: string): Promise<{ success: boo
 
   // Prevent adding self
   const mySettings = useGameStore.getState().settings
-  const myCode = mySettings.friendCode?.toUpperCase().replace(/\s+/g, '') || ''
+  const myCode = (mySettings.friendCode || getOrCreateFriendCode()).toUpperCase().replace(/\s+/g, '')
   if (cleanCode === myCode || cleanCode === myUid || cleanCode.replace(/^ECL-/, '') === myCode.replace(/^ECL-/, '')) {
     return { success: false, error: 'Du kannst dich nicht selbst als Freund hinzufügen.' }
   }
 
-  // Ensure current user profile is synced
-  syncMyProfile().catch(() => {})
-
   // 1. Look up user profile in Cloudflare D1
   const cloudUser = await fetchUserProfile(raw)
   if (cloudUser && cloudUser.uid) {
-    // Guard: reject known test UIDs and prevent self-add
     if (cloudUser.uid === myUid) {
       return { success: false, error: 'Du kannst dich nicht selbst als Freund hinzufügen.' }
-    }
-
-    // Guard: only reject accounts with clearly invalid/dummy friend codes
-    const userFriendCode = (cloudUser.friendCode || '').toUpperCase().replace(/\s+/g, '')
-    const isTestUid = cloudUser.uid === 'uid_user_a_123' || cloudUser.uid === 'uid_user_b_456'
-    if (!userFriendCode || userFriendCode.startsWith('DUMMY') || isTestUid) {
-      return { success: false, error: 'Kein Spieler mit diesem Code gefunden.' }
     }
 
     const friendObj: EclipseFriend = {
@@ -522,7 +483,7 @@ export async function addFriendByCode(codeOrUid: string): Promise<{ success: boo
       steamFavoriteBadge: cloudUser.steamFavoriteBadge || null,
     }
 
-    // Instantly add to local store (just like Firebase)
+    // Instantly add to local store
     const currentFriends = useGameStore.getState().settings.eclipseFriends || []
     if (!currentFriends.some(f => f.id === friendObj.id)) {
       useGameStore.getState().updateSettings({
@@ -530,7 +491,7 @@ export async function addFriendByCode(codeOrUid: string): Promise<{ success: boo
       })
     }
 
-    // Send bilateral request / link on Cloudflare D1 in background
+    // Send bilateral request on Cloudflare D1 in background
     fetch(`${getApiUrl()}/api/friends/request`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
