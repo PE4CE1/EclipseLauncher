@@ -212,9 +212,21 @@ export function getPlaceholderHero(name: string): string {
  * Formats timestamps into natural, localized, and well-written relative time strings.
  * e.g., "Zuletzt online vor 12 Min." or "Last seen 12 mins ago"
  */
-export function formatLastSeen(timestamp: number | undefined | null, language: string = 'de'): string {
-  if (!timestamp || timestamp <= 0) {
-    return language === 'de' ? 'Offline' : 'Offline'
+export function formatLastSeen(timestamp: any, language: string = 'de'): string {
+  let timeNum: number = 0
+  if (!timestamp) return 'Offline'
+  if (typeof timestamp === 'number') {
+    timeNum = timestamp
+  } else if (typeof timestamp?.toMillis === 'function') {
+    timeNum = timestamp.toMillis()
+  } else if (typeof timestamp?.seconds === 'number') {
+    timeNum = timestamp.seconds * 1000
+  } else if (typeof timestamp === 'string') {
+    timeNum = new Date(timestamp).getTime()
+  }
+
+  if (!timeNum || isNaN(timeNum) || timeNum <= 0) {
+    return 'Offline'
   }
 
   const now = Date.now()

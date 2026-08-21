@@ -360,7 +360,9 @@ const FriendCard = ({ friend, onClick, onRemove, t, language }: { friend: any, o
 
   const getStatusText = () => {
     if (friend.status === 'ingame') {
-      return friend.currentGame ? `Playing ${friend.currentGame}` : 'In-Game';
+      return friend.currentGame 
+        ? (language === 'de' ? `Spielt ${friend.currentGame}` : `Playing ${friend.currentGame}`)
+        : (language === 'de' ? 'Im Spiel' : 'In-Game');
     }
     if (friend.status === 'online') return t('online');
     return formatLastSeen(friend.lastSeen, language);
@@ -390,6 +392,7 @@ const FriendCard = ({ friend, onClick, onRemove, t, language }: { friend: any, o
         <button 
           onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
           className={`p-1.5 rounded-md hover:bg-white/10 transition-colors ${showMenu ? 'bg-white/10 text-white' : 'text-white/30 opacity-0 group-hover:opacity-100 group-hover:text-white/50 hover:!text-white'}`}
+          title={language === 'de' ? 'Optionen' : 'Options'}
         >
           <MoreVertical size={16} />
         </button>
@@ -400,13 +403,13 @@ const FriendCard = ({ friend, onClick, onRemove, t, language }: { friend: any, o
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.1 }}
-              className="absolute right-0 top-full mt-1 w-36 bg-[#1b1c20] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50"
+              className="absolute right-0 top-full mt-1 w-44 bg-[#1b1c20] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50 p-1"
             >
               <button 
                 onClick={(e) => { e.stopPropagation(); setShowMenu(false); onRemove(); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors text-left font-medium"
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-md transition-colors text-left font-medium cursor-pointer"
               >
-                <Trash2 size={14} /> Remove
+                <Trash2 size={13} /> {language === 'de' ? 'Freund entfernen' : 'Remove Friend'}
               </button>
             </motion.div>
           )}

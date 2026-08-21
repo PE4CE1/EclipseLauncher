@@ -330,12 +330,28 @@ function listenToFriendsPresence(friendUids: string[]) {
 
     snapshot.docs.forEach((docItem) => {
       const u = docItem.data()
+      let lastSeenMs: number | undefined = undefined
+      if (u.lastSeen) {
+        if (typeof u.lastSeen === 'number') lastSeenMs = u.lastSeen
+        else if (typeof u.lastSeen?.toMillis === 'function') lastSeenMs = u.lastSeen.toMillis()
+        else if (typeof u.lastSeen?.seconds === 'number') lastSeenMs = u.lastSeen.seconds * 1000
+      }
+
+      const now = Date.now()
+      let status: 'online' | 'offline' | 'ingame' = 'offline'
+      if (u.status === 'ingame') {
+        status = 'ingame'
+      } else if (u.status === 'online' || (lastSeenMs && now - lastSeenMs < 120000)) {
+        status = 'online'
+      }
+
       const friendObj: EclipseFriend = {
         id: u.uid,
         username: u.username || 'Eclipse Player',
         avatarUrl: u.avatarUrl || '',
-        status: (u.status as 'online' | 'offline' | 'ingame') || 'offline',
+        status: status,
         currentGame: u.currentGame || undefined,
+        lastSeen: lastSeenMs,
         level: u.level || 1,
         steamLevel: u.steamLevel || 1,
         steamProfileUrl: u.steamProfileUrl || undefined,
@@ -368,9 +384,10 @@ function listenToFriendsPresence(friendUids: string[]) {
       knownFriendIds.add(lf.id)
     })
 
-    // 2. Keep local friends that are not cloud UIDs (e.g. Steam-only IDs)
+    // 2. Keep local friends that are purely Steam IDs (starting with steam_ or 17 digits)
     currentLocalFriends.forEach((lf) => {
-      if (!liveFriendsMap.has(lf.id)) {
+      const isPureSteam = lf.id.startsWith('steam_') || /^\d{17}$/.test(lf.id)
+      if (isPureSteam && !liveFriendsMap.has(lf.id)) {
         updatedFriends.push(lf)
       }
     })
@@ -494,6 +511,7 @@ async function performBilateralAdd(myUid: string, targetUid: string, targetData:
  * Removes a friend from Firestore and local store
  */
 export async function removeFirebaseFriend(friendId: string) {
+  knownFriendIds.delete(friendId)
   const currentUid = auth.currentUser?.uid
   if (currentUid) {
     try {
