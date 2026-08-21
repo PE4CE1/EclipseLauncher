@@ -34,7 +34,27 @@ export function getOrCreateUserUid(): string {
 }
 
 /**
- * Generates a clean unique Eclipse friend code (e.g. ECL-7X9K2)
+ * Generates a deterministic Eclipse friend code from a UID.
+ * Same UID always produces the same code — stable and permanent.
+ */
+export function deriveFriendCodeFromUid(uid: string): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  // Simple but consistent hash: sum char codes with position multiplier
+  let hash = 0
+  for (let i = 0; i < uid.length; i++) {
+    hash = ((hash << 5) - hash + uid.charCodeAt(i)) >>> 0
+  }
+  let code = 'ECL-'
+  let h = hash
+  for (let i = 0; i < 5; i++) {
+    code += chars[h % chars.length]
+    h = Math.floor(h / chars.length) || (hash >>> (i + 1))
+  }
+  return code
+}
+
+/**
+ * Generates a random Eclipse friend code (fallback only)
  */
 export function generateEclipseFriendCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -57,10 +77,17 @@ export async function initSocialNetwork() {
 
   try {
     const uid = getOrCreateUserUid()
-    let friendCode = useGameStore.getState().settings.friendCode
-    if (!friendCode) {
-      friendCode = generateEclipseFriendCode()
-      useGameStore.getState().updateSettings({ friendCode })
+
+    // Derive a stable friend code from the UID — same UID always → same code
+    const derivedCode = deriveFriendCodeFromUid(uid)
+    const currentCode = useGameStore.getState().settings.friendCode
+
+    // Always ensure the stored code matches the derived code (or set it if missing)
+    if (!currentCode || currentCode !== derivedCode) {
+      useGameStore.getState().updateSettings({ friendCode: derivedCode })
+      if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
+        window.electronAPI.setSettings({ friendCode: derivedCode, userUid: uid })
+      }
     }
 
     // 1. Initial sync

@@ -71,6 +71,30 @@ export default {
         }
 
         const now = Date.now();
+        const cleanCode = friendCode.toUpperCase().trim();
+
+        // If another uid owns this friend_code, remove that stale record first
+        // This handles the case where test data or old records block a user's code
+        const existingWithCode = await env.DB.prepare(
+          'SELECT uid FROM users WHERE friend_code = ? AND uid != ?'
+        ).bind(cleanCode, uid).first();
+
+        if (existingWithCode) {
+          // Only remove test/stale accounts (those that have never had real data)
+          const staleUid = existingWithCode.uid as string;
+          const staleRecord = await env.DB.prepare('SELECT * FROM users WHERE uid = ?').bind(staleUid).first();
+          const isStale = !staleRecord?.avatar_url &&
+            (!staleRecord?.steam_profile_url || staleRecord?.steam_profile_url === '') &&
+            (Number(staleRecord?.steam_games_count) === 0) &&
+            (staleRecord?.username === 'UserA' || staleRecord?.username === 'UserB' ||
+             staleRecord?.username === 'Deleted Test' || staleRecord?.username === 'Deleted Test A' ||
+             staleRecord?.username === 'Eclipse Player' || staleRecord?.username === 'User' ||
+             (staleUid as string).startsWith('uid_user_a_') || (staleUid as string).startsWith('uid_user_b_'));
+
+          if (isStale) {
+            await env.DB.prepare('DELETE FROM users WHERE uid = ?').bind(staleUid).run();
+          }
+        }
 
         await env.DB.prepare(`
           INSERT INTO users (
@@ -81,6 +105,7 @@ export default {
             total_installed_count, top_played_games, last_seen, created_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(uid) DO UPDATE SET
+            friend_code = excluded.friend_code,
             username = excluded.username,
             avatar_url = excluded.avatar_url,
             status = excluded.status,
@@ -100,7 +125,7 @@ export default {
             last_seen = excluded.last_seen
         `).bind(
           uid,
-          friendCode.toUpperCase().trim(),
+          cleanCode,
           username,
           avatarUrl,
           status,
@@ -123,6 +148,7 @@ export default {
 
         return json({ success: true, timestamp: now });
       }
+
 
       // 3. User Lookup by UID or Friend Code: GET /api/user/:uidOrCode
       if (pathname.startsWith('/api/user/') && request.method === 'GET') {
