@@ -37,14 +37,33 @@ export const AddFriendModal: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const translateError = (rawErr?: string) => {
+    if (!rawErr) return t('playerNotFound');
+    const lower = rawErr.toLowerCase();
+    if (lower.includes('kein spieler') || lower.includes('not found') || lower.includes('ungültig') || lower.includes('invalid') || lower.includes('nicht gefunden')) {
+      return t('playerNotFound');
+    }
+    if (lower.includes('selbst') || lower.includes('yourself') || lower.includes('self')) {
+      return t('cannotAddSelf');
+    }
+    if (lower.includes('bereits befreundet') || lower.includes('already friends')) {
+      return t('alreadyFriends');
+    }
+    if (lower.includes('bereits') || lower.includes('already') || lower.includes('ausstehend') || lower.includes('pending')) {
+      return t('requestAlreadySent');
+    }
+    return rawErr;
+  };
+
   const handleViewProfile = async () => {
-    if (!friendCodeInput.trim()) return;
+    const input = friendCodeInput.trim();
+    if (!input) return;
     setError('');
     setLoading(true);
 
     try {
-      // 1. Look up in Firebase
-      const profile = await fetchUserProfile(friendCodeInput.trim());
+      // 1. Look up in Cloudflare D1
+      const profile = await fetchUserProfile(input);
       if (profile && profile.uid) {
         setIsAddFriendOpen(false);
         openFriendProfile(profile.uid);
@@ -52,81 +71,99 @@ export const AddFriendModal: React.FC = () => {
       }
 
       // 2. Steam Profile fallback
-      const steamProfile = await fetchSteamUserProfile(friendCodeInput.trim());
+      const steamProfile = await fetchSteamUserProfile(input);
       if (steamProfile && steamProfile.steamId64) {
         setIsAddFriendOpen(false);
         openFriendProfile(steamProfile.steamId64);
         return;
       }
 
-      setError(settings.language === 'de' ? 'Spieler nicht gefunden. Bitte Code prüfen.' : 'User not found. Check the code.');
+      setError(t('playerNotFound'));
     } catch (err: any) {
-      setError(err?.message || 'Fehler beim Laden des Profils.');
+      setError(err?.message ? translateError(err.message) : t('profileLoadError'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleAddFriend = async () => {
-    if (!friendCodeInput.trim()) return;
+    const input = friendCodeInput.trim();
+    if (!input) return;
     setError('');
     setLoading(true);
 
+    const cleanInput = input.toUpperCase().replace(/\s+/g, '');
+    const myCode = settings.friendCode?.toUpperCase().replace(/\s+/g, '') || '';
+    const myUid = settings.userUid || '';
+
+    // Guard: Prevent adding self
+    if (cleanInput === myCode || cleanInput === myUid || (cleanInput.replace(/^ECL-/, '') === myCode.replace(/^ECL-/, '') && myCode)) {
+      setError(t('cannotAddSelf'));
+      setLoading(false);
+      return;
+    }
+
+    const currentFriends = settings.eclipseFriends || [];
+    if (currentFriends.some(f => f.id.toLowerCase() === input.toLowerCase() || (f.friendCode && f.friendCode.toUpperCase() === cleanInput))) {
+      setError(t('alreadyFriends'));
+      setLoading(false);
+      return;
+    }
+
     try {
-      // 1. Send live friend request in Firebase
-      const fbResult = await sendFriendRequest(friendCodeInput);
+      // 1. Send live friend request to Cloudflare D1 Social Network
+      const fbResult = await sendFriendRequest(input);
       if (fbResult.success) {
         setFriendCodeInput('');
         setIsAddFriendOpen(false);
         setLoading(false);
         sendAppNotification({
-          title: settings.language === 'de' ? 'Anfrage gesendet! 👥' : 'Request Sent! 👥',
-          body: fbResult.message || (settings.language === 'de' ? 'Freundschaftsanfrage erfolgreich übermittelt.' : 'Friend request sent successfully.'),
+          title: t('requestSentTitle'),
+          body: t('requestSentSuccess'),
           type: 'success',
-          duration: 5000
+          duration: 5000,
         });
         return;
       }
 
-      // 2. Fallback to Steam Web Profile lookup if valid SteamID
-      const profile = await fetchSteamUserProfile(friendCodeInput);
+      // 2. Fallback to Steam Web Profile lookup if valid SteamID or Custom URL
+      const profile = await fetchSteamUserProfile(input);
       
-      if (!profile || !profile.steamId64) {
-        setError(fbResult.error || (settings.language === 'de' ? 'Spieler nicht gefunden. Bitte Code prüfen.' : 'User not found. Check the code.'));
-        setLoading(false);
+      if (profile && profile.steamId64) {
+        if (currentFriends.some(f => f.id === profile.steamId64)) {
+          setError(t('alreadyFriends'));
+          setLoading(false);
+          return;
+        }
+
+        let status: 'online' | 'offline' | 'ingame' = 'offline';
+        if (profile.onlineState === 'in-game') status = 'ingame';
+        else if (profile.onlineState === 'online') status = 'online';
+
+        const newFriend: EclipseFriend = {
+          id: profile.steamId64,
+          username: profile.username,
+          avatarUrl: profile.avatarFull,
+          status: status,
+          steamProfileUrl: `https://steamcommunity.com/profiles/${profile.steamId64}`,
+          level: profile.steamLevel,
+          steamRecentGames: profile.steamRecentGames,
+          steamFavoriteBadge: profile.steamFavoriteBadge,
+        };
+
+        updateSettings({
+          eclipseFriends: [...currentFriends, newFriend],
+        });
+
+        setFriendCodeInput('');
+        setIsAddFriendOpen(false);
         return;
       }
 
-      const currentFriends = settings.eclipseFriends || [];
-      if (currentFriends.some(f => f.id === profile.steamId64)) {
-        setError('You are already friends!');
-        setLoading(false);
-        return;
-      }
-
-      let status: 'online' | 'offline' | 'ingame' = 'offline';
-      if (profile.onlineState === 'in-game') status = 'ingame';
-      else if (profile.onlineState === 'online') status = 'online';
-
-      const newFriend: EclipseFriend = {
-        id: profile.steamId64,
-        username: profile.username,
-        avatarUrl: profile.avatarFull,
-        status: status,
-        steamProfileUrl: `https://steamcommunity.com/profiles/${profile.steamId64}`,
-        level: profile.steamLevel,
-        steamRecentGames: profile.steamRecentGames,
-        steamFavoriteBadge: profile.steamFavoriteBadge
-      };
-
-      updateSettings({
-        eclipseFriends: [...currentFriends, newFriend]
-      });
-
-      setFriendCodeInput('');
-      setIsAddFriendOpen(false);
+      // Translated error message
+      setError(translateError(fbResult.error));
     } catch (err: any) {
-      setError(err?.message || 'An error occurred.');
+      setError(translateError(err?.message));
     } finally {
       setLoading(false);
     }

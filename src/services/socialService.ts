@@ -272,17 +272,30 @@ export async function syncMyProfile() {
  */
 export async function fetchUserProfile(uidOrCode: string): Promise<any | null> {
   if (!uidOrCode || typeof uidOrCode !== 'string') return null
-  const clean = uidOrCode.trim()
+  const raw = uidOrCode.trim()
+  const cleanUpper = raw.toUpperCase().replace(/\s+/g, '')
 
-  try {
-    const res = await fetch(`${getApiUrl()}/api/user/${encodeURIComponent(clean)}`)
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.success ? data.user : null
-  } catch (err) {
-    console.warn('[SocialService] fetchUserProfile error:', err)
-    return null
+  // Generate lookup candidates (direct, without ECL-, with ECL-)
+  const candidates = Array.from(new Set([
+    raw,
+    cleanUpper,
+    cleanUpper.replace(/^ECL-/, ''),
+    cleanUpper.startsWith('ECL-') ? cleanUpper : `ECL-${cleanUpper}`,
+  ]))
+
+  for (const candidate of candidates) {
+    try {
+      const res = await fetch(`${getApiUrl()}/api/user/${encodeURIComponent(candidate)}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success && data.user) {
+          return data.user
+        }
+      }
+    } catch {}
   }
+
+  return null
 }
 
 /**
@@ -294,34 +307,54 @@ export async function sendFriendRequest(codeOrUid: string): Promise<{ success: b
     return { success: false, error: 'Keine Benutzer-ID gefunden.' }
   }
 
-  const cleanCode = codeOrUid.trim().toUpperCase()
+  // Ensure current user profile is synced so recipient gets our username & avatar
+  syncMyProfile().catch(() => {})
+
+  const raw = codeOrUid.trim()
+  const cleanCode = raw.toUpperCase().replace(/\s+/g, '')
   if (!cleanCode) {
     return { success: false, error: 'Bitte gib einen gültigen Freundes-Code ein.' }
   }
 
-  try {
-    const res = await fetch(`${getApiUrl()}/api/friends/request`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fromUid: myUid, toCodeOrUid: cleanCode }),
-    })
+  const candidates = Array.from(new Set([
+    cleanCode,
+    cleanCode.replace(/^ECL-/, ''),
+    cleanCode.startsWith('ECL-') ? cleanCode : `ECL-${cleanCode}`,
+  ]))
 
-    const data = await res.json()
-    if (!res.ok || !data.success) {
-      return { success: false, error: data.error || 'Fehler beim Senden der Anfrage.' }
+  let lastError = 'Kein Spieler mit diesem Code gefunden.'
+
+  for (const candidate of candidates) {
+    try {
+      const res = await fetch(`${getApiUrl()}/api/friends/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromUid: myUid, toCodeOrUid: candidate }),
+      })
+
+      const data = await res.json()
+      if (res.ok && data.success) {
+        // Refresh poll immediately
+        pollFriendsAndRequests()
+        return {
+          success: true,
+          message: data.message || 'Freundschaftsanfrage gesendet!',
+        }
+      }
+
+      if (data?.error) {
+        lastError = data.error
+        // If error is specific (like already friends or self-request), stop retrying variations
+        if (data.error.includes('selbst') || data.error.includes('befreundet') || data.error.includes('ausstehend')) {
+          break
+        }
+      }
+    } catch (err: any) {
+      lastError = err?.message || 'Server nicht erreichbar.'
     }
-
-    // Refresh poll immediately
-    pollFriendsAndRequests()
-
-    return {
-      success: true,
-      message: data.message || 'Freundschaftsanfrage gesendet!',
-    }
-  } catch (err: any) {
-    console.error('[SocialService] sendFriendRequest error:', err)
-    return { success: false, error: err.message || 'Server nicht erreichbar.' }
   }
+
+  return { success: false, error: lastError }
 }
 
 export const addFriendByCode = sendFriendRequest
