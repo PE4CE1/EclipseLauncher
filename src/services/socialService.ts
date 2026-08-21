@@ -392,12 +392,30 @@ export async function addFriendByCode(codeOrUid: string): Promise<{ success: boo
     return { success: false, error: 'Bitte gib einen gültigen Freundes-Code ein.' }
   }
 
+  // Prevent adding self
+  const mySettings = useGameStore.getState().settings
+  const myCode = mySettings.friendCode?.toUpperCase().replace(/\s+/g, '') || ''
+  if (cleanCode === myCode || cleanCode === myUid || cleanCode.replace(/^ECL-/, '') === myCode.replace(/^ECL-/, '')) {
+    return { success: false, error: 'Du kannst dich nicht selbst als Freund hinzufügen.' }
+  }
+
   // Ensure current user profile is synced
   syncMyProfile().catch(() => {})
 
   // 1. Look up user profile in Cloudflare D1
   const cloudUser = await fetchUserProfile(raw)
   if (cloudUser && cloudUser.uid) {
+    // Guard: reject dummy/test accounts and prevent self-add
+    if (cloudUser.uid === myUid) {
+      return { success: false, error: 'Du kannst dich nicht selbst als Freund hinzufügen.' }
+    }
+
+    // Guard: only accept real registered Eclipse users (must have a valid friend code)
+    const userFriendCode = (cloudUser.friendCode || '').toUpperCase().replace(/\s+/g, '')
+    if (!userFriendCode || userFriendCode.startsWith('DUMMY') || cloudUser.username === 'Deleted Test' || cloudUser.username === 'UserB' || cloudUser.username === 'UserA') {
+      return { success: false, error: 'Kein Spieler mit diesem Code gefunden.' }
+    }
+
     const friendObj: EclipseFriend = {
       id: cloudUser.uid,
       username: cloudUser.username || 'Eclipse Player',
@@ -440,7 +458,7 @@ export async function addFriendByCode(codeOrUid: string): Promise<{ success: boo
     return { success: true, message: reqRes.message }
   }
 
-  return { success: false, error: reqRes.error }
+  return { success: false, error: reqRes.error || 'Kein Spieler mit diesem Code gefunden.' }
 }
 
 /**

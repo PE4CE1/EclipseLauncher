@@ -159,32 +159,7 @@ export const AddFriendModal: React.FC = () => {
         return;
       }
 
-      // 3. Fallback: If it's a valid friend code format (e.g. 4-16 alphanumeric characters)
-      if (cleanInput.length >= 4 && cleanInput.length <= 16) {
-        const fallbackFriend: EclipseFriend = {
-          id: `ecl_${cleanInput}`,
-          username: `Player ${cleanInput.replace(/^ECL-/, '')}`,
-          avatarUrl: '',
-          status: 'offline',
-          friendCode: cleanInput,
-        };
-        updateSettings({
-          eclipseFriends: [...currentFriends, fallbackFriend],
-        });
-        setFriendCodeInput('');
-        setIsAddFriendOpen(false);
-        sendAppNotification({
-          title: settings.language === 'de' ? 'Freund hinzugefügt! 👥' : 'Friend Added! 👥',
-          body: settings.language === 'de' 
-            ? `Freundschaftscode ${cleanInput} wurde zu deinen Freunden hinzugefügt!` 
-            : `Friend code ${cleanInput} was added to your friends list!`,
-          type: 'success',
-          duration: 5000,
-        });
-        return;
-      }
-
-      // Translated error message
+      // No valid player found — show error
       setError(translateError(addRes.error));
     } catch (err: any) {
       setError(translateError(err?.message));
