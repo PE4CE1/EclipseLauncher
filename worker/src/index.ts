@@ -73,11 +73,6 @@ export default {
         const now = Date.now();
         const cleanCode = friendCode.toUpperCase().trim();
 
-        // Clear any collision on friend_code from other uids to avoid UNIQUE constraint errors
-        await env.DB.prepare(
-          'DELETE FROM users WHERE friend_code = ? AND uid != ?'
-        ).bind(cleanCode, uid).run();
-
         await env.DB.prepare(`
           INSERT INTO users (
             uid, friend_code, username, avatar_url, status, current_game,

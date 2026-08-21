@@ -72,12 +72,15 @@ export const AddFriendModal: React.FC = () => {
         return;
       }
 
-      // 2. Steam Profile fallback
-      const steamProfile = await fetchSteamUserProfile(input);
-      if (steamProfile && (steamProfile.steamId64 || steamProfile.username)) {
-        setIsAddFriendOpen(false);
-        openFriendProfile(steamProfile.steamId64 || input);
-        return;
+      // 2. Steam Profile fallback (ONLY if not an Eclipse Friend Code format)
+      const cleanUpper = input.toUpperCase().replace(/\s+/g, '');
+      if (!cleanUpper.startsWith('ECL-')) {
+        const steamProfile = await fetchSteamUserProfile(input);
+        if (steamProfile && (steamProfile.steamId64 || steamProfile.username) && !steamProfile.username.toLowerCase().includes('error')) {
+          setIsAddFriendOpen(false);
+          openFriendProfile(steamProfile.steamId64 || input);
+          return;
+        }
       }
 
       setError(t('playerNotFound'));
@@ -128,47 +131,49 @@ export const AddFriendModal: React.FC = () => {
         return;
       }
 
-      // 2. Fallback to Steam Web Profile lookup if valid SteamID or Custom URL
-      const profile = await fetchSteamUserProfile(input);
-      if (profile && (profile.steamId64 || profile.username)) {
-        const friendId = profile.steamId64 || `steam_${input.toLowerCase().replace(/[^a-z0-9_]/g, '')}`;
-        if (currentFriends.some(f => f.id === friendId)) {
-          setError(t('alreadyFriends'));
-          setLoading(false);
+      // 2. Fallback to Steam Web Profile lookup ONLY if input is NOT an Eclipse Friend Code format
+      if (!cleanInput.startsWith('ECL-')) {
+        const profile = await fetchSteamUserProfile(input);
+        if (profile && (profile.steamId64 || profile.username) && !profile.username.toLowerCase().includes('error')) {
+          const friendId = profile.steamId64 || `steam_${input.toLowerCase().replace(/[^a-z0-9_]/g, '')}`;
+          if (currentFriends.some(f => f.id === friendId)) {
+            setError(t('alreadyFriends'));
+            setLoading(false);
+            return;
+          }
+
+          let status: 'online' | 'offline' | 'ingame' = 'offline';
+          if (profile.onlineState === 'in-game') status = 'ingame';
+          else if (profile.onlineState === 'online') status = 'online';
+
+          const newFriend: EclipseFriend = {
+            id: friendId,
+            username: profile.username || input,
+            avatarUrl: profile.avatarFull || '',
+            status: status,
+            steamProfileUrl: profile.steamId64 ? `https://steamcommunity.com/profiles/${profile.steamId64}` : `https://steamcommunity.com/id/${input}`,
+            level: profile.steamLevel || 1,
+            steamLevel: profile.steamLevel || 1,
+            steamRecentGames: profile.steamRecentGames || [],
+            steamFavoriteBadge: profile.steamFavoriteBadge || null,
+          };
+
+          updateSettings({
+            eclipseFriends: [...currentFriends, newFriend],
+          });
+
+          setFriendCodeInput('');
+          setIsAddFriendOpen(false);
+          sendAppNotification({
+            title: settings.language === 'de' ? 'Freund hinzugefügt! 👥' : 'Friend Added! 👥',
+            body: settings.language === 'de' 
+              ? `Steam-Freund ${newFriend.username} wurde hinzugefügt!` 
+              : `Steam friend ${newFriend.username} added successfully!`,
+            type: 'success',
+            duration: 5000,
+          });
           return;
         }
-
-        let status: 'online' | 'offline' | 'ingame' = 'offline';
-        if (profile.onlineState === 'in-game') status = 'ingame';
-        else if (profile.onlineState === 'online') status = 'online';
-
-        const newFriend: EclipseFriend = {
-          id: friendId,
-          username: profile.username || input,
-          avatarUrl: profile.avatarFull || '',
-          status: status,
-          steamProfileUrl: profile.steamId64 ? `https://steamcommunity.com/profiles/${profile.steamId64}` : `https://steamcommunity.com/id/${input}`,
-          level: profile.steamLevel || 1,
-          steamLevel: profile.steamLevel || 1,
-          steamRecentGames: profile.steamRecentGames || [],
-          steamFavoriteBadge: profile.steamFavoriteBadge || null,
-        };
-
-        updateSettings({
-          eclipseFriends: [...currentFriends, newFriend],
-        });
-
-        setFriendCodeInput('');
-        setIsAddFriendOpen(false);
-        sendAppNotification({
-          title: settings.language === 'de' ? 'Freund hinzugefügt! 👥' : 'Friend Added! 👥',
-          body: settings.language === 'de' 
-            ? `Steam-Freund ${newFriend.username} wurde hinzugefügt!` 
-            : `Steam friend ${newFriend.username} added successfully!`,
-          type: 'success',
-          duration: 5000,
-        });
-        return;
       }
 
       // No valid player found — show error

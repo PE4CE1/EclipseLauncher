@@ -133,6 +133,18 @@ export async function initSocialNetwork() {
     const uid = getOrCreateUserUid()
     const friendCode = getOrCreateFriendCode()
 
+    // Clean any invalid ghost friends (e.g. Steam error pages or test ghosts)
+    const currentFriends = useGameStore.getState().settings.eclipseFriends || []
+    const cleanedFriends = currentFriends.filter(f => 
+      f && f.username && 
+      !f.username.toLowerCase().includes('error') && 
+      !f.username.toLowerCase().includes('steam community') &&
+      !f.id.startsWith('ecl_')
+    )
+    if (cleanedFriends.length !== currentFriends.length) {
+      useGameStore.getState().updateSettings({ eclipseFriends: cleanedFriends })
+    }
+
     // 1. Initial sync
     await syncMyProfile()
 

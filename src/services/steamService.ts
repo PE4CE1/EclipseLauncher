@@ -855,7 +855,13 @@ export async function fetchSteamUserProfile(profileUrl: string): Promise<SteamUs
       }
     }
     
-    if (!steamId64 && !username) return null;
+    // Guard: Reject Steam error pages (e.g. "Steam Community :: Error")
+    const isErrorPage = !username ||
+      username.toLowerCase().includes('error') ||
+      username.toLowerCase().includes('steam community') ||
+      (htmlText ? htmlText.includes('class="error_ctn"') || htmlText.includes('The specified profile could not be found.') : false);
+
+    if (isErrorPage || (!steamId64 && !username)) return null;
 
     let steamLevel: number | undefined = undefined;
     let steamGamesCount: number | undefined = undefined;
