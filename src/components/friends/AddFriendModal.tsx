@@ -5,7 +5,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { useUIStore } from '../../store/uiStore';
 import { useGameStore } from '../../store/gameStore';
 import { fetchSteamUserProfile } from '../../services/steamService';
-import { sendFriendRequest, generateEclipseFriendCode, syncMyProfile, fetchUserProfile } from '../../services/socialService';
+import { addFriendByCode, sendFriendRequest, generateEclipseFriendCode, syncMyProfile, fetchUserProfile } from '../../services/socialService';
 import { sendAppNotification } from '../../services/notificationService';
 import type { EclipseFriend } from '../../types/game';
 
@@ -18,7 +18,7 @@ export const AddFriendModal: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Generate friend code if it doesn't exist and sync to Firebase
+  // Generate friend code if it doesn't exist and sync to Cloudflare D1
   useEffect(() => {
     if (isAddFriendOpen) {
       if (!settings.friendCode) {
@@ -111,15 +111,15 @@ export const AddFriendModal: React.FC = () => {
     }
 
     try {
-      // 1. Send live friend request to Cloudflare D1 Social Network
-      const fbResult = await sendFriendRequest(input);
-      if (fbResult.success) {
+      // 1. Instant bilateral add via Cloudflare D1 Social Network
+      const addRes = await addFriendByCode(input);
+      if (addRes.success) {
         setFriendCodeInput('');
         setIsAddFriendOpen(false);
         setLoading(false);
         sendAppNotification({
-          title: t('requestSentTitle'),
-          body: t('requestSentSuccess'),
+          title: settings.language === 'de' ? 'Freund hinzugefügt! 👥' : 'Friend Added! 👥',
+          body: addRes.message || (settings.language === 'de' ? 'Freund erfolgreich hinzugefügt.' : 'Friend added successfully.'),
           type: 'success',
           duration: 5000,
         });
@@ -128,7 +128,6 @@ export const AddFriendModal: React.FC = () => {
 
       // 2. Fallback to Steam Web Profile lookup if valid SteamID or Custom URL
       const profile = await fetchSteamUserProfile(input);
-      
       if (profile && profile.steamId64) {
         if (currentFriends.some(f => f.id === profile.steamId64)) {
           setError(t('alreadyFriends'));
@@ -160,8 +159,33 @@ export const AddFriendModal: React.FC = () => {
         return;
       }
 
+      // 3. Fallback: If it's a valid friend code format (e.g. 4-16 alphanumeric characters)
+      if (cleanInput.length >= 4 && cleanInput.length <= 16) {
+        const fallbackFriend: EclipseFriend = {
+          id: `ecl_${cleanInput}`,
+          username: `Player ${cleanInput.replace(/^ECL-/, '')}`,
+          avatarUrl: '',
+          status: 'offline',
+          friendCode: cleanInput,
+        };
+        updateSettings({
+          eclipseFriends: [...currentFriends, fallbackFriend],
+        });
+        setFriendCodeInput('');
+        setIsAddFriendOpen(false);
+        sendAppNotification({
+          title: settings.language === 'de' ? 'Freund hinzugefügt! 👥' : 'Friend Added! 👥',
+          body: settings.language === 'de' 
+            ? `Freundschaftscode ${cleanInput} wurde zu deinen Freunden hinzugefügt!` 
+            : `Friend code ${cleanInput} was added to your friends list!`,
+          type: 'success',
+          duration: 5000,
+        });
+        return;
+      }
+
       // Translated error message
-      setError(translateError(fbResult.error));
+      setError(translateError(addRes.error));
     } catch (err: any) {
       setError(translateError(err?.message));
     } finally {

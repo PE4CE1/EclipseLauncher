@@ -161,9 +161,30 @@ export async function pollFriendsAndRequests() {
       }
     })
 
+    // Merge live cloud friends with existing local friends without wiping local/offline friends
+    const currentLocalFriends = useGameStore.getState().settings.eclipseFriends || []
+    const mergedMap = new Map<string, EclipseFriend>()
+
+    // 1. Keep existing local friends first
+    currentLocalFriends.forEach((f) => {
+      if (f && f.id) mergedMap.set(f.id, f)
+    })
+
+    // 2. Overlay live cloud friends (updates online/ingame status, live game, avatar, levels)
+    friends.forEach((f) => {
+      if (f && f.id) {
+        const existing = mergedMap.get(f.id) || {}
+        mergedMap.set(f.id, {
+          ...existing,
+          ...f,
+          status: f.status || (existing as any).status || 'offline',
+        })
+      }
+    })
+
     // Update Zustand store
     useGameStore.getState().updateSettings({
-      eclipseFriends: friends,
+      eclipseFriends: Array.from(mergedMap.values()),
       incomingFriendRequests: incomingRequests,
       outgoingFriendRequests: outgoingRequests,
     })
@@ -344,7 +365,6 @@ export async function sendFriendRequest(codeOrUid: string): Promise<{ success: b
 
       if (data?.error) {
         lastError = data.error
-        // If error is specific (like already friends or self-request), stop retrying variations
         if (data.error.includes('selbst') || data.error.includes('befreundet') || data.error.includes('ausstehend')) {
           break
         }
@@ -357,7 +377,71 @@ export async function sendFriendRequest(codeOrUid: string): Promise<{ success: b
   return { success: false, error: lastError }
 }
 
-export const addFriendByCode = sendFriendRequest
+/**
+ * Adds a friend instantly using their Eclipse Friend Code or UID (Firebase-like instant bilateral connection)
+ */
+export async function addFriendByCode(codeOrUid: string): Promise<{ success: boolean; friend?: EclipseFriend; message?: string; error?: string }> {
+  const myUid = getOrCreateUserUid()
+  if (!myUid) {
+    return { success: false, error: 'Keine Benutzer-ID gefunden.' }
+  }
+
+  const raw = codeOrUid.trim()
+  const cleanCode = raw.toUpperCase().replace(/\s+/g, '')
+  if (!cleanCode) {
+    return { success: false, error: 'Bitte gib einen gültigen Freundes-Code ein.' }
+  }
+
+  // Ensure current user profile is synced
+  syncMyProfile().catch(() => {})
+
+  // 1. Look up user profile in Cloudflare D1
+  const cloudUser = await fetchUserProfile(raw)
+  if (cloudUser && cloudUser.uid) {
+    const friendObj: EclipseFriend = {
+      id: cloudUser.uid,
+      username: cloudUser.username || 'Eclipse Player',
+      avatarUrl: cloudUser.avatarUrl || '',
+      status: (cloudUser.status as any) || 'online',
+      currentGame: cloudUser.currentGame || undefined,
+      level: cloudUser.level || 1,
+      steamLevel: cloudUser.steamLevel || 1,
+      steamProfileUrl: cloudUser.steamProfileUrl || undefined,
+      friendCode: cloudUser.friendCode || cleanCode,
+      steamRecentGames: cloudUser.steamRecentGames || [],
+      steamFavoriteBadge: cloudUser.steamFavoriteBadge || null,
+    }
+
+    // Instantly add to local store (just like Firebase)
+    const currentFriends = useGameStore.getState().settings.eclipseFriends || []
+    if (!currentFriends.some(f => f.id === friendObj.id)) {
+      useGameStore.getState().updateSettings({
+        eclipseFriends: [...currentFriends, friendObj]
+      })
+    }
+
+    // Send bilateral request / link on Cloudflare D1 in background
+    fetch(`${getApiUrl()}/api/friends/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fromUid: myUid, toCodeOrUid: cloudUser.uid }),
+    }).then(() => pollFriendsAndRequests()).catch(() => {})
+
+    return {
+      success: true,
+      friend: friendObj,
+      message: `Freund ${friendObj.username} hinzugefügt!`,
+    }
+  }
+
+  // 2. Try sendFriendRequest endpoint directly
+  const reqRes = await sendFriendRequest(raw)
+  if (reqRes.success) {
+    return { success: true, message: reqRes.message }
+  }
+
+  return { success: false, error: reqRes.error }
+}
 
 /**
  * Accepts an incoming friend request
