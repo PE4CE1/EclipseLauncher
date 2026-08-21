@@ -18,8 +18,9 @@ function getApiUrl(): string {
   return DEFAULT_SOCIAL_API_URL
 }
 
-// Dedicated localStorage key for the user UID — independent of Zustand store resets
+// Dedicated localStorage keys — independent of Zustand store resets or HMR
 const ECLIPSE_UID_KEY = 'eclipse-uid'
+const ECLIPSE_CODE_KEY = 'eclipse-friend-code'
 
 /**
  * Generates or retrieves a persistent local user UID.
@@ -31,7 +32,6 @@ export function getOrCreateUserUid(): string {
   try {
     const fromLS = localStorage.getItem(ECLIPSE_UID_KEY)
     if (fromLS && fromLS.trim() && fromLS.startsWith('uid_')) {
-      // Sync back to store if needed
       const inStore = useGameStore.getState().settings.userUid
       if (inStore !== fromLS.trim()) {
         useGameStore.getState().updateSettings({ userUid: fromLS.trim() })
@@ -58,12 +58,47 @@ export function getOrCreateUserUid(): string {
 }
 
 /**
+ * Generates or retrieves a permanent local Friend Code.
+ * Stored in localStorage and permanently tied to the user UID. Never changes.
+ */
+export function getOrCreateFriendCode(): string {
+  const uid = getOrCreateUserUid()
+
+  // 1. Check dedicated localStorage key
+  try {
+    const fromLS = localStorage.getItem(ECLIPSE_CODE_KEY)
+    if (fromLS && fromLS.trim() && fromLS.startsWith('ECL-')) {
+      const inStore = useGameStore.getState().settings.friendCode
+      if (inStore !== fromLS.trim()) {
+        useGameStore.getState().updateSettings({ friendCode: fromLS.trim() })
+      }
+      return fromLS.trim()
+    }
+  } catch (_) {}
+
+  // 2. Check store
+  const fromStore = useGameStore.getState().settings.friendCode
+  if (fromStore && fromStore.trim() && fromStore.startsWith('ECL-')) {
+    try { localStorage.setItem(ECLIPSE_CODE_KEY, fromStore.trim()) } catch (_) {}
+    return fromStore.trim()
+  }
+
+  // 3. Derive permanent code from UID
+  const code = deriveFriendCodeFromUid(uid)
+  try { localStorage.setItem(ECLIPSE_CODE_KEY, code) } catch (_) {}
+  useGameStore.getState().updateSettings({ friendCode: code })
+  if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
+    window.electronAPI.setSettings({ friendCode: code })
+  }
+  return code
+}
+
+/**
  * Generates a deterministic Eclipse friend code from a UID.
- * Same UID always produces the same code — stable and permanent.
+ * Same UID always produces the exact same code — stable and permanent forever.
  */
 export function deriveFriendCodeFromUid(uid: string): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  // Simple but consistent hash: sum char codes with position multiplier
   let hash = 0
   for (let i = 0; i < uid.length; i++) {
     hash = ((hash << 5) - hash + uid.charCodeAt(i)) >>> 0
@@ -72,7 +107,7 @@ export function deriveFriendCodeFromUid(uid: string): string {
   let h = hash
   for (let i = 0; i < 5; i++) {
     code += chars[h % chars.length]
-    h = Math.floor(h / chars.length) || (hash >>> (i + 1))
+    h = Math.floor(h / chars.length) || ((hash >>> (i * 3 + 1)) ^ 0x5a5a)
   }
   return code
 }
@@ -81,17 +116,12 @@ export function deriveFriendCodeFromUid(uid: string): string {
  * Generates a random Eclipse friend code (fallback only)
  */
 export function generateEclipseFriendCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  let result = 'ECL-'
-  for (let i = 0; i < 5; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return result
+  return deriveFriendCodeFromUid(getOrCreateUserUid())
 }
 
 /**
  * Initialize Cloudflare D1 Social Network:
- * 1. Ensure user UID & friend code exist
+ * 1. Ensure user UID & friend code exist and are permanent
  * 2. Sync local user profile to Cloudflare D1
  * 3. Start presence heartbeat & polling for live friend updates
  */
@@ -101,18 +131,7 @@ export async function initSocialNetwork() {
 
   try {
     const uid = getOrCreateUserUid()
-
-    // Derive a stable friend code from the UID — same UID always → same code
-    const derivedCode = deriveFriendCodeFromUid(uid)
-    const currentCode = useGameStore.getState().settings.friendCode
-
-    // Always ensure the stored code matches the derived code (or set it if missing)
-    if (!currentCode || currentCode !== derivedCode) {
-      useGameStore.getState().updateSettings({ friendCode: derivedCode })
-      if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
-        window.electronAPI.setSettings({ friendCode: derivedCode, userUid: uid })
-      }
-    }
+    const friendCode = getOrCreateFriendCode()
 
     // 1. Initial sync
     await syncMyProfile()
@@ -155,26 +174,24 @@ export function startPresenceHeartbeat() {
   }, 25000)
 }
 
-export function stopPresenceHeartbeat() {
-  if (presenceHeartbeatInterval) {
-    clearInterval(presenceHeartbeatInterval)
-    presenceHeartbeatInterval = null
-  }
-  if (pollingInterval) {
-    clearInterval(pollingInterval)
-    pollingInterval = null
-  }
-}
-
 /**
- * Starts polling for incoming friend requests and live friend presence
+ * Starts live polling for friends & requests every 10 seconds
  */
-function startPolling() {
+export function startPolling() {
   if (pollingInterval) clearInterval(pollingInterval)
 
   pollingInterval = setInterval(async () => {
     await pollFriendsAndRequests()
   }, 10000)
+}
+
+/**
+ * Stops live polling and heartbeat
+ */
+export function stopSocialNetwork() {
+  if (pollingInterval) clearInterval(pollingInterval)
+  if (presenceHeartbeatInterval) clearInterval(presenceHeartbeatInterval)
+  isInitialized = false
 }
 
 /**
@@ -249,15 +266,11 @@ export async function pollFriendsAndRequests() {
  */
 export async function syncMyProfile() {
   const uid = getOrCreateUserUid()
-  if (!uid) return
+  const friendCode = getOrCreateFriendCode()
+  if (!uid || !friendCode) return
 
   try {
     const { settings, library, installedGames, activeGame } = useGameStore.getState()
-    let friendCode = settings.friendCode
-    if (!friendCode) {
-      friendCode = generateEclipseFriendCode()
-      useGameStore.getState().updateSettings({ friendCode })
-    }
 
     // AUTO-REFRESH: If we still have default username but a Steam URL is set,
     // fetch fresh Steam data now so the real name/avatar gets synced
@@ -277,14 +290,12 @@ export async function syncMyProfile() {
             steamFavoriteBadge: steamData.steamFavoriteBadge ?? settings.steamFavoriteBadge ?? null,
           }
           useGameStore.getState().updateSettings(steamUpdate)
-          // Persist to electron settings as well
           if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
             window.electronAPI.setSettings(steamUpdate)
           }
-          // Re-read updated settings
           Object.assign(settings, steamUpdate)
         }
-      } catch (_) { /* ignore steam fetch errors, proceed with what we have */ }
+      } catch (_) { /* ignore steam fetch errors */ }
     }
 
     const isIngame = !!activeGame
@@ -315,13 +326,12 @@ export async function syncMyProfile() {
       })
     })
 
-    const allUserGames = Array.from(allUserGamesMap.values())
-    const totalPlaytimeMins = Math.round(allUserGames.reduce((acc, g) => acc + (g.playTimeMinutes || 0), 0))
+    const totalPlaytimeMins = Math.round(Array.from(allUserGamesMap.values()).reduce((acc, g) => acc + (g.playTimeMinutes || 0), 0))
     const totalPlaytimeHours = totalPlaytimeMins >= 60
       ? (totalPlaytimeMins / 60).toFixed(1) + 'h'
       : `${totalPlaytimeMins}m`
 
-    const topPlayedGames = [...allUserGames]
+    const topPlayedGames = Array.from(allUserGamesMap.values())
       .sort((a, b) => (b.playTimeMinutes || 0) - (a.playTimeMinutes || 0))
       .filter(g => (g.playTimeMinutes || 0) > 0)
       .slice(0, 5)
@@ -336,12 +346,11 @@ export async function syncMyProfile() {
     const totalLibraryCount = inst.length + lib.filter(g => !inst.some(ig => ig.name === g.name)).length
     const totalInstalledCount = inst.filter(g => g.installed !== false).length
 
-    // Re-read settings after potential Steam auto-refresh above
     const latestSettings = useGameStore.getState().settings
 
-    const buildPayload = (code: string) => ({
+    const payload = {
       uid,
-      friendCode: code.toUpperCase().trim(),
+      friendCode: friendCode.toUpperCase().trim(),
       username: latestSettings.username || 'Eclipse Player',
       avatarUrl: latestSettings.avatarUrl || '',
       status: isIngame ? 'ingame' : 'online',
@@ -358,43 +367,17 @@ export async function syncMyProfile() {
       totalLibraryCount,
       totalInstalledCount,
       topPlayedGames,
-    })
-
-    // Ensure userUid is persisted so it survives app restarts
-    if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
-      window.electronAPI.setSettings({ userUid: uid, friendCode: friendCode.toUpperCase().trim() })
     }
 
-    const res = await fetch(`${getApiUrl()}/api/user/sync`, {
+    await fetch(`${getApiUrl()}/api/user/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildPayload(friendCode)),
+      body: JSON.stringify(payload),
     })
-
-    // Cloudflare returns HTTP 200 even on DB errors - check data.success
-    const syncData = await res.json().catch(() => ({ success: true }))
-
-    // If friend_code is taken by ANOTHER uid (UNIQUE constraint), regenerate and retry once
-    const isConflict = syncData?.success === false &&
-      (syncData?.error?.includes('UNIQUE') || syncData?.error?.includes('friend_code'))
-    if (!res.ok || isConflict) {
-      const newCode = generateEclipseFriendCode()
-      useGameStore.getState().updateSettings({ friendCode: newCode })
-      if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
-        window.electronAPI.setSettings({ friendCode: newCode })
-      }
-      await fetch(`${getApiUrl()}/api/user/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildPayload(newCode)),
-      })
-      console.log('[SocialService] Friend code conflict resolved, new code:', newCode)
-    }
   } catch (err) {
     console.warn('[SocialService] syncMyProfile error:', err)
   }
 }
-
 
 /**
  * Fetches a user's full public profile from Cloudflare D1 by UID or Eclipse Friend Code

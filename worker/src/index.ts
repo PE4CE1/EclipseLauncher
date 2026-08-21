@@ -73,28 +73,10 @@ export default {
         const now = Date.now();
         const cleanCode = friendCode.toUpperCase().trim();
 
-        // If another uid owns this friend_code, remove that stale record first
-        // This handles the case where test data or old records block a user's code
-        const existingWithCode = await env.DB.prepare(
-          'SELECT uid FROM users WHERE friend_code = ? AND uid != ?'
-        ).bind(cleanCode, uid).first();
-
-        if (existingWithCode) {
-          // Only remove test/stale accounts (those that have never had real data)
-          const staleUid = existingWithCode.uid as string;
-          const staleRecord = await env.DB.prepare('SELECT * FROM users WHERE uid = ?').bind(staleUid).first();
-          const isStale = !staleRecord?.avatar_url &&
-            (!staleRecord?.steam_profile_url || staleRecord?.steam_profile_url === '') &&
-            (Number(staleRecord?.steam_games_count) === 0) &&
-            (staleRecord?.username === 'UserA' || staleRecord?.username === 'UserB' ||
-             staleRecord?.username === 'Deleted Test' || staleRecord?.username === 'Deleted Test A' ||
-             staleRecord?.username === 'Eclipse Player' || staleRecord?.username === 'User' ||
-             (staleUid as string).startsWith('uid_user_a_') || (staleUid as string).startsWith('uid_user_b_'));
-
-          if (isStale) {
-            await env.DB.prepare('DELETE FROM users WHERE uid = ?').bind(staleUid).run();
-          }
-        }
+        // Clear any collision on friend_code from other uids to avoid UNIQUE constraint errors
+        await env.DB.prepare(
+          'DELETE FROM users WHERE friend_code = ? AND uid != ?'
+        ).bind(cleanCode, uid).run();
 
         await env.DB.prepare(`
           INSERT INTO users (
@@ -149,30 +131,19 @@ export default {
         return json({ success: true, timestamp: now });
       }
 
-
       // 3. User Lookup by UID or Friend Code: GET /api/user/:uidOrCode
       if (pathname.startsWith('/api/user/') && request.method === 'GET') {
         const rawParam = pathname.replace('/api/user/', '').trim();
         if (!rawParam) return error('Missing parameter');
 
-        const cleanParam = decodeURIComponent(rawParam);
-        const isFriendCode = cleanParam.toUpperCase().startsWith('ECL-');
+        const cleanParam = decodeURIComponent(rawParam).trim();
+        const upper = cleanParam.toUpperCase();
+        const withPrefix = upper.startsWith('ECL-') ? upper : `ECL-${upper}`;
+        const withoutPrefix = upper.replace(/^ECL-/, '');
 
-        let userRow = null;
-        if (isFriendCode) {
-          userRow = await env.DB.prepare(
-            'SELECT * FROM users WHERE friend_code = ?'
-          ).bind(cleanParam.toUpperCase()).first();
-        } else {
-          userRow = await env.DB.prepare(
-            'SELECT * FROM users WHERE uid = ?'
-          ).bind(cleanParam).first();
-          if (!userRow) {
-            userRow = await env.DB.prepare(
-              'SELECT * FROM users WHERE friend_code = ?'
-            ).bind(cleanParam.toUpperCase()).first();
-          }
-        }
+        const userRow = await env.DB.prepare(
+          'SELECT * FROM users WHERE uid = ? OR friend_code = ? OR friend_code = ? OR friend_code = ?'
+        ).bind(cleanParam, upper, withPrefix, withoutPrefix).first();
 
         if (!userRow) {
           return json({ success: false, user: null }, 404);
@@ -205,11 +176,14 @@ export default {
         if (!fromUid || !toCodeOrUid) return error('Missing fromUid or toCodeOrUid');
 
         const cleanTarget = toCodeOrUid.trim();
+        const upperTarget = cleanTarget.toUpperCase();
+        const withPrefix = upperTarget.startsWith('ECL-') ? upperTarget : `ECL-${upperTarget}`;
+        const withoutPrefix = upperTarget.replace(/^ECL-/, '');
 
         // Find target user
         let targetUser = await env.DB.prepare(
-          'SELECT * FROM users WHERE friend_code = ? OR uid = ?'
-        ).bind(cleanTarget.toUpperCase(), cleanTarget).first();
+          'SELECT * FROM users WHERE uid = ? OR friend_code = ? OR friend_code = ? OR friend_code = ?'
+        ).bind(cleanTarget, upperTarget, withPrefix, withoutPrefix).first();
 
         if (!targetUser) {
           return error('Kein Spieler mit diesem Code gefunden.');

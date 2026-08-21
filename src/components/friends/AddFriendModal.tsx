@@ -5,7 +5,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { useUIStore } from '../../store/uiStore';
 import { useGameStore } from '../../store/gameStore';
 import { fetchSteamUserProfile } from '../../services/steamService';
-import { addFriendByCode, sendFriendRequest, generateEclipseFriendCode, syncMyProfile, fetchUserProfile } from '../../services/socialService';
+import { addFriendByCode, sendFriendRequest, getOrCreateFriendCode, syncMyProfile, fetchUserProfile } from '../../services/socialService';
 import { sendAppNotification } from '../../services/notificationService';
 import type { EclipseFriend } from '../../types/game';
 
@@ -18,21 +18,23 @@ export const AddFriendModal: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Generate friend code if it doesn't exist and sync to Cloudflare D1
+  const myFriendCode = settings.friendCode || getOrCreateFriendCode();
+
+  // Ensure friend code is in store and sync profile to Cloudflare D1
   useEffect(() => {
     if (isAddFriendOpen) {
-      if (!settings.friendCode) {
-        const newCode = generateEclipseFriendCode();
-        updateSettings({ friendCode: newCode });
+      const code = getOrCreateFriendCode();
+      if (settings.friendCode !== code) {
+        updateSettings({ friendCode: code });
       }
       syncMyProfile();
     }
-  }, [isAddFriendOpen, settings.friendCode, updateSettings]);
+  }, [isAddFriendOpen]);
 
   if (!isAddFriendOpen) return null;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(settings.friendCode || '');
+    navigator.clipboard.writeText(myFriendCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -190,7 +192,7 @@ export const AddFriendModal: React.FC = () => {
           <div className="bg-[#111317] border border-white/5 rounded-lg p-4 flex items-center justify-between mb-8 group hover:border-white/20 transition-colors">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-white/70">{t('yourFriendCode')}:</span>
-              <span className="text-sm font-mono text-white tracking-wider font-bold">{settings.friendCode || '...'}</span>
+              <span className="text-sm font-mono text-white tracking-wider font-bold">{myFriendCode}</span>
             </div>
             <button 
               onClick={handleCopy}
