@@ -320,22 +320,24 @@ export async function syncMyProfile() {
       body: JSON.stringify(buildPayload(friendCode)),
     })
 
+    // Cloudflare returns HTTP 200 even on DB errors - check data.success
+    const syncData = await res.json().catch(() => ({ success: true }))
+
     // If friend_code is taken by ANOTHER uid (UNIQUE constraint), regenerate and retry once
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      if (errText.includes('UNIQUE constraint') && errText.includes('friend_code')) {
-        const newCode = generateEclipseFriendCode()
-        useGameStore.getState().updateSettings({ friendCode: newCode })
-        if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
-          window.electronAPI.setSettings({ friendCode: newCode })
-        }
-        await fetch(`${getApiUrl()}/api/user/sync`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(buildPayload(newCode)),
-        })
-        console.log('[SocialService] Friend code conflict resolved, new code:', newCode)
+    const isConflict = syncData?.success === false &&
+      (syncData?.error?.includes('UNIQUE') || syncData?.error?.includes('friend_code'))
+    if (!res.ok || isConflict) {
+      const newCode = generateEclipseFriendCode()
+      useGameStore.getState().updateSettings({ friendCode: newCode })
+      if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
+        window.electronAPI.setSettings({ friendCode: newCode })
       }
+      await fetch(`${getApiUrl()}/api/user/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildPayload(newCode)),
+      })
+      console.log('[SocialService] Friend code conflict resolved, new code:', newCode)
     }
   } catch (err) {
     console.warn('[SocialService] syncMyProfile error:', err)
@@ -460,14 +462,15 @@ export async function addFriendByCode(codeOrUid: string): Promise<{ success: boo
   // 1. Look up user profile in Cloudflare D1
   const cloudUser = await fetchUserProfile(raw)
   if (cloudUser && cloudUser.uid) {
-    // Guard: reject dummy/test accounts and prevent self-add
+    // Guard: reject known test UIDs and prevent self-add
     if (cloudUser.uid === myUid) {
       return { success: false, error: 'Du kannst dich nicht selbst als Freund hinzufügen.' }
     }
 
-    // Guard: only accept real registered Eclipse users (must have a valid friend code)
+    // Guard: only reject accounts with clearly invalid/dummy friend codes
     const userFriendCode = (cloudUser.friendCode || '').toUpperCase().replace(/\s+/g, '')
-    if (!userFriendCode || userFriendCode.startsWith('DUMMY') || cloudUser.username === 'Deleted Test' || cloudUser.username === 'UserB' || cloudUser.username === 'UserA') {
+    const isTestUid = cloudUser.uid === 'uid_user_a_123' || cloudUser.uid === 'uid_user_b_456'
+    if (!userFriendCode || userFriendCode.startsWith('DUMMY') || isTestUid) {
       return { success: false, error: 'Kein Spieler mit diesem Code gefunden.' }
     }
 
