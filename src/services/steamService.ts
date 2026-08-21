@@ -808,21 +808,54 @@ export async function fetchSteamUserProfile(profileUrl: string): Promise<SteamUs
       if (resHtml.ok) htmlText = await resHtml.text();
     }
     
-    if (!xmlText) return null;
+    if (!xmlText && !htmlText) return null;
     
     const parser = new DOMParser();
-    const doc = parser.parseFromString(xmlText, 'text/xml');
+    let steamId64 = '';
+    let username = '';
+    let avatarFull = '';
+    let onlineState = 'offline';
+    let stateMessage = '';
+
+    if (xmlText) {
+      const doc = parser.parseFromString(xmlText, 'text/xml');
+      const error = doc.querySelector('error');
+      if (!error) {
+        steamId64 = doc.querySelector('steamID64')?.textContent || '';
+        username = doc.querySelector('steamID')?.textContent || '';
+        avatarFull = doc.querySelector('avatarFull')?.textContent || '';
+        onlineState = doc.querySelector('onlineState')?.textContent || 'offline';
+        stateMessage = doc.querySelector('stateMessage')?.textContent || '';
+      }
+    }
+
+    if (htmlText && (!steamId64 || !username || !avatarFull)) {
+      const htmlDoc = parser.parseFromString(htmlText, 'text/html');
+      if (!username) {
+        username = htmlDoc.querySelector('.actual_persona_name')?.textContent?.trim() ||
+                   htmlDoc.querySelector('meta[property="og:title"]')?.getAttribute('content')?.trim() || '';
+      }
+      if (!avatarFull) {
+        avatarFull = htmlDoc.querySelector('.playerAvatarAutoSizeInner img')?.getAttribute('src') ||
+                     htmlDoc.querySelector('.playerAvatar img')?.getAttribute('src') ||
+                     htmlDoc.querySelector('meta[property="og:image"]')?.getAttribute('content') || '';
+      }
+      if (!steamId64) {
+        const scriptMatch = htmlText.match(/"steamid":"(\d{17})"/);
+        if (scriptMatch) steamId64 = scriptMatch[1];
+        else {
+          const miniMatch = htmlText.match(/data-miniprofile="(\d+)"/);
+          if (miniMatch) steamId64 = miniMatch[1];
+        }
+      }
+      if (htmlDoc.querySelector('.profile_in_game_header')) {
+        onlineState = 'in-game';
+      } else if (htmlDoc.querySelector('.online')) {
+        onlineState = 'online';
+      }
+    }
     
-    const error = doc.querySelector('error');
-    if (error) return null;
-    
-    const steamId64 = doc.querySelector('steamID64')?.textContent || '';
-    const username = doc.querySelector('steamID')?.textContent || '';
-    const avatarFull = doc.querySelector('avatarFull')?.textContent || '';
-    const onlineState = doc.querySelector('onlineState')?.textContent || 'offline';
-    const stateMessage = doc.querySelector('stateMessage')?.textContent || '';
-    
-    if (!steamId64) return null;
+    if (!steamId64 && !username) return null;
 
     let steamLevel: number | undefined = undefined;
     let steamGamesCount: number | undefined = undefined;

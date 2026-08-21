@@ -48,13 +48,13 @@ export const AddFriendModal: React.FC = () => {
     if (lower.includes('selbst') || lower.includes('yourself') || lower.includes('self')) {
       return t('cannotAddSelf');
     }
-    if (lower.includes('bereits befreundet') || lower.includes('already friends')) {
+    if (lower.includes('bereits befreundet') || lower.includes('already friends') || lower.includes('already in your')) {
       return t('alreadyFriends');
     }
     if (lower.includes('bereits') || lower.includes('already') || lower.includes('ausstehend') || lower.includes('pending')) {
       return t('requestAlreadySent');
     }
-    return rawErr;
+    return t('playerNotFound');
   };
 
   const handleViewProfile = async () => {
@@ -74,9 +74,9 @@ export const AddFriendModal: React.FC = () => {
 
       // 2. Steam Profile fallback
       const steamProfile = await fetchSteamUserProfile(input);
-      if (steamProfile && steamProfile.steamId64) {
+      if (steamProfile && (steamProfile.steamId64 || steamProfile.username)) {
         setIsAddFriendOpen(false);
-        openFriendProfile(steamProfile.steamId64);
+        openFriendProfile(steamProfile.steamId64 || input);
         return;
       }
 
@@ -130,8 +130,9 @@ export const AddFriendModal: React.FC = () => {
 
       // 2. Fallback to Steam Web Profile lookup if valid SteamID or Custom URL
       const profile = await fetchSteamUserProfile(input);
-      if (profile && profile.steamId64) {
-        if (currentFriends.some(f => f.id === profile.steamId64)) {
+      if (profile && (profile.steamId64 || profile.username)) {
+        const friendId = profile.steamId64 || `steam_${input.toLowerCase().replace(/[^a-z0-9_]/g, '')}`;
+        if (currentFriends.some(f => f.id === friendId)) {
           setError(t('alreadyFriends'));
           setLoading(false);
           return;
@@ -142,14 +143,15 @@ export const AddFriendModal: React.FC = () => {
         else if (profile.onlineState === 'online') status = 'online';
 
         const newFriend: EclipseFriend = {
-          id: profile.steamId64,
-          username: profile.username,
-          avatarUrl: profile.avatarFull,
+          id: friendId,
+          username: profile.username || input,
+          avatarUrl: profile.avatarFull || '',
           status: status,
-          steamProfileUrl: `https://steamcommunity.com/profiles/${profile.steamId64}`,
-          level: profile.steamLevel,
-          steamRecentGames: profile.steamRecentGames,
-          steamFavoriteBadge: profile.steamFavoriteBadge,
+          steamProfileUrl: profile.steamId64 ? `https://steamcommunity.com/profiles/${profile.steamId64}` : `https://steamcommunity.com/id/${input}`,
+          level: profile.steamLevel || 1,
+          steamLevel: profile.steamLevel || 1,
+          steamRecentGames: profile.steamRecentGames || [],
+          steamFavoriteBadge: profile.steamFavoriteBadge || null,
         };
 
         updateSettings({
@@ -158,6 +160,14 @@ export const AddFriendModal: React.FC = () => {
 
         setFriendCodeInput('');
         setIsAddFriendOpen(false);
+        sendAppNotification({
+          title: settings.language === 'de' ? 'Freund hinzugefügt! 👥' : 'Friend Added! 👥',
+          body: settings.language === 'de' 
+            ? `Steam-Freund ${newFriend.username} wurde hinzugefügt!` 
+            : `Steam friend ${newFriend.username} added successfully!`,
+          type: 'success',
+          duration: 5000,
+        });
         return;
       }
 

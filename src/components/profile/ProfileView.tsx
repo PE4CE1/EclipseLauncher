@@ -8,6 +8,7 @@ import { syncMyProfile, fetchUserProfile, sendFriendRequest } from '../../servic
 import { fetchSteamUserProfile } from '../../services/steamService'
 import { formatLastSeen } from '../../services/assetHelper'
 import { sendAppNotification } from '../../services/notificationService'
+import type { EclipseFriend } from '../../types/game'
 
 export function ProfileView() {
   const { library, installedGames, settings, updateSettings, activeGame } = useGameStore()
@@ -206,14 +207,47 @@ export function ProfileView() {
           type: 'success',
           duration: 5000
         })
-      } else {
+        return
+      }
+
+      // If friend request to D1 fails, but this is a valid profile / Steam profile, add to local friends directly
+      const currentFriends = settings.eclipseFriends || []
+      const targetId = profileData?.uid || profileData?.steamId64 || selectedFriendId
+      if (targetId && !currentFriends.some(f => f.id === targetId)) {
+        const newFriend: EclipseFriend = {
+          id: targetId,
+          username: displayName,
+          avatarUrl: displayAvatar || '',
+          status: friendStatus as any,
+          currentGame: friendCurrentGame || undefined,
+          steamProfileUrl: profileData?.steamProfileUrl || (selectedFriendId ? `https://steamcommunity.com/profiles/${selectedFriendId}` : undefined),
+          level: steamLevel || 1,
+          steamLevel: steamLevel || 1,
+          steamRecentGames: steamRecentGames || [],
+          steamFavoriteBadge: steamFavoriteBadge || null,
+        }
+        updateSettings({
+          eclipseFriends: [...currentFriends, newFriend]
+        })
+        setRequestSent(true)
         sendAppNotification({
-          title: 'Hinweis',
-          body: res.error || 'Konnte Anfrage nicht senden.',
-          type: 'info',
+          title: language === 'de' ? 'Freund hinzugefügt! 👥' : 'Friend Added! 👥',
+          body: language === 'de' ? `Freund ${displayName} wurde hinzugefügt!` : `Friend ${displayName} added!`,
+          type: 'success',
           duration: 5000
         })
+        return
       }
+
+      const isNotFound = res.error?.includes('Kein Spieler') || res.error?.includes('not found')
+      sendAppNotification({
+        title: language === 'de' ? 'Hinweis' : 'Notice',
+        body: isNotFound
+          ? (language === 'de' ? 'Kein Spieler mit diesem Code gefunden.' : 'No player found with this code.')
+          : (res.error || (language === 'de' ? 'Konnte Anfrage nicht senden.' : 'Could not send request.')),
+        type: 'info',
+        duration: 5000
+      })
     } catch (err: any) {
       console.warn('sendFriendReq error:', err)
     } finally {
