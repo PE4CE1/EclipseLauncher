@@ -288,9 +288,9 @@ export async function syncMyProfile() {
     // Re-read settings after potential Steam auto-refresh above
     const latestSettings = useGameStore.getState().settings
 
-    const payload = {
+    const buildPayload = (code: string) => ({
       uid,
-      friendCode: friendCode.toUpperCase().trim(),
+      friendCode: code.toUpperCase().trim(),
       username: latestSettings.username || 'Eclipse Player',
       avatarUrl: latestSettings.avatarUrl || '',
       status: isIngame ? 'ingame' : 'online',
@@ -307,17 +307,41 @@ export async function syncMyProfile() {
       totalLibraryCount,
       totalInstalledCount,
       topPlayedGames,
+    })
+
+    // Ensure userUid is persisted so it survives app restarts
+    if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
+      window.electronAPI.setSettings({ userUid: uid, friendCode: friendCode.toUpperCase().trim() })
     }
 
-    await fetch(`${getApiUrl()}/api/user/sync`, {
+    const res = await fetch(`${getApiUrl()}/api/user/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(buildPayload(friendCode)),
     })
+
+    // If friend_code is taken by ANOTHER uid (UNIQUE constraint), regenerate and retry once
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      if (errText.includes('UNIQUE constraint') && errText.includes('friend_code')) {
+        const newCode = generateEclipseFriendCode()
+        useGameStore.getState().updateSettings({ friendCode: newCode })
+        if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
+          window.electronAPI.setSettings({ friendCode: newCode })
+        }
+        await fetch(`${getApiUrl()}/api/user/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildPayload(newCode)),
+        })
+        console.log('[SocialService] Friend code conflict resolved, new code:', newCode)
+      }
+    }
   } catch (err) {
     console.warn('[SocialService] syncMyProfile error:', err)
   }
 }
+
 
 /**
  * Fetches a user's full public profile from Cloudflare D1 by UID or Eclipse Friend Code
