@@ -18,18 +18,42 @@ function getApiUrl(): string {
   return DEFAULT_SOCIAL_API_URL
 }
 
+// Dedicated localStorage key for the user UID — independent of Zustand store resets
+const ECLIPSE_UID_KEY = 'eclipse-uid'
+
 /**
- * Generates or retrieves a persistent local user UID
+ * Generates or retrieves a persistent local user UID.
+ * Uses a dedicated localStorage key as the single source of truth.
+ * This is stable across HMR, StrictMode double-calls, and store resets.
  */
 export function getOrCreateUserUid(): string {
-  const current = useGameStore.getState().settings.userUid
-  if (current && current.trim()) {
-    return current.trim()
+  // 1. Check dedicated localStorage key first (most reliable)
+  try {
+    const fromLS = localStorage.getItem(ECLIPSE_UID_KEY)
+    if (fromLS && fromLS.trim() && fromLS.startsWith('uid_')) {
+      // Sync back to store if needed
+      const inStore = useGameStore.getState().settings.userUid
+      if (inStore !== fromLS.trim()) {
+        useGameStore.getState().updateSettings({ userUid: fromLS.trim() })
+      }
+      return fromLS.trim()
+    }
+  } catch (_) {}
+
+  // 2. Check Zustand store
+  const fromStore = useGameStore.getState().settings.userUid
+  if (fromStore && fromStore.trim() && fromStore.startsWith('uid_')) {
+    try { localStorage.setItem(ECLIPSE_UID_KEY, fromStore.trim()) } catch (_) {}
+    return fromStore.trim()
   }
 
-  // Create a clean unique UID: uid_xxxxxxxxxxxx
+  // 3. Generate new UID and persist to ALL layers
   const newUid = `uid_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`
+  try { localStorage.setItem(ECLIPSE_UID_KEY, newUid) } catch (_) {}
   useGameStore.getState().updateSettings({ userUid: newUid })
+  if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
+    window.electronAPI.setSettings({ userUid: newUid })
+  }
   return newUid
 }
 
