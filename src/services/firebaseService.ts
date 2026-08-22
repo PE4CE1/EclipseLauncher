@@ -142,6 +142,16 @@ async function setupUserInFirestore(user: User) {
       window.electronAPI.setSettings({ friendCode, userUid: user.uid })
     }
 
+    // Auto-detect Hardware Specs from Windows in background
+    if (typeof window !== 'undefined' && window.electronAPI?.getHardwareSpecs) {
+      window.electronAPI.getHardwareSpecs().then((specs: any) => {
+        if (specs && (specs.cpu || specs.gpu)) {
+          useGameStore.getState().updateSettings({ hardwareSpecs: specs })
+          syncMyProfile().catch(() => {})
+        }
+      }).catch(() => {})
+    }
+
     await syncMyProfile()
   } catch (err) {
     console.warn('[Firebase] setupUserInFirestore error:', err)
@@ -221,6 +231,15 @@ export async function syncMyProfile() {
       friendCode: (friendCode || getOrCreateFriendCode()).toUpperCase().trim(),
       username: settings.username || 'Eclipse Player',
       avatarUrl: settings.avatarUrl || '',
+      bannerUrl: settings.bannerUrl || null,
+      avatarFrame: settings.avatarFrame || 'none',
+      bio: settings.bio || '',
+      profileAccentColor: settings.profileAccentColor || '#a855f7',
+      socialDiscord: settings.socialDiscord || '',
+      socialTwitch: settings.socialTwitch || '',
+      socialYoutube: settings.socialYoutube || '',
+      showHardwareSpecs: settings.showHardwareSpecs !== false,
+      hardwareSpecs: settings.hardwareSpecs || null,
       status: isIngame ? 'ingame' : 'online',
       currentGame: isIngame ? activeGameName : null,
       level: settings.steamLevel || 1,
@@ -386,6 +405,15 @@ function listenToFriendsPresence(friendUids: string[]) {
         id: u.uid,
         username: u.username || 'Eclipse Player',
         avatarUrl: u.avatarUrl || '',
+        bannerUrl: u.bannerUrl || undefined,
+        avatarFrame: u.avatarFrame || 'none',
+        bio: u.bio || '',
+        profileAccentColor: u.profileAccentColor || undefined,
+        socialDiscord: u.socialDiscord || undefined,
+        socialTwitch: u.socialTwitch || undefined,
+        socialYoutube: u.socialYoutube || undefined,
+        showHardwareSpecs: u.showHardwareSpecs !== false,
+        hardwareSpecs: u.hardwareSpecs || undefined,
         status: status,
         currentGame: currentGame,
         lastSeen: lastSeenMs,

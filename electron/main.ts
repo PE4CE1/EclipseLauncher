@@ -19,6 +19,7 @@ import { initOverlayManager, openOverlayEditMode, exitEditMode, getOverlayWindow
 import { setRLPlaylist, setRLApiKey, destroyRLScraper } from './rlService'
 import { fetchSteamAvatar } from './steamService'
 import { startInputService, stopInputService, setInputKeybinds } from './inputService'
+import { detectHardwareSpecs } from './hardwareService'
 
 
 
@@ -183,6 +184,15 @@ ipcMain.handle('theme:get-pending', () => {
   const p = pendingThemeInstall
   pendingThemeInstall = null
   return p
+})
+
+ipcMain.handle('system:get-hardware-specs', async () => {
+  try {
+    return await detectHardwareSpecs()
+  } catch (e) {
+    console.warn('[HardwareService] Error detecting specs:', e)
+    return null
+  }
 })
 
 // Single Instance Lock for handling deep links on Windows

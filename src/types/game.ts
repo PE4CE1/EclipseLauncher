@@ -94,6 +94,21 @@ export interface EclipseFriend {
     lastPlayed: number
   }>
   friendCode?: string
+  bannerUrl?: string
+  avatarFrame?: string
+  bio?: string
+  profileAccentColor?: string
+  socialDiscord?: string
+  socialTwitch?: string
+  socialYoutube?: string
+  showHardwareSpecs?: boolean
+  hardwareSpecs?: {
+    cpu?: string
+    gpu?: string
+    ram?: string
+    display?: string
+    os?: string
+  }
 }
 
 export interface FriendRequest {
@@ -138,6 +153,21 @@ export interface AppSettings {
   notificationSound?: string
   username: string
   avatarUrl: string
+  bannerUrl?: string
+  avatarFrame?: string
+  bio?: string
+  profileAccentColor?: string
+  socialDiscord?: string
+  socialTwitch?: string
+  socialYoutube?: string
+  showHardwareSpecs?: boolean
+  hardwareSpecs?: {
+    cpu?: string
+    gpu?: string
+    ram?: string
+    display?: string
+    os?: string
+  }
   discordRpc: boolean
   discordRpcIdle: boolean
   discordRpcShowDownloads: boolean
@@ -302,6 +332,9 @@ export interface ElectronAPI {
   downloadUpdate: (url?: string) => Promise<any>
   installUpdate: () => Promise<void>
   onUpdaterEvent: (callback: (payload: { status: string; data?: any }) => void) => () => void
+
+  // Hardware Specs
+  getHardwareSpecs?: () => Promise<{ cpu: string; gpu: string; ram: string; display: string; os: string } | null>
 }
 
 declare global {

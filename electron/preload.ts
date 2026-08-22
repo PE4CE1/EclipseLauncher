@@ -234,5 +234,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('theme:install-request', handler)
     return () => ipcRenderer.removeListener('theme:install-request', handler)
   },
-  getPendingTheme: () => ipcRenderer.invoke('theme:get-pending')
+  getPendingTheme: () => ipcRenderer.invoke('theme:get-pending'),
+
+  // Hardware Specs Detection
+  getHardwareSpecs: () => ipcRenderer.invoke('system:get-hardware-specs')
 })

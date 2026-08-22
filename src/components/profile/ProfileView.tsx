@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { User, Library, Clock, Save, Edit3, Settings, Trophy, Gamepad2, Award, UserPlus, Check, ArrowLeft, Loader2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  User, Library, Clock, Save, Edit3, Settings, Trophy, Gamepad2, Award, 
+  UserPlus, Check, ArrowLeft, Loader2, Cpu, Zap, HardDrive, Monitor, 
+  Image as ImageIcon, Sparkles, Copy, ExternalLink, X
+} from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
 import { useTranslation } from '../../hooks/useTranslation'
@@ -9,6 +13,24 @@ import { fetchSteamUserProfile } from '../../services/steamService'
 import { formatLastSeen } from '../../services/assetHelper'
 import { sendAppNotification } from '../../services/notificationService'
 import type { EclipseFriend } from '../../types/game'
+
+const BANNER_PRESETS = [
+  { id: 'galaxy', name: 'Eclipse Galaxy', url: 'https://images.unsplash.com/photo-1538370965046-79c0d6907d47?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'cyberpunk', name: 'Neon Cyberpunk', url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'synthwave', name: 'Retro Synthwave', url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'minimal', name: 'Dark Minimalist', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'aurora', name: 'Aurora Glow', url: 'https://images.unsplash.com/photo-1579033461380-adb47c3eb938?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'deep_space', name: 'Deep Space', url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=1600&auto=format&fit=crop' },
+]
+
+const AVATAR_FRAMES = [
+  { id: 'none', key: 'frameNone', color: 'border-white/15' },
+  { id: 'eclipse_neon', key: 'frameNeon', color: 'border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.7)] ring-2 ring-purple-400' },
+  { id: 'cyberpunk', key: 'frameCyberpunk', color: 'border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.8)] ring-2 ring-yellow-400' },
+  { id: 'golden_vip', key: 'frameGolden', color: 'border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.8)] ring-2 ring-yellow-300' },
+  { id: 'fire_blaze', key: 'frameFire', color: 'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.8)] ring-2 ring-orange-400' },
+  { id: 'emerald_pulse', key: 'frameEmerald', color: 'border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.8)] ring-2 ring-teal-300' },
+]
 
 export function ProfileView() {
   const { library, installedGames, settings, updateSettings, activeGame } = useGameStore()
@@ -19,6 +41,7 @@ export function ProfileView() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
   const [isSendingRequest, setIsSendingRequest] = useState(false)
   const [requestSent, setRequestSent] = useState(false)
+  const [copiedDiscord, setCopiedDiscord] = useState(false)
 
   const friend = selectedFriendId ? settings.eclipseFriends?.find(f => f.id === selectedFriendId) : null
   const isViewingFriend = !!selectedFriendId
@@ -59,9 +82,32 @@ export function ProfileView() {
     }
   }, [selectedFriendId])
 
+  // Customization Form States
   const [isEditing, setIsEditing] = useState(false)
+  const [editTab, setEditTab] = useState<'general' | 'banner' | 'frame' | 'socials'>('general')
   const [editName, setEditName] = useState(settings.username || 'User')
   const [editAvatar, setEditAvatar] = useState(settings.avatarUrl || '')
+  const [editBanner, setEditBanner] = useState(settings.bannerUrl || '')
+  const [editFrame, setEditFrame] = useState(settings.avatarFrame || 'none')
+  const [editBio, setEditBio] = useState(settings.bio || '')
+  const [editDiscord, setEditDiscord] = useState(settings.socialDiscord || '')
+  const [editTwitch, setEditTwitch] = useState(settings.socialTwitch || '')
+  const [editYoutube, setEditYoutube] = useState(settings.socialYoutube || '')
+  const [editShowHardware, setEditShowHardware] = useState(settings.showHardwareSpecs !== false)
+
+  useEffect(() => {
+    if (!isEditing) {
+      setEditName(settings.username || 'User')
+      setEditAvatar(settings.avatarUrl || '')
+      setEditBanner(settings.bannerUrl || '')
+      setEditFrame(settings.avatarFrame || 'none')
+      setEditBio(settings.bio || '')
+      setEditDiscord(settings.socialDiscord || '')
+      setEditTwitch(settings.socialTwitch || '')
+      setEditYoutube(settings.socialYoutube || '')
+      setEditShowHardware(settings.showHardwareSpecs !== false)
+    }
+  }, [settings, isEditing])
 
   // Combined stats resolution
   const profileData = fetchedProfile || friend
@@ -73,6 +119,38 @@ export function ProfileView() {
   const displayAvatar = isViewingFriend 
     ? (profileData?.avatarUrl || friend?.avatarUrl || '') 
     : settings.avatarUrl
+
+  const displayBanner = isViewingFriend
+    ? (profileData?.bannerUrl || friend?.bannerUrl || BANNER_PRESETS[0].url)
+    : (settings.bannerUrl || BANNER_PRESETS[0].url)
+
+  const displayFrame = isViewingFriend
+    ? (profileData?.avatarFrame || friend?.avatarFrame || 'none')
+    : (settings.avatarFrame || 'none')
+
+  const displayBio = isViewingFriend
+    ? (profileData?.bio || friend?.bio || '')
+    : (settings.bio || '')
+
+  const displayDiscord = isViewingFriend
+    ? (profileData?.socialDiscord || friend?.socialDiscord || '')
+    : (settings.socialDiscord || '')
+
+  const displayTwitch = isViewingFriend
+    ? (profileData?.socialTwitch || friend?.socialTwitch || '')
+    : (settings.socialTwitch || '')
+
+  const displayYoutube = isViewingFriend
+    ? (profileData?.socialYoutube || friend?.socialYoutube || '')
+    : (settings.socialYoutube || '')
+
+  const displayShowHardware = isViewingFriend
+    ? (profileData?.showHardwareSpecs !== false)
+    : (settings.showHardwareSpecs !== false)
+
+  const displayHardware = isViewingFriend
+    ? (profileData?.hardwareSpecs || friend?.hardwareSpecs)
+    : settings.hardwareSpecs
 
   const steamLevel = isViewingFriend 
     ? (profileData?.steamLevel ?? profileData?.level ?? friend?.steamLevel ?? friend?.level) 
@@ -178,16 +256,28 @@ export function ProfileView() {
     : topPlayedGames
 
   function handleSave() {
+    const patch = {
+      username: editName,
+      avatarUrl: editAvatar,
+      bannerUrl: editBanner,
+      avatarFrame: editFrame,
+      bio: editBio,
+      socialDiscord: editDiscord,
+      socialTwitch: editTwitch,
+      socialYoutube: editYoutube,
+      showHardwareSpecs: editShowHardware
+    }
+
     if (window.electronAPI?.setSettings) {
-      window.electronAPI.setSettings({ username: editName, avatarUrl: editAvatar }).then(res => {
-        if (res.success) {
-          updateSettings({ username: editName, avatarUrl: editAvatar })
+      window.electronAPI.setSettings(patch).then(res => {
+        if (res?.success !== false) {
+          updateSettings(patch)
           syncMyProfile()
           setIsEditing(false)
         }
       })
     } else {
-      updateSettings({ username: editName, avatarUrl: editAvatar })
+      updateSettings(patch)
       syncMyProfile()
       setIsEditing(false)
     }
@@ -218,6 +308,9 @@ export function ProfileView() {
           id: targetId,
           username: displayName,
           avatarUrl: displayAvatar || '',
+          bannerUrl: displayBanner,
+          avatarFrame: displayFrame,
+          bio: displayBio,
           status: friendStatus as any,
           currentGame: friendCurrentGame || undefined,
           steamProfileUrl: profileData?.steamProfileUrl || (selectedFriendId ? `https://steamcommunity.com/profiles/${selectedFriendId}` : undefined),
@@ -255,237 +348,598 @@ export function ProfileView() {
     }
   }
 
+  const getFrameClass = (frameId: string) => {
+    const f = AVATAR_FRAMES.find(item => item.id === frameId)
+    return f ? f.color : 'border-white/15'
+  }
+
   return (
-    <div className="h-full overflow-y-auto bg-[#0b0c0e]">
-      <div className="max-w-5xl mx-auto p-12">
+    <div className="h-full overflow-y-auto bg-[#07080a] select-none">
+      <div className="max-w-5xl mx-auto p-6 md:p-10">
         
-        {/* Header Profile Card */}
+        {/* Header Profile Card with Banner */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#111317] border border-white/10 rounded-2xl p-8 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden mb-12"
+          className="bg-[#101216] border border-white/10 rounded-3xl overflow-hidden mb-10 shadow-2xl relative"
         >
-          {/* Background decoration */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/3" />
-          
-          <div className="relative z-10 group">
-            <div className="w-32 h-32 rounded-full overflow-hidden bg-black ring-4 ring-white/10 flex items-center justify-center relative">
-              {displayAvatar ? (
-                <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <User size={64} className="text-white/30" />
-              )}
-            </div>
-            {!isViewingFriend && isEditing && (
-              <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Edit3 className="text-white" />
-              </div>
+          {/* Cover Banner */}
+          <div className="relative h-44 md:h-56 w-full overflow-hidden bg-black/50">
+            {displayBanner && (
+              <img 
+                src={displayBanner} 
+                alt="Profile Banner" 
+                className="w-full h-full object-cover object-center transform scale-105 filter brightness-90" 
+              />
+            )}
+            {/* Banner Dark Overlay Gradient */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#101216] via-[#101216]/40 to-transparent" />
+            
+            {/* Quick Edit Banner Button (for local user) */}
+            {!isViewingFriend && !isEditing && (
+              <button 
+                onClick={() => { setIsEditing(true); setEditTab('banner'); }}
+                className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/15 text-white/90 hover:text-white px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
+              >
+                <ImageIcon size={13} /> {language === 'de' ? 'Banner anpassen' : 'Edit Banner'}
+              </button>
             )}
           </div>
-          
-          <div className="flex-1 text-center md:text-left z-10">
-            {!isViewingFriend && isEditing ? (
-              <div className="space-y-4 max-w-sm mx-auto md:mx-0">
-                <div>
-                  <label className="block text-xs font-medium text-hub-muted uppercase tracking-wider mb-1.5 text-left">{t('username')}</label>
-                  <input 
-                    type="text" 
-                    value={editName}
-                    onChange={e => setEditName(e.target.value)}
-                    className="w-full bg-[#16181c] border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
+
+          {/* Profile Header Content */}
+          <div className="px-8 pb-8 pt-0 relative z-10 flex flex-col md:flex-row items-center md:items-end gap-6 -mt-16 md:-mt-20">
+            
+            {/* Avatar with Animated Frame */}
+            <div className="relative group flex-shrink-0">
+              <div className={`w-32 h-32 md:w-36 md:h-36 rounded-full p-1.5 bg-[#101216] border-2 ${getFrameClass(displayFrame)} transition-all duration-300 relative flex items-center justify-center`}>
+                <div className="w-full h-full rounded-full overflow-hidden bg-black/80 flex items-center justify-center">
+                  {displayAvatar ? (
+                    <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={64} className="text-white/30" />
+                  )}
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-hub-muted uppercase tracking-wider mb-1.5 text-left">{t('avatarUrl')}</label>
-                  <input 
-                    type="text" 
-                    placeholder="https://..."
-                    value={editAvatar}
-                    onChange={e => setEditAvatar(e.target.value)}
-                    className="w-full bg-[#16181c] border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
+              </div>
+
+              {!isViewingFriend && !isEditing && (
+                <button
+                  onClick={() => { setIsEditing(true); setEditTab('frame'); }}
+                  className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-xs font-medium gap-1"
+                >
+                  <Sparkles size={14} className="text-purple-400" />
+                </button>
+              )}
+            </div>
+
+            {/* Profile Info & Badges */}
+            <div className="flex-1 text-center md:text-left">
+              <div className="flex flex-wrap items-center gap-3 justify-center md:justify-start mb-1.5">
+                <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight uppercase drop-shadow-md">
+                  {displayName}
+                </h1>
+                
+                {profileData?.friendCode && (
+                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-white/70">
+                    {profileData.friendCode}
+                  </span>
+                )}
+              </div>
+
+              {/* Status and Badges Line */}
+              <div className="flex flex-wrap items-center gap-3 justify-center md:justify-start mt-1">
+                {/* Live Status */}
+                <div className="flex items-center gap-2 text-xs font-medium text-hub-muted bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
+                  <span className={`w-2 h-2 rounded-full inline-block ${isOnline ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-white/30'}`} />
+                  <span className={isOnline ? 'text-white/90' : 'text-white/50'}>
+                    {isViewingFriend ? friendStatusText : t('online')}
+                  </span>
                 </div>
-                <div className="flex justify-center md:justify-start gap-3 pt-2">
+
+                {/* Member Badge */}
+                {(isViewingFriend ? (profileData?.steamProfileUrl || friend?.steamProfileUrl) : settings.steamProfileUrl) ? (
+                  <span className="text-xs font-bold text-[#66c0f4] flex items-center gap-1.5 bg-[#1b2838]/80 border border-[#2a475e]/60 px-2.5 py-1 rounded-full">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-3.5 h-3.5" alt="Steam" />
+                    Steam Player
+                  </span>
+                ) : (
+                  <span className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-orange-400 to-red-500 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
+                    ECLIPSE MEMBER
+                  </span>
+                )}
+
+                {/* In-Game Live Badge */}
+                {!isViewingFriend && activeGame && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/25 backdrop-blur-md shadow-[0_0_15px_rgba(99,102,241,0.15)]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_6px_rgba(99,102,241,0.9)] animate-pulse flex-shrink-0" />
+                    <Gamepad2 size={13} className="text-indigo-400 flex-shrink-0" />
+                    <span className="text-xs font-medium text-indigo-200 truncate">
+                      <span className="text-white/50">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
+                      <span className="text-white font-bold">{activeGame.name}</span>
+                    </span>
+                  </div>
+                )}
+                {isViewingFriend && friendCurrentGame && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/25 backdrop-blur-md shadow-[0_0_15px_rgba(168,85,247,0.15)]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.9)] animate-pulse flex-shrink-0" />
+                    <Gamepad2 size={13} className="text-purple-400 flex-shrink-0" />
+                    <span className="text-xs font-medium text-purple-200 truncate">
+                      <span className="text-white/50">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
+                      <span className="text-white font-bold">{friendCurrentGame}</span>
+                    </span>
+                  </div>
+                )}
+
+                {/* Steam Stats Grouping */}
+                {steamLevel !== undefined && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1b2838] border border-[#2a475e] text-[#66c0f4] text-xs font-bold">
+                    <Trophy size={12} />
+                    <span>Level {steamLevel}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Bio & Status Quote */}
+              {displayBio && (
+                <p className="mt-3 text-xs md:text-sm text-white/70 italic max-w-xl font-normal leading-relaxed border-l-2 border-purple-500/40 pl-3">
+                  "{displayBio}"
+                </p>
+              )}
+
+              {/* Social Tags */}
+              {(displayDiscord || displayTwitch || displayYoutube) && (
+                <div className="flex flex-wrap items-center gap-2 mt-3 justify-center md:justify-start">
+                  {displayDiscord && (
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(displayDiscord)
+                        setCopiedDiscord(true)
+                        setTimeout(() => setCopiedDiscord(false), 2000)
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#5865F2]/10 border border-[#5865F2]/30 text-[#8ea1e1] hover:text-white hover:bg-[#5865F2]/20 text-[11px] font-semibold transition-all cursor-pointer"
+                      title="Click to copy Discord Tag"
+                    >
+                      <span className="font-bold">Discord:</span> {displayDiscord}
+                      {copiedDiscord ? <Check size={11} className="text-green-400" /> : <Copy size={11} className="opacity-60" />}
+                    </button>
+                  )}
+                  {displayTwitch && (
+                    <a 
+                      href={`https://twitch.tv/${displayTwitch.replace('@', '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#9146FF]/10 border border-[#9146FF]/30 text-[#bf94ff] hover:text-white hover:bg-[#9146FF]/20 text-[11px] font-semibold transition-all"
+                    >
+                      <span className="font-bold">Twitch:</span> {displayTwitch}
+                      <ExternalLink size={11} className="opacity-60" />
+                    </a>
+                  )}
+                  {displayYoutube && (
+                    <a 
+                      href={`https://youtube.com/${displayYoutube.startsWith('@') ? displayYoutube : '@' + displayYoutube}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FF0000]/10 border border-[#FF0000]/30 text-[#ff7373] hover:text-white hover:bg-[#FF0000]/20 text-[11px] font-semibold transition-all"
+                    >
+                      <span className="font-bold">YouTube:</span> {displayYoutube}
+                      <ExternalLink size={11} className="opacity-60" />
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Profile Action Buttons */}
+            <div className="flex flex-wrap gap-2.5 justify-center md:justify-end flex-shrink-0">
+              {!isViewingFriend ? (
+                <>
                   <button 
-                    onClick={handleSave}
-                    className="bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 cursor-pointer shadow-sm"
+                    onClick={() => setIsEditing(true)}
+                    className="bg-white/10 hover:bg-white/15 border border-white/15 text-white px-4 py-2 rounded-xl font-medium text-xs transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:scale-[1.02]"
                   >
-                    <Save size={16} /> {t('save')}
+                    <Edit3 size={14} /> {t('editProfile')}
                   </button>
                   <button 
                     onClick={() => {
-                      setEditName(settings.username || 'User')
-                      setEditAvatar(settings.avatarUrl || '')
-                      setIsEditing(false)
+                      setActiveSettingsTab('profile')
+                      setActiveView('settings')
                     }}
-                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 cursor-pointer"
+                    className="bg-transparent hover:bg-white/5 text-hub-muted hover:text-white px-3 py-2 rounded-xl font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    {t('cancel')}
+                    <Settings size={14} /> {t('settings')}
                   </button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="flex flex-wrap items-center gap-3 justify-center md:justify-start mb-2">
-                  <h1 className="text-4xl font-black text-white uppercase tracking-tight">{displayName}</h1>
-                  {profileData?.friendCode && (
-                    <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-white/70">
-                      {profileData.friendCode}
-                    </span>
-                  )}
-                </div>
-                
-                <div className="flex flex-wrap items-center gap-4 justify-center md:justify-start">
-                  
-                  {/* Status & Member Type */}
-                  <div className="flex items-center gap-3">
-                    <p className="text-hub-muted text-sm flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full inline-block ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`}></span>
-                      {isViewingFriend ? friendStatusText : t('online')}
-                    </p>
-                    <div className="w-[1px] h-4 bg-white/10"></div>
-                    {(isViewingFriend ? (profileData?.steamProfileUrl || friend?.steamProfileUrl) : settings.steamProfileUrl) ? (
-                      <span className="text-sm font-bold text-[#66c0f4] flex items-center gap-1.5">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-3.5 h-3.5" alt="Steam" />
-                        Steam Player
-                      </span>
-                    ) : (
-                      <motion.span 
-                        animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
-                        transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                        className="text-sm font-bold bg-clip-text text-transparent bg-gradient-to-r from-red-500 via-orange-400 to-red-500 bg-[length:200%_auto]"
-                      >
-                        ECLIPSE MEMBER
-                      </motion.span>
-                    )}
-                  </div>
-
-                  {!isViewingFriend && activeGame && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/25 backdrop-blur-md shadow-[0_0_15px_rgba(99,102,241,0.15)]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_6px_rgba(99,102,241,0.9)] animate-pulse flex-shrink-0" />
-                      <Gamepad2 size={13} className="text-indigo-400 flex-shrink-0" />
-                      <span className="text-xs font-medium text-indigo-200 truncate">
-                        <span className="text-white/50">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
-                        <span className="text-white font-bold">{activeGame.name}</span>
-                      </span>
-                    </div>
-                  )}
-                  {isViewingFriend && friendCurrentGame && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/25 backdrop-blur-md shadow-[0_0_15px_rgba(168,85,247,0.15)]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.9)] animate-pulse flex-shrink-0" />
-                      <Gamepad2 size={13} className="text-purple-400 flex-shrink-0" />
-                      <span className="text-xs font-medium text-purple-200 truncate">
-                        <span className="text-white/50">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
-                        <span className="text-white font-bold">{friendCurrentGame}</span>
-                      </span>
-                    </div>
-                  )}
-                  
-                  {/* Steam Stats Grouping */}
-                  <div className="flex flex-wrap items-center gap-3 border-l border-white/10 pl-4 ml-1">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-5 h-5 opacity-50" alt="Steam Stats" title="Steam Profile Stats" />
-                    {steamLevel !== undefined && (
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1b2838] border border-[#2a475e] text-[#66c0f4] shadow-sm">
-                        <Trophy size={13} />
-                        <span className="text-xs font-bold tracking-wide">Level {steamLevel}</span>
-                      </div>
-                    )}
-                    {steamGamesCount !== undefined && steamGamesCount > 0 && (
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1b2838] border border-[#2a475e] text-[#66c0f4] shadow-sm">
-                        <Gamepad2 size={13} />
-                        <span className="text-xs font-bold tracking-wide">{steamGamesCount} Games</span>
-                      </div>
-                    )}
-                    {steamBadgesCount !== undefined && steamBadgesCount > 0 && (
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1b2838] border border-[#2a475e] text-[#66c0f4] shadow-sm">
-                        <Award size={13} />
-                        <span className="text-xs font-bold tracking-wide">{steamBadgesCount} Badges</span>
-                      </div>
-                    )}
-                    {steamFavoriteBadge && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1b2838]/60 border border-[#2a475e]/50 hover:bg-[#1b2838] transition-colors cursor-pointer group" title={steamFavoriteBadge.name}>
-                        <img src={steamFavoriteBadge.iconUrl} alt="Badge" className="w-6 h-6 drop-shadow-md group-hover:scale-110 transition-transform" />
-                        <div className="flex flex-col justify-center h-full">
-                          <span className="text-[9px] text-[#66c0f4] uppercase font-bold tracking-wider leading-none mb-0.5 opacity-80 mt-1">Featured</span>
-                          <span className="text-[11px] text-white font-medium leading-none truncate max-w-[200px]">{steamFavoriteBadge.name}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Profile Action Buttons */}
-                <div className="mt-6 flex flex-wrap gap-3 justify-center md:justify-start">
-                  {!isViewingFriend ? (
-                    <>
-                      <button 
-                        onClick={() => setIsEditing(true)}
-                        className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 cursor-pointer"
-                      >
-                        <Edit3 size={16} /> {t('editProfile')}
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setActiveSettingsTab('profile')
-                          setActiveView('settings')
-                        }}
-                        className="bg-transparent hover:bg-white/5 text-hub-muted hover:text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 cursor-pointer"
-                      >
-                        <Settings size={16} /> {t('settings')}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      {!isAlreadyFriend && (
-                        <button 
-                          onClick={handleSendFriendReq}
-                          disabled={isSendingRequest || requestSent}
-                          className="bg-white text-black font-bold hover:bg-white/90 px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-60"
-                        >
-                          {isSendingRequest ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : requestSent ? (
-                            <Check size={16} className="text-green-600" />
-                          ) : (
-                            <UserPlus size={16} />
-                          )}
-                          {requestSent 
-                            ? (language === 'de' ? 'Anfrage gesendet' : 'Request Sent') 
-                            : (language === 'de' ? 'Freund hinzufügen' : 'Add Friend')}
-                        </button>
+                </>
+              ) : (
+                <>
+                  {!isAlreadyFriend && (
+                    <button 
+                      onClick={handleSendFriendReq}
+                      disabled={isSendingRequest || requestSent}
+                      className="bg-white text-black font-bold hover:bg-white/90 px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-60"
+                    >
+                      {isSendingRequest ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : requestSent ? (
+                        <Check size={14} className="text-green-600" />
+                      ) : (
+                        <UserPlus size={14} />
                       )}
-                      <button 
-                        onClick={() => {
-                          setSelectedFriendId(null)
-                        }}
-                        className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 cursor-pointer"
-                      >
-                        <ArrowLeft size={16} /> {language === 'de' ? 'Mein Profil' : 'My Profile'}
-                      </button>
-                    </>
+                      {requestSent 
+                        ? (language === 'de' ? 'Anfrage gesendet' : 'Request Sent') 
+                        : (language === 'de' ? 'Freund hinzufügen' : 'Add Friend')}
+                    </button>
                   )}
-                </div>
-              </div>
-            )}
+                  <button 
+                    onClick={() => setSelectedFriendId(null)}
+                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-3.5 py-2 rounded-xl font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ArrowLeft size={14} /> {language === 'de' ? 'Mein Profil' : 'My Profile'}
+                  </button>
+                </>
+              )}
+            </div>
+
           </div>
         </motion.div>
 
+        {/* Edit Profile Modal Suite */}
+        <AnimatePresence>
+          {isEditing && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#121419] border border-purple-500/30 rounded-3xl p-6 md:p-8 mb-10 shadow-2xl relative overflow-hidden"
+            >
+              <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Sparkles className="text-purple-400" size={20} />
+                    {language === 'de' ? 'Profil-Personalisierung' : 'Profile Customization'}
+                  </h3>
+                  <p className="text-xs text-hub-muted mt-0.5">
+                    {language === 'de' ? 'Passe deinen Banner, Avatar-Rahmen, Bio und Socials an.' : 'Customize your banner, avatar frame, bio, and socials.'}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setIsEditing(false)}
+                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Subtabs */}
+              <div className="flex flex-wrap gap-2 mb-6 border-b border-white/5 pb-4">
+                {[
+                  { id: 'general', label: language === 'de' ? 'Allgemein' : 'General' },
+                  { id: 'banner', label: language === 'de' ? 'Profil-Banner' : 'Banner' },
+                  { id: 'frame', label: language === 'de' ? 'Avatar-Rahmen' : 'Avatar Frame' },
+                  { id: 'socials', label: language === 'de' ? 'Über mich & Socials' : 'Bio & Socials' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setEditTab(tab.id as any)}
+                    className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      editTab === tab.id 
+                        ? 'bg-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]' 
+                        : 'bg-white/5 hover:bg-white/10 text-white/60 hover:text-white'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tab Contents */}
+              {editTab === 'general' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-hub-muted uppercase tracking-wider mb-1.5">{t('username')}</label>
+                    <input 
+                      type="text" 
+                      value={editName}
+                      onChange={e => setEditName(e.target.value)}
+                      className="w-full bg-[#17191f] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-hub-muted uppercase tracking-wider mb-1.5">{t('avatarUrl')}</label>
+                    <input 
+                      type="text" 
+                      placeholder="https://..."
+                      value={editAvatar}
+                      onChange={e => setEditAvatar(e.target.value)}
+                      className="w-full bg-[#17191f] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {editTab === 'banner' && (
+                <div className="space-y-4">
+                  <label className="block text-xs font-medium text-hub-muted uppercase tracking-wider">
+                    {language === 'de' ? 'Wähle eine Banner-Vorlage' : 'Choose a Banner Preset'}
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                    {BANNER_PRESETS.map(preset => (
+                      <div 
+                        key={preset.id}
+                        onClick={() => setEditBanner(preset.url)}
+                        className={`group relative h-20 rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${
+                          editBanner === preset.url ? 'border-purple-500 scale-105 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'border-white/10 hover:border-white/30'
+                        }`}
+                      >
+                        <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition-colors" />
+                        <span className="absolute bottom-1 left-2 text-[10px] font-bold text-white drop-shadow-md truncate max-w-[90%]">
+                          {preset.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-2">
+                    <label className="block text-xs font-medium text-hub-muted uppercase tracking-wider mb-1.5">
+                      {language === 'de' ? 'Oder eigene Banner-Bild URL einfügen' : 'Or enter custom banner image URL'}
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="https://images.unsplash.com/..."
+                      value={editBanner}
+                      onChange={e => setEditBanner(e.target.value)}
+                      className="w-full bg-[#17191f] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {editTab === 'frame' && (
+                <div className="space-y-4">
+                  <label className="block text-xs font-medium text-hub-muted uppercase tracking-wider">
+                    {language === 'de' ? 'Wähle deinen Avatar-Rahmen' : 'Choose your Avatar Frame'}
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                    {AVATAR_FRAMES.map(frame => (
+                      <div 
+                        key={frame.id}
+                        onClick={() => setEditFrame(frame.id)}
+                        className={`p-4 rounded-2xl bg-[#17191f] border-2 cursor-pointer flex flex-col items-center gap-3 transition-all ${
+                          editFrame === frame.id ? 'border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.4)] bg-purple-500/5' : 'border-white/10 hover:border-white/25'
+                        }`}
+                      >
+                        <div className={`w-14 h-14 rounded-full p-1 bg-[#101216] border-2 ${frame.color} flex items-center justify-center`}>
+                          <div className="w-full h-full rounded-full overflow-hidden bg-black/80 flex items-center justify-center">
+                            {editAvatar ? <img src={editAvatar} alt="preview" className="w-full h-full object-cover" /> : <User size={20} className="text-white/40" />}
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-bold text-white text-center">
+                          {language === 'de' ? (
+                            frame.id === 'none' ? 'Kein Rahmen' :
+                            frame.id === 'eclipse_neon' ? 'Eclipse Neon' :
+                            frame.id === 'cyberpunk' ? 'Cyberpunk' :
+                            frame.id === 'golden_vip' ? 'Gold VIP' :
+                            frame.id === 'fire_blaze' ? 'Fire Blaze' : 'Smaragd'
+                          ) : (
+                            frame.id === 'none' ? 'None' :
+                            frame.id === 'eclipse_neon' ? 'Eclipse Neon' :
+                            frame.id === 'cyberpunk' ? 'Cyberpunk' :
+                            frame.id === 'golden_vip' ? 'Gold VIP' :
+                            frame.id === 'fire_blaze' ? 'Fire Blaze' : 'Emerald'
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {editTab === 'socials' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-hub-muted uppercase tracking-wider mb-1.5">
+                      {language === 'de' ? 'Über mich / Status-Spruch' : 'About Me / Status Quote'}
+                    </label>
+                    <textarea 
+                      rows={2}
+                      maxLength={160}
+                      placeholder={language === 'de' ? 'Schreibe einen kurzen Spruch oder eine Bio...' : 'Write a short bio or quote...'}
+                      value={editBio}
+                      onChange={e => setEditBio(e.target.value)}
+                      className="w-full bg-[#17191f] border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-hub-muted uppercase tracking-wider mb-1.5">Discord Tag</label>
+                      <input 
+                        type="text" 
+                        placeholder="z.B. gamer#0001"
+                        value={editDiscord}
+                        onChange={e => setEditDiscord(e.target.value)}
+                        className="w-full bg-[#17191f] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-purple-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-hub-muted uppercase tracking-wider mb-1.5">Twitch Username</label>
+                      <input 
+                        type="text" 
+                        placeholder="z.B. streamer123"
+                        value={editTwitch}
+                        onChange={e => setEditTwitch(e.target.value)}
+                        className="w-full bg-[#17191f] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-purple-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-hub-muted uppercase tracking-wider mb-1.5">YouTube Handle</label>
+                      <input 
+                        type="text" 
+                        placeholder="z.B. @pro_gamer"
+                        value={editYoutube}
+                        onChange={e => setEditYoutube(e.target.value)}
+                        className="w-full bg-[#17191f] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-purple-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-6 border-t border-white/10 mt-6">
+                <button 
+                  onClick={() => setIsEditing(false)}
+                  className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-5 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  {t('cancel')}
+                </button>
+                <button 
+                  onClick={handleSave}
+                  className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-xl text-xs font-bold transition-all shadow-[0_0_15px_rgba(168,85,247,0.4)] flex items-center gap-2 cursor-pointer hover:scale-105"
+                >
+                  <Save size={15} /> {t('save')}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Gaming Rig & Hardware Showcase (Feature 3: Fully Automatic & Toggleable) */}
+        {displayShowHardware && displayHardware && (displayHardware.cpu || displayHardware.gpu) && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-[#101216] border border-white/10 rounded-3xl p-6 md:p-8 mb-10 relative overflow-hidden shadow-xl"
+          >
+            {/* Header with Title & Auto-Detected Badge */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <Cpu size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white tracking-wide flex items-center gap-2">
+                    {language === 'de' ? 'Gaming Rig & Hardware-Showcase' : 'Gaming Rig & Hardware Showcase'}
+                  </h3>
+                  <p className="text-xs text-hub-muted">
+                    {language === 'de' ? 'Vollautomatisch von Eclipse aus Windows ausgelesen' : 'Automatically detected by Eclipse from Windows'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] uppercase font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+                  {language === 'de' ? 'Automatisch erkannt' : 'Auto-detected'}
+                </span>
+
+                {/* Toggle on own profile */}
+                {!isViewingFriend && (
+                  <button
+                    onClick={() => {
+                      const next = !settings.showHardwareSpecs
+                      updateSettings({ showHardwareSpecs: next })
+                      if (window.electronAPI?.setSettings) {
+                        window.electronAPI.setSettings({ showHardwareSpecs: next })
+                      }
+                      syncMyProfile()
+                    }}
+                    className={`text-xs font-semibold px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                      settings.showHardwareSpecs !== false 
+                        ? 'bg-purple-500/20 border-purple-500/40 text-purple-300' 
+                        : 'bg-white/5 border-white/10 text-white/40'
+                    }`}
+                    title="Toggle public visibility"
+                  >
+                    {settings.showHardwareSpecs !== false 
+                      ? (language === 'de' ? 'Sichtbar' : 'Visible') 
+                      : (language === 'de' ? 'Ausgeblendet' : 'Hidden')}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Hardware Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* GPU */}
+              {displayHardware.gpu && (
+                <div className="bg-[#15171d] border border-white/5 rounded-2xl p-4 flex items-center gap-3.5 hover:border-purple-500/30 transition-colors group">
+                  <div className="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Zap size={20} />
+                  </div>
+                  <div className="overflow-hidden min-w-0">
+                    <span className="text-[10px] font-bold text-purple-400/80 uppercase tracking-wider block">GPU</span>
+                    <p className="text-xs font-bold text-white truncate drop-shadow-sm" title={displayHardware.gpu}>
+                      {displayHardware.gpu}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* CPU */}
+              {displayHardware.cpu && (
+                <div className="bg-[#15171d] border border-white/5 rounded-2xl p-4 flex items-center gap-3.5 hover:border-indigo-500/30 transition-colors group">
+                  <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Cpu size={20} />
+                  </div>
+                  <div className="overflow-hidden min-w-0">
+                    <span className="text-[10px] font-bold text-indigo-400/80 uppercase tracking-wider block">CPU</span>
+                    <p className="text-xs font-bold text-white truncate drop-shadow-sm" title={displayHardware.cpu}>
+                      {displayHardware.cpu}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* RAM */}
+              {displayHardware.ram && (
+                <div className="bg-[#15171d] border border-white/5 rounded-2xl p-4 flex items-center gap-3.5 hover:border-pink-500/30 transition-colors group">
+                  <div className="w-11 h-11 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <HardDrive size={20} />
+                  </div>
+                  <div className="overflow-hidden min-w-0">
+                    <span className="text-[10px] font-bold text-pink-400/80 uppercase tracking-wider block">Memory</span>
+                    <p className="text-xs font-bold text-white truncate drop-shadow-sm" title={displayHardware.ram}>
+                      {displayHardware.ram}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Display / OS */}
+              <div className="bg-[#15171d] border border-white/5 rounded-2xl p-4 flex items-center gap-3.5 hover:border-emerald-500/30 transition-colors group">
+                <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <Monitor size={20} />
+                </div>
+                <div className="overflow-hidden min-w-0">
+                  <span className="text-[10px] font-bold text-emerald-400/80 uppercase tracking-wider block">
+                    {displayHardware.os || 'Display'}
+                  </span>
+                  <p className="text-xs font-bold text-white truncate drop-shadow-sm">
+                    {displayHardware.display ? `${displayHardware.display}` : 'Primary Monitor'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
           {(!isViewingFriend ? settings.profileShowPlaytime !== false : true) && (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-[#111317] border border-white/10 rounded-2xl p-6 relative overflow-hidden group"
+              transition={{ delay: 0.15 }}
+              className="bg-[#101216] border border-white/10 rounded-2xl p-6 relative overflow-hidden group shadow-lg"
             >
-              <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Clock className="text-indigo-400" size={24} />
+              <div className="w-11 h-11 bg-indigo-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Clock className="text-indigo-400" size={22} />
               </div>
-              <h3 className="text-3xl font-bold text-white mb-1">
+              <h3 className="text-2xl font-black text-white mb-1">
                 {displayTotalPlaytime}
               </h3>
-              <p className="text-sm font-medium text-hub-muted uppercase tracking-wider">{t('totalPlaytime')}</p>
+              <p className="text-xs font-semibold text-hub-muted uppercase tracking-wider">{t('totalPlaytime')}</p>
             </motion.div>
           )}
 
@@ -493,15 +947,15 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-[#111317] border border-white/10 rounded-2xl p-6 relative overflow-hidden group"
+            className="bg-[#101216] border border-white/10 rounded-2xl p-6 relative overflow-hidden group shadow-lg"
           >
-            <div className="w-12 h-12 bg-pink-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Library className="text-pink-400" size={24} />
+            <div className="w-11 h-11 bg-pink-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+              <Library className="text-pink-400" size={22} />
             </div>
-            <h3 className="text-3xl font-bold text-white mb-1">
+            <h3 className="text-2xl font-black text-white mb-1">
               {displayLibraryCount}
             </h3>
-            <p className="text-sm font-medium text-hub-muted uppercase tracking-wider">
+            <p className="text-xs font-semibold text-hub-muted uppercase tracking-wider">
               {t('gamesInLibrary')}
             </p>
           </motion.div>
@@ -509,16 +963,16 @@ export function ProfileView() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-[#111317] border border-white/10 rounded-2xl p-6 relative overflow-hidden group"
+            transition={{ delay: 0.25 }}
+            className="bg-[#101216] border border-white/10 rounded-2xl p-6 relative overflow-hidden group shadow-lg"
           >
-            <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Save className="text-green-400" size={24} />
+            <div className="w-11 h-11 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+              <Save className="text-emerald-400" size={22} />
             </div>
-            <h3 className="text-3xl font-bold text-white mb-1">
+            <h3 className="text-2xl font-black text-white mb-1">
               {displayInstalledCount}
             </h3>
-            <p className="text-sm font-medium text-hub-muted uppercase tracking-wider">
+            <p className="text-xs font-semibold text-hub-muted uppercase tracking-wider">
               {isViewingFriend ? 'Activity / Installed' : t('installedGames')}
             </p>
           </motion.div>
@@ -529,13 +983,14 @@ export function ProfileView() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-[#111317] border border-white/10 rounded-2xl p-6 mb-12"
+            transition={{ delay: 0.3 }}
+            className="bg-[#101216] border border-white/10 rounded-2xl p-6 mb-10 shadow-lg"
           >
-            <h3 className="text-lg font-bold text-white mb-4">
+            <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+              <Trophy size={16} className="text-amber-400" />
               {language === 'de' ? 'Meistgespielte Spiele' : 'Most Played Games'}
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {displayTopGames.map((game: any, idx: number) => {
                 const mins = Math.round(game.playTimeMinutes || 0)
                 const hrs = mins >= 60 ? (mins / 60).toFixed(1) + ' hrs' : `${mins} mins`
@@ -547,14 +1002,14 @@ export function ProfileView() {
                     onClick={() => {
                       if (sId) openGameDetails(sId, game.name)
                     }}
-                    className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all cursor-pointer group"
+                    className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 transition-all cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-black text-white w-5 text-center">#{idx + 1}</span>
-                      <p className="text-sm font-bold text-white group-hover:text-gray-300 transition-colors">{game.name}</p>
+                      <span className="text-xs font-black text-white/50 w-5 text-center">#{idx + 1}</span>
+                      <p className="text-xs font-bold text-white group-hover:text-purple-300 transition-colors">{game.name}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Clock size={13} className="text-white/60" />
+                      <Clock size={12} className="text-white/40" />
                       <span className="text-xs font-semibold text-white/90">{hrs}</span>
                     </div>
                   </div>
@@ -569,29 +1024,30 @@ export function ProfileView() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mb-12"
+            transition={{ delay: 0.35 }}
+            className="mb-10"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <h3 className="text-xl font-bold text-white tracking-wide">Steam Recent Activity</h3>
-              <div className="h-[1px] flex-1 bg-gradient-to-r from-white/10 to-transparent"></div>
+            <div className="flex items-center gap-3 mb-5">
+              <h3 className="text-base font-bold text-white tracking-wide">Steam Recent Activity</h3>
+              <div className="h-[1px] flex-1 bg-gradient-to-r from-white/10 to-transparent" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {steamRecentGames.slice(0, 3).map((game: any) => (
-                <div key={game.appId || game.name} className="bg-black/20 rounded-xl overflow-hidden border border-white/5 hover:border-white/20 transition-all cursor-default">
+                <div key={game.appId || game.name} className="bg-[#101216] rounded-2xl overflow-hidden border border-white/5 hover:border-white/20 transition-all shadow-md">
                   <div className="relative h-24 overflow-hidden">
-                    <img src={game.iconUrl} alt={game.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#111317] to-transparent"></div>
+                    <img src={game.iconUrl} alt={game.name} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#101216] to-transparent" />
                   </div>
                   <div className="p-4 relative -mt-6">
-                    <h4 className="font-semibold text-white text-sm truncate drop-shadow-md mb-1">{game.name}</h4>
-                    <p className="text-xs text-[#66c0f4] font-medium">{game.playtime}</p>
+                    <h4 className="font-semibold text-white text-xs truncate drop-shadow-md mb-1">{game.name}</h4>
+                    <p className="text-[11px] text-[#66c0f4] font-medium">{game.playtime}</p>
                   </div>
                 </div>
               ))}
             </div>
           </motion.div>
         )}
+
       </div>
     </div>
   )
