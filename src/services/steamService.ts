@@ -775,6 +775,8 @@ export interface SteamUserProfile {
   steamFavoriteBadge?: any;
   steamBadges?: Array<{ name: string; iconUrl: string; xp?: string; level?: string }>;
   steamGames?: Array<{ appId: string; name: string; iconUrl?: string; playtime?: string }>;
+  steamBackgroundUrl?: string;
+  steamBackgroundMovie?: string;
 }
 
 export function constructSteamProfileUrl(input: string): string {
@@ -953,6 +955,49 @@ export async function fetchSteamUserProfile(profileUrl: string): Promise<SteamUs
       }
     }
 
+    // Parse Live Animated Background or Static Background
+    let steamBackgroundMovie: string | undefined = undefined;
+    let steamBackgroundUrl: string | undefined = undefined;
+
+    if (htmlText) {
+      const htmlDoc = parser.parseFromString(htmlText, 'text/html');
+
+      // 1. Live Animated Background (video)
+      const videoEl = htmlDoc.querySelector('.profile_animated_background video, video.profile_animated_background, .profile_background_holder_content video');
+      if (videoEl) {
+        const mp4 = videoEl.querySelector('source[type="video/mp4"]')?.getAttribute('src');
+        const webm = videoEl.querySelector('source[type="video/webm"]')?.getAttribute('src');
+        const direct = videoEl.getAttribute('src');
+        steamBackgroundMovie = mp4 || webm || direct || undefined;
+      }
+      
+      // Fallback regex for animated movie
+      if (!steamBackgroundMovie) {
+        const videoMatch = htmlText.match(/https:\/\/[^"'\s<>]+\/items\/\d+\/[a-zA-Z0-9_-]+\.(?:mp4|webm)/i);
+        if (videoMatch) {
+          steamBackgroundMovie = videoMatch[0];
+        }
+      }
+
+      // 2. Static Background image
+      const bgHolders = htmlDoc.querySelectorAll('.has_profile_background, .profile_background_image_content, .profile_background_holder_content, .no_header, .profile_header_bg');
+      bgHolders.forEach(el => {
+        const style = el.getAttribute('style') || '';
+        const urlMatch = style.match(/url\(\s*['"]?(https:\/\/[^'")]+)['"]?\s*\)/i);
+        if (urlMatch && !steamBackgroundUrl) {
+          steamBackgroundUrl = urlMatch[1];
+        }
+      });
+
+      // Fallback regex for steam item background image
+      if (!steamBackgroundUrl) {
+        const imgMatch = htmlText.match(/https:\/\/[^"'\s<>]+\/items\/\d+\/[a-zA-Z0-9_-]+\.(?:jpg|png|jpeg)/i);
+        if (imgMatch) {
+          steamBackgroundUrl = imgMatch[0];
+        }
+      }
+    }
+
     // Parse Badges from badges HTML page
     if (badgesHtmlText) {
       const badgesDoc = parser.parseFromString(badgesHtmlText, 'text/html');
@@ -1019,7 +1064,9 @@ export async function fetchSteamUserProfile(profileUrl: string): Promise<SteamUs
       steamRecentGames, 
       steamFavoriteBadge,
       steamBadges,
-      steamGames
+      steamGames,
+      steamBackgroundUrl,
+      steamBackgroundMovie
     };
   } catch (err) {
     console.error('[steamService] Error fetching steam profile:', err);

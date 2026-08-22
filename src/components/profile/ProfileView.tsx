@@ -4,7 +4,7 @@ import {
   User, Library, Clock, Save, Edit3, Settings, Trophy, Gamepad2, 
   UserPlus, Check, ArrowLeft, Loader2, Cpu, Zap, HardDrive, Monitor, 
   Image as ImageIcon, Sparkles, Copy, ExternalLink, X, RefreshCw, 
-  MessageSquare, CheckCircle2, Award, Search, ChevronRight
+  MessageSquare, CheckCircle2, Award, Search, Play
 } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
@@ -75,6 +75,9 @@ export function ProfileView() {
               steamBadges: steamData.steamBadges || [],
               steamGames: steamData.steamGames || [],
               steamRecentGames: steamData.steamRecentGames || [],
+              steamBackgroundUrl: steamData.steamBackgroundUrl,
+              steamBackgroundMovie: steamData.steamBackgroundMovie,
+              bannerUrl: steamData.steamBackgroundMovie || steamData.steamBackgroundUrl,
               steamProfileUrl: `https://steamcommunity.com/profiles/${steamData.steamId64}`,
               status: steamData.onlineState === 'in-game' ? 'ingame' : steamData.onlineState === 'online' ? 'online' : 'offline',
             })
@@ -136,9 +139,18 @@ export function ProfileView() {
     ? (profileData?.avatarUrl || friend?.avatarUrl || '') 
     : settings.avatarUrl
 
+  const steamBackgroundMovie = isViewingFriend
+    ? (profileData?.steamBackgroundMovie || friend?.steamBackgroundMovie)
+    : settings.steamBackgroundMovie
+
+  const steamBackgroundUrl = isViewingFriend
+    ? (profileData?.steamBackgroundUrl || friend?.steamBackgroundUrl)
+    : settings.steamBackgroundUrl
+
+  // Default to live Steam background (movie or image) if available, otherwise bannerUrl or default preset
   const displayBanner = isViewingFriend
-    ? (profileData?.bannerUrl || friend?.bannerUrl || BANNER_PRESETS[0].url)
-    : (settings.bannerUrl || BANNER_PRESETS[0].url)
+    ? (profileData?.bannerUrl || friend?.bannerUrl || steamBackgroundMovie || steamBackgroundUrl || BANNER_PRESETS[0].url)
+    : (settings.bannerUrl || steamBackgroundMovie || steamBackgroundUrl || BANNER_PRESETS[0].url)
 
   const displayFrame = isViewingFriend
     ? (profileData?.avatarFrame || friend?.avatarFrame || 'none')
@@ -219,6 +231,13 @@ export function ProfileView() {
       : formatLastSeen(friendLastSeen, language)
 
   const isOnline = isViewingFriend ? friendStatus !== 'offline' : true
+
+  // Helper to check if banner is a video (Live Steam Background)
+  const isVideoBanner = (url: string | undefined | null) => {
+    if (!url) return false
+    const clean = url.toLowerCase().split('?')[0]
+    return clean.endsWith('.webm') || clean.endsWith('.mp4') || url.includes('.webm') || url.includes('.mp4')
+  }
 
   // Filtered Steam Games for search
   const filteredSteamGames = useMemo(() => {
@@ -335,6 +354,16 @@ export function ProfileView() {
       if (profile) {
         setEditName(profile.username)
         setEditAvatar(profile.avatarFull)
+        
+        // Auto default banner to Steam background if user has not set a custom non-default one
+        const steamBg = profile.steamBackgroundMovie || profile.steamBackgroundUrl
+        const currentBannerIsCustom = settings.bannerUrl && !BANNER_PRESETS.some(p => p.url === settings.bannerUrl)
+        const newBannerUrl = currentBannerIsCustom ? settings.bannerUrl : (steamBg || settings.bannerUrl)
+
+        if (steamBg && !currentBannerIsCustom) {
+          setEditBanner(steamBg)
+        }
+
         const patch = {
           username: profile.username,
           avatarUrl: profile.avatarFull,
@@ -345,7 +374,10 @@ export function ProfileView() {
           steamRecentGames: profile.steamRecentGames || [],
           steamFavoriteBadge: profile.steamFavoriteBadge || null,
           steamBadges: profile.steamBadges || [],
-          steamGames: profile.steamGames || []
+          steamGames: profile.steamGames || [],
+          steamBackgroundUrl: profile.steamBackgroundUrl,
+          steamBackgroundMovie: profile.steamBackgroundMovie,
+          bannerUrl: newBannerUrl
         }
         updateSettings(patch)
         if (window.electronAPI?.setSettings) {
@@ -354,7 +386,7 @@ export function ProfileView() {
         await syncMyProfile()
         sendAppNotification({
           title: language === 'de' ? 'Steam synchronisiert' : 'Steam Synced',
-          body: language === 'de' ? `Profil von ${profile.username} erfolgreich verknüpft (${profile.steamBadges?.length || 0} Badges, ${profile.steamGames?.length || 0} Games).` : `Profile of ${profile.username} linked.`,
+          body: language === 'de' ? `Profil von ${profile.username} erfolgreich verknüpft (inkl. Steam Live-Hintergrund).` : `Profile of ${profile.username} linked.`,
           type: 'success'
         })
       } else {
@@ -428,7 +460,9 @@ export function ProfileView() {
           steamRecentGames: steamRecentGames || [],
           steamFavoriteBadge: steamFavoriteBadge || null,
           steamBadges: steamBadges || [],
-          steamGames: steamGames || []
+          steamGames: steamGames || [],
+          steamBackgroundUrl: steamBackgroundUrl,
+          steamBackgroundMovie: steamBackgroundMovie
         }
         updateSettings({
           eclipseFriends: [...currentFriends, newFriend]
@@ -494,20 +528,31 @@ export function ProfileView() {
     <div className="h-full overflow-y-auto bg-[#07080a] select-none">
       <div className="max-w-5xl mx-auto px-6 py-8 md:px-10 md:py-10 space-y-6">
         
-        {/* ─── Hero Header & Identity Card ─── */}
+        {/* ─── Hero Header & Identity Card with Live Background ─── */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl relative"
         >
-          {/* Cover Banner */}
-          <div className="relative h-48 md:h-56 w-full overflow-hidden bg-[#06070a]">
+          {/* Cover Banner (Live Video or Static Image) */}
+          <div className="relative h-56 md:h-64 w-full overflow-hidden bg-[#06070a]">
             {displayBanner && (
-              <img 
-                src={displayBanner} 
-                alt="Profile Banner" 
-                className="w-full h-full object-cover object-center filter brightness-95" 
-              />
+              isVideoBanner(displayBanner) ? (
+                <video 
+                  src={displayBanner} 
+                  autoPlay 
+                  loop 
+                  muted 
+                  playsInline 
+                  className="w-full h-full object-cover object-center filter brightness-95" 
+                />
+              ) : (
+                <img 
+                  src={displayBanner} 
+                  alt="Profile Banner" 
+                  className="w-full h-full object-cover object-center filter brightness-95" 
+                />
+              )
             )}
             {/* Smooth Vignette Gradient Fade */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] via-[#0c0d12]/40 to-transparent" />
@@ -518,7 +563,7 @@ export function ProfileView() {
                 onClick={() => { setIsEditing(true); setEditTab('banner'); }}
                 className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 text-white/80 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
               >
-                <ImageIcon size={13} /> {language === 'de' ? 'Banner bearbeiten' : 'Edit Banner'}
+                <ImageIcon size={13} /> {language === 'de' ? 'Hintergrund bearbeiten' : 'Edit Background'}
               </button>
             )}
           </div>
@@ -551,7 +596,7 @@ export function ProfileView() {
               </div>
 
               {/* Identity Typography & Badges */}
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
                   <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight uppercase">
                     {displayName}
@@ -573,6 +618,45 @@ export function ProfileView() {
                   )}
                 </div>
 
+                {/* ─── Exact Steam Stats Pills (Screenshot Feature) ─── */}
+                {(isViewingFriend ? (profileData?.steamProfileUrl || friend?.steamProfileUrl) : settings.steamProfileUrl) && (
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-0.5">
+                    {/* Steam Logo */}
+                    <div className="w-7 h-7 rounded-full bg-[#1b2838] border border-[#2a475e]/70 flex items-center justify-center flex-shrink-0 shadow-sm" title="Linked Steam Profile">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-4 h-4" alt="Steam" />
+                    </div>
+
+                    {/* Level Pill */}
+                    {steamLevel !== undefined && (
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1b2838]/90 border border-[#2a475e]/80 text-[#66c0f4] text-xs font-bold shadow-sm">
+                        <Trophy size={13} className="text-[#66c0f4]" />
+                        <span>Level {steamLevel}</span>
+                      </div>
+                    )}
+
+                    {/* Games Count Pill */}
+                    {steamGamesCount !== undefined && steamGamesCount > 0 && (
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1b2838]/90 border border-[#2a475e]/80 text-[#66c0f4] text-xs font-bold shadow-sm">
+                        <Gamepad2 size={13} className="text-[#66c0f4]" />
+                        <span>{steamGamesCount} Games</span>
+                      </div>
+                    )}
+
+                    {/* Featured Favorite Badge Pill */}
+                    {steamFavoriteBadge && steamFavoriteBadge.name && (
+                      <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-[#1b2838]/90 border border-[#2a475e]/80 shadow-sm" title={steamFavoriteBadge.xp ? `${steamFavoriteBadge.name} (${steamFavoriteBadge.xp})` : steamFavoriteBadge.name}>
+                        {steamFavoriteBadge.iconUrl && (
+                          <img src={steamFavoriteBadge.iconUrl} alt={steamFavoriteBadge.name} className="w-5 h-5 object-contain flex-shrink-0" />
+                        )}
+                        <div className="text-left">
+                          <span className="text-[9px] font-bold text-[#66c0f4] uppercase tracking-wider block leading-none">FEATURED</span>
+                          <span className="text-xs font-bold text-white leading-none">{steamFavoriteBadge.name}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Inline Status Row */}
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-0.5">
                   {/* Status Indicator */}
@@ -580,15 +664,6 @@ export function ProfileView() {
                     <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-white/30'}`} />
                     <span className="font-medium">{isViewingFriend ? friendStatusText : t('online')}</span>
                   </div>
-
-                  {/* Steam Badge */}
-                  {(isViewingFriend ? (profileData?.steamProfileUrl || friend?.steamProfileUrl) : settings.steamProfileUrl) && (
-                    <span className="text-xs font-medium text-[#66c0f4] flex items-center gap-1.5 bg-[#1b2838]/60 border border-[#2a475e]/40 px-2.5 py-0.5 rounded-md">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-3.5 h-3.5" alt="Steam" />
-                      Steam
-                      {steamLevel !== undefined && <span className="text-white/60 font-mono text-[11px]">Lvl {steamLevel}</span>}
-                    </span>
-                  )}
 
                   {/* Active In-Game Badge */}
                   {!isViewingFriend && activeGame && (
@@ -747,7 +822,7 @@ export function ProfileView() {
               <div className="flex flex-wrap gap-1.5 mb-6 border-b border-white/[0.06] pb-3">
                 {[
                   { id: 'general', label: language === 'de' ? 'Allgemein' : 'General', icon: User },
-                  { id: 'banner', label: language === 'de' ? 'Banner' : 'Banner', icon: ImageIcon },
+                  { id: 'banner', label: language === 'de' ? 'Hintergrund' : 'Background', icon: ImageIcon },
                   { id: 'frame', label: language === 'de' ? 'Avatar-Rahmen' : 'Avatar Frames', icon: Sparkles },
                   { id: 'socials', label: language === 'de' ? 'Bio & Socials' : 'Bio & Socials', icon: MessageSquare },
                   { id: 'steam', label: 'Steam Sync', icon: RefreshCw },
@@ -819,12 +894,53 @@ export function ProfileView() {
                 </div>
               )}
 
-              {/* Tab 2: Banner Presets & Custom */}
+              {/* Tab 2: Banner & Background (Live Steam, Presets & Custom) */}
               {editTab === 'banner' && (
-                <div className="space-y-4">
+                <div className="space-y-5">
+                  {/* Steam Live Background option if detected */}
+                  {(steamBackgroundMovie || steamBackgroundUrl) && (
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#66c0f4] uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                        <Play size={12} className="text-[#66c0f4]" />
+                        {language === 'de' ? 'Steam Hintergrund (Automatisch von Steam synchronisiert)' : 'Steam Background (Auto-synced from Steam)'}
+                      </label>
+                      <div 
+                        onClick={() => setEditBanner(steamBackgroundMovie || steamBackgroundUrl || '')}
+                        className={`group relative h-28 rounded-xl overflow-hidden border cursor-pointer transition-all ${
+                          editBanner === (steamBackgroundMovie || steamBackgroundUrl) ? 'border-[#66c0f4] ring-2 ring-[#66c0f4]/50' : 'border-white/[0.08] hover:border-white/30'
+                        }`}
+                      >
+                        {steamBackgroundMovie ? (
+                          <video 
+                            src={steamBackgroundMovie} 
+                            autoPlay 
+                            loop 
+                            muted 
+                            playsInline 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <img src={steamBackgroundUrl} alt="Steam Background" className="w-full h-full object-cover" />
+                        )}
+                        <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors" />
+                        
+                        <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/70 backdrop-blur-sm border border-white/20 text-white text-[10px] font-semibold">
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-3 h-3" alt="Steam" />
+                          <span>{steamBackgroundMovie ? 'Steam Live Animated Video' : 'Steam Profile Background'}</span>
+                        </div>
+
+                        {editBanner === (steamBackgroundMovie || steamBackgroundUrl) && (
+                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#66c0f4] flex items-center justify-center shadow-md">
+                            <Check size={12} className="text-black" strokeWidth={3} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2.5">
-                      {language === 'de' ? 'Banner-Vorlage auswählen' : 'Select Banner Preset'}
+                      {language === 'de' ? 'Oder Vorlage auswählen' : 'Or Select Preset'}
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
                       {BANNER_PRESETS.map(preset => {
@@ -857,11 +973,11 @@ export function ProfileView() {
 
                   <div className="pt-2">
                     <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">
-                      {language === 'de' ? 'Oder eigene Banner-Bild URL (JPG / PNG / GIF)' : 'Or custom banner image URL (JPG / PNG / GIF)'}
+                      {language === 'de' ? 'Eigene Hintergrund-URL (Bild JPG/PNG oder Live Video MP4/WebM)' : 'Custom Background URL (Image JPG/PNG or Live Video MP4/WebM)'}
                     </label>
                     <input 
                       type="text" 
-                      placeholder="https://..."
+                      placeholder="https://... (JPG, PNG, WebM oder MP4)"
                       value={editBanner}
                       onChange={e => setEditBanner(e.target.value)}
                       className="w-full bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl px-3.5 py-2 text-xs text-white font-mono transition-colors focus:outline-none"
@@ -972,8 +1088,8 @@ export function ProfileView() {
                     </span>
                     <p className="text-xs text-white/60">
                       {language === 'de' 
-                        ? 'Verknüpfe dein Steam-Profil, um Avatar, Benutzernamen, Steam-Level, alle Abzeichen und Steam-Spiele automatisch zu synchronisieren.' 
-                        : 'Link your Steam profile to sync avatar, username, level, badges, and full game library.'}
+                        ? 'Verknüpfe dein Steam-Profil, um Avatar, Benutzernamen, Steam-Level, alle Abzeichen, Steam-Spiele und deinen Steam Live-Hintergrund automatisch zu synchronisieren.' 
+                        : 'Link your Steam profile to sync avatar, username, level, badges, full game library, and live animated background.'}
                     </p>
                   </div>
 

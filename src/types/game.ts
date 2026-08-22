@@ -97,6 +97,8 @@ export interface EclipseFriend {
   steamFavoriteBadge?: SteamFavoriteBadge
   steamBadges?: SteamBadge[]
   steamGames?: SteamProfileGame[]
+  steamBackgroundUrl?: string
+  steamBackgroundMovie?: string
   lastSeen?: number
   totalPlaytimeHours?: string
   totalPlaytimeMins?: number
@@ -238,6 +240,8 @@ export interface AppSettings {
   steamFavoriteBadge?: any
   steamBadges?: SteamBadge[]
   steamGames?: SteamProfileGame[]
+  steamBackgroundUrl?: string
+  steamBackgroundMovie?: string
   eclipseFriends?: EclipseFriend[]
   incomingFriendRequests?: FriendRequest[]
   outgoingFriendRequests?: Array<{
