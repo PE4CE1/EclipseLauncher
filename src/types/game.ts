@@ -61,11 +61,25 @@ export interface SteamRecentGame {
   appId: string
 }
 
+export interface SteamBadge {
+  name: string
+  iconUrl: string
+  xp?: string
+  level?: string
+}
+
 export interface SteamFavoriteBadge {
   name: string
   iconUrl: string
-  xp: string
-  url: string
+  xp?: string
+  url?: string
+}
+
+export interface SteamProfileGame {
+  appId: string
+  name: string
+  iconUrl?: string
+  playtime?: string
 }
 
 export interface EclipseFriend {
@@ -81,6 +95,8 @@ export interface EclipseFriend {
   steamBadgesCount?: number
   steamRecentGames?: SteamRecentGame[]
   steamFavoriteBadge?: SteamFavoriteBadge
+  steamBadges?: SteamBadge[]
+  steamGames?: SteamProfileGame[]
   lastSeen?: number
   totalPlaytimeHours?: string
   totalPlaytimeMins?: number
@@ -219,7 +235,9 @@ export interface AppSettings {
   steamGamesCount?: number
   steamBadgesCount?: number
   steamRecentGames?: SteamRecentGame[]
-  steamFavoriteBadge?: SteamFavoriteBadge
+  steamFavoriteBadge?: any
+  steamBadges?: SteamBadge[]
+  steamGames?: SteamProfileGame[]
   eclipseFriends?: EclipseFriend[]
   incomingFriendRequests?: FriendRequest[]
   outgoingFriendRequests?: Array<{

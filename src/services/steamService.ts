@@ -773,6 +773,8 @@ export interface SteamUserProfile {
   steamBadgesCount?: number;
   steamRecentGames?: any[];
   steamFavoriteBadge?: any;
+  steamBadges?: Array<{ name: string; iconUrl: string; xp?: string; level?: string }>;
+  steamGames?: Array<{ appId: string; name: string; iconUrl?: string; playtime?: string }>;
 }
 
 export function constructSteamProfileUrl(input: string): string {
@@ -788,24 +790,43 @@ export function constructSteamProfileUrl(input: string): string {
 }
 
 /**
- * Fetch public Steam profile data (Avatar, Username, and Stats) bypassing CORS via main process.
+ * Fetch public Steam profile data (Avatar, Username, Badges, Games, and Stats) bypassing CORS via main process.
  */
 export async function fetchSteamUserProfile(profileUrl: string): Promise<SteamUserProfile | null> {
   try {
     const baseUrl = constructSteamProfileUrl(profileUrl);
     const xmlUrl = `${baseUrl}?xml=1`;
+    const badgesUrl = `${baseUrl}badges/?l=english`;
+    const gamesXmlUrl = `${baseUrl}games/?tab=all&xml=1`;
     
     let xmlText: string | null = null;
     let htmlText: string | null = null;
+    let badgesHtmlText: string | null = null;
+    let gamesXmlText: string | null = null;
 
     // Use electronAPI to bypass CORS if available
     if (typeof window !== 'undefined' && window.electronAPI?.utilFetch) {
-      xmlText = await window.electronAPI.utilFetch(xmlUrl);
-      htmlText = await window.electronAPI.utilFetch(baseUrl);
+      const [resXml, resHtml, resBadges, resGames] = await Promise.allSettled([
+        window.electronAPI.utilFetch(xmlUrl),
+        window.electronAPI.utilFetch(baseUrl),
+        window.electronAPI.utilFetch(badgesUrl),
+        window.electronAPI.utilFetch(gamesXmlUrl)
+      ]);
+      if (resXml.status === 'fulfilled') xmlText = resXml.value;
+      if (resHtml.status === 'fulfilled') htmlText = resHtml.value;
+      if (resBadges.status === 'fulfilled') badgesHtmlText = resBadges.value;
+      if (resGames.status === 'fulfilled') gamesXmlText = resGames.value;
     } else {
-      const [resXml, resHtml] = await Promise.all([fetch(xmlUrl), fetch(baseUrl)]);
-      if (resXml.ok) xmlText = await resXml.text();
-      if (resHtml.ok) htmlText = await resHtml.text();
+      const [resXml, resHtml, resBadges, resGames] = await Promise.allSettled([
+        fetch(xmlUrl).then(r => r.text()),
+        fetch(baseUrl).then(r => r.text()),
+        fetch(badgesUrl).then(r => r.text()),
+        fetch(gamesXmlUrl).then(r => r.text())
+      ]);
+      if (resXml.status === 'fulfilled') xmlText = resXml.value;
+      if (resHtml.status === 'fulfilled') htmlText = resHtml.value;
+      if (resBadges.status === 'fulfilled') badgesHtmlText = resBadges.value;
+      if (resGames.status === 'fulfilled') gamesXmlText = resGames.value;
     }
     
     if (!xmlText && !htmlText) return null;
@@ -868,6 +889,8 @@ export async function fetchSteamUserProfile(profileUrl: string): Promise<SteamUs
     let steamBadgesCount: number | undefined = undefined;
     let steamRecentGames: any[] = [];
     let steamFavoriteBadge: any = undefined;
+    const steamBadges: Array<{ name: string; iconUrl: string; xp?: string; level?: string }> = [];
+    const steamGames: Array<{ appId: string; name: string; iconUrl?: string; playtime?: string }> = [];
 
     if (htmlText) {
       const htmlDoc = parser.parseFromString(htmlText, 'text/html');
@@ -921,12 +944,83 @@ export async function fetchSteamUserProfile(profileUrl: string): Promise<SteamUs
             iconUrl: iconEl.getAttribute('src') || '',
             url: favBadgeEl.getAttribute('href') || ''
           };
+          steamBadges.push({
+            name: nameEl.textContent?.trim() || '',
+            iconUrl: iconEl.getAttribute('src') || '',
+            xp: xpEl.textContent?.trim() || ''
+          });
         }
       }
+    }
 
+    // Parse Badges from badges HTML page
+    if (badgesHtmlText) {
+      const badgesDoc = parser.parseFromString(badgesHtmlText, 'text/html');
+      const badgeRows = badgesDoc.querySelectorAll('.badge_row');
+      badgeRows.forEach(row => {
+        const img = row.querySelector('.badge_icon img') || row.querySelector('img.badge_icon') || row.querySelector('.badge_row_inner img');
+        const titleEl = row.querySelector('.badge_title') || row.querySelector('.badge_info_title');
+        const xpEl = row.querySelector('.badge_info_description .badge_xp') || row.querySelector('.badge_xp') || row.querySelector('.badge_info_stats');
+        const iconUrl = img?.getAttribute('src') || '';
+        
+        if (iconUrl && !steamBadges.some(b => b.iconUrl === iconUrl)) {
+          const rawTitle = titleEl?.textContent?.replace(/\s+/g, ' ').trim() || 'Steam Badge';
+          const xp = xpEl?.textContent?.replace(/\s+/g, ' ').trim() || '';
+          steamBadges.push({
+            name: rawTitle,
+            iconUrl,
+            xp: xp || undefined
+          });
+        }
+      });
+    }
+
+    // Parse Games from games XML
+    if (gamesXmlText) {
+      const gDoc = parser.parseFromString(gamesXmlText, 'text/xml');
+      const gameNodes = gDoc.querySelectorAll('games > game');
+      gameNodes.forEach(gNode => {
+        const appId = gNode.querySelector('appID')?.textContent || '';
+        const name = gNode.querySelector('name')?.textContent || '';
+        const logo = gNode.querySelector('logo')?.textContent || '';
+        const hours = gNode.querySelector('hoursOnRecord')?.textContent || '';
+        if (name && appId && !steamGames.some(g => g.appId === appId)) {
+          steamGames.push({
+            appId,
+            name,
+            iconUrl: logo || `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`,
+            playtime: hours ? `${hours} hrs` : undefined
+          });
+        }
+      });
+    }
+
+    // Fallback: If gamesXml is empty, copy from recent games
+    if (steamGames.length === 0 && steamRecentGames.length > 0) {
+      steamRecentGames.forEach(rg => {
+        steamGames.push({
+          appId: rg.appId,
+          name: rg.name,
+          iconUrl: rg.iconUrl,
+          playtime: rg.playtime
+        });
+      });
     }
     
-    return { steamId64, username, avatarFull, onlineState, stateMessage, steamLevel, steamGamesCount, steamBadgesCount, steamRecentGames, steamFavoriteBadge };
+    return { 
+      steamId64, 
+      username, 
+      avatarFull, 
+      onlineState, 
+      stateMessage, 
+      steamLevel, 
+      steamGamesCount: steamGamesCount || steamGames.length, 
+      steamBadgesCount: steamBadgesCount || steamBadges.length, 
+      steamRecentGames, 
+      steamFavoriteBadge,
+      steamBadges,
+      steamGames
+    };
   } catch (err) {
     console.error('[steamService] Error fetching steam profile:', err);
     return null;

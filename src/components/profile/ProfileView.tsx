@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   User, Library, Clock, Save, Edit3, Settings, Trophy, Gamepad2, 
   UserPlus, Check, ArrowLeft, Loader2, Cpu, Zap, HardDrive, Monitor, 
   Image as ImageIcon, Sparkles, Copy, ExternalLink, X, RefreshCw, 
-  MessageSquare, CheckCircle2, Shield
+  MessageSquare, CheckCircle2, Award, Search, ChevronRight
 } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
@@ -13,7 +13,7 @@ import { syncMyProfile, fetchUserProfile, sendFriendRequest } from '../../servic
 import { fetchSteamUserProfile } from '../../services/steamService'
 import { formatLastSeen } from '../../services/assetHelper'
 import { sendAppNotification } from '../../services/notificationService'
-import type { EclipseFriend } from '../../types/game'
+import type { EclipseFriend, SteamBadge, SteamProfileGame } from '../../types/game'
 
 const BANNER_PRESETS = [
   { id: 'galaxy', name: 'Eclipse Galaxy', url: 'https://images.unsplash.com/photo-1538370965046-79c0d6907d47?q=80&w=1600&auto=format&fit=crop' },
@@ -44,6 +44,9 @@ export function ProfileView() {
   const [requestSent, setRequestSent] = useState(false)
   const [copiedDiscord, setCopiedDiscord] = useState(false)
   const [copiedFriendCode, setCopiedFriendCode] = useState(false)
+  
+  const [steamGamesSearch, setSteamGamesSearch] = useState('')
+  const [activeSteamTab, setActiveSteamTab] = useState<'recent' | 'all'>('recent')
 
   const friend = selectedFriendId ? settings.eclipseFriends?.find(f => f.id === selectedFriendId) : null
   const isViewingFriend = !!selectedFriendId
@@ -69,7 +72,9 @@ export function ProfileView() {
               steamGamesCount: steamData.steamGamesCount,
               steamBadgesCount: steamData.steamBadgesCount,
               steamFavoriteBadge: steamData.steamFavoriteBadge,
-              steamRecentGames: steamData.steamRecentGames,
+              steamBadges: steamData.steamBadges || [],
+              steamGames: steamData.steamGames || [],
+              steamRecentGames: steamData.steamRecentGames || [],
               steamProfileUrl: `https://steamcommunity.com/profiles/${steamData.steamId64}`,
               status: steamData.onlineState === 'in-game' ? 'ingame' : steamData.onlineState === 'online' ? 'online' : 'offline',
             })
@@ -171,6 +176,10 @@ export function ProfileView() {
     ? (profileData?.steamGamesCount ?? friend?.steamGamesCount) 
     : settings.steamGamesCount
 
+  const steamBadgesCount = isViewingFriend 
+    ? (profileData?.steamBadgesCount ?? friend?.steamBadgesCount) 
+    : settings.steamBadgesCount
+
   const steamRecentGames = isViewingFriend 
     ? (profileData?.steamRecentGames || friend?.steamRecentGames || []) 
     : (settings.steamRecentGames || [])
@@ -178,6 +187,14 @@ export function ProfileView() {
   const steamFavoriteBadge = isViewingFriend 
     ? (profileData?.steamFavoriteBadge || friend?.steamFavoriteBadge) 
     : settings.steamFavoriteBadge
+
+  const steamBadges: SteamBadge[] = isViewingFriend 
+    ? (profileData?.steamBadges || friend?.steamBadges || []) 
+    : (settings.steamBadges || [])
+
+  const steamGames: SteamProfileGame[] = isViewingFriend 
+    ? (profileData?.steamGames || friend?.steamGames || []) 
+    : (settings.steamGames || [])
 
   const friendStatus = profileData?.status || friend?.status || 'offline'
   const friendCurrentGame = friendStatus === 'ingame' ? (profileData?.currentGame || friend?.currentGame) : null
@@ -202,6 +219,13 @@ export function ProfileView() {
       : formatLastSeen(friendLastSeen, language)
 
   const isOnline = isViewingFriend ? friendStatus !== 'offline' : true
+
+  // Filtered Steam Games for search
+  const filteredSteamGames = useMemo(() => {
+    if (!steamGamesSearch.trim()) return steamGames
+    const q = steamGamesSearch.toLowerCase().trim()
+    return steamGames.filter(g => g.name.toLowerCase().includes(q))
+  }, [steamGames, steamGamesSearch])
 
   // Local Playtime Calculations (for own profile)
   const allUserGamesMap = new Map<string, any>()
@@ -238,7 +262,7 @@ export function ProfileView() {
 
   const totalLibraryCount = installedGames.length + library.filter(g => !installedGames.some(ig => ig.name === g.name)).length
 
-  // Profile Display Values (seamlessly bridging cloud-synced friends and local user)
+  // Profile Display Values
   const displayTotalPlaytime = isViewingFriend 
     ? (profileData?.totalPlaytimeHours || friend?.totalPlaytimeHours || (steamRecentGames.length > 0 ? (() => {
         let hrs = 0
@@ -319,7 +343,9 @@ export function ProfileView() {
           steamGamesCount: profile.steamGamesCount ?? 0,
           steamBadgesCount: profile.steamBadgesCount ?? 0,
           steamRecentGames: profile.steamRecentGames || [],
-          steamFavoriteBadge: profile.steamFavoriteBadge || null
+          steamFavoriteBadge: profile.steamFavoriteBadge || null,
+          steamBadges: profile.steamBadges || [],
+          steamGames: profile.steamGames || []
         }
         updateSettings(patch)
         if (window.electronAPI?.setSettings) {
@@ -328,7 +354,7 @@ export function ProfileView() {
         await syncMyProfile()
         sendAppNotification({
           title: language === 'de' ? 'Steam synchronisiert' : 'Steam Synced',
-          body: language === 'de' ? `Profil von ${profile.username} erfolgreich verknüpft.` : `Profile of ${profile.username} linked.`,
+          body: language === 'de' ? `Profil von ${profile.username} erfolgreich verknüpft (${profile.steamBadges?.length || 0} Badges, ${profile.steamGames?.length || 0} Games).` : `Profile of ${profile.username} linked.`,
           type: 'success'
         })
       } else {
@@ -401,6 +427,8 @@ export function ProfileView() {
           steamLevel: steamLevel || 1,
           steamRecentGames: steamRecentGames || [],
           steamFavoriteBadge: steamFavoriteBadge || null,
+          steamBadges: steamBadges || [],
+          steamGames: steamGames || []
         }
         updateSettings({
           eclipseFriends: [...currentFriends, newFriend]
@@ -784,8 +812,8 @@ export function ProfileView() {
                     <CleanCheckbox 
                       checked={editShowSteamStats}
                       onChange={() => setEditShowSteamStats(!editShowSteamStats)}
-                      label={language === 'de' ? 'Steam-Level & Abzeichen anzeigen' : 'Show Steam Level & Badges'}
-                      description={language === 'de' ? 'Zeigt dein synchronisiertes Steam-Level und deine Steam-Aktivität an.' : 'Displays your synced Steam level and recent activity.'}
+                      label={language === 'de' ? 'Steam-Level, Badges & Spiele anzeigen' : 'Show Steam Level, Badges & Games'}
+                      description={language === 'de' ? 'Zeigt dein synchronisiertes Steam-Level, Abzeichen und Steam-Spiele an.' : 'Displays your synced Steam level, badges, and games.'}
                     />
                   </div>
                 </div>
@@ -944,8 +972,8 @@ export function ProfileView() {
                     </span>
                     <p className="text-xs text-white/60">
                       {language === 'de' 
-                        ? 'Verknüpfe dein Steam-Profil, um Avatar, Benutzernamen, Steam-Level, Abzeichen und zuletzt gespielte Spiele automatisch zu synchronisieren.' 
-                        : 'Link your Steam profile to sync avatar, username, level, badges, and recent games.'}
+                        ? 'Verknüpfe dein Steam-Profil, um Avatar, Benutzernamen, Steam-Level, alle Abzeichen und Steam-Spiele automatisch zu synchronisieren.' 
+                        : 'Link your Steam profile to sync avatar, username, level, badges, and full game library.'}
                     </p>
                   </div>
 
@@ -1195,17 +1223,194 @@ export function ProfileView() {
           </motion.div>
         </div>
 
-        {/* ─── Most Played Games Section ─── */}
-        {displayTopGames.length > 0 && (
-          <motion.div
+        {/* ─── Steam Badges Showcase ─── */}
+        {(settings.profileShowSteamStats !== false) && steamBadges && steamBadges.length > 0 && (
+          <motion.div 
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
           >
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <Award size={15} className="text-amber-400/90" />
+                <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
+                  Steam Badges & Abzeichen
+                </h3>
+                <span className="text-[11px] font-mono text-white/40">
+                  ({steamBadges.length}{steamBadgesCount && steamBadgesCount > steamBadges.length ? ` von ${steamBadgesCount}` : ''})
+                </span>
+              </div>
+              {steamFavoriteBadge && (
+                <div className="flex items-center gap-1.5 text-[11px] text-amber-300/80 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                  <span>Favorite: {steamFavoriteBadge.name}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Badges Flow Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+              {steamBadges.map((badge, idx) => (
+                <div 
+                  key={`${badge.name}-${idx}`}
+                  className="bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/20 rounded-xl p-2.5 flex flex-col items-center gap-1.5 transition-all text-center group"
+                  title={`${badge.name}${badge.xp ? ` (${badge.xp})` : ''}`}
+                >
+                  <div className="w-10 h-10 flex items-center justify-center relative">
+                    <img 
+                      src={badge.iconUrl} 
+                      alt={badge.name} 
+                      className="max-w-full max-h-full object-contain filter group-hover:scale-110 transition-transform" 
+                    />
+                  </div>
+                  <span className="text-[10px] font-medium text-white/80 group-hover:text-white line-clamp-1 break-all">
+                    {badge.name}
+                  </span>
+                  {badge.xp && (
+                    <span className="text-[9px] font-mono text-white/40">
+                      {badge.xp}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ─── Steam Games Showcase ─── */}
+        {(settings.profileShowSteamStats !== false) && ((steamGames && steamGames.length > 0) || (steamRecentGames && steamRecentGames.length > 0)) && (
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm space-y-4"
+          >
+            {/* Header & Sub-Tabs */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
+              <div className="flex items-center gap-3">
+                <Gamepad2 size={15} className="text-[#66c0f4]" />
+                <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
+                  Steam Games
+                </h3>
+                
+                {/* Switcher: Recent / All Games */}
+                <div className="flex items-center gap-1 bg-white/[0.04] p-0.5 rounded-lg border border-white/[0.06]">
+                  <button
+                    onClick={() => setActiveSteamTab('recent')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
+                      activeSteamTab === 'recent' 
+                        ? 'bg-white/10 text-white font-semibold' 
+                        : 'text-white/40 hover:text-white'
+                    }`}
+                  >
+                    {language === 'de' ? 'Kürzlich gespielt' : 'Recent'} ({steamRecentGames.length})
+                  </button>
+                  {steamGames.length > 0 && (
+                    <button
+                      onClick={() => setActiveSteamTab('all')}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
+                        activeSteamTab === 'all' 
+                          ? 'bg-white/10 text-white font-semibold' 
+                          : 'text-white/40 hover:text-white'
+                      }`}
+                    >
+                      {language === 'de' ? 'Alle Steam-Spiele' : 'All Steam Games'} ({steamGamesCount || steamGames.length})
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Search if in 'all' view */}
+              {activeSteamTab === 'all' && steamGames.length > 0 && (
+                <div className="relative">
+                  <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/30" />
+                  <input
+                    type="text"
+                    placeholder={language === 'de' ? 'Steam-Spiel suchen...' : 'Search Steam game...'}
+                    value={steamGamesSearch}
+                    onChange={e => setSteamGamesSearch(e.target.value)}
+                    className="bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-lg pl-7 pr-3 py-1 text-xs text-white placeholder:text-white/30 focus:outline-none w-48"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Tab: Recent Games */}
+            {activeSteamTab === 'recent' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+                {steamRecentGames.map((game: any) => (
+                  <div 
+                    key={game.appId || game.name} 
+                    onClick={() => {
+                      if (game.appId) openGameDetails(Number(game.appId), game.name)
+                    }}
+                    className="bg-white/[0.02] hover:bg-white/[0.05] rounded-xl overflow-hidden border border-white/[0.06] hover:border-white/20 transition-all shadow-sm cursor-pointer group"
+                  >
+                    <div className="relative h-24 overflow-hidden bg-black/50">
+                      <img 
+                        src={game.iconUrl} 
+                        alt={game.name} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] via-transparent to-transparent" />
+                    </div>
+                    <div className="p-3">
+                      <h4 className="font-semibold text-white text-xs truncate mb-1 group-hover:text-white transition-colors">
+                        {game.name}
+                      </h4>
+                      <p className="text-[11px] text-[#66c0f4] font-medium font-mono">
+                        {game.playtime}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Tab: All Steam Games Library */}
+            {activeSteamTab === 'all' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-[420px] overflow-y-auto pr-1">
+                {filteredSteamGames.map((game: any) => (
+                  <div
+                    key={game.appId || game.name}
+                    onClick={() => {
+                      if (game.appId) openGameDetails(Number(game.appId), game.name)
+                    }}
+                    className="flex items-center gap-2.5 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.04] hover:border-white/15 transition-all cursor-pointer group"
+                  >
+                    <img 
+                      src={game.iconUrl || `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appId}/header.jpg`} 
+                      alt={game.name} 
+                      className="w-10 h-6 object-cover rounded bg-black/60 flex-shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-white/90 group-hover:text-white truncate">
+                        {game.name}
+                      </p>
+                      {game.playtime && (
+                        <p className="text-[10px] text-white/40 font-mono truncate">
+                          {game.playtime}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* ─── Most Played Local Games Section ─── */}
+        {displayTopGames.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
+          >
             <h3 className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-3 flex items-center gap-2">
               <Trophy size={13} className="text-amber-400/90" />
-              {language === 'de' ? 'Meistgespielte Spiele' : 'Most Played Games'}
+              {language === 'de' ? 'Meistgespielte Spiele (Eclipse)' : 'Most Played Games (Eclipse)'}
             </h3>
             <div className="divide-y divide-white/[0.04]">
               {displayTopGames.map((game: any, idx: number) => {
@@ -1234,35 +1439,6 @@ export function ProfileView() {
                   </div>
                 )
               })}
-            </div>
-          </motion.div>
-        )}
-
-        {/* ─── Steam Recent Activity Showcase ─── */}
-        {steamRecentGames && steamRecentGames.length > 0 && (settings.profileShowSteamStats !== false) && (
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="space-y-3"
-          >
-            <div className="flex items-center gap-3">
-              <h3 className="text-xs font-semibold text-white/80 uppercase tracking-wider">Steam Recent Activity</h3>
-              <div className="h-[1px] flex-1 bg-white/[0.06]" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-              {steamRecentGames.slice(0, 3).map((game: any) => (
-                <div key={game.appId || game.name} className="bg-[#0c0d12] rounded-xl overflow-hidden border border-white/[0.06] hover:border-white/20 transition-all shadow-sm">
-                  <div className="relative h-20 overflow-hidden">
-                    <img src={game.iconUrl} alt={game.name} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] to-transparent" />
-                  </div>
-                  <div className="p-3 relative -mt-4">
-                    <h4 className="font-medium text-white text-xs truncate drop-shadow-sm mb-0.5">{game.name}</h4>
-                    <p className="text-[11px] text-[#66c0f4] font-medium">{game.playtime}</p>
-                  </div>
-                </div>
-              ))}
             </div>
           </motion.div>
         )}
