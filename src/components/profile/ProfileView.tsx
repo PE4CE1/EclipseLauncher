@@ -387,7 +387,6 @@ export function ProfileView() {
         return
       }
 
-      // If friend request to D1 fails, but this is a valid profile / Steam profile, add to local friends directly
       const currentFriends = settings.eclipseFriends || []
       const targetId = profileData?.uid || profileData?.steamId64 || selectedFriendId
       if (targetId && !currentFriends.some(f => f.id === targetId)) {
@@ -986,13 +985,13 @@ export function ProfileView() {
               {/* Tab 6: Gaming Rig & PC Specs */}
               {editTab === 'hardware' && (
                 <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-white/[0.06]">
+                  <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
                     <div>
                       <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider block">
                         {language === 'de' ? 'PC-Hardware (Automatisch erkannt)' : 'Hardware Specs (Auto-detected)'}
                       </span>
                       <span className="text-xs text-white/60">
-                        {language === 'de' ? 'Direkt von Windows ermittelte Hardware-Komponenten' : 'Detected Windows system hardware'}
+                        {language === 'de' ? 'Vollständige Hardware-Komponenten aus Windows' : 'Full hardware specifications from Windows'}
                       </span>
                     </div>
 
@@ -1021,38 +1020,29 @@ export function ProfileView() {
                     </div>
                   </div>
 
-                  {/* Minimalist Specs Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-                    <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3 flex items-center gap-2.5">
-                      <Zap size={16} className="text-white/40 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">GPU</span>
-                        <span className="text-xs font-semibold text-white truncate block">{displayHardware?.gpu || '—'}</span>
-                      </div>
+                  {/* Clean Non-Truncated Specs Layout */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono font-semibold uppercase text-white/40 block">GPU</span>
+                      <p className="text-xs font-medium text-white break-words leading-relaxed">{displayHardware?.gpu || '—'}</p>
                     </div>
 
-                    <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3 flex items-center gap-2.5">
-                      <Cpu size={16} className="text-white/40 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">CPU</span>
-                        <span className="text-xs font-semibold text-white truncate block">{displayHardware?.cpu || '—'}</span>
-                      </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono font-semibold uppercase text-white/40 block">CPU</span>
+                      <p className="text-xs font-medium text-white break-words leading-relaxed">{displayHardware?.cpu || '—'}</p>
                     </div>
 
-                    <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3 flex items-center gap-2.5">
-                      <HardDrive size={16} className="text-white/40 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">RAM</span>
-                        <span className="text-xs font-semibold text-white truncate block">{displayHardware?.ram || '—'}</span>
-                      </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono font-semibold uppercase text-white/40 block">Memory</span>
+                      <p className="text-xs font-medium text-white break-words leading-relaxed">{displayHardware?.ram || '—'}</p>
                     </div>
 
-                    <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3 flex items-center gap-2.5">
-                      <Monitor size={16} className="text-white/40 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">{displayHardware?.os || 'OS / Display'}</span>
-                        <span className="text-xs font-semibold text-white truncate block">{displayHardware?.display || 'Primary Monitor'}</span>
-                      </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono font-semibold uppercase text-white/40 block">Display & OS</span>
+                      <p className="text-xs font-medium text-white break-words leading-relaxed">
+                        {displayHardware?.display || 'Primary Monitor'}
+                        {displayHardware?.os ? ` • ${displayHardware.os}` : ''}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1077,194 +1067,141 @@ export function ProfileView() {
           )}
         </AnimatePresence>
 
-        {/* Gaming Rig & Hardware Showcase (Feature 3: Fully Automatic & Toggleable) */}
+        {/* Minimalist Gaming Rig & Hardware Showcase (Full Visibility, No Cutoff) */}
         {displayShowHardware && displayHardware && (displayHardware.cpu || displayHardware.gpu) && (
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-6 mb-8 relative overflow-hidden shadow-xl"
+            className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-5 md:p-6 mb-8 relative shadow-lg"
           >
-            {/* Header with Title & Auto-Detected Badge */}
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+            {/* Header with Title & Auto-Detected Status */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 mb-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70">
-                  <Cpu size={16} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white tracking-wide">
-                    {language === 'de' ? 'Gaming Rig & Hardware' : 'Gaming Rig & Hardware'}
-                  </h3>
-                  <p className="text-[11px] text-white/40">
-                    {language === 'de' ? 'Automatisch von Eclipse aus Windows ausgelesen' : 'Detected from Windows'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  {language === 'de' ? 'Automatisch erkannt' : 'Auto-detected'}
+                <Cpu size={15} className="text-white/60" />
+                <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
+                  {language === 'de' ? 'System-Hardware' : 'System Hardware'}
+                </h3>
+                <span className="text-[10px] text-emerald-400 font-mono">
+                  • {language === 'de' ? 'automatisch erkannt' : 'auto-detected'}
                 </span>
-
-                {/* Toggle on own profile */}
-                {!isViewingFriend && (
-                  <button
-                    onClick={() => {
-                      const next = !settings.showHardwareSpecs
-                      updateSettings({ showHardwareSpecs: next })
-                      if (window.electronAPI?.setSettings) {
-                        window.electronAPI.setSettings({ showHardwareSpecs: next })
-                      }
-                      syncMyProfile()
-                    }}
-                    className={`text-xs font-medium px-2.5 py-1 rounded-md border transition-all cursor-pointer ${
-                      settings.showHardwareSpecs !== false 
-                        ? 'bg-white/10 border-white/20 text-white' 
-                        : 'bg-white/[0.02] border-white/10 text-white/40'
-                    }`}
-                    title="Toggle public visibility"
-                  >
-                    {settings.showHardwareSpecs !== false 
-                      ? (language === 'de' ? 'Sichtbar' : 'Visible') 
-                      : (language === 'de' ? 'Ausgeblendet' : 'Hidden')}
-                  </button>
-                )}
               </div>
+
+              {/* Visibility Switch on own profile */}
+              {!isViewingFriend && (
+                <button
+                  onClick={() => {
+                    const next = !settings.showHardwareSpecs
+                    updateSettings({ showHardwareSpecs: next })
+                    if (window.electronAPI?.setSettings) {
+                      window.electronAPI.setSettings({ showHardwareSpecs: next })
+                    }
+                    syncMyProfile()
+                  }}
+                  className="text-[11px] font-medium text-white/40 hover:text-white transition-colors cursor-pointer"
+                  title="Toggle public visibility"
+                >
+                  {settings.showHardwareSpecs !== false 
+                    ? (language === 'de' ? 'Sichtbar' : 'Visible') 
+                    : (language === 'de' ? 'Ausgeblendet' : 'Hidden')}
+                </button>
+              )}
             </div>
 
-            {/* Hardware Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Clean Minimalist Specs Row (Full Visibility, No Truncation) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* GPU */}
               {displayHardware.gpu && (
-                <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3.5 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70 flex-shrink-0">
-                    <Zap size={16} />
-                  </div>
-                  <div className="overflow-hidden min-w-0">
-                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">GPU</span>
-                    <p className="text-xs font-semibold text-white truncate" title={displayHardware.gpu}>
-                      {displayHardware.gpu}
-                    </p>
-                  </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-mono font-medium uppercase text-white/40 block">Graphics</span>
+                  <p className="text-xs font-medium text-white leading-relaxed whitespace-normal break-words">
+                    {displayHardware.gpu}
+                  </p>
                 </div>
               )}
 
               {/* CPU */}
               {displayHardware.cpu && (
-                <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3.5 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70 flex-shrink-0">
-                    <Cpu size={16} />
-                  </div>
-                  <div className="overflow-hidden min-w-0">
-                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">CPU</span>
-                    <p className="text-xs font-semibold text-white truncate" title={displayHardware.cpu}>
-                      {displayHardware.cpu}
-                    </p>
-                  </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-mono font-medium uppercase text-white/40 block">Processor</span>
+                  <p className="text-xs font-medium text-white leading-relaxed whitespace-normal break-words">
+                    {displayHardware.cpu}
+                  </p>
                 </div>
               )}
 
               {/* RAM */}
               {displayHardware.ram && (
-                <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3.5 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70 flex-shrink-0">
-                    <HardDrive size={16} />
-                  </div>
-                  <div className="overflow-hidden min-w-0">
-                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">RAM</span>
-                    <p className="text-xs font-semibold text-white truncate" title={displayHardware.ram}>
-                      {displayHardware.ram}
-                    </p>
-                  </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-mono font-medium uppercase text-white/40 block">Memory</span>
+                  <p className="text-xs font-medium text-white leading-relaxed whitespace-normal break-words">
+                    {displayHardware.ram}
+                  </p>
                 </div>
               )}
 
               {/* Display / OS */}
-              <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3.5 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70 flex-shrink-0">
-                  <Monitor size={16} />
-                </div>
-                <div className="overflow-hidden min-w-0">
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">
-                    {displayHardware.os || 'Display'}
-                  </span>
-                  <p className="text-xs font-semibold text-white truncate">
-                    {displayHardware.display ? `${displayHardware.display}` : 'Primary Monitor'}
-                  </p>
-                </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono font-medium uppercase text-white/40 block">Display & OS</span>
+                <p className="text-xs font-medium text-white leading-relaxed whitespace-normal break-words">
+                  {displayHardware.display ? displayHardware.display : 'Primary Monitor'}
+                  {displayHardware.os ? ` • ${displayHardware.os}` : ''}
+                </p>
               </div>
             </div>
           </motion.div>
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-8">
           {(!isViewingFriend ? settings.profileShowPlaytime !== false : true) && (
             <motion.div 
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-5 relative overflow-hidden shadow-lg"
+              className="bg-[#0e1015] border border-white/[0.08] rounded-xl p-4 shadow-sm"
             >
-              <div className="w-9 h-9 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center mb-3">
-                <Clock className="text-white/70" size={18} />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-0.5">
-                {displayTotalPlaytime}
-              </h3>
-              <p className="text-[11px] font-medium text-hub-muted uppercase tracking-wider">{t('totalPlaytime')}</p>
+              <span className="text-[10px] font-mono font-medium uppercase text-white/40 block mb-1">{t('totalPlaytime')}</span>
+              <p className="text-lg font-bold text-white">{displayTotalPlaytime}</p>
             </motion.div>
           )}
 
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-5 relative overflow-hidden shadow-lg"
+            className="bg-[#0e1015] border border-white/[0.08] rounded-xl p-4 shadow-sm"
           >
-            <div className="w-9 h-9 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center mb-3">
-              <Library className="text-white/70" size={18} />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-0.5">
-              {displayLibraryCount}
-            </h3>
-            <p className="text-[11px] font-medium text-hub-muted uppercase tracking-wider">
-              {t('gamesInLibrary')}
-            </p>
+            <span className="text-[10px] font-mono font-medium uppercase text-white/40 block mb-1">{t('gamesInLibrary')}</span>
+            <p className="text-lg font-bold text-white">{displayLibraryCount}</p>
           </motion.div>
 
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-5 relative overflow-hidden shadow-lg"
+            className="bg-[#0e1015] border border-white/[0.08] rounded-xl p-4 shadow-sm"
           >
-            <div className="w-9 h-9 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center mb-3">
-              <Save className="text-white/70" size={18} />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-0.5">
-              {displayInstalledCount}
-            </h3>
-            <p className="text-[11px] font-medium text-hub-muted uppercase tracking-wider">
+            <span className="text-[10px] font-mono font-medium uppercase text-white/40 block mb-1">
               {isViewingFriend ? 'Activity / Installed' : t('installedGames')}
-            </p>
+            </span>
+            <p className="text-lg font-bold text-white">{displayInstalledCount}</p>
           </motion.div>
         </div>
 
         {/* Most Played Games Section */}
         {displayTopGames.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-5 mb-8 shadow-lg"
+            className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-5 mb-8 shadow-sm"
           >
-            <h3 className="text-sm font-bold text-white mb-3.5 flex items-center gap-2">
-              <Trophy size={15} className="text-amber-400" />
+            <h3 className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Trophy size={14} className="text-amber-400" />
               {language === 'de' ? 'Meistgespielte Spiele' : 'Most Played Games'}
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {displayTopGames.map((game: any, idx: number) => {
                 const mins = Math.round(game.playTimeMinutes || 0)
                 const hrs = mins >= 60 ? (mins / 60).toFixed(1) + ' hrs' : `${mins} mins`
@@ -1276,10 +1213,10 @@ export function ProfileView() {
                     onClick={() => {
                       if (sId) openGameDetails(sId, game.name)
                     }}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.04] transition-all cursor-pointer group"
+                    className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] transition-all cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-semibold text-white/40 w-4 text-center">#{idx + 1}</span>
+                      <span className="text-xs font-mono text-white/30 w-4 text-center">#{idx + 1}</span>
                       <p className="text-xs font-medium text-white group-hover:text-white transition-colors">{game.name}</p>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -1296,18 +1233,18 @@ export function ProfileView() {
         {/* Steam Recent Activity Showcase */}
         {steamRecentGames && steamRecentGames.length > 0 && (settings.profileShowSteamStats !== false) && (
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
             className="mb-8"
           >
-            <div className="flex items-center gap-3 mb-4">
-              <h3 className="text-sm font-bold text-white tracking-wide">Steam Recent Activity</h3>
-              <div className="h-[1px] flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+            <div className="flex items-center gap-3 mb-3.5">
+              <h3 className="text-xs font-semibold text-white/80 uppercase tracking-wider">Steam Recent Activity</h3>
+              <div className="h-[1px] flex-1 bg-white/[0.06]" />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {steamRecentGames.slice(0, 3).map((game: any) => (
-                <div key={game.appId || game.name} className="bg-[#0e1015] rounded-xl overflow-hidden border border-white/[0.06] hover:border-white/20 transition-all shadow-md">
+                <div key={game.appId || game.name} className="bg-[#0e1015] rounded-xl overflow-hidden border border-white/[0.06] hover:border-white/20 transition-all shadow-sm">
                   <div className="relative h-20 overflow-hidden">
                     <img src={game.iconUrl} alt={game.name} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0e1015] to-transparent" />
