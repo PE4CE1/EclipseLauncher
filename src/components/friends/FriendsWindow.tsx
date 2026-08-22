@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, Plus, ChevronRight, ChevronDown, User, MoreVertical, Trash2, Check } from 'lucide-react';
+import { X, Search, Plus, ChevronRight, ChevronDown, User, MoreVertical, Trash2, Check, Gamepad2 } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useUIStore } from '../../store/uiStore';
 import { useGameStore } from '../../store/gameStore';
@@ -343,7 +343,12 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
 
 const FriendCard = ({ friend, onClick, onRemove, t, language }: { friend: any, onClick: () => void, onRemove: () => void, t: any, language: string }) => {
   const isOnline = friend.status !== 'offline';
-  const color = friend.status === 'ingame' ? 'bg-purple-500' : isOnline ? 'bg-green-500' : 'bg-gray-500';
+  const isIngame = friend.status === 'ingame';
+  const dotClass = isIngame 
+    ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]' 
+    : isOnline 
+      ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' 
+      : 'bg-white/20';
   
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -358,43 +363,42 @@ const FriendCard = ({ friend, onClick, onRemove, t, language }: { friend: any, o
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showMenu]);
 
-  const getStatusText = () => {
-    if (friend.status === 'ingame') {
-      return friend.currentGame 
-        ? (language === 'de' ? `Spielt ${friend.currentGame}` : `Playing ${friend.currentGame}`)
-        : (language === 'de' ? 'Im Spiel' : 'In-Game');
-    }
-    if (friend.status === 'online') return t('online');
-    return formatLastSeen(friend.lastSeen, language);
-  };
-
   return (
     <div 
       onClick={onClick}
-      className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group"
+      className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/[0.06] transition-all cursor-pointer group select-none border border-transparent hover:border-white/5"
     >
-      <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-[#2a2c33]">
+      <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-[#181a20] border border-white/10 flex-shrink-0">
         {friend.avatarUrl ? (
            <img src={friend.avatarUrl} alt={friend.username} className="w-full h-full object-cover" />
         ) : (
-           <div className="w-full h-full flex items-center justify-center text-white/50"><User size={16}/></div>
+           <div className="w-full h-full flex items-center justify-center text-white/40"><User size={16}/></div>
         )}
-        <div className={`absolute bottom-0.5 right-0.5 w-2.5 h-2.5 ${color} rounded-full border-2 border-[#141518]`}></div>
+        <div className={`absolute bottom-0.5 right-0.5 w-2.5 h-2.5 ${dotClass} rounded-full ring-2 ring-[#0e1014]`}></div>
       </div>
-      <div className="flex-1 overflow-hidden">
-        <h5 className={`text-[15px] font-bold truncate tracking-wide ${isOnline ? 'text-white' : 'text-white/50'}`}>{friend.username}</h5>
-        <p className={`text-xs truncate ${friend.status === 'ingame' ? 'text-purple-400 font-medium' : isOnline ? 'text-green-400' : 'text-white/30'}`}>
-          {getStatusText()}
-        </p>
+      <div className="flex-1 overflow-hidden min-w-0">
+        <h5 className={`text-[14px] font-semibold truncate tracking-tight ${isOnline ? 'text-white' : 'text-white/40'}`}>{friend.username}</h5>
+        <div className="text-xs truncate mt-0.5 flex items-center gap-1.5">
+          {isIngame ? (
+            <span className="inline-flex items-center gap-1.5 text-purple-300 font-medium truncate text-[11.5px]">
+              <Gamepad2 size={12} className="text-purple-400 flex-shrink-0" />
+              <span className="truncate">{friend.currentGame || (language === 'de' ? 'Im Spiel' : 'In-Game')}</span>
+            </span>
+          ) : isOnline ? (
+            <span className="text-emerald-400 font-medium text-[11.5px]">{t('online')}</span>
+          ) : (
+            <span className="text-white/35 font-normal text-[11px] truncate">{formatLastSeen(friend.lastSeen, language)}</span>
+          )}
+        </div>
       </div>
       
-      <div className="relative" ref={menuRef}>
+      <div className="relative flex-shrink-0" ref={menuRef}>
         <button 
           onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-          className={`p-1.5 rounded-md hover:bg-white/10 transition-colors ${showMenu ? 'bg-white/10 text-white' : 'text-white/30 opacity-0 group-hover:opacity-100 group-hover:text-white/50 hover:!text-white'}`}
+          className={`p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer ${showMenu ? 'bg-white/10 text-white' : 'text-white/25 opacity-0 group-hover:opacity-100 group-hover:text-white/60 hover:!text-white'}`}
           title={language === 'de' ? 'Optionen' : 'Options'}
         >
-          <MoreVertical size={16} />
+          <MoreVertical size={15} />
         </button>
         <AnimatePresence>
           {showMenu && (
@@ -403,11 +407,11 @@ const FriendCard = ({ friend, onClick, onRemove, t, language }: { friend: any, o
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.1 }}
-              className="absolute right-0 top-full mt-1 w-44 bg-[#1b1c20] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50 p-1"
+              className="absolute right-0 top-full mt-1 w-44 bg-[#181a20] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 p-1 backdrop-blur-xl"
             >
               <button 
                 onClick={(e) => { e.stopPropagation(); setShowMenu(false); onRemove(); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-md transition-colors text-left font-medium cursor-pointer"
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg transition-colors text-left font-medium cursor-pointer"
               >
                 <Trash2 size={13} /> {language === 'de' ? 'Freund entfernen' : 'Remove Friend'}
               </button>

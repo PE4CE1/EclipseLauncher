@@ -303,6 +303,36 @@ function listenToMyUserDoc(uid: string) {
   })
 }
 
+let presenceDecayInterval: NodeJS.Timeout | null = null
+
+function ensurePresenceDecayTimer() {
+  if (presenceDecayInterval) return
+  presenceDecayInterval = setInterval(() => {
+    const currentFriends = useGameStore.getState().settings.eclipseFriends || []
+    const now = Date.now()
+    let changed = false
+
+    const updated = currentFriends.map((friend) => {
+      // Only decay cloud friends with lastSeen timestamp
+      if (friend.lastSeen && friend.status !== 'offline') {
+        if (now - friend.lastSeen >= 60000) {
+          changed = true
+          return {
+            ...friend,
+            status: 'offline' as const,
+            currentGame: undefined,
+          }
+        }
+      }
+      return friend
+    })
+
+    if (changed) {
+      useGameStore.getState().updateSettings({ eclipseFriends: updated })
+    }
+  }, 10000)
+}
+
 /**
  * Sets up a real-time Firestore query for all friend user documents.
  * Updates Zustand store whenever any friend comes online, goes offline, or starts playing a game!
@@ -327,6 +357,7 @@ function listenToFriendsPresence(friendUids: string[]) {
 
   friendsQueryUnsub = onSnapshot(q, (snapshot) => {
     const liveFriendsMap = new Map<string, EclipseFriend>()
+    const now = Date.now()
 
     snapshot.docs.forEach((docItem) => {
       const u = docItem.data()
@@ -337,12 +368,18 @@ function listenToFriendsPresence(friendUids: string[]) {
         else if (typeof u.lastSeen?.seconds === 'number') lastSeenMs = u.lastSeen.seconds * 1000
       }
 
-      const now = Date.now()
+      // A user is ONLY active if last seen within the last 60 seconds and status is not explicitly offline
+      const isRecentlyActive = !!(lastSeenMs && (now - lastSeenMs < 60000))
       let status: 'online' | 'offline' | 'ingame' = 'offline'
-      if (u.status === 'ingame') {
-        status = 'ingame'
-      } else if (u.status === 'online' || (lastSeenMs && now - lastSeenMs < 120000)) {
-        status = 'online'
+      let currentGame: string | undefined = undefined
+
+      if (isRecentlyActive && u.status && u.status !== 'offline') {
+        if (u.status === 'ingame' && u.currentGame) {
+          status = 'ingame'
+          currentGame = u.currentGame
+        } else {
+          status = 'online'
+        }
       }
 
       const friendObj: EclipseFriend = {
@@ -350,7 +387,7 @@ function listenToFriendsPresence(friendUids: string[]) {
         username: u.username || 'Eclipse Player',
         avatarUrl: u.avatarUrl || '',
         status: status,
-        currentGame: u.currentGame || undefined,
+        currentGame: currentGame,
         lastSeen: lastSeenMs,
         level: u.level || 1,
         steamLevel: u.steamLevel || 1,
@@ -395,6 +432,8 @@ function listenToFriendsPresence(friendUids: string[]) {
     useGameStore.getState().updateSettings({
       eclipseFriends: updatedFriends
     })
+
+    ensurePresenceDecayTimer()
   }, (err) => {
     console.warn('[Firebase] listenToFriendsPresence error:', err)
   })

@@ -361,14 +361,24 @@ export function ProfileView() {
                   </div>
 
                   {!isViewingFriend && activeGame && (
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 animate-pulse">
-                      🎮 Currently Playing: {activeGame.name}
-                    </span>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/25 backdrop-blur-md shadow-[0_0_15px_rgba(99,102,241,0.15)]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_6px_rgba(99,102,241,0.9)] animate-pulse flex-shrink-0" />
+                      <Gamepad2 size={13} className="text-indigo-400 flex-shrink-0" />
+                      <span className="text-xs font-medium text-indigo-200 truncate">
+                        <span className="text-white/50">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
+                        <span className="text-white font-bold">{activeGame.name}</span>
+                      </span>
+                    </div>
                   )}
                   {isViewingFriend && friendCurrentGame && (
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 animate-pulse">
-                      🎮 In Game: {friendCurrentGame}
-                    </span>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/25 backdrop-blur-md shadow-[0_0_15px_rgba(168,85,247,0.15)]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.9)] animate-pulse flex-shrink-0" />
+                      <Gamepad2 size={13} className="text-purple-400 flex-shrink-0" />
+                      <span className="text-xs font-medium text-purple-200 truncate">
+                        <span className="text-white/50">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
+                        <span className="text-white font-bold">{friendCurrentGame}</span>
+                      </span>
+                    </div>
                   )}
                   
                   {/* Steam Stats Grouping */}

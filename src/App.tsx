@@ -387,16 +387,24 @@ export default function App() {
     }
   }, [activeGame, downloads, discordRpcEnabled, discordRpcIdleEnabled, discordRpcShowDownloads, discordRpcPrivacyMode])
 
-  // Live Cloud Presence (Online / In-Game / Game Name)
+  // Live Cloud Presence Heartbeat (Every 20s) & on activeGame change
   useEffect(() => {
-    if (activeGame) {
-      updateSocialPresence('ingame', activeGame.name)
-    } else {
-      updateSocialPresence('online', null)
+    const pushPresence = () => {
+      const currentActive = useGameStore.getState().activeGame
+      if (currentActive) {
+        updateSocialPresence('ingame', currentActive.name)
+      } else {
+        updateSocialPresence('online', null)
+      }
     }
+
+    pushPresence()
+    const heartbeat = setInterval(pushPresence, 20000)
+
+    return () => clearInterval(heartbeat)
   }, [activeGame])
 
-  // Clear presence when closing Eclipse
+  // Clear presence to offline when closing or navigating away from Eclipse
   useEffect(() => {
     const handleUnload = () => {
       updateSocialPresence('offline', null)
