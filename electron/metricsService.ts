@@ -63,7 +63,7 @@ export function startMetricsService(getOverlayWindow: () => BrowserWindow | null
 
   metricsInterval = setInterval(() => {
     const win = getOverlayWindow()
-    if (!win || win.isDestroyed()) return
+    if (!win || win.isDestroyed() || !win.isVisible()) return
 
     const cpu = getCpuPercent()
     const ram = getRamInfo()

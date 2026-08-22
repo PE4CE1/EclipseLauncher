@@ -130,6 +130,7 @@ export interface AppSettings {
   torboxKey?: string
   allDebridKey?: string
   hardwareAcceleration?: boolean
+  gamePerformanceMode?: boolean
   desktopNotifications?: boolean
   soundEffects?: boolean
   notificationSound?: string

@@ -1243,6 +1243,72 @@ export function SettingsView() {
                 </div>
 
                 <div className="space-y-4">
+                  {/* Auto Gaming Performance Mode Card */}
+                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-5">
+                    <div className="flex items-start justify-between gap-6">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2.5">
+                          <h3 className="font-semibold text-white text-sm tracking-wide flex items-center gap-2">
+                            <span>{t('gamePerformanceMode') || (language === 'de' ? 'Auto-Gaming Performance Modus' : 'Auto Game Performance Mode')}</span>
+                          </h3>
+                          <span className={`text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full border ${
+                            localSettings.gamePerformanceMode !== false
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              : 'bg-white/5 text-white/40 border-white/10'
+                          }`}>
+                            {localSettings.gamePerformanceMode !== false ? (language === 'de' ? '0% FPS Verlust (Aktiv)' : '0% FPS Loss (Active)') : (language === 'de' ? 'Deaktiviert' : 'Disabled')}
+                          </span>
+                        </div>
+                        <p className="text-xs text-hub-muted leading-relaxed max-w-xl">
+                          {t('gamePerformanceModeDesc') || (language === 'de' 
+                            ? 'Drosselt Eclipse automatisch im Hintergrund, wenn ein Spiel erkannt wird, pausiert GPU-Effekte/Hintergrundprozesse und senkt die CPU-Priorität, um 0% FPS-Verlust und maximale Gaming-Performance zu garantieren.' 
+                            : 'Automatically throttles Eclipse background rendering, disables GPU-heavy blur effects, lowers CPU priority, and pauses background tasks when a game is running to guarantee maximum gaming FPS.')}
+                        </p>
+                      </div>
+
+                      {/* Pure White & Black Toggle Switch */}
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={localSettings.gamePerformanceMode !== false}
+                        onClick={() => {
+                          const val = !(localSettings.gamePerformanceMode !== false)
+                          set('gamePerformanceMode', val)
+                          updateSettings({ gamePerformanceMode: val })
+                          if (window.electronAPI) {
+                            window.electronAPI.setSettings({ gamePerformanceMode: val })
+                          }
+                        }}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          localSettings.gamePerformanceMode !== false ? 'bg-white' : 'bg-white/15'
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
+                            localSettings.gamePerformanceMode !== false
+                              ? 'translate-x-5 bg-black'
+                              : 'translate-x-0 bg-white/70'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="mt-4 pt-3.5 border-t border-white/[0.08] flex items-center justify-between text-xs text-white/50">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full ${localSettings.gamePerformanceMode !== false ? 'bg-emerald-400' : 'bg-white/30'}`} />
+                        <span>
+                          {localSettings.gamePerformanceMode !== false
+                            ? (language === 'de' ? 'Automatischer Boost bei Spielstart bereit' : 'Automatic boost ready on game launch')
+                            : (language === 'de' ? 'Normaler Launcher-Betrieb im Hintergrund' : 'Standard background execution')}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-mono text-white/40">
+                        Process Priority: {localSettings.gamePerformanceMode !== false ? 'Dynamic (Below Normal in-game)' : 'Normal'}
+                      </span>
+                    </div>
+                  </div>
+
                   {/* GPU Hardware Acceleration Card */}
                   <div className="bg-[#0f1015] border border-white/10 rounded-xl p-5">
                     <div className="flex items-start justify-between gap-6">

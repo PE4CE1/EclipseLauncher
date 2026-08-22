@@ -3,6 +3,7 @@ import { BrowserWindow, app } from 'electron'
 import { setDiscordActivity, setDiscordIdleActivity, setDiscordDownloadActivity, clearDiscordActivity } from './discordRPC'
 import * as path from 'path'
 import * as fs from 'fs'
+import * as os from 'os'
 import { showOverlay, hideOverlay, getOverlayWindow, isEditModeActive } from './overlayManager'
 import { startRLService, stopRLService } from './rlService'
 import { addPlaytimeRecord } from './playtimeService'
@@ -46,6 +47,7 @@ function getAppSettings() {
     if (fs.existsSync(settingsPath)) {
       const s = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
       cachedSettings = {
+        gamePerformanceMode: s.gamePerformanceMode ?? true,
         discordEnabled: s.discordRpc ?? true,
         showDownloads: s.discordRpcShowDownloads ?? true,
         showIdle: s.discordRpcIdle ?? true,
@@ -78,6 +80,7 @@ function getAppSettings() {
   } catch (e) {}
 
   cachedSettings = {
+    gamePerformanceMode: true,
     discordEnabled: true, showDownloads: true, showIdle: true,
     overlayPerformance: false, overlayCrosshair: false, overlayGeneralAlwaysOn: false, 
     overlayCps: false, overlayController: false, overlayRobloxTimer: false, overlayRobloxCps: false, 
@@ -281,6 +284,7 @@ function checkEpicActiveDownloads(): { name: string } | null {
 
 
 let currentGame: ActiveDetectedGame | null = null
+let currentGamePid: number = 0
 let monitorInterval: NodeJS.Timeout | null = null
 let rlServiceActive = false
 
@@ -291,10 +295,53 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
     if (process.platform !== 'win32') return
 
     const appSettings = getAppSettings()
+    const mainWindow = getMainWindow()
+
+    // Optimization: If a game is actively running with a known PID, perform a 0ms lightweight PID alive check.
+    // This avoids spawning `tasklist.exe` through `cmd.exe` during gameplay, saving 100% of CPU and GPU context switches!
+    if (currentGame && currentGamePid > 0) {
+      let isGameStillAlive = false
+      try {
+        process.kill(currentGamePid, 0)
+        isGameStillAlive = true
+      } catch (_) {
+        isGameStillAlive = false
+      }
+
+      if (isGameStillAlive) {
+        return
+      }
+
+      // Game has exited! Trigger game stopped logic immediately.
+      console.log(`[ProcessMonitor] Detected game stopped (PID ${currentGamePid} exited): ${currentGame.name}`)
+      try {
+        const elapsedMins = Math.max(1, Math.round((Date.now() - (currentGame.startTime || Date.now())) / 60000))
+        addPlaytimeRecord(currentGame.name, currentGame.name, elapsedMins)
+      } catch (e) {
+        console.error('[ProcessMonitor] Failed to record playtime on stop:', e)
+      }
+
+      if (rlServiceActive) {
+        rlServiceActive = false
+        stopRLService()
+      }
+
+      // Restore normal process priority
+      try {
+        os.setPriority(os.constants.priority.PRIORITY_NORMAL)
+      } catch (_) {}
+
+      currentGame = null
+      currentGamePid = 0
+      setActiveGameMetrics(null)
+      stopGameFpsMonitor()
+      mainWindow?.webContents.send('games:stopped')
+      hideOverlay()
+      return
+    }
 
     // Run Windows tasklist command to get running process names + PIDs
     exec('tasklist /FO CSV /NH', { maxBuffer: 1024 * 1024 }, (err, stdout) => {
-      const mainWindow = getMainWindow()
       let runningExes = new Set<string>()
       const runningExePids = new Map<string, number>()
 
@@ -351,17 +398,26 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
 
       if (detectedName && detectedExe) {
         const isRL = detectedName === 'Rocket League'
+        const gamePid = runningExePids.get(detectedExe) ?? 0
 
         // Priority 1: Game active
         if (!currentGame || currentGame.exeName !== detectedExe) {
-          console.log(`[ProcessMonitor] Detected game started: ${detectedName}`)
+          console.log(`[ProcessMonitor] Detected game started: ${detectedName} (PID: ${gamePid})`)
           const startTime = Date.now()
           currentGame = { name: detectedName, exeName: detectedExe, startTime }
+          currentGamePid = gamePid
           setActiveGameMetrics(detectedName)
 
-          // Start real external FPS monitor using DWM composition timing (safe, no injection)
-          const gamePid = runningExePids.get(detectedExe) ?? 0
-          if (gamePid > 0) {
+          // Performance Mode: Lower launcher process priority so game gets 100% CPU/GPU
+          if (appSettings.gamePerformanceMode !== false) {
+            try {
+              os.setPriority(os.constants.priority.PRIORITY_BELOW_NORMAL)
+            } catch (_) {}
+            mainWindow?.webContents.setBackgroundThrottling(true)
+          }
+
+          // Start real external FPS monitor ONLY if user actually enabled the performance overlay
+          if (gamePid > 0 && appSettings.overlayPerformance) {
             startGameFpsMonitor(gamePid)
           }
 
@@ -383,7 +439,11 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           }
 
           // Notify renderer
-          mainWindow?.webContents.send('games:started', { name: detectedName, startTime })
+          mainWindow?.webContents.send('games:started', { 
+            name: detectedName, 
+            startTime,
+            performanceMode: appSettings.gamePerformanceMode !== false 
+          })
         }
 
         // Check if overlay should be visible for active game
@@ -433,7 +493,14 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
             rlServiceActive = false
             stopRLService()
           }
+
+          // Restore normal process priority
+          try {
+            os.setPriority(os.constants.priority.PRIORITY_NORMAL)
+          } catch (_) {}
+
           currentGame = null
+          currentGamePid = 0
           setActiveGameMetrics(null)
           stopGameFpsMonitor()
           mainWindow?.webContents.send('games:stopped')
@@ -450,7 +517,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
               performance: appSettings.overlayPerformance,
               crosshair: appSettings.overlayCrosshair,
               cps: appSettings.overlayCps,
-              robloxCps: appSettings.overlayCps,
+              robloxCps: false,
               robloxTimer: false,
               rlHud: false,
               overlayRLSteam: false,
@@ -465,7 +532,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
               rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
             }
           })
-        } else {
+        } else if (!currentGame) {
           hideOverlay()
         }
 

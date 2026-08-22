@@ -99,11 +99,15 @@ export default function App() {
     const unsubStart = window.electronAPI?.onGameStarted?.((data) => {
       if (data?.name) {
         useGameStore.getState().startPlaySession(data.name, data.name)
+        if (useGameStore.getState().settings.gamePerformanceMode !== false) {
+          document.body.classList.add('game-performance-mode')
+        }
       }
     })
 
     const unsubStop = window.electronAPI?.onGameStopped?.(() => {
       useGameStore.getState().stopPlaySession()
+      document.body.classList.remove('game-performance-mode')
     })
 
     const interval = setInterval(() => {
@@ -111,12 +115,13 @@ export default function App() {
       if (state.activeGame) {
         state.tickPlaySession()
       }
-    }, 15000)
+    }, 30000)
 
     return () => {
       unsubStart?.()
       unsubStop?.()
       clearInterval(interval)
+      document.body.classList.remove('game-performance-mode')
     }
   }, [])
 
@@ -332,6 +337,16 @@ export default function App() {
 
   // Process Monitor & Discord Activity
   const activeGame = useGameStore(state => state.activeGame)
+
+  // Sync performance mode class whenever activeGame or setting changes
+  useEffect(() => {
+    if (activeGame && settings.gamePerformanceMode !== false) {
+      document.body.classList.add('game-performance-mode')
+    } else {
+      document.body.classList.remove('game-performance-mode')
+    }
+  }, [activeGame, settings.gamePerformanceMode])
+
   const downloads = useDownloadStore(state => state.downloads)
   const discordRpcEnabled = settings.discordRpc !== false
   const discordRpcIdleEnabled = settings.discordRpcIdle !== false
