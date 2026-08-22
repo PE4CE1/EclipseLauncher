@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  User, Library, Clock, Save, Edit3, Settings, Trophy, Gamepad2, Award, 
+  User, Library, Clock, Save, Edit3, Settings, Trophy, Gamepad2, 
   UserPlus, Check, ArrowLeft, Loader2, Cpu, Zap, HardDrive, Monitor, 
-  Image as ImageIcon, Sparkles, Copy, ExternalLink, X, RefreshCw, Shield, 
-  Link2, MessageSquare, CheckCircle2
+  Image as ImageIcon, Sparkles, Copy, ExternalLink, X, RefreshCw, 
+  MessageSquare, CheckCircle2
 } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
@@ -16,21 +16,21 @@ import { sendAppNotification } from '../../services/notificationService'
 import type { EclipseFriend } from '../../types/game'
 
 const BANNER_PRESETS = [
-  { id: 'galaxy', name: 'Eclipse Galaxy', url: 'https://images.unsplash.com/photo-1538370965046-79c0d6907d47?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'cyberpunk', name: 'Neon Cyberpunk', url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'synthwave', name: 'Retro Synthwave', url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'minimal', name: 'Dark Minimalist', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'aurora', name: 'Aurora Glow', url: 'https://images.unsplash.com/photo-1579033461380-adb47c3eb938?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'galaxy', name: 'Galaxy', url: 'https://images.unsplash.com/photo-1538370965046-79c0d6907d47?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'cyberpunk', name: 'Cyberpunk', url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'synthwave', name: 'Synthwave', url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'minimal', name: 'Minimalist', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'aurora', name: 'Aurora', url: 'https://images.unsplash.com/photo-1579033461380-adb47c3eb938?q=80&w=1600&auto=format&fit=crop' },
   { id: 'deep_space', name: 'Deep Space', url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=1600&auto=format&fit=crop' },
 ]
 
 const AVATAR_FRAMES = [
-  { id: 'none', label: 'None', labelDe: 'Kein Rahmen', color: 'border-white/15' },
-  { id: 'eclipse_neon', label: 'Eclipse Neon', labelDe: 'Eclipse Neon', color: 'border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.7)] ring-2 ring-purple-400' },
-  { id: 'cyberpunk', label: 'Cyberpunk', labelDe: 'Cyberpunk', color: 'border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.8)] ring-2 ring-yellow-400' },
-  { id: 'golden_vip', label: 'Gold VIP', labelDe: 'Gold VIP', color: 'border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.8)] ring-2 ring-yellow-300' },
-  { id: 'fire_blaze', label: 'Fire Blaze', labelDe: 'Fire Blaze', color: 'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.8)] ring-2 ring-orange-400' },
-  { id: 'emerald_pulse', label: 'Emerald', labelDe: 'Smaragd', color: 'border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.8)] ring-2 ring-teal-300' },
+  { id: 'none', label: 'None', labelDe: 'Kein Rahmen', color: 'border-white/10' },
+  { id: 'eclipse_neon', label: 'Eclipse Glow', labelDe: 'Eclipse Glow', color: 'border-purple-400/90 shadow-[0_0_12px_rgba(168,85,247,0.4)]' },
+  { id: 'cyberpunk', label: 'Cyberpunk', labelDe: 'Cyberpunk', color: 'border-cyan-400/90 shadow-[0_0_12px_rgba(6,182,212,0.4)]' },
+  { id: 'golden_vip', label: 'Gold VIP', labelDe: 'Gold VIP', color: 'border-amber-400/90 shadow-[0_0_12px_rgba(251,191,36,0.4)]' },
+  { id: 'fire_blaze', label: 'Fire Blaze', labelDe: 'Fire Blaze', color: 'border-rose-400/90 shadow-[0_0_12px_rgba(244,63,94,0.4)]' },
+  { id: 'emerald_pulse', label: 'Emerald', labelDe: 'Smaragd', color: 'border-emerald-400/90 shadow-[0_0_12px_rgba(52,211,153,0.4)]' },
 ]
 
 export function ProfileView() {
@@ -288,8 +288,8 @@ export function ProfileView() {
           syncMyProfile()
           setIsEditing(false)
           sendAppNotification({
-            title: language === 'de' ? 'Profil gespeichert! ✨' : 'Profile Saved! ✨',
-            body: language === 'de' ? 'Deine Änderungen wurden erfolgreich synchronisiert.' : 'Your changes were successfully synced.',
+            title: language === 'de' ? 'Profil gespeichert' : 'Profile Saved',
+            body: language === 'de' ? 'Änderungen wurden übernommen.' : 'Changes have been saved.',
             type: 'success'
           })
         }
@@ -299,8 +299,8 @@ export function ProfileView() {
       syncMyProfile()
       setIsEditing(false)
       sendAppNotification({
-        title: language === 'de' ? 'Profil gespeichert! ✨' : 'Profile Saved! ✨',
-        body: language === 'de' ? 'Deine Änderungen wurden erfolgreich synchronisiert.' : 'Your changes were successfully synced.',
+        title: language === 'de' ? 'Profil gespeichert' : 'Profile Saved',
+        body: language === 'de' ? 'Änderungen wurden übernommen.' : 'Changes have been saved.',
         type: 'success'
       })
     }
@@ -330,14 +330,14 @@ export function ProfileView() {
         }
         await syncMyProfile()
         sendAppNotification({
-          title: language === 'de' ? 'Steam synchronisiert! 🎮' : 'Steam Synced! 🎮',
-          body: language === 'de' ? `Profil von ${profile.username} erfolgreich verknüpft.` : `Profile of ${profile.username} successfully linked.`,
+          title: language === 'de' ? 'Steam synchronisiert' : 'Steam Synced',
+          body: language === 'de' ? `Profil von ${profile.username} erfolgreich verknüpft.` : `Profile of ${profile.username} linked.`,
           type: 'success'
         })
       } else {
         sendAppNotification({
           title: language === 'de' ? 'Fehler' : 'Error',
-          body: language === 'de' ? 'Konnte Steam-Profil nicht abrufen. Bitte prüfe die URL / SteamID.' : 'Could not fetch Steam profile. Please check URL / SteamID.',
+          body: language === 'de' ? 'Konnte Steam-Profil nicht abrufen.' : 'Could not fetch Steam profile.',
           type: 'error'
         })
       }
@@ -360,8 +360,8 @@ export function ProfileView() {
         }
         await syncMyProfile()
         sendAppNotification({
-          title: language === 'de' ? 'Hardware aktualisiert! ⚡' : 'Hardware Refreshed! ⚡',
-          body: language === 'de' ? 'Deine PC-Komponenten wurden neu ausgelesen.' : 'Your PC hardware specs have been refreshed.',
+          title: language === 'de' ? 'Hardware aktualisiert' : 'Hardware Refreshed',
+          body: language === 'de' ? 'PC-Komponenten wurden neu ausgelesen.' : 'PC specs refreshed.',
           type: 'success'
         })
       }
@@ -437,8 +437,34 @@ export function ProfileView() {
 
   const getFrameClass = (frameId: string) => {
     const f = AVATAR_FRAMES.find(item => item.id === frameId)
-    return f ? f.color : 'border-white/15'
+    return f ? f.color : 'border-white/10'
   }
+
+  // Reusable clean monochrome checkbox
+  const CleanCheckbox = ({ checked, onChange, label, description }: { checked: boolean; onChange: () => void; label: string; description?: string }) => (
+    <label className="flex items-start gap-3 cursor-pointer group select-none">
+      <div 
+        className={`w-4 h-4 rounded-[4px] flex items-center justify-center border transition-all duration-150 flex-shrink-0 mt-0.5 ${
+          checked 
+            ? 'bg-white border-white text-black shadow-sm' 
+            : 'bg-white/[0.04] border-white/20 group-hover:border-white/40'
+        }`}
+      >
+        {checked && <Check size={11} strokeWidth={3} className="text-black" />}
+      </div>
+      <div className="flex-1">
+        <span className="text-xs text-white/85 group-hover:text-white transition-colors block font-medium">
+          {label}
+        </span>
+        {description && (
+          <span className="text-[11px] text-white/40 block mt-0.5">
+            {description}
+          </span>
+        )}
+      </div>
+      <input type="checkbox" className="hidden" checked={checked} onChange={onChange} />
+    </label>
+  )
 
   return (
     <div className="h-full overflow-y-auto bg-[#07080a] select-none">
@@ -448,42 +474,42 @@ export function ProfileView() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#101216] border border-white/10 rounded-3xl overflow-hidden mb-10 shadow-2xl relative"
+          className="bg-[#0e1015] border border-white/[0.08] rounded-2xl overflow-hidden mb-8 shadow-xl relative"
         >
           {/* Cover Banner */}
-          <div className="relative h-44 md:h-56 w-full overflow-hidden bg-black/50">
+          <div className="relative h-44 md:h-52 w-full overflow-hidden bg-[#07080a]">
             {displayBanner && (
               <img 
                 src={displayBanner} 
                 alt="Profile Banner" 
-                className="w-full h-full object-cover object-center transform scale-105 filter brightness-90" 
+                className="w-full h-full object-cover object-center filter brightness-95" 
               />
             )}
             {/* Banner Dark Overlay Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#101216] via-[#101216]/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0e1015] via-[#0e1015]/40 to-transparent" />
             
             {/* Quick Edit Banner Button (for local user) */}
             {!isViewingFriend && !isEditing && (
               <button 
                 onClick={() => { setIsEditing(true); setEditTab('banner'); }}
-                className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/15 text-white/90 hover:text-white px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
+                className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 text-white/80 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
               >
-                <ImageIcon size={13} /> {language === 'de' ? 'Banner anpassen' : 'Edit Banner'}
+                <ImageIcon size={13} /> {language === 'de' ? 'Banner bearbeiten' : 'Edit Banner'}
               </button>
             )}
           </div>
 
           {/* Profile Header Content */}
-          <div className="px-8 pb-8 pt-0 relative z-10 flex flex-col md:flex-row items-center md:items-end gap-6 -mt-16 md:-mt-20">
+          <div className="px-7 pb-7 pt-0 relative z-10 flex flex-col md:flex-row items-center md:items-end gap-5 -mt-16 md:-mt-18">
             
-            {/* Avatar with Animated Frame */}
+            {/* Avatar with Frame */}
             <div className="relative group flex-shrink-0">
-              <div className={`w-32 h-32 md:w-36 md:h-36 rounded-full p-1.5 bg-[#101216] border-2 ${getFrameClass(displayFrame)} transition-all duration-300 relative flex items-center justify-center`}>
-                <div className="w-full h-full rounded-full overflow-hidden bg-black/80 flex items-center justify-center">
+              <div className={`w-32 h-32 md:w-36 md:h-36 rounded-full p-1 bg-[#0e1015] border-2 ${getFrameClass(displayFrame)} transition-all duration-200 relative flex items-center justify-center`}>
+                <div className="w-full h-full rounded-full overflow-hidden bg-black/90 flex items-center justify-center">
                   {displayAvatar ? (
                     <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
-                    <User size={64} className="text-white/30" />
+                    <User size={56} className="text-white/30" />
                   )}
                 </div>
               </div>
@@ -493,30 +519,30 @@ export function ProfileView() {
                   onClick={() => { setIsEditing(true); setEditTab('frame'); }}
                   className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-xs font-medium gap-1"
                 >
-                  <Sparkles size={14} className="text-purple-400" />
+                  <Sparkles size={14} className="text-white/80" />
                 </button>
               )}
             </div>
 
             {/* Profile Info & Badges */}
             <div className="flex-1 text-center md:text-left">
-              <div className="flex flex-wrap items-center gap-3 justify-center md:justify-start mb-1.5">
-                <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight uppercase drop-shadow-md">
+              <div className="flex flex-wrap items-center gap-2.5 justify-center md:justify-start mb-1.5">
+                <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight uppercase">
                   {displayName}
                 </h1>
                 
                 {profileData?.friendCode && (
-                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-white/70">
+                  <span className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-white/[0.04] border border-white/10 text-white/60">
                     {profileData.friendCode}
                   </span>
                 )}
               </div>
 
               {/* Status and Badges Line */}
-              <div className="flex flex-wrap items-center gap-3 justify-center md:justify-start mt-1">
+              <div className="flex flex-wrap items-center gap-2.5 justify-center md:justify-start mt-1">
                 {/* Live Status */}
-                <div className="flex items-center gap-2 text-xs font-medium text-hub-muted bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
-                  <span className={`w-2 h-2 rounded-full inline-block ${isOnline ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-white/30'}`} />
+                <div className="flex items-center gap-2 text-xs font-medium text-hub-muted bg-white/[0.03] px-2.5 py-0.5 rounded-md border border-white/[0.06]">
+                  <span className={`w-1.5 h-1.5 rounded-full inline-block ${isOnline ? 'bg-emerald-400' : 'bg-white/30'}`} />
                   <span className={isOnline ? 'text-white/90' : 'text-white/50'}>
                     {isViewingFriend ? friendStatusText : t('online')}
                   </span>
@@ -524,50 +550,50 @@ export function ProfileView() {
 
                 {/* Member Badge */}
                 {(isViewingFriend ? (profileData?.steamProfileUrl || friend?.steamProfileUrl) : settings.steamProfileUrl) ? (
-                  <span className="text-xs font-bold text-[#66c0f4] flex items-center gap-1.5 bg-[#1b2838]/80 border border-[#2a475e]/60 px-2.5 py-1 rounded-full">
+                  <span className="text-xs font-medium text-[#66c0f4] flex items-center gap-1.5 bg-[#1b2838]/60 border border-[#2a475e]/40 px-2.5 py-0.5 rounded-md">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-3.5 h-3.5" alt="Steam" />
-                    Steam Player
+                    Steam
                   </span>
                 ) : (
-                  <span className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-orange-400 to-red-500 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
-                    ECLIPSE MEMBER
+                  <span className="text-xs font-semibold text-white/70 bg-white/[0.03] border border-white/[0.08] px-2.5 py-0.5 rounded-md">
+                    ECLIPSE
                   </span>
                 )}
 
                 {/* In-Game Live Badge */}
                 {!isViewingFriend && activeGame && (
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/25 backdrop-blur-md shadow-[0_0_15px_rgba(99,102,241,0.15)]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_6px_rgba(99,102,241,0.9)] animate-pulse flex-shrink-0" />
-                    <Gamepad2 size={13} className="text-indigo-400 flex-shrink-0" />
-                    <span className="text-xs font-medium text-indigo-200 truncate">
-                      <span className="text-white/50">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
-                      <span className="text-white font-bold">{activeGame.name}</span>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-200 text-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
+                    <Gamepad2 size={12} className="text-indigo-400 flex-shrink-0" />
+                    <span className="truncate">
+                      <span className="text-white/40">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
+                      <span className="text-white font-medium">{activeGame.name}</span>
                     </span>
                   </div>
                 )}
                 {isViewingFriend && friendCurrentGame && (
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/25 backdrop-blur-md shadow-[0_0_15px_rgba(168,85,247,0.15)]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.9)] animate-pulse flex-shrink-0" />
-                    <Gamepad2 size={13} className="text-purple-400 flex-shrink-0" />
-                    <span className="text-xs font-medium text-purple-200 truncate">
-                      <span className="text-white/50">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
-                      <span className="text-white font-bold">{friendCurrentGame}</span>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-200 text-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse flex-shrink-0" />
+                    <Gamepad2 size={12} className="text-purple-400 flex-shrink-0" />
+                    <span className="truncate">
+                      <span className="text-white/40">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
+                      <span className="text-white font-medium">{friendCurrentGame}</span>
                     </span>
                   </div>
                 )}
 
                 {/* Steam Stats Grouping */}
                 {steamLevel !== undefined && (settings.profileShowSteamStats !== false) && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1b2838] border border-[#2a475e] text-[#66c0f4] text-xs font-bold">
-                    <Trophy size={12} />
-                    <span>Level {steamLevel}</span>
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-white/70 text-xs font-medium">
+                    <Trophy size={11} className="text-amber-400/80" />
+                    <span>Lvl {steamLevel}</span>
                   </div>
                 )}
               </div>
 
               {/* Bio & Status Quote */}
               {displayBio && (
-                <p className="mt-3 text-xs md:text-sm text-white/70 italic max-w-xl font-normal leading-relaxed border-l-2 border-purple-500/40 pl-3">
+                <p className="mt-2.5 text-xs text-white/65 italic max-w-xl font-normal leading-relaxed">
                   "{displayBio}"
                 </p>
               )}
@@ -582,11 +608,11 @@ export function ProfileView() {
                         setCopiedDiscord(true)
                         setTimeout(() => setCopiedDiscord(false), 2000)
                       }}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#5865F2]/10 border border-[#5865F2]/30 text-[#8ea1e1] hover:text-white hover:bg-[#5865F2]/20 text-[11px] font-semibold transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.03] border border-white/[0.08] text-white/70 hover:text-white hover:bg-white/[0.06] text-[11px] font-medium transition-all cursor-pointer"
                       title="Click to copy Discord Tag"
                     >
-                      <span className="font-bold">Discord:</span> {displayDiscord}
-                      {copiedDiscord ? <Check size={11} className="text-green-400" /> : <Copy size={11} className="opacity-60" />}
+                      <span className="font-semibold text-white/50">Discord:</span> {displayDiscord}
+                      {copiedDiscord ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} className="opacity-40" />}
                     </button>
                   )}
                   {displayTwitch && (
@@ -594,10 +620,10 @@ export function ProfileView() {
                       href={`https://twitch.tv/${displayTwitch.replace('@', '')}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#9146FF]/10 border border-[#9146FF]/30 text-[#bf94ff] hover:text-white hover:bg-[#9146FF]/20 text-[11px] font-semibold transition-all"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.03] border border-white/[0.08] text-white/70 hover:text-white hover:bg-white/[0.06] text-[11px] font-medium transition-all"
                     >
-                      <span className="font-bold">Twitch:</span> {displayTwitch}
-                      <ExternalLink size={11} className="opacity-60" />
+                      <span className="font-semibold text-white/50">Twitch:</span> {displayTwitch}
+                      <ExternalLink size={11} className="opacity-40" />
                     </a>
                   )}
                   {displayYoutube && (
@@ -605,10 +631,10 @@ export function ProfileView() {
                       href={`https://youtube.com/${displayYoutube.startsWith('@') ? displayYoutube : '@' + displayYoutube}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FF0000]/10 border border-[#FF0000]/30 text-[#ff7373] hover:text-white hover:bg-[#FF0000]/20 text-[11px] font-semibold transition-all"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.03] border border-white/[0.08] text-white/70 hover:text-white hover:bg-white/[0.06] text-[11px] font-medium transition-all"
                     >
-                      <span className="font-bold">YouTube:</span> {displayYoutube}
-                      <ExternalLink size={11} className="opacity-60" />
+                      <span className="font-semibold text-white/50">YouTube:</span> {displayYoutube}
+                      <ExternalLink size={11} className="opacity-40" />
                     </a>
                   )}
                 </div>
@@ -616,23 +642,23 @@ export function ProfileView() {
             </div>
 
             {/* Profile Action Buttons */}
-            <div className="flex flex-wrap gap-2.5 justify-center md:justify-end flex-shrink-0">
+            <div className="flex flex-wrap gap-2 justify-center md:justify-end flex-shrink-0">
               {!isViewingFriend ? (
                 <>
                   <button 
                     onClick={() => setIsEditing(true)}
-                    className="bg-white/10 hover:bg-white/15 border border-white/15 text-white px-4 py-2 rounded-xl font-medium text-xs transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:scale-[1.02]"
+                    className="bg-white text-black hover:bg-white/90 font-semibold px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                   >
-                    <Edit3 size={14} /> {t('editProfile')}
+                    <Edit3 size={13} /> {t('editProfile')}
                   </button>
                   <button 
                     onClick={() => {
                       setActiveSettingsTab('profile')
                       setActiveView('settings')
                     }}
-                    className="bg-transparent hover:bg-white/5 text-hub-muted hover:text-white px-3 py-2 rounded-xl font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                    className="bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Settings size={14} /> {t('settings')}
+                    <Settings size={13} /> {t('settings')}
                   </button>
                 </>
               ) : (
@@ -641,14 +667,14 @@ export function ProfileView() {
                     <button 
                       onClick={handleSendFriendReq}
                       disabled={isSendingRequest || requestSent}
-                      className="bg-white text-black font-bold hover:bg-white/90 px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-60"
+                      className="bg-white text-black font-semibold hover:bg-white/90 px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-60"
                     >
                       {isSendingRequest ? (
-                        <Loader2 size={14} className="animate-spin" />
+                        <Loader2 size={13} className="animate-spin" />
                       ) : requestSent ? (
-                        <Check size={14} className="text-green-600" />
+                        <Check size={13} className="text-emerald-600" />
                       ) : (
-                        <UserPlus size={14} />
+                        <UserPlus size={13} />
                       )}
                       {requestSent 
                         ? (language === 'de' ? 'Anfrage gesendet' : 'Request Sent') 
@@ -657,9 +683,9 @@ export function ProfileView() {
                   )}
                   <button 
                     onClick={() => setSelectedFriendId(null)}
-                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-3.5 py-2 rounded-xl font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-3 py-1.5 rounded-lg font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    <ArrowLeft size={14} /> {language === 'de' ? 'Mein Profil' : 'My Profile'}
+                    <ArrowLeft size={13} /> {language === 'de' ? 'Mein Profil' : 'My Profile'}
                   </button>
                 </>
               )}
@@ -668,50 +694,38 @@ export function ProfileView() {
           </div>
         </motion.div>
 
-        {/* Clean, Unified Profile Customization & Settings Suite */}
+        {/* Minimalist Profile Settings & Customization Suite */}
         <AnimatePresence>
           {isEditing && (
             <motion.div 
-              initial={{ opacity: 0, scale: 0.98, y: -10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98, y: -10 }}
-              className="bg-[#0f1117] border border-white/15 rounded-3xl p-6 md:p-8 mb-10 shadow-2xl relative overflow-hidden backdrop-blur-xl"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-6 mb-8 shadow-xl relative"
             >
               {/* Header */}
-              <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-                    <Sparkles size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg md:text-xl font-bold text-white tracking-wide">
-                      {language === 'de' ? 'Profil-Personalisierung & Einstellungen' : 'Profile Customization & Settings'}
-                    </h3>
-                    <p className="text-xs text-white/50 mt-0.5">
-                      {language === 'de' 
-                        ? 'Passe deinen Banner, Rahmen, Bio, Steam-Synchronisation und Gaming-Rig an.' 
-                        : 'Customize your banner, frame, bio, Steam synchronization, and gaming rig.'}
-                    </p>
-                  </div>
-                </div>
-
+              <div className="flex items-center justify-between pb-4 border-b border-white/[0.06] mb-5">
+                <h3 className="text-sm font-bold text-white tracking-wide">
+                  {language === 'de' ? 'Profil bearbeiten' : 'Edit Profile'}
+                </h3>
                 <button 
                   onClick={() => setIsEditing(false)}
-                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer border border-white/5"
+                  className="p-1.5 rounded-md text-white/40 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
               </div>
 
-              {/* Subtabs Bar */}
-              <div className="flex flex-wrap gap-2 mb-6 border-b border-white/10 pb-4">
+              {/* Minimalist Flat Nav Tabs */}
+              <div className="flex flex-wrap gap-1.5 mb-6 border-b border-white/[0.06] pb-3">
                 {[
-                  { id: 'general', label: language === 'de' ? 'Allgemein & Privatsphäre' : 'General & Privacy', icon: User },
-                  { id: 'banner', label: language === 'de' ? 'Profil-Banner' : 'Banner', icon: ImageIcon },
+                  { id: 'general', label: language === 'de' ? 'Allgemein' : 'General', icon: User },
+                  { id: 'banner', label: language === 'de' ? 'Banner' : 'Banner', icon: ImageIcon },
                   { id: 'frame', label: language === 'de' ? 'Avatar-Rahmen' : 'Avatar Frames', icon: Sparkles },
                   { id: 'socials', label: language === 'de' ? 'Bio & Socials' : 'Bio & Socials', icon: MessageSquare },
-                  { id: 'steam', label: language === 'de' ? 'Steam & Sync' : 'Steam & Sync', icon: RefreshCw },
-                  { id: 'hardware', label: language === 'de' ? 'Gaming Rig (PC-Stats)' : 'Gaming Rig (Specs)', icon: Cpu },
+                  { id: 'steam', label: 'Steam Sync', icon: RefreshCw },
+                  { id: 'hardware', label: language === 'de' ? 'PC-Hardware' : 'Hardware Specs', icon: Cpu },
                 ].map(tab => {
                   const Icon = tab.icon
                   const isActive = editTab === tab.id
@@ -719,13 +733,13 @@ export function ProfileView() {
                     <button
                       key={tab.id}
                       onClick={() => setEditTab(tab.id as any)}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-2 ${
                         isActive 
-                          ? 'bg-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)] border border-purple-400/40' 
-                          : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/5'
+                          ? 'bg-white/10 text-white font-semibold' 
+                          : 'text-white/50 hover:text-white hover:bg-white/[0.04]'
                       }`}
                     >
-                      <Icon size={14} className={isActive ? 'text-white' : 'text-white/50'} />
+                      <Icon size={13} className={isActive ? 'text-white' : 'text-white/40'} />
                       <span>{tab.label}</span>
                     </button>
                   )
@@ -734,103 +748,79 @@ export function ProfileView() {
 
               {/* Tab 1: General & Privacy */}
               {editTab === 'general' && (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-white/70 uppercase tracking-wider mb-2">{t('username')}</label>
+                      <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">{t('username')}</label>
                       <input 
                         type="text" 
                         value={editName}
                         onChange={e => setEditName(e.target.value)}
-                        className="w-full bg-[#16181f] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
+                        className="w-full bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-white/20 transition-colors focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-white/70 uppercase tracking-wider mb-2">{t('avatarUrl')}</label>
+                      <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">{t('avatarUrl')}</label>
                       <input 
                         type="text" 
                         placeholder="https://..."
                         value={editAvatar}
                         onChange={e => setEditAvatar(e.target.value)}
-                        className="w-full bg-[#16181f] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
+                        className="w-full bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-white/20 transition-colors focus:outline-none"
                       />
                     </div>
                   </div>
 
-                  {/* Privacy Toggles Card */}
-                  <div className="bg-[#14161d] border border-white/10 rounded-2xl p-5 space-y-4">
-                    <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                      <Shield size={14} className="text-purple-400" />
-                      {language === 'de' ? 'Privatsphäre auf dem Profil' : 'Profile Privacy Options'}
-                    </h4>
+                  <div className="pt-3 border-t border-white/[0.06] space-y-3">
+                    <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider block mb-2">
+                      {language === 'de' ? 'Privatsphäre & Anzeige' : 'Privacy & Display'}
+                    </span>
 
-                    <div className="space-y-3">
-                      <label className="flex items-start gap-3 cursor-pointer group select-none">
-                        <input 
-                          type="checkbox" 
-                          checked={editShowPlaytime}
-                          onChange={e => setEditShowPlaytime(e.target.checked)}
-                          className="mt-0.5 rounded border-white/20 bg-white/5 text-purple-600 focus:ring-0 cursor-pointer"
-                        />
-                        <div>
-                          <span className="text-xs font-bold text-white group-hover:text-purple-300 transition-colors block">
-                            {language === 'de' ? 'Gesamte Spielzeit anzeigen' : 'Show Total Playtime'}
-                          </span>
-                          <span className="text-[11px] text-white/50 block">
-                            {language === 'de' ? 'Zeigt deine Gesamtspielzeit auf deinem Profil an.' : 'Display your accumulated playtime across all games.'}
-                          </span>
-                        </div>
-                      </label>
+                    <CleanCheckbox 
+                      checked={editShowPlaytime}
+                      onChange={() => setEditShowPlaytime(!editShowPlaytime)}
+                      label={language === 'de' ? 'Gesamte Spielzeit im Profil anzeigen' : 'Show Total Playtime on Profile'}
+                      description={language === 'de' ? 'Zeigt die akkumulierte Spielzeit aller Spiele öffentlich auf deinem Profil an.' : 'Displays your total playtime across all games on your profile.'}
+                    />
 
-                      <label className="flex items-start gap-3 cursor-pointer group select-none">
-                        <input 
-                          type="checkbox" 
-                          checked={editShowSteamStats}
-                          onChange={e => setEditShowSteamStats(e.target.checked)}
-                          className="mt-0.5 rounded border-white/20 bg-white/5 text-purple-600 focus:ring-0 cursor-pointer"
-                        />
-                        <div>
-                          <span className="text-xs font-bold text-white group-hover:text-purple-300 transition-colors block">
-                            {language === 'de' ? 'Steam-Abzeichen & Level anzeigen' : 'Show Steam Badges & Level'}
-                          </span>
-                          <span className="text-[11px] text-white/50 block">
-                            {language === 'de' ? 'Zeigt dein verknüpftes Steam-Level und Abzeichen an.' : 'Display your synced Steam level and badge showcases.'}
-                          </span>
-                        </div>
-                      </label>
-                    </div>
+                    <CleanCheckbox 
+                      checked={editShowSteamStats}
+                      onChange={() => setEditShowSteamStats(!editShowSteamStats)}
+                      label={language === 'de' ? 'Steam-Level & Abzeichen anzeigen' : 'Show Steam Level & Badges'}
+                      description={language === 'de' ? 'Zeigt dein synchronisiertes Steam-Level und deine Steam-Aktivität an.' : 'Displays your synced Steam level and recent activity.'}
+                    />
                   </div>
                 </div>
               )}
 
               {/* Tab 2: Banner Presets & Custom */}
               {editTab === 'banner' && (
-                <div className="space-y-5">
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-white/70 uppercase tracking-wider mb-3">
-                      {language === 'de' ? 'Wähle eine Banner-Vorlage' : 'Choose a Banner Preset'}
+                    <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2.5">
+                      {language === 'de' ? 'Banner-Vorlage auswählen' : 'Select Banner Preset'}
                     </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
                       {BANNER_PRESETS.map(preset => {
                         const isSelected = editBanner === preset.url
                         return (
                           <div 
                             key={preset.id}
                             onClick={() => setEditBanner(preset.url)}
-                            className={`group relative h-24 rounded-2xl overflow-hidden border-2 cursor-pointer transition-all ${
-                              isSelected ? 'border-purple-500 scale-105 shadow-[0_0_20px_rgba(168,85,247,0.5)]' : 'border-white/10 hover:border-white/30'
+                            className={`group relative h-20 rounded-xl overflow-hidden border cursor-pointer transition-all ${
+                              isSelected ? 'border-white ring-1 ring-white' : 'border-white/[0.08] hover:border-white/30'
                             }`}
                           >
-                            <img src={preset.url} alt={preset.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                            <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
                             
                             {isSelected && (
-                              <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center shadow-md">
-                                <Check size={11} className="text-white" strokeWidth={3} />
+                              <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow-sm">
+                                <Check size={10} className="text-black" strokeWidth={3} />
                               </div>
                             )}
 
-                            <span className="absolute bottom-1.5 left-2 text-[10px] font-bold text-white drop-shadow-md truncate max-w-[90%]">
+                            <span className="absolute bottom-1.5 left-2 text-[10px] font-semibold text-white drop-shadow-sm truncate max-w-[90%]">
                               {preset.name}
                             </span>
                           </div>
@@ -840,15 +830,15 @@ export function ProfileView() {
                   </div>
 
                   <div className="pt-2">
-                    <label className="block text-xs font-semibold text-white/70 uppercase tracking-wider mb-2">
-                      {language === 'de' ? 'Oder eigene Banner-Bild URL einfügen (JPG / PNG / GIF)' : 'Or enter custom banner image URL (JPG / PNG / GIF)'}
+                    <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">
+                      {language === 'de' ? 'Oder eigene Banner-Bild URL (JPG / PNG / GIF)' : 'Or custom banner image URL (JPG / PNG / GIF)'}
                     </label>
                     <input 
                       type="text" 
-                      placeholder="https://images.unsplash.com/... oder Tenor GIF Link"
+                      placeholder="https://..."
                       value={editBanner}
                       onChange={e => setEditBanner(e.target.value)}
-                      className="w-full bg-[#16181f] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-purple-500 transition-colors"
+                      className="w-full bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl px-3.5 py-2 text-xs text-white font-mono transition-colors focus:outline-none"
                     />
                   </div>
                 </div>
@@ -857,32 +847,32 @@ export function ProfileView() {
               {/* Tab 3: Avatar Frames */}
               {editTab === 'frame' && (
                 <div className="space-y-4">
-                  <label className="block text-xs font-semibold text-white/70 uppercase tracking-wider">
-                    {language === 'de' ? 'Wähle deinen animierten Avatar-Rahmen' : 'Choose your Animated Avatar Frame'}
+                  <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">
+                    {language === 'de' ? 'Avatar-Rahmen' : 'Avatar Frames'}
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
                     {AVATAR_FRAMES.map(frame => {
                       const isSelected = editFrame === frame.id
                       return (
                         <div 
                           key={frame.id}
                           onClick={() => setEditFrame(frame.id)}
-                          className={`p-4 rounded-2xl bg-[#14161d] border-2 cursor-pointer flex flex-col items-center gap-3 transition-all ${
+                          className={`p-3.5 rounded-xl border cursor-pointer flex flex-col items-center gap-2.5 transition-all ${
                             isSelected 
-                              ? 'border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.4)] bg-purple-500/10 scale-105' 
-                              : 'border-white/10 hover:border-white/25 hover:bg-white/[0.02]'
+                              ? 'border-white bg-white/[0.06]' 
+                              : 'border-white/[0.08] bg-[#14161c] hover:border-white/20'
                           }`}
                         >
-                          <div className={`w-14 h-14 rounded-full p-1 bg-[#101216] border-2 ${frame.color} flex items-center justify-center`}>
-                            <div className="w-full h-full rounded-full overflow-hidden bg-black/80 flex items-center justify-center">
+                          <div className={`w-12 h-12 rounded-full p-1 bg-[#0e1015] border-2 ${frame.color} flex items-center justify-center`}>
+                            <div className="w-full h-full rounded-full overflow-hidden bg-black/90 flex items-center justify-center">
                               {editAvatar ? (
                                 <img src={editAvatar} alt="preview" className="w-full h-full object-cover" />
                               ) : (
-                                <User size={20} className="text-white/40" />
+                                <User size={16} className="text-white/40" />
                               )}
                             </div>
                           </div>
-                          <span className="text-[11px] font-bold text-white text-center">
+                          <span className="text-[11px] font-medium text-white/90 text-center">
                             {language === 'de' ? frame.labelDe : frame.label}
                           </span>
                         </div>
@@ -894,53 +884,53 @@ export function ProfileView() {
 
               {/* Tab 4: Bio & Socials */}
               {editTab === 'socials' && (
-                <div className="space-y-5">
+                <div className="space-y-4">
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="block text-xs font-semibold text-white/70 uppercase tracking-wider">
-                        {language === 'de' ? 'Über mich / Status-Spruch (Bio)' : 'About Me / Status Quote (Bio)'}
+                      <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider">
+                        {language === 'de' ? 'Über mich / Status-Spruch' : 'About Me / Status Quote'}
                       </label>
-                      <span className="text-[11px] text-white/40 font-mono">{editBio.length}/160</span>
+                      <span className="text-[10px] text-white/40 font-mono">{editBio.length}/160</span>
                     </div>
                     <textarea 
                       rows={2}
                       maxLength={160}
-                      placeholder={language === 'de' ? 'Schreibe einen kurzen Spruch, Zitat oder eine Bio...' : 'Write a short bio or quote...'}
+                      placeholder={language === 'de' ? 'Schreibe einen kurzen Spruch...' : 'Write a short quote or bio...'}
                       value={editBio}
                       onChange={e => setEditBio(e.target.value)}
-                      className="w-full bg-[#16181f] border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                      className="w-full bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl p-3 text-xs text-white transition-colors focus:outline-none resize-none"
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
                     <div>
-                      <label className="block text-xs font-semibold text-[#8ea1e1] uppercase tracking-wider mb-2">Discord Tag</label>
+                      <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">Discord Tag</label>
                       <input 
                         type="text" 
-                        placeholder="z.B. gamer#0001 oder username"
+                        placeholder="gamer#0001"
                         value={editDiscord}
                         onChange={e => setEditDiscord(e.target.value)}
-                        className="w-full bg-[#16181f] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#5865F2] transition-colors"
+                        className="w-full bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl px-3.5 py-2 text-xs text-white transition-colors focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-[#bf94ff] uppercase tracking-wider mb-2">Twitch Username</label>
+                      <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">Twitch</label>
                       <input 
                         type="text" 
-                        placeholder="z.B. streamer123"
+                        placeholder="streamer123"
                         value={editTwitch}
                         onChange={e => setEditTwitch(e.target.value)}
-                        className="w-full bg-[#16181f] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#9146FF] transition-colors"
+                        className="w-full bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl px-3.5 py-2 text-xs text-white transition-colors focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-[#ff7373] uppercase tracking-wider mb-2">YouTube Handle</label>
+                      <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">YouTube</label>
                       <input 
                         type="text" 
-                        placeholder="z.B. @pro_gamer"
+                        placeholder="@pro_gamer"
                         value={editYoutube}
                         onChange={e => setEditYoutube(e.target.value)}
-                        className="w-full bg-[#16181f] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#FF0000] transition-colors"
+                        className="w-full bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl px-3.5 py-2 text-xs text-white transition-colors focus:outline-none"
                       />
                     </div>
                   </div>
@@ -949,133 +939,119 @@ export function ProfileView() {
 
               {/* Tab 5: Steam Integration & Live Sync */}
               {editTab === 'steam' && (
-                <div className="space-y-5">
-                  <div className="bg-[#14161d] border border-white/10 rounded-2xl p-5 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-5 h-5" alt="Steam" />
-                        <h4 className="text-sm font-bold text-white">Steam Integration & Synchronisation</h4>
-                      </div>
-                      <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-[#1b2838] text-[#66c0f4] border border-[#2a475e]">
-                        Steam API
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-hub-muted leading-relaxed">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider block">
+                      Steam Integration
+                    </span>
+                    <p className="text-xs text-white/60">
                       {language === 'de' 
-                        ? 'Verknüpfe dein Steam-Profil, um Avatar, Benutzernamen, Steam-Level, Abzeichen und zuletzt gespielte Spiele automatisch in Eclipse zu synchronisieren.' 
-                        : 'Link your Steam profile to automatically sync your avatar, username, Steam level, badges, and recent games in Eclipse.'}
+                        ? 'Verknüpfe dein Steam-Profil, um Avatar, Benutzernamen, Steam-Level, Abzeichen und zuletzt gespielte Spiele automatisch zu synchronisieren.' 
+                        : 'Link your Steam profile to sync avatar, username, level, badges, and recent games.'}
                     </p>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-white/60 uppercase tracking-wider mb-2">
-                        {language === 'de' ? 'Steam Profil-URL oder SteamID64' : 'Steam Profile URL or SteamID64'}
-                      </label>
-                      <div className="flex flex-col sm:flex-row gap-2.5">
-                        <input 
-                          type="text" 
-                          placeholder="https://steamcommunity.com/id/... oder 76561198..."
-                          value={editSteamUrl}
-                          onChange={e => setEditSteamUrl(e.target.value)}
-                          className="flex-1 bg-[#16181f] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#66c0f4] transition-colors font-mono"
-                        />
-                        <button 
-                          onClick={handleSyncSteam}
-                          disabled={isSyncingSteam || !editSteamUrl.trim()}
-                          className="px-5 py-2.5 bg-white text-black hover:bg-white/90 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 hover:scale-105 flex-shrink-0"
-                        >
-                          <RefreshCw size={14} className={isSyncingSteam ? 'animate-spin text-black' : 'text-black'} />
-                          <span>{isSyncingSteam ? (language === 'de' ? 'Synchronisiere...' : 'Syncing...') : (language === 'de' ? 'Profil synchronisieren' : 'Sync Profile')}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {settings.steamProfileUrl && (
-                      <div className="pt-2 flex items-center gap-2 text-xs text-emerald-400 font-medium">
-                        <CheckCircle2 size={14} />
-                        <span>{language === 'de' ? 'Steam-Profil ist aktuell verknüpft' : 'Steam profile is linked'}</span>
-                      </div>
-                    )}
                   </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">
+                      {language === 'de' ? 'Steam Profil-URL oder SteamID64' : 'Steam Profile URL or SteamID64'}
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-2.5">
+                      <input 
+                        type="text" 
+                        placeholder="https://steamcommunity.com/id/... oder 76561198..."
+                        value={editSteamUrl}
+                        onChange={e => setEditSteamUrl(e.target.value)}
+                        className="flex-1 bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none font-mono"
+                      />
+                      <button 
+                        onClick={handleSyncSteam}
+                        disabled={isSyncingSteam || !editSteamUrl.trim()}
+                        className="px-4 py-2 bg-white text-black hover:bg-white/90 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-40 flex-shrink-0"
+                      >
+                        <RefreshCw size={13} className={isSyncingSteam ? 'animate-spin text-black' : 'text-black'} />
+                        <span>{isSyncingSteam ? (language === 'de' ? 'Synchronisiere...' : 'Syncing...') : (language === 'de' ? 'Profil synchronisieren' : 'Sync Profile')}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {settings.steamProfileUrl && (
+                    <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium pt-1">
+                      <CheckCircle2 size={13} />
+                      <span>{language === 'de' ? 'Steam-Profil ist verknüpft' : 'Steam profile is linked'}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Tab 6: Gaming Rig & PC Specs */}
               {editTab === 'hardware' && (
-                <div className="space-y-5">
-                  <div className="bg-[#14161d] border border-white/10 rounded-2xl p-5 space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                          <Cpu size={16} />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-white">
-                            {language === 'de' ? 'Gaming Rig & Hardware-Erkennung' : 'Gaming Rig & Hardware Detection'}
-                          </h4>
-                          <span className="text-[11px] text-white/50">
-                            {language === 'de' ? 'Automatisch aus Windows ausgelesen' : 'Automatically detected from Windows'}
-                          </span>
-                        </div>
-                      </div>
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-white/[0.06]">
+                    <div>
+                      <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider block">
+                        {language === 'de' ? 'PC-Hardware (Automatisch erkannt)' : 'Hardware Specs (Auto-detected)'}
+                      </span>
+                      <span className="text-xs text-white/60">
+                        {language === 'de' ? 'Direkt von Windows ermittelte Hardware-Komponenten' : 'Detected Windows system hardware'}
+                      </span>
+                    </div>
 
-                      <div className="flex items-center gap-2.5">
-                        <button
-                          onClick={handleRedetectHardware}
-                          disabled={isDetectingHardware}
-                          className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 text-white rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                        >
-                          <RefreshCw size={13} className={isDetectingHardware ? 'animate-spin' : ''} />
-                          {language === 'de' ? 'Neu erkennen' : 'Redetect Specs'}
-                        </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleRedetectHardware}
+                        disabled={isDetectingHardware}
+                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                      >
+                        <RefreshCw size={12} className={isDetectingHardware ? 'animate-spin' : ''} />
+                        {language === 'de' ? 'Neu auslesen' : 'Refresh'}
+                      </button>
 
-                        <button
-                          onClick={() => setEditShowHardware(!editShowHardware)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                            editShowHardware 
-                              ? 'bg-purple-500/20 border-purple-500/40 text-purple-300' 
-                              : 'bg-white/5 border-white/10 text-white/40'
-                          }`}
-                        >
-                          {editShowHardware 
-                            ? (language === 'de' ? 'Sichtbar im Profil' : 'Visible on Profile') 
-                            : (language === 'de' ? 'Ausgeblendet' : 'Hidden')}
-                        </button>
+                      <button
+                        onClick={() => setEditShowHardware(!editShowHardware)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                          editShowHardware 
+                            ? 'bg-white/10 border-white/20 text-white' 
+                            : 'bg-white/[0.03] border-white/10 text-white/40'
+                        }`}
+                      >
+                        {editShowHardware 
+                          ? (language === 'de' ? 'Sichtbar im Profil' : 'Visible on Profile') 
+                          : (language === 'de' ? 'Ausgeblendet' : 'Hidden')}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Minimalist Specs Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                    <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3 flex items-center gap-2.5">
+                      <Zap size={16} className="text-white/40 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">GPU</span>
+                        <span className="text-xs font-semibold text-white truncate block">{displayHardware?.gpu || '—'}</span>
                       </div>
                     </div>
 
-                    {/* Detected Specs Overview */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-                      <div className="bg-[#181a22] border border-white/5 rounded-xl p-3.5 flex items-center gap-3">
-                        <Zap size={18} className="text-purple-400 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">GPU</span>
-                          <span className="text-xs font-bold text-white truncate block">{displayHardware?.gpu || 'Auto-detecting...'}</span>
-                        </div>
+                    <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3 flex items-center gap-2.5">
+                      <Cpu size={16} className="text-white/40 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">CPU</span>
+                        <span className="text-xs font-semibold text-white truncate block">{displayHardware?.cpu || '—'}</span>
                       </div>
+                    </div>
 
-                      <div className="bg-[#181a22] border border-white/5 rounded-xl p-3.5 flex items-center gap-3">
-                        <Cpu size={18} className="text-indigo-400 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">CPU</span>
-                          <span className="text-xs font-bold text-white truncate block">{displayHardware?.cpu || 'Auto-detecting...'}</span>
-                        </div>
+                    <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3 flex items-center gap-2.5">
+                      <HardDrive size={16} className="text-white/40 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">RAM</span>
+                        <span className="text-xs font-semibold text-white truncate block">{displayHardware?.ram || '—'}</span>
                       </div>
+                    </div>
 
-                      <div className="bg-[#181a22] border border-white/5 rounded-xl p-3.5 flex items-center gap-3">
-                        <HardDrive size={18} className="text-pink-400 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <span className="text-[10px] font-bold text-pink-400 uppercase tracking-wider block">RAM</span>
-                          <span className="text-xs font-bold text-white truncate block">{displayHardware?.ram || 'Auto-detecting...'}</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-[#181a22] border border-white/5 rounded-xl p-3.5 flex items-center gap-3">
-                        <Monitor size={18} className="text-emerald-400 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">{displayHardware?.os || 'OS / Monitor'}</span>
-                          <span className="text-xs font-bold text-white truncate block">{displayHardware?.display || 'Auto-detecting...'}</span>
-                        </div>
+                    <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3 flex items-center gap-2.5">
+                      <Monitor size={16} className="text-white/40 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">{displayHardware?.os || 'OS / Display'}</span>
+                        <span className="text-xs font-semibold text-white truncate block">{displayHardware?.display || 'Primary Monitor'}</span>
                       </div>
                     </div>
                   </div>
@@ -1083,18 +1059,18 @@ export function ProfileView() {
               )}
 
               {/* Action Buttons */}
-              <div className="flex justify-end gap-3 pt-6 border-t border-white/10 mt-6">
+              <div className="flex justify-end items-center gap-2.5 pt-5 border-t border-white/[0.06] mt-5">
                 <button 
                   onClick={() => setIsEditing(false)}
-                  className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-medium text-white/60 hover:text-white transition-colors cursor-pointer"
                 >
                   {t('cancel')}
                 </button>
                 <button 
                   onClick={handleSave}
-                  className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-[0_0_20px_rgba(168,85,247,0.4)] flex items-center gap-2 cursor-pointer hover:scale-105"
+                  className="bg-white text-black hover:bg-white/90 px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Save size={15} /> {t('save')}
+                  <Save size={13} className="text-black" /> {t('save')}
                 </button>
               </div>
             </motion.div>
@@ -1107,27 +1083,27 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-[#101216] border border-white/10 rounded-3xl p-6 md:p-8 mb-10 relative overflow-hidden shadow-xl"
+            className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-6 mb-8 relative overflow-hidden shadow-xl"
           >
             {/* Header with Title & Auto-Detected Badge */}
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                  <Cpu size={20} />
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70">
+                  <Cpu size={16} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white tracking-wide flex items-center gap-2">
-                    {language === 'de' ? 'Gaming Rig & Hardware-Showcase' : 'Gaming Rig & Hardware Showcase'}
+                  <h3 className="text-sm font-bold text-white tracking-wide">
+                    {language === 'de' ? 'Gaming Rig & Hardware' : 'Gaming Rig & Hardware'}
                   </h3>
-                  <p className="text-xs text-hub-muted">
-                    {language === 'de' ? 'Vollautomatisch von Eclipse aus Windows ausgelesen' : 'Automatically detected by Eclipse from Windows'}
+                  <p className="text-[11px] text-white/40">
+                    {language === 'de' ? 'Automatisch von Eclipse aus Windows ausgelesen' : 'Detected from Windows'}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] uppercase font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5 shadow-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+              <div className="flex items-center gap-2.5">
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   {language === 'de' ? 'Automatisch erkannt' : 'Auto-detected'}
                 </span>
 
@@ -1142,10 +1118,10 @@ export function ProfileView() {
                       }
                       syncMyProfile()
                     }}
-                    className={`text-xs font-semibold px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                    className={`text-xs font-medium px-2.5 py-1 rounded-md border transition-all cursor-pointer ${
                       settings.showHardwareSpecs !== false 
-                        ? 'bg-purple-500/20 border-purple-500/40 text-purple-300' 
-                        : 'bg-white/5 border-white/10 text-white/40'
+                        ? 'bg-white/10 border-white/20 text-white' 
+                        : 'bg-white/[0.02] border-white/10 text-white/40'
                     }`}
                     title="Toggle public visibility"
                   >
@@ -1158,16 +1134,16 @@ export function ProfileView() {
             </div>
 
             {/* Hardware Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {/* GPU */}
               {displayHardware.gpu && (
-                <div className="bg-[#15171d] border border-white/5 rounded-2xl p-4 flex items-center gap-3.5 hover:border-purple-500/30 transition-colors group">
-                  <div className="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <Zap size={20} />
+                <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3.5 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70 flex-shrink-0">
+                    <Zap size={16} />
                   </div>
                   <div className="overflow-hidden min-w-0">
-                    <span className="text-[10px] font-bold text-purple-400/80 uppercase tracking-wider block">GPU</span>
-                    <p className="text-xs font-bold text-white truncate drop-shadow-sm" title={displayHardware.gpu}>
+                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">GPU</span>
+                    <p className="text-xs font-semibold text-white truncate" title={displayHardware.gpu}>
                       {displayHardware.gpu}
                     </p>
                   </div>
@@ -1176,13 +1152,13 @@ export function ProfileView() {
 
               {/* CPU */}
               {displayHardware.cpu && (
-                <div className="bg-[#15171d] border border-white/5 rounded-2xl p-4 flex items-center gap-3.5 hover:border-indigo-500/30 transition-colors group">
-                  <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <Cpu size={20} />
+                <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3.5 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70 flex-shrink-0">
+                    <Cpu size={16} />
                   </div>
                   <div className="overflow-hidden min-w-0">
-                    <span className="text-[10px] font-bold text-indigo-400/80 uppercase tracking-wider block">CPU</span>
-                    <p className="text-xs font-bold text-white truncate drop-shadow-sm" title={displayHardware.cpu}>
+                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">CPU</span>
+                    <p className="text-xs font-semibold text-white truncate" title={displayHardware.cpu}>
                       {displayHardware.cpu}
                     </p>
                   </div>
@@ -1191,13 +1167,13 @@ export function ProfileView() {
 
               {/* RAM */}
               {displayHardware.ram && (
-                <div className="bg-[#15171d] border border-white/5 rounded-2xl p-4 flex items-center gap-3.5 hover:border-pink-500/30 transition-colors group">
-                  <div className="w-11 h-11 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <HardDrive size={20} />
+                <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3.5 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70 flex-shrink-0">
+                    <HardDrive size={16} />
                   </div>
                   <div className="overflow-hidden min-w-0">
-                    <span className="text-[10px] font-bold text-pink-400/80 uppercase tracking-wider block">Memory</span>
-                    <p className="text-xs font-bold text-white truncate drop-shadow-sm" title={displayHardware.ram}>
+                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">RAM</span>
+                    <p className="text-xs font-semibold text-white truncate" title={displayHardware.ram}>
                       {displayHardware.ram}
                     </p>
                   </div>
@@ -1205,15 +1181,15 @@ export function ProfileView() {
               )}
 
               {/* Display / OS */}
-              <div className="bg-[#15171d] border border-white/5 rounded-2xl p-4 flex items-center gap-3.5 hover:border-emerald-500/30 transition-colors group">
-                <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <Monitor size={20} />
+              <div className="bg-[#14161c] border border-white/[0.06] rounded-xl p-3.5 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70 flex-shrink-0">
+                  <Monitor size={16} />
                 </div>
                 <div className="overflow-hidden min-w-0">
-                  <span className="text-[10px] font-bold text-emerald-400/80 uppercase tracking-wider block">
+                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider block">
                     {displayHardware.os || 'Display'}
                   </span>
-                  <p className="text-xs font-bold text-white truncate drop-shadow-sm">
+                  <p className="text-xs font-semibold text-white truncate">
                     {displayHardware.display ? `${displayHardware.display}` : 'Primary Monitor'}
                   </p>
                 </div>
@@ -1223,21 +1199,21 @@ export function ProfileView() {
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           {(!isViewingFriend ? settings.profileShowPlaytime !== false : true) && (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="bg-[#101216] border border-white/10 rounded-2xl p-6 relative overflow-hidden group shadow-lg"
+              className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-5 relative overflow-hidden shadow-lg"
             >
-              <div className="w-11 h-11 bg-indigo-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Clock className="text-indigo-400" size={22} />
+              <div className="w-9 h-9 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center mb-3">
+                <Clock className="text-white/70" size={18} />
               </div>
-              <h3 className="text-2xl font-black text-white mb-1">
+              <h3 className="text-xl font-bold text-white mb-0.5">
                 {displayTotalPlaytime}
               </h3>
-              <p className="text-xs font-semibold text-hub-muted uppercase tracking-wider">{t('totalPlaytime')}</p>
+              <p className="text-[11px] font-medium text-hub-muted uppercase tracking-wider">{t('totalPlaytime')}</p>
             </motion.div>
           )}
 
@@ -1245,15 +1221,15 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-[#101216] border border-white/10 rounded-2xl p-6 relative overflow-hidden group shadow-lg"
+            className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-5 relative overflow-hidden shadow-lg"
           >
-            <div className="w-11 h-11 bg-pink-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-              <Library className="text-pink-400" size={22} />
+            <div className="w-9 h-9 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center mb-3">
+              <Library className="text-white/70" size={18} />
             </div>
-            <h3 className="text-2xl font-black text-white mb-1">
+            <h3 className="text-xl font-bold text-white mb-0.5">
               {displayLibraryCount}
             </h3>
-            <p className="text-xs font-semibold text-hub-muted uppercase tracking-wider">
+            <p className="text-[11px] font-medium text-hub-muted uppercase tracking-wider">
               {t('gamesInLibrary')}
             </p>
           </motion.div>
@@ -1262,15 +1238,15 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="bg-[#101216] border border-white/10 rounded-2xl p-6 relative overflow-hidden group shadow-lg"
+            className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-5 relative overflow-hidden shadow-lg"
           >
-            <div className="w-11 h-11 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-              <Save className="text-emerald-400" size={22} />
+            <div className="w-9 h-9 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center mb-3">
+              <Save className="text-white/70" size={18} />
             </div>
-            <h3 className="text-2xl font-black text-white mb-1">
+            <h3 className="text-xl font-bold text-white mb-0.5">
               {displayInstalledCount}
             </h3>
-            <p className="text-xs font-semibold text-hub-muted uppercase tracking-wider">
+            <p className="text-[11px] font-medium text-hub-muted uppercase tracking-wider">
               {isViewingFriend ? 'Activity / Installed' : t('installedGames')}
             </p>
           </motion.div>
@@ -1282,13 +1258,13 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-[#101216] border border-white/10 rounded-2xl p-6 mb-10 shadow-lg"
+            className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-5 mb-8 shadow-lg"
           >
-            <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-              <Trophy size={16} className="text-amber-400" />
+            <h3 className="text-sm font-bold text-white mb-3.5 flex items-center gap-2">
+              <Trophy size={15} className="text-amber-400" />
               {language === 'de' ? 'Meistgespielte Spiele' : 'Most Played Games'}
             </h3>
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {displayTopGames.map((game: any, idx: number) => {
                 const mins = Math.round(game.playTimeMinutes || 0)
                 const hrs = mins >= 60 ? (mins / 60).toFixed(1) + ' hrs' : `${mins} mins`
@@ -1300,15 +1276,15 @@ export function ProfileView() {
                     onClick={() => {
                       if (sId) openGameDetails(sId, game.name)
                     }}
-                    className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 transition-all cursor-pointer group"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.04] transition-all cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-black text-white/50 w-5 text-center">#{idx + 1}</span>
-                      <p className="text-xs font-bold text-white group-hover:text-purple-300 transition-colors">{game.name}</p>
+                      <span className="text-xs font-semibold text-white/40 w-4 text-center">#{idx + 1}</span>
+                      <p className="text-xs font-medium text-white group-hover:text-white transition-colors">{game.name}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Clock size={12} className="text-white/40" />
-                      <span className="text-xs font-semibold text-white/90">{hrs}</span>
+                    <div className="flex items-center gap-1.5">
+                      <Clock size={11} className="text-white/30" />
+                      <span className="text-xs text-white/70">{hrs}</span>
                     </div>
                   </div>
                 )
@@ -1323,21 +1299,21 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="mb-10"
+            className="mb-8"
           >
-            <div className="flex items-center gap-3 mb-5">
-              <h3 className="text-base font-bold text-white tracking-wide">Steam Recent Activity</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <h3 className="text-sm font-bold text-white tracking-wide">Steam Recent Activity</h3>
               <div className="h-[1px] flex-1 bg-gradient-to-r from-white/10 to-transparent" />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
               {steamRecentGames.slice(0, 3).map((game: any) => (
-                <div key={game.appId || game.name} className="bg-[#101216] rounded-2xl overflow-hidden border border-white/5 hover:border-white/20 transition-all shadow-md">
-                  <div className="relative h-24 overflow-hidden">
+                <div key={game.appId || game.name} className="bg-[#0e1015] rounded-xl overflow-hidden border border-white/[0.06] hover:border-white/20 transition-all shadow-md">
+                  <div className="relative h-20 overflow-hidden">
                     <img src={game.iconUrl} alt={game.name} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#101216] to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0e1015] to-transparent" />
                   </div>
-                  <div className="p-4 relative -mt-6">
-                    <h4 className="font-semibold text-white text-xs truncate drop-shadow-md mb-1">{game.name}</h4>
+                  <div className="p-3 relative -mt-4">
+                    <h4 className="font-medium text-white text-xs truncate drop-shadow-sm mb-0.5">{game.name}</h4>
                     <p className="text-[11px] text-[#66c0f4] font-medium">{game.playtime}</p>
                   </div>
                 </div>
