@@ -73,6 +73,17 @@ function createOverlayWindow() {
 }
 
 export function showOverlay(gameData: any) {
+  const s = gameData?.settings
+  const isAnyOverlayActive = s && (
+    s.performance || s.crosshair || s.cps || s.robloxCps || s.robloxTimer || 
+    s.rlHud || s.overlayRLSteam || s.overlayController || s.overlayRLController
+  )
+
+  if (!isAnyOverlayActive) {
+    hideOverlay()
+    return
+  }
+
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.webContents.send('overlay:update', gameData)
     return
@@ -82,9 +93,15 @@ export function showOverlay(gameData: any) {
 
   overlayWindow!.once('ready-to-show', () => {
     overlayWindow?.show()
-    startMetricsService(getOverlayWindow)
-    startInputService(overlayWindow!)
-    startGamepadService(getOverlayWindow)
+    if (s?.performance) {
+      startMetricsService(getOverlayWindow)
+    }
+    if (s?.cps || s?.robloxCps || s?.rlHud) {
+      startInputService(overlayWindow!)
+    }
+    if (s?.overlayController || s?.overlayRLController) {
+      startGamepadService(getOverlayWindow)
+    }
     overlayWindow?.webContents.send('overlay:update', gameData)
   })
   overlayWindow!.webContents.once('did-finish-load', () => {
@@ -94,7 +111,11 @@ export function showOverlay(gameData: any) {
 
 export function hideOverlay() {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
-    overlayWindow.close()
+    try {
+      overlayWindow.destroy()
+    } catch (_) {
+      overlayWindow.close()
+    }
     overlayWindow = null
   }
   stopMetricsService()

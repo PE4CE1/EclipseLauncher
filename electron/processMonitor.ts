@@ -48,6 +48,8 @@ function getAppSettings() {
       const s = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
       cachedSettings = {
         gamePerformanceMode: s.gamePerformanceMode ?? true,
+        autoMinimizeOnGame: s.autoMinimizeOnGame ?? true,
+        autoRestoreOnGameStop: s.autoRestoreOnGameStop ?? true,
         discordEnabled: s.discordRpc ?? true,
         showDownloads: s.discordRpcShowDownloads ?? true,
         showIdle: s.discordRpcIdle ?? true,
@@ -81,6 +83,8 @@ function getAppSettings() {
 
   cachedSettings = {
     gamePerformanceMode: true,
+    autoMinimizeOnGame: true,
+    autoRestoreOnGameStop: true,
     discordEnabled: true, showDownloads: true, showIdle: true,
     overlayPerformance: false, overlayCrosshair: false, overlayGeneralAlwaysOn: false, 
     overlayCps: false, overlayController: false, overlayRobloxTimer: false, overlayRobloxCps: false, 
@@ -321,15 +325,19 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
         console.error('[ProcessMonitor] Failed to record playtime on stop:', e)
       }
 
-      if (rlServiceActive) {
-        rlServiceActive = false
-        stopRLService()
-      }
-
-      // Restore normal process priority
+      // Restore normal process priority and 60 FPS frame rate
       try {
         os.setPriority(os.constants.priority.PRIORITY_NORMAL)
       } catch (_) {}
+      mainWindow?.webContents.setFrameRate(60)
+
+      if (appSettings.autoMinimizeOnGame !== false && appSettings.autoRestoreOnGameStop !== false) {
+        try {
+          if (mainWindow && mainWindow.isMinimized()) {
+            mainWindow.restore()
+          }
+        } catch (_) {}
+      }
 
       currentGame = null
       currentGamePid = 0
@@ -411,9 +419,18 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           // Performance Mode: Lower launcher process priority so game gets 100% CPU/GPU
           if (appSettings.gamePerformanceMode !== false) {
             try {
-              os.setPriority(os.constants.priority.PRIORITY_BELOW_NORMAL)
+              os.setPriority(os.constants.priority.PRIORITY_LOW)
             } catch (_) {}
+            mainWindow?.webContents.setFrameRate(1)
             mainWindow?.webContents.setBackgroundThrottling(true)
+
+            if (appSettings.autoMinimizeOnGame !== false) {
+              try {
+                if (mainWindow && !mainWindow.isMinimized() && mainWindow.isVisible()) {
+                  mainWindow.minimize()
+                }
+              } catch (_) {}
+            }
           }
 
           // Start real external FPS monitor ONLY if user actually enabled the performance overlay
@@ -494,10 +511,19 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
             stopRLService()
           }
 
-          // Restore normal process priority
+          // Restore normal process priority & 60 FPS frame rate
           try {
             os.setPriority(os.constants.priority.PRIORITY_NORMAL)
           } catch (_) {}
+          mainWindow?.webContents.setFrameRate(60)
+
+          if (appSettings.autoMinimizeOnGame !== false && appSettings.autoRestoreOnGameStop !== false) {
+            try {
+              if (mainWindow && mainWindow.isMinimized()) {
+                mainWindow.restore()
+              }
+            } catch (_) {}
+          }
 
           currentGame = null
           currentGamePid = 0

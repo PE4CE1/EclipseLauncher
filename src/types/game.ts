@@ -131,6 +131,8 @@ export interface AppSettings {
   allDebridKey?: string
   hardwareAcceleration?: boolean
   gamePerformanceMode?: boolean
+  autoMinimizeOnGame?: boolean
+  autoRestoreOnGameStop?: boolean
   desktopNotifications?: boolean
   soundEffects?: boolean
   notificationSound?: string

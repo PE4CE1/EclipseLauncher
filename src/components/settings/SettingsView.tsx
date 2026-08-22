@@ -1294,6 +1294,47 @@ export function SettingsView() {
                       </button>
                     </div>
 
+                    {/* Sub-option: Auto-minimize on Game Start */}
+                    {(localSettings.gamePerformanceMode !== false) && (
+                      <div className="mt-4 pt-3.5 border-t border-white/[0.08] flex items-center justify-between gap-4">
+                        <div>
+                          <span className="text-xs font-bold text-white block">
+                            {t('autoMinimizeOnGame') || (language === 'de' ? 'Bei Spielstart automatisch minimieren (0% GPU-Auslastung)' : 'Auto-minimize on game launch (0% GPU Usage)')}
+                          </span>
+                          <p className="text-[11px] text-white/50 mt-0.5 max-w-lg">
+                            {t('autoMinimizeOnGameDesc') || (language === 'de' 
+                              ? 'Minimiert Eclipse beim Starten eines Spiels automatisch in die Taskleiste. Dadurch gibt Windows die Grafikkarte und DWM-Ressourcen zu 100% exklusiv für dein Spiel frei.' 
+                              : 'Minimizes Eclipse to the taskbar when a game launches. This releases 100% of GPU rendering and DWM composition resources exclusively to your game.')}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={localSettings.autoMinimizeOnGame !== false}
+                          onClick={() => {
+                            const val = !(localSettings.autoMinimizeOnGame !== false)
+                            set('autoMinimizeOnGame', val)
+                            updateSettings({ autoMinimizeOnGame: val })
+                            if (window.electronAPI) {
+                              window.electronAPI.setSettings({ autoMinimizeOnGame: val })
+                            }
+                          }}
+                          className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            localSettings.autoMinimizeOnGame !== false ? 'bg-white' : 'bg-white/15'
+                          }`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
+                              localSettings.autoMinimizeOnGame !== false
+                                ? 'translate-x-4 bg-black'
+                                : 'translate-x-0 bg-white/70'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    )}
+
                     <div className="mt-4 pt-3.5 border-t border-white/[0.08] flex items-center justify-between text-xs text-white/50">
                       <div className="flex items-center gap-2">
                         <span className={`w-1.5 h-1.5 rounded-full ${localSettings.gamePerformanceMode !== false ? 'bg-emerald-400' : 'bg-white/30'}`} />
@@ -1304,7 +1345,7 @@ export function SettingsView() {
                         </span>
                       </div>
                       <span className="text-[11px] font-mono text-white/40">
-                        Process Priority: {localSettings.gamePerformanceMode !== false ? 'Dynamic (Below Normal in-game)' : 'Normal'}
+                        Process Priority: {localSettings.gamePerformanceMode !== false ? 'Idle (Low Priority in-game)' : 'Normal'}
                       </span>
                     </div>
                   </div>
