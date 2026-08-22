@@ -107,6 +107,7 @@ export function ProfileView() {
   const [editShowHardware, setEditShowHardware] = useState(settings.showHardwareSpecs !== false)
   const [editShowPlaytime, setEditShowPlaytime] = useState(settings.profileShowPlaytime !== false)
   const [editShowSteamStats, setEditShowSteamStats] = useState(settings.profileShowSteamStats !== false)
+  const [editShowSteamBg, setEditShowSteamBg] = useState(settings.profileShowSteamBackground !== false)
 
   const [isSyncingSteam, setIsSyncingSteam] = useState(false)
   const [isDetectingHardware, setIsDetectingHardware] = useState(false)
@@ -125,6 +126,7 @@ export function ProfileView() {
       setEditShowHardware(settings.showHardwareSpecs !== false)
       setEditShowPlaytime(settings.profileShowPlaytime !== false)
       setEditShowSteamStats(settings.profileShowSteamStats !== false)
+      setEditShowSteamBg(settings.profileShowSteamBackground !== false)
     }
   }, [settings, isEditing])
 
@@ -146,6 +148,13 @@ export function ProfileView() {
   const steamBackgroundUrl = isViewingFriend
     ? (profileData?.steamBackgroundUrl || friend?.steamBackgroundUrl)
     : settings.steamBackgroundUrl
+
+  const showSteamBgSetting = isViewingFriend
+    ? (profileData?.showSteamBackground !== false)
+    : (settings.profileShowSteamBackground !== false)
+
+  // Determine active full-page Steam background
+  const activeSteamBg = showSteamBgSetting ? (steamBackgroundMovie || steamBackgroundUrl) : null
 
   // Default to live Steam background (movie or image) if available, otherwise bannerUrl or default preset
   const displayBanner = isViewingFriend
@@ -318,7 +327,8 @@ export function ProfileView() {
       steamProfileUrl: editSteamUrl,
       showHardwareSpecs: editShowHardware,
       profileShowPlaytime: editShowPlaytime,
-      profileShowSteamStats: editShowSteamStats
+      profileShowSteamStats: editShowSteamStats,
+      profileShowSteamBackground: editShowSteamBg
     }
 
     if (window.electronAPI?.setSettings) {
@@ -462,7 +472,8 @@ export function ProfileView() {
           steamBadges: steamBadges || [],
           steamGames: steamGames || [],
           steamBackgroundUrl: steamBackgroundUrl,
-          steamBackgroundMovie: steamBackgroundMovie
+          steamBackgroundMovie: steamBackgroundMovie,
+          showSteamBackground: showSteamBgSetting
         }
         updateSettings({
           eclipseFriends: [...currentFriends, newFriend]
@@ -525,14 +536,40 @@ export function ProfileView() {
   )
 
   return (
-    <div className="h-full overflow-y-auto bg-[#07080a] select-none">
-      <div className="max-w-5xl mx-auto px-6 py-8 md:px-10 md:py-10 space-y-6">
+    <div className="relative h-full overflow-y-auto bg-[#07080a] select-none">
+      {/* ─── Full-Page Ambient Steam Background (Live Video or High-Res Image) ─── */}
+      {activeSteamBg && (
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          {isVideoBanner(activeSteamBg) ? (
+            <video 
+              src={activeSteamBg} 
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              className="w-full h-full object-cover object-center filter brightness-[0.40] saturate-125 transition-opacity duration-700"
+            />
+          ) : (
+            <img 
+              src={activeSteamBg} 
+              alt="Steam Full Background" 
+              className="w-full h-full object-cover object-center filter brightness-[0.40] saturate-125 transition-opacity duration-700"
+            />
+          )}
+          {/* Edge and Bottom Vignette Overlays */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#07080a] via-[#07080a]/50 to-transparent" />
+          <div className="absolute inset-0 bg-black/30" />
+        </div>
+      )}
+
+      {/* Main Content Area */}
+      <div className="relative z-10 max-w-5xl mx-auto px-6 py-8 md:px-10 md:py-10 space-y-6">
         
         {/* ─── Hero Header & Identity Card with Live Background ─── */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl relative"
+          className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl relative"
         >
           {/* Cover Banner (Live Video or Static Image) */}
           <div className="relative h-56 md:h-64 w-full overflow-hidden bg-[#06070a]">
@@ -803,7 +840,7 @@ export function ProfileView() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.15 }}
-              className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-6 shadow-2xl relative"
+              className="bg-[#0c0d12]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 shadow-2xl relative"
             >
               {/* Header */}
               <div className="flex items-center justify-between pb-4 border-b border-white/[0.06] mb-5">
@@ -890,6 +927,13 @@ export function ProfileView() {
                       label={language === 'de' ? 'Steam-Level, Badges & Spiele anzeigen' : 'Show Steam Level, Badges & Games'}
                       description={language === 'de' ? 'Zeigt dein synchronisiertes Steam-Level, Abzeichen und Steam-Spiele an.' : 'Displays your synced Steam level, badges, and games.'}
                     />
+
+                    <CleanCheckbox 
+                      checked={editShowSteamBg}
+                      onChange={() => setEditShowSteamBg(!editShowSteamBg)}
+                      label={language === 'de' ? 'Steam Profil-Hintergrund im Profil verwenden' : 'Use Steam Profile Background on Profile'}
+                      description={language === 'de' ? 'Zeigt deinen synchronisierten Steam-Hintergrund (Bild oder Live Video) als Profil-Hintergrund an.' : 'Applies your synced Steam background (image or live video) to your profile.'}
+                    />
                   </div>
                 </div>
               )}
@@ -900,12 +944,26 @@ export function ProfileView() {
                   {/* Steam Live Background option if detected */}
                   {(steamBackgroundMovie || steamBackgroundUrl) && (
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#66c0f4] uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                        <Play size={12} className="text-[#66c0f4]" />
-                        {language === 'de' ? 'Steam Hintergrund (Automatisch von Steam synchronisiert)' : 'Steam Background (Auto-synced from Steam)'}
-                      </label>
+                      <div className="flex items-center justify-between mb-2.5">
+                        <label className="text-[11px] font-semibold text-[#66c0f4] uppercase tracking-wider flex items-center gap-1.5">
+                          <Play size={12} className="text-[#66c0f4]" />
+                          {language === 'de' ? 'Steam Hintergrund (Automatisch erkannt)' : 'Steam Background (Auto-detected)'}
+                        </label>
+                        <button
+                          onClick={() => setEditShowSteamBg(!editShowSteamBg)}
+                          className={`px-2.5 py-0.5 rounded text-[10px] font-medium border cursor-pointer transition-colors ${
+                            editShowSteamBg ? 'bg-[#66c0f4]/20 border-[#66c0f4]/40 text-[#66c0f4]' : 'bg-white/5 border-white/10 text-white/40'
+                          }`}
+                        >
+                          {editShowSteamBg ? (language === 'de' ? 'Aktiv' : 'Enabled') : (language === 'de' ? 'Aus' : 'Disabled')}
+                        </button>
+                      </div>
+
                       <div 
-                        onClick={() => setEditBanner(steamBackgroundMovie || steamBackgroundUrl || '')}
+                        onClick={() => {
+                          setEditBanner(steamBackgroundMovie || steamBackgroundUrl || '')
+                          setEditShowSteamBg(true)
+                        }}
                         className={`group relative h-28 rounded-xl overflow-hidden border cursor-pointer transition-all ${
                           editBanner === (steamBackgroundMovie || steamBackgroundUrl) ? 'border-[#66c0f4] ring-2 ring-[#66c0f4]/50' : 'border-white/[0.08] hover:border-white/30'
                         }`}
@@ -1216,7 +1274,7 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
+            className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
           >
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 mb-4 border-b border-white/[0.06]">
@@ -1296,7 +1354,7 @@ export function ProfileView() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="bg-[#0c0d12] border border-white/[0.08] rounded-xl p-4 shadow-sm"
+              className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl p-4 shadow-sm"
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-mono font-medium uppercase text-white/40 tracking-wider">
@@ -1312,7 +1370,7 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-[#0c0d12] border border-white/[0.08] rounded-xl p-4 shadow-sm"
+            className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl p-4 shadow-sm"
           >
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] font-mono font-medium uppercase text-white/40 tracking-wider">
@@ -1327,7 +1385,7 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="bg-[#0c0d12] border border-white/[0.08] rounded-xl p-4 shadow-sm"
+            className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl p-4 shadow-sm"
           >
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] font-mono font-medium uppercase text-white/40 tracking-wider">
@@ -1345,7 +1403,7 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
+            className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
           >
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2.5">
@@ -1399,7 +1457,7 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm space-y-4"
+            className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm space-y-4"
           >
             {/* Header & Sub-Tabs */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
@@ -1522,7 +1580,7 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
+            className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
           >
             <h3 className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-3 flex items-center gap-2">
               <Trophy size={13} className="text-amber-400/90" />

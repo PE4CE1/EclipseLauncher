@@ -99,6 +99,7 @@ export interface EclipseFriend {
   steamGames?: SteamProfileGame[]
   steamBackgroundUrl?: string
   steamBackgroundMovie?: string
+  showSteamBackground?: boolean
   lastSeen?: number
   totalPlaytimeHours?: string
   totalPlaytimeMins?: number
@@ -256,6 +257,7 @@ export interface AppSettings {
   socialApiUrl?: string
   profileShowPlaytime?: boolean
   profileShowSteamStats?: boolean
+  profileShowSteamBackground?: boolean
   overlayPositions: {
     performance: { xPct: number; yPct: number }
     robloxTimer: { xPct: number; yPct: number }
