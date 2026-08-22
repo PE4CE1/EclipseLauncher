@@ -4,7 +4,7 @@ import {
   User, Library, Clock, Save, Edit3, Settings, Trophy, Gamepad2, 
   UserPlus, Check, ArrowLeft, Loader2, Cpu, Zap, HardDrive, Monitor, 
   Image as ImageIcon, Sparkles, Copy, ExternalLink, X, RefreshCw, 
-  MessageSquare, CheckCircle2
+  MessageSquare, CheckCircle2, Shield
 } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
@@ -16,21 +16,21 @@ import { sendAppNotification } from '../../services/notificationService'
 import type { EclipseFriend } from '../../types/game'
 
 const BANNER_PRESETS = [
-  { id: 'galaxy', name: 'Galaxy', url: 'https://images.unsplash.com/photo-1538370965046-79c0d6907d47?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'cyberpunk', name: 'Cyberpunk', url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'synthwave', name: 'Synthwave', url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'minimal', name: 'Minimalist', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'aurora', name: 'Aurora', url: 'https://images.unsplash.com/photo-1579033461380-adb47c3eb938?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'deep_space', name: 'Deep Space', url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'galaxy', name: 'Eclipse Galaxy', url: 'https://images.unsplash.com/photo-1538370965046-79c0d6907d47?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'cyberpunk', name: 'Cyberpunk Night', url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'synthwave', name: 'Retro Sunset', url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'minimal', name: 'Dark Flow', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'aurora', name: 'Nordic Aurora', url: 'https://images.unsplash.com/photo-1579033461380-adb47c3eb938?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'deep_space', name: 'Deep Nebula', url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=1600&auto=format&fit=crop' },
 ]
 
 const AVATAR_FRAMES = [
   { id: 'none', label: 'None', labelDe: 'Kein Rahmen', color: 'border-white/10' },
-  { id: 'eclipse_neon', label: 'Eclipse Glow', labelDe: 'Eclipse Glow', color: 'border-purple-400/90 shadow-[0_0_12px_rgba(168,85,247,0.4)]' },
-  { id: 'cyberpunk', label: 'Cyberpunk', labelDe: 'Cyberpunk', color: 'border-cyan-400/90 shadow-[0_0_12px_rgba(6,182,212,0.4)]' },
-  { id: 'golden_vip', label: 'Gold VIP', labelDe: 'Gold VIP', color: 'border-amber-400/90 shadow-[0_0_12px_rgba(251,191,36,0.4)]' },
-  { id: 'fire_blaze', label: 'Fire Blaze', labelDe: 'Fire Blaze', color: 'border-rose-400/90 shadow-[0_0_12px_rgba(244,63,94,0.4)]' },
-  { id: 'emerald_pulse', label: 'Emerald', labelDe: 'Smaragd', color: 'border-emerald-400/90 shadow-[0_0_12px_rgba(52,211,153,0.4)]' },
+  { id: 'eclipse_neon', label: 'Eclipse Glow', labelDe: 'Eclipse Glow', color: 'border-indigo-400 shadow-[0_0_12px_rgba(129,140,248,0.35)]' },
+  { id: 'cyberpunk', label: 'Cyberpunk', labelDe: 'Cyberpunk', color: 'border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.35)]' },
+  { id: 'golden_vip', label: 'Gold VIP', labelDe: 'Gold VIP', color: 'border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.35)]' },
+  { id: 'fire_blaze', label: 'Fire Blaze', labelDe: 'Fire Blaze', color: 'border-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.35)]' },
+  { id: 'emerald_pulse', label: 'Emerald', labelDe: 'Smaragd', color: 'border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.35)]' },
 ]
 
 export function ProfileView() {
@@ -43,6 +43,7 @@ export function ProfileView() {
   const [isSendingRequest, setIsSendingRequest] = useState(false)
   const [requestSent, setRequestSent] = useState(false)
   const [copiedDiscord, setCopiedDiscord] = useState(false)
+  const [copiedFriendCode, setCopiedFriendCode] = useState(false)
 
   const friend = selectedFriendId ? settings.eclipseFriends?.find(f => f.id === selectedFriendId) : null
   const isViewingFriend = !!selectedFriendId
@@ -170,17 +171,13 @@ export function ProfileView() {
     ? (profileData?.steamGamesCount ?? friend?.steamGamesCount) 
     : settings.steamGamesCount
 
-  const steamBadgesCount = isViewingFriend 
-    ? (profileData?.steamBadgesCount ?? friend?.steamBadgesCount) 
-    : settings.steamBadgesCount
+  const steamRecentGames = isViewingFriend 
+    ? (profileData?.steamRecentGames || friend?.steamRecentGames || []) 
+    : (settings.steamRecentGames || [])
 
   const steamFavoriteBadge = isViewingFriend 
     ? (profileData?.steamFavoriteBadge || friend?.steamFavoriteBadge) 
     : settings.steamFavoriteBadge
-
-  const steamRecentGames = isViewingFriend 
-    ? (profileData?.steamRecentGames || friend?.steamRecentGames || []) 
-    : (settings.steamRecentGames || [])
 
   const friendStatus = profileData?.status || friend?.status || 'offline'
   const friendCurrentGame = friendStatus === 'ingame' ? (profileData?.currentGame || friend?.currentGame) : null
@@ -380,7 +377,7 @@ export function ProfileView() {
         setRequestSent(true)
         sendAppNotification({
           title: language === 'de' ? 'Anfrage gesendet! 👥' : 'Request Sent! 👥',
-          body: res.message || (language === 'de' ? 'Freundschaftsanfrage erfolgreich übermittelt.' : 'Friend request sent.'),
+          body: res.message || (language === 'de' ? 'Freundschaftsanfrage übermittelt.' : 'Friend request sent.'),
           type: 'success',
           duration: 5000
         })
@@ -411,7 +408,7 @@ export function ProfileView() {
         setRequestSent(true)
         sendAppNotification({
           title: language === 'de' ? 'Freund hinzugefügt! 👥' : 'Friend Added! 👥',
-          body: language === 'de' ? `Freund ${displayName} wurde hinzugefügt!` : `Friend ${displayName} added!`,
+          body: language === 'de' ? `Freund ${displayName} hinzugefügt.` : `Friend ${displayName} added.`,
           type: 'success',
           duration: 5000
         })
@@ -467,16 +464,16 @@ export function ProfileView() {
 
   return (
     <div className="h-full overflow-y-auto bg-[#07080a] select-none">
-      <div className="max-w-5xl mx-auto p-6 md:p-10">
+      <div className="max-w-5xl mx-auto px-6 py-8 md:px-10 md:py-10 space-y-6">
         
-        {/* Header Profile Card with Banner */}
+        {/* ─── Hero Header & Identity Card ─── */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#0e1015] border border-white/[0.08] rounded-2xl overflow-hidden mb-8 shadow-xl relative"
+          className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl relative"
         >
           {/* Cover Banner */}
-          <div className="relative h-44 md:h-52 w-full overflow-hidden bg-[#07080a]">
+          <div className="relative h-48 md:h-56 w-full overflow-hidden bg-[#06070a]">
             {displayBanner && (
               <img 
                 src={displayBanner} 
@@ -484,10 +481,10 @@ export function ProfileView() {
                 className="w-full h-full object-cover object-center filter brightness-95" 
               />
             )}
-            {/* Banner Dark Overlay Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0e1015] via-[#0e1015]/40 to-transparent" />
+            {/* Smooth Vignette Gradient Fade */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] via-[#0c0d12]/40 to-transparent" />
             
-            {/* Quick Edit Banner Button (for local user) */}
+            {/* Quick Edit Banner Button (local user) */}
             {!isViewingFriend && !isEditing && (
               <button 
                 onClick={() => { setIsEditing(true); setEditTab('banner'); }}
@@ -498,155 +495,157 @@ export function ProfileView() {
             )}
           </div>
 
-          {/* Profile Header Content */}
-          <div className="px-7 pb-7 pt-0 relative z-10 flex flex-col md:flex-row items-center md:items-end gap-5 -mt-16 md:-mt-18">
+          {/* Profile Identity Details */}
+          <div className="px-6 pb-6 md:px-8 md:pb-8 pt-0 relative z-10 flex flex-col md:flex-row items-center md:items-end justify-between gap-5 -mt-16 md:-mt-18">
             
-            {/* Avatar with Frame */}
-            <div className="relative group flex-shrink-0">
-              <div className={`w-32 h-32 md:w-36 md:h-36 rounded-full p-1 bg-[#0e1015] border-2 ${getFrameClass(displayFrame)} transition-all duration-200 relative flex items-center justify-center`}>
-                <div className="w-full h-full rounded-full overflow-hidden bg-black/90 flex items-center justify-center">
-                  {displayAvatar ? (
-                    <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <User size={56} className="text-white/30" />
-                  )}
-                </div>
-              </div>
-
-              {!isViewingFriend && !isEditing && (
-                <button
-                  onClick={() => { setIsEditing(true); setEditTab('frame'); }}
-                  className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-xs font-medium gap-1"
-                >
-                  <Sparkles size={14} className="text-white/80" />
-                </button>
-              )}
-            </div>
-
-            {/* Profile Info & Badges */}
-            <div className="flex-1 text-center md:text-left">
-              <div className="flex flex-wrap items-center gap-2.5 justify-center md:justify-start mb-1.5">
-                <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight uppercase">
-                  {displayName}
-                </h1>
-                
-                {profileData?.friendCode && (
-                  <span className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-white/[0.04] border border-white/10 text-white/60">
-                    {profileData.friendCode}
-                  </span>
-                )}
-              </div>
-
-              {/* Status and Badges Line */}
-              <div className="flex flex-wrap items-center gap-2.5 justify-center md:justify-start mt-1">
-                {/* Live Status */}
-                <div className="flex items-center gap-2 text-xs font-medium text-hub-muted bg-white/[0.03] px-2.5 py-0.5 rounded-md border border-white/[0.06]">
-                  <span className={`w-1.5 h-1.5 rounded-full inline-block ${isOnline ? 'bg-emerald-400' : 'bg-white/30'}`} />
-                  <span className={isOnline ? 'text-white/90' : 'text-white/50'}>
-                    {isViewingFriend ? friendStatusText : t('online')}
-                  </span>
+            {/* Avatar & User Details */}
+            <div className="flex flex-col md:flex-row items-center md:items-end gap-5 text-center md:text-left">
+              {/* Avatar with selected frame */}
+              <div className="relative group flex-shrink-0">
+                <div className={`w-28 h-28 md:w-32 md:h-32 rounded-full p-1 bg-[#0c0d12] border-2 ${getFrameClass(displayFrame)} transition-all duration-200 relative flex items-center justify-center`}>
+                  <div className="w-full h-full rounded-full overflow-hidden bg-black/90 flex items-center justify-center">
+                    {displayAvatar ? (
+                      <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={48} className="text-white/30" />
+                    )}
+                  </div>
                 </div>
 
-                {/* Member Badge */}
-                {(isViewingFriend ? (profileData?.steamProfileUrl || friend?.steamProfileUrl) : settings.steamProfileUrl) ? (
-                  <span className="text-xs font-medium text-[#66c0f4] flex items-center gap-1.5 bg-[#1b2838]/60 border border-[#2a475e]/40 px-2.5 py-0.5 rounded-md">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-3.5 h-3.5" alt="Steam" />
-                    Steam
-                  </span>
-                ) : (
-                  <span className="text-xs font-semibold text-white/70 bg-white/[0.03] border border-white/[0.08] px-2.5 py-0.5 rounded-md">
-                    ECLIPSE
-                  </span>
-                )}
-
-                {/* In-Game Live Badge */}
-                {!isViewingFriend && activeGame && (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-200 text-xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
-                    <Gamepad2 size={12} className="text-indigo-400 flex-shrink-0" />
-                    <span className="truncate">
-                      <span className="text-white/40">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
-                      <span className="text-white font-medium">{activeGame.name}</span>
-                    </span>
-                  </div>
-                )}
-                {isViewingFriend && friendCurrentGame && (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-200 text-xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse flex-shrink-0" />
-                    <Gamepad2 size={12} className="text-purple-400 flex-shrink-0" />
-                    <span className="truncate">
-                      <span className="text-white/40">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
-                      <span className="text-white font-medium">{friendCurrentGame}</span>
-                    </span>
-                  </div>
-                )}
-
-                {/* Steam Stats Grouping */}
-                {steamLevel !== undefined && (settings.profileShowSteamStats !== false) && (
-                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-white/70 text-xs font-medium">
-                    <Trophy size={11} className="text-amber-400/80" />
-                    <span>Lvl {steamLevel}</span>
-                  </div>
+                {!isViewingFriend && !isEditing && (
+                  <button
+                    onClick={() => { setIsEditing(true); setEditTab('frame'); }}
+                    className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-xs font-medium gap-1"
+                  >
+                    <Sparkles size={14} className="text-white/80" />
+                  </button>
                 )}
               </div>
 
-              {/* Bio & Status Quote */}
-              {displayBio && (
-                <p className="mt-2.5 text-xs text-white/65 italic max-w-xl font-normal leading-relaxed">
-                  "{displayBio}"
-                </p>
-              )}
-
-              {/* Social Tags */}
-              {(displayDiscord || displayTwitch || displayYoutube) && (
-                <div className="flex flex-wrap items-center gap-2 mt-3 justify-center md:justify-start">
-                  {displayDiscord && (
-                    <button 
+              {/* Identity Typography & Badges */}
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
+                  <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight uppercase">
+                    {displayName}
+                  </h1>
+                  
+                  {profileData?.friendCode && (
+                    <button
                       onClick={() => {
-                        navigator.clipboard.writeText(displayDiscord)
-                        setCopiedDiscord(true)
-                        setTimeout(() => setCopiedDiscord(false), 2000)
+                        navigator.clipboard.writeText(profileData.friendCode)
+                        setCopiedFriendCode(true)
+                        setTimeout(() => setCopiedFriendCode(false), 2000)
                       }}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.03] border border-white/[0.08] text-white/70 hover:text-white hover:bg-white/[0.06] text-[11px] font-medium transition-all cursor-pointer"
-                      title="Click to copy Discord Tag"
+                      className="inline-flex items-center gap-1 text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/60 hover:text-white transition-all cursor-pointer"
+                      title="Click to copy Friend Code"
                     >
-                      <span className="font-semibold text-white/50">Discord:</span> {displayDiscord}
-                      {copiedDiscord ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} className="opacity-40" />}
+                      <span>#{profileData.friendCode}</span>
+                      {copiedFriendCode ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} className="opacity-40" />}
                     </button>
                   )}
-                  {displayTwitch && (
-                    <a 
-                      href={`https://twitch.tv/${displayTwitch.replace('@', '')}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.03] border border-white/[0.08] text-white/70 hover:text-white hover:bg-white/[0.06] text-[11px] font-medium transition-all"
-                    >
-                      <span className="font-semibold text-white/50">Twitch:</span> {displayTwitch}
-                      <ExternalLink size={11} className="opacity-40" />
-                    </a>
+                </div>
+
+                {/* Inline Status Row */}
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-0.5">
+                  {/* Status Indicator */}
+                  <div className="flex items-center gap-1.5 text-xs text-white/70 bg-white/[0.03] px-2.5 py-0.5 rounded-md border border-white/[0.06]">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-white/30'}`} />
+                    <span className="font-medium">{isViewingFriend ? friendStatusText : t('online')}</span>
+                  </div>
+
+                  {/* Steam Badge */}
+                  {(isViewingFriend ? (profileData?.steamProfileUrl || friend?.steamProfileUrl) : settings.steamProfileUrl) && (
+                    <span className="text-xs font-medium text-[#66c0f4] flex items-center gap-1.5 bg-[#1b2838]/60 border border-[#2a475e]/40 px-2.5 py-0.5 rounded-md">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-3.5 h-3.5" alt="Steam" />
+                      Steam
+                      {steamLevel !== undefined && <span className="text-white/60 font-mono text-[11px]">Lvl {steamLevel}</span>}
+                    </span>
                   )}
-                  {displayYoutube && (
-                    <a 
-                      href={`https://youtube.com/${displayYoutube.startsWith('@') ? displayYoutube : '@' + displayYoutube}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.03] border border-white/[0.08] text-white/70 hover:text-white hover:bg-white/[0.06] text-[11px] font-medium transition-all"
-                    >
-                      <span className="font-semibold text-white/50">YouTube:</span> {displayYoutube}
-                      <ExternalLink size={11} className="opacity-40" />
-                    </a>
+
+                  {/* Active In-Game Badge */}
+                  {!isViewingFriend && activeGame && (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-200 text-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                      <Gamepad2 size={12} className="text-indigo-400" />
+                      <span className="truncate max-w-[200px]">
+                        <span className="text-white/40">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
+                        <span className="text-white font-medium">{activeGame.name}</span>
+                      </span>
+                    </div>
+                  )}
+
+                  {isViewingFriend && friendCurrentGame && (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-200 text-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                      <Gamepad2 size={12} className="text-purple-400" />
+                      <span className="truncate max-w-[200px]">
+                        <span className="text-white/40">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
+                        <span className="text-white font-medium">{friendCurrentGame}</span>
+                      </span>
+                    </div>
                   )}
                 </div>
-              )}
+
+                {/* Bio / Quote */}
+                {displayBio && (
+                  <p className="text-xs text-white/65 italic max-w-md pt-1 leading-relaxed">
+                    "{displayBio}"
+                  </p>
+                )}
+
+                {/* Social Links */}
+                {(displayDiscord || displayTwitch || displayYoutube) && (
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1.5">
+                    {displayDiscord && (
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(displayDiscord)
+                          setCopiedDiscord(true)
+                          setTimeout(() => setCopiedDiscord(false), 2000)
+                        }}
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-white/70 hover:text-white text-[11px] transition-colors cursor-pointer"
+                      >
+                        <span className="text-white/40">Discord:</span>
+                        <span>{displayDiscord}</span>
+                        {copiedDiscord ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} className="opacity-30" />}
+                      </button>
+                    )}
+                    {displayTwitch && (
+                      <a 
+                        href={`https://twitch.tv/${displayTwitch.replace('@', '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-white/70 hover:text-white text-[11px] transition-colors"
+                      >
+                        <span className="text-white/40">Twitch:</span>
+                        <span>{displayTwitch}</span>
+                        <ExternalLink size={10} className="opacity-30" />
+                      </a>
+                    )}
+                    {displayYoutube && (
+                      <a 
+                        href={`https://youtube.com/${displayYoutube.startsWith('@') ? displayYoutube : '@' + displayYoutube}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-white/70 hover:text-white text-[11px] transition-colors"
+                      >
+                        <span className="text-white/40">YouTube:</span>
+                        <span>{displayYoutube}</span>
+                        <ExternalLink size={10} className="opacity-30" />
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Profile Action Buttons */}
-            <div className="flex flex-wrap gap-2 justify-center md:justify-end flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0 pt-2 md:pt-0">
               {!isViewingFriend ? (
                 <>
                   <button 
                     onClick={() => setIsEditing(true)}
-                    className="bg-white text-black hover:bg-white/90 font-semibold px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    className="bg-white text-black font-semibold hover:bg-white/90 px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                   >
                     <Edit3 size={13} /> {t('editProfile')}
                   </button>
@@ -655,7 +654,7 @@ export function ProfileView() {
                       setActiveSettingsTab('profile')
                       setActiveView('settings')
                     }}
-                    className="bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                    className="bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.08] px-3.5 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
                     <Settings size={13} /> {t('settings')}
                   </button>
@@ -666,7 +665,7 @@ export function ProfileView() {
                     <button 
                       onClick={handleSendFriendReq}
                       disabled={isSendingRequest || requestSent}
-                      className="bg-white text-black font-semibold hover:bg-white/90 px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-60"
+                      className="bg-white text-black font-semibold hover:bg-white/90 px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-60"
                     >
                       {isSendingRequest ? (
                         <Loader2 size={13} className="animate-spin" />
@@ -682,7 +681,7 @@ export function ProfileView() {
                   )}
                   <button 
                     onClick={() => setSelectedFriendId(null)}
-                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-3 py-1.5 rounded-lg font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-3.5 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
                     <ArrowLeft size={13} /> {language === 'de' ? 'Mein Profil' : 'My Profile'}
                   </button>
@@ -693,15 +692,15 @@ export function ProfileView() {
           </div>
         </motion.div>
 
-        {/* Minimalist Profile Settings & Customization Suite */}
+        {/* ─── Minimalist Edit Profile Modal / Section ─── */}
         <AnimatePresence>
           {isEditing && (
             <motion.div 
-              initial={{ opacity: 0, y: -8 }}
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
+              exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.15 }}
-              className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-6 mb-8 shadow-xl relative"
+              className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-6 shadow-2xl relative"
             >
               {/* Header */}
               <div className="flex items-center justify-between pb-4 border-b border-white/[0.06] mb-5">
@@ -779,7 +778,7 @@ export function ProfileView() {
                       checked={editShowPlaytime}
                       onChange={() => setEditShowPlaytime(!editShowPlaytime)}
                       label={language === 'de' ? 'Gesamte Spielzeit im Profil anzeigen' : 'Show Total Playtime on Profile'}
-                      description={language === 'de' ? 'Zeigt die akkumulierte Spielzeit aller Spiele öffentlich auf deinem Profil an.' : 'Displays your total playtime across all games on your profile.'}
+                      description={language === 'de' ? 'Zeigt deine Gesamtspielzeit über alle Spiele auf deinem Profil an.' : 'Displays your total playtime across all games on your profile.'}
                     />
 
                     <CleanCheckbox 
@@ -862,7 +861,7 @@ export function ProfileView() {
                               : 'border-white/[0.08] bg-[#14161c] hover:border-white/20'
                           }`}
                         >
-                          <div className={`w-12 h-12 rounded-full p-1 bg-[#0e1015] border-2 ${frame.color} flex items-center justify-center`}>
+                          <div className={`w-12 h-12 rounded-full p-1 bg-[#0c0d12] border-2 ${frame.color} flex items-center justify-center`}>
                             <div className="w-full h-full rounded-full overflow-hidden bg-black/90 flex items-center justify-center">
                               {editAvatar ? (
                                 <img src={editAvatar} alt="preview" className="w-full h-full object-cover" />
@@ -1067,27 +1066,26 @@ export function ProfileView() {
           )}
         </AnimatePresence>
 
-        {/* Minimalist Gaming Rig & Hardware Showcase (Full Visibility, No Cutoff) */}
+        {/* ─── System Specs (Hardware Rig) Bar ─── */}
         {displayShowHardware && displayHardware && (displayHardware.cpu || displayHardware.gpu) && (
           <motion.div 
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-5 md:p-6 mb-8 relative shadow-lg"
+            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
           >
-            {/* Header with Title & Auto-Detected Status */}
+            {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 mb-4 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2.5">
-                <Cpu size={15} className="text-white/60" />
+              <div className="flex items-center gap-2">
+                <Cpu size={14} className="text-white/60" />
                 <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
                   {language === 'de' ? 'System-Hardware' : 'System Hardware'}
                 </h3>
-                <span className="text-[10px] text-emerald-400 font-mono">
+                <span className="text-[10px] text-emerald-400/90 font-mono">
                   • {language === 'de' ? 'automatisch erkannt' : 'auto-detected'}
                 </span>
               </div>
 
-              {/* Visibility Switch on own profile */}
               {!isViewingFriend && (
                 <button
                   onClick={() => {
@@ -1099,7 +1097,6 @@ export function ProfileView() {
                     syncMyProfile()
                   }}
                   className="text-[11px] font-medium text-white/40 hover:text-white transition-colors cursor-pointer"
-                  title="Toggle public visibility"
                 >
                   {settings.showHardwareSpecs !== false 
                     ? (language === 'de' ? 'Sichtbar' : 'Visible') 
@@ -1108,9 +1105,8 @@ export function ProfileView() {
               )}
             </div>
 
-            {/* Clean Minimalist Specs Row (Full Visibility, No Truncation) */}
+            {/* Clean Non-Truncated Specs Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* GPU */}
               {displayHardware.gpu && (
                 <div className="space-y-1">
                   <span className="text-[10px] font-mono font-medium uppercase text-white/40 block">Graphics</span>
@@ -1120,7 +1116,6 @@ export function ProfileView() {
                 </div>
               )}
 
-              {/* CPU */}
               {displayHardware.cpu && (
                 <div className="space-y-1">
                   <span className="text-[10px] font-mono font-medium uppercase text-white/40 block">Processor</span>
@@ -1130,7 +1125,6 @@ export function ProfileView() {
                 </div>
               )}
 
-              {/* RAM */}
               {displayHardware.ram && (
                 <div className="space-y-1">
                   <span className="text-[10px] font-mono font-medium uppercase text-white/40 block">Memory</span>
@@ -1140,7 +1134,6 @@ export function ProfileView() {
                 </div>
               )}
 
-              {/* Display / OS */}
               <div className="space-y-1">
                 <span className="text-[10px] font-mono font-medium uppercase text-white/40 block">Display & OS</span>
                 <p className="text-xs font-medium text-white leading-relaxed whitespace-normal break-words">
@@ -1152,17 +1145,22 @@ export function ProfileView() {
           </motion.div>
         )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-8">
+        {/* ─── Stats Metrics Strip ─── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           {(!isViewingFriend ? settings.profileShowPlaytime !== false : true) && (
             <motion.div 
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="bg-[#0e1015] border border-white/[0.08] rounded-xl p-4 shadow-sm"
+              className="bg-[#0c0d12] border border-white/[0.08] rounded-xl p-4 shadow-sm"
             >
-              <span className="text-[10px] font-mono font-medium uppercase text-white/40 block mb-1">{t('totalPlaytime')}</span>
-              <p className="text-lg font-bold text-white">{displayTotalPlaytime}</p>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-mono font-medium uppercase text-white/40 tracking-wider">
+                  {t('totalPlaytime')}
+                </span>
+                <Clock size={13} className="text-white/30" />
+              </div>
+              <p className="text-xl font-bold text-white tracking-tight">{displayTotalPlaytime}</p>
             </motion.div>
           )}
 
@@ -1170,38 +1168,46 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-[#0e1015] border border-white/[0.08] rounded-xl p-4 shadow-sm"
+            className="bg-[#0c0d12] border border-white/[0.08] rounded-xl p-4 shadow-sm"
           >
-            <span className="text-[10px] font-mono font-medium uppercase text-white/40 block mb-1">{t('gamesInLibrary')}</span>
-            <p className="text-lg font-bold text-white">{displayLibraryCount}</p>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-mono font-medium uppercase text-white/40 tracking-wider">
+                {t('gamesInLibrary')}
+              </span>
+              <Library size={13} className="text-white/30" />
+            </div>
+            <p className="text-xl font-bold text-white tracking-tight">{displayLibraryCount}</p>
           </motion.div>
 
           <motion.div 
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="bg-[#0e1015] border border-white/[0.08] rounded-xl p-4 shadow-sm"
+            className="bg-[#0c0d12] border border-white/[0.08] rounded-xl p-4 shadow-sm"
           >
-            <span className="text-[10px] font-mono font-medium uppercase text-white/40 block mb-1">
-              {isViewingFriend ? 'Activity / Installed' : t('installedGames')}
-            </span>
-            <p className="text-lg font-bold text-white">{displayInstalledCount}</p>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-mono font-medium uppercase text-white/40 tracking-wider">
+                {isViewingFriend ? 'Activity / Installed' : t('installedGames')}
+              </span>
+              <Save size={13} className="text-white/30" />
+            </div>
+            <p className="text-xl font-bold text-white tracking-tight">{displayInstalledCount}</p>
           </motion.div>
         </div>
 
-        {/* Most Played Games Section */}
+        {/* ─── Most Played Games Section ─── */}
         {displayTopGames.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-[#0e1015] border border-white/[0.08] rounded-2xl p-5 mb-8 shadow-sm"
+            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
           >
             <h3 className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Trophy size={14} className="text-amber-400" />
+              <Trophy size={13} className="text-amber-400/90" />
               {language === 'de' ? 'Meistgespielte Spiele' : 'Most Played Games'}
             </h3>
-            <div className="space-y-1.5">
+            <div className="divide-y divide-white/[0.04]">
               {displayTopGames.map((game: any, idx: number) => {
                 const mins = Math.round(game.playTimeMinutes || 0)
                 const hrs = mins >= 60 ? (mins / 60).toFixed(1) + ' hrs' : `${mins} mins`
@@ -1213,15 +1219,17 @@ export function ProfileView() {
                     onClick={() => {
                       if (sId) openGameDetails(sId, game.name)
                     }}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] transition-all cursor-pointer group"
+                    className="flex items-center justify-between py-2.5 px-2 hover:bg-white/[0.02] rounded-lg transition-colors cursor-pointer group"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <span className="text-xs font-mono text-white/30 w-4 text-center">#{idx + 1}</span>
-                      <p className="text-xs font-medium text-white group-hover:text-white transition-colors">{game.name}</p>
+                      <p className="text-xs font-medium text-white/90 group-hover:text-white transition-colors truncate">
+                        {game.name}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-shrink-0 pl-3">
                       <Clock size={11} className="text-white/30" />
-                      <span className="text-xs text-white/70">{hrs}</span>
+                      <span className="text-xs font-mono text-white/60">{hrs}</span>
                     </div>
                   </div>
                 )
@@ -1230,24 +1238,24 @@ export function ProfileView() {
           </motion.div>
         )}
 
-        {/* Steam Recent Activity Showcase */}
+        {/* ─── Steam Recent Activity Showcase ─── */}
         {steamRecentGames && steamRecentGames.length > 0 && (settings.profileShowSteamStats !== false) && (
           <motion.div 
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="mb-8"
+            className="space-y-3"
           >
-            <div className="flex items-center gap-3 mb-3.5">
+            <div className="flex items-center gap-3">
               <h3 className="text-xs font-semibold text-white/80 uppercase tracking-wider">Steam Recent Activity</h3>
               <div className="h-[1px] flex-1 bg-white/[0.06]" />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
               {steamRecentGames.slice(0, 3).map((game: any) => (
-                <div key={game.appId || game.name} className="bg-[#0e1015] rounded-xl overflow-hidden border border-white/[0.06] hover:border-white/20 transition-all shadow-sm">
+                <div key={game.appId || game.name} className="bg-[#0c0d12] rounded-xl overflow-hidden border border-white/[0.06] hover:border-white/20 transition-all shadow-sm">
                   <div className="relative h-20 overflow-hidden">
                     <img src={game.iconUrl} alt={game.name} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0e1015] to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] to-transparent" />
                   </div>
                   <div className="p-3 relative -mt-4">
                     <h4 className="font-medium text-white text-xs truncate drop-shadow-sm mb-0.5">{game.name}</h4>
