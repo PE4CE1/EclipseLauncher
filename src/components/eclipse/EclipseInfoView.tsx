@@ -22,6 +22,20 @@ interface GitHubRelease {
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
   {
+    id: 121,
+    tag_name: 'v1.2.1',
+    name: 'v1.2.1 - Live Steam Backgrounds, Full Badges & Games Showcase & Minimalist Profile Suite',
+    published_at: '2026-08-23T00:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.2.1',
+    body: `### 🌌 Live Steam Backgrounds & Profile Overhaul
+* **Full-Page Ambient Steam Backgrounds:** Synchronizes live animated Steam backgrounds (WebM/MP4) & high-res artworks across user and friend profiles.
+* **On/Off Toggle:** Easily toggle Steam profile backgrounds on or off.
+* **Steam Badges & Games Showcase:** Complete display of all unlocked Steam badges with XP and comprehensive Steam game library with search.
+* **Authentic Steam Status Pills:** Integrated Level, Games count, and Featured Favorite Badge pills.
+* **Ultra-Minimalist Profile UI:** Sleek, non-AI design language with full hardware specs visibility.`,
+    prerelease: false
+  },
+  {
     id: 120,
     tag_name: 'v1.2.0',
     name: 'v1.2.0 - Steam-Style Game Context Menu, Performance Baseline 100% & Multilingual Gameplay Overlay',
