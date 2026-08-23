@@ -201,29 +201,23 @@ async function processVideoFile(
 
     execFile(ffmpeg, args, { timeout: 45000 }, (err, stdout, stderr) => {
       if (err || !fs.existsSync(finalOutputPath) || fs.statSync(finalOutputPath).size < 500) {
-        console.warn('[FFmpeg] Direct trim attempt on input:', err?.message || 'File empty')
-        // Fallback without -sseof to transcode all available content
-        const fallbackArgs = ['-y', '-err_detect', 'ignore_err', '-i', tempInputPath]
-        if (format === 'mp4') {
-          fallbackArgs.push(
-            '-c:v', 'libx264',
-            '-preset', 'ultrafast',
-            '-pix_fmt', 'yuv420p',
-            '-c:a', 'aac',
-            '-b:a', '160k',
-            '-movflags', '+faststart',
-            finalOutputPath
-          )
-        } else {
-          fallbackArgs.push(
-            '-c:v', 'copy',
-            '-c:a', 'copy',
-            finalOutputPath
-          )
-        }
+        console.warn('[FFmpeg] Sseof trim fallback triggered:', err?.message || 'File size 0')
+        // Fallback without -sseof
+        const fallbackArgs = [
+          '-y',
+          '-err_detect', 'ignore_err',
+          '-i', tempInputPath,
+          '-c:v', 'libx264',
+          '-preset', 'ultrafast',
+          '-pix_fmt', 'yuv420p',
+          '-c:a', 'aac',
+          '-b:a', '160k',
+          '-movflags', '+faststart',
+          finalOutputPath
+        ]
         execFile(ffmpeg, fallbackArgs, { timeout: 45000 }, (fErr) => {
           if (fErr || !fs.existsSync(finalOutputPath) || fs.statSync(finalOutputPath).size < 500) {
-            console.warn('[FFmpeg] Fallback copy initiated')
+            console.warn('[FFmpeg] Direct copy fallback')
             try {
               fs.copyFileSync(tempInputPath, finalOutputPath)
             } catch {}

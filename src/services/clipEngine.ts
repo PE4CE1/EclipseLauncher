@@ -96,6 +96,79 @@ function _cleanup() {
   previousSessionBlob = null
 }
 
+async function getDesktopStream(sourceId?: string, fps: number = 60, width: number = 1920, height: number = 1080): Promise<MediaStream> {
+  let targetSourceId = sourceId
+  if (!targetSourceId && window.electronAPI?.clips?.getSources) {
+    const sources = await window.electronAPI.clips.getSources()
+    const screen = sources.find((s: any) => s.id.startsWith('screen:')) || sources[0]
+    if (screen) targetSourceId = screen.id
+  }
+
+  // 1. Try video + system audio
+  try {
+    const stream = await (navigator.mediaDevices as any).getUserMedia({
+      audio: targetSourceId ? {
+        mandatory: {
+          chromeMediaSource: 'desktop',
+          chromeMediaSourceId: targetSourceId,
+        }
+      } : false,
+      video: {
+        mandatory: {
+          chromeMediaSource: 'desktop',
+          chromeMediaSourceId: targetSourceId || undefined,
+          maxWidth: width,
+          maxHeight: height,
+          maxFrameRate: fps,
+        }
+      }
+    })
+    if (stream && stream.getVideoTracks().length > 0) {
+      return stream
+    }
+  } catch (err1) {
+    console.warn('[ClipEngine] Audio+Video capture attempt failed, falling back to Video only:', err1)
+  }
+
+  // 2. Try Video only
+  try {
+    const stream = await (navigator.mediaDevices as any).getUserMedia({
+      audio: false,
+      video: {
+        mandatory: {
+          chromeMediaSource: 'desktop',
+          chromeMediaSourceId: targetSourceId || undefined,
+          maxWidth: width,
+          maxHeight: height,
+          maxFrameRate: fps,
+        }
+      }
+    })
+    return stream
+  } catch (err2) {
+    console.warn('[ClipEngine] Specific source capture failed, trying primary screen fallback:', err2)
+  }
+
+  // 3. Fallback: Any available source
+  const sources = await window.electronAPI?.clips?.getSources?.() || []
+  if (sources.length > 0) {
+    return await (navigator.mediaDevices as any).getUserMedia({
+      audio: false,
+      video: {
+        mandatory: {
+          chromeMediaSource: 'desktop',
+          chromeMediaSourceId: sources[0].id,
+          maxWidth: width,
+          maxHeight: height,
+          maxFrameRate: fps,
+        }
+      }
+    })
+  }
+
+  throw new Error('No desktop capture source available')
+}
+
 function _startRecorderSession() {
   if (!activeStream) return
 
@@ -155,41 +228,10 @@ export async function startReplayBuffer(): Promise<boolean> {
     const settings = useClipStore.getState().settings
     if (!settings.enabled) return false
 
-    // 1. Resolve source ID
-    let sourceId: string | null = settings.selectedMonitorId || null
-    if (window.electronAPI?.clips?.getSources) {
-      const sources = await window.electronAPI.clips.getSources()
-      if (sourceId) {
-        const found = sources.find((s: any) => s.id === sourceId)
-        if (!found) sourceId = null
-      }
-      if (!sourceId && sources.length > 0) {
-        const screenSource = sources.find((s: any) => s.id.startsWith('screen:') || s.name.toLowerCase().includes('entire screen') || s.name.toLowerCase().includes('bildschirm') || s.name.toLowerCase().includes('screen')) || sources[0]
-        if (screenSource) {
-          sourceId = screenSource.id
-        }
-      }
-    }
-
     const { width, height } = getQualityDimensions(settings.quality)
+    const stream = await getDesktopStream(settings.selectedMonitorId, settings.fps || 60, width, height)
 
-    // 2. Request desktop video & system audio stream via Electron desktopCapturer
-    const stream = await (navigator.mediaDevices as any).getUserMedia({
-      audio: {
-        mandatory: { chromeMediaSource: 'desktop' },
-      },
-      video: {
-        mandatory: {
-          chromeMediaSource: 'desktop',
-          chromeMediaSourceId: sourceId || undefined,
-          maxWidth: width,
-          maxHeight: height,
-          maxFrameRate: settings.fps || 60,
-        },
-      },
-    })
-
-    // 3. Optional Microphone & Audio Mixing
+    // Optional Microphone & Audio Mixing
     if (settings.captureMic) {
       try {
         const micConstraints: MediaTrackConstraints = {
@@ -203,7 +245,7 @@ export async function startReplayBuffer(): Promise<boolean> {
         const audioCtx = new AudioContext()
         const dest = audioCtx.createMediaStreamDestination()
         
-        // System / Game audio
+        // System audio if available
         if (stream.getAudioTracks().length > 0) {
           const sysSource = audioCtx.createMediaStreamSource(new MediaStream([stream.getAudioTracks()[0]]))
           const sysGain = audioCtx.createGain()
@@ -229,6 +271,12 @@ export async function startReplayBuffer(): Promise<boolean> {
     activeStream = stream
     previousSessionBlob = null
     currentSessionChunks = []
+
+    stream.getVideoTracks()[0].onended = () => {
+      console.warn('[ClipEngine] Stream ended unexpectedly')
+      _cleanup()
+      useClipStore.getState().setIsReplayBufferActive(false)
+    }
 
     _startRecorderSession()
     useClipStore.getState().setIsReplayBufferActive(true)
@@ -257,14 +305,23 @@ export async function triggerInstantClip(): Promise<boolean> {
 
   // 1. If buffer is not running, start it
   if (!mediaRecorder || mediaRecorder.state !== 'recording' || !activeStream) {
-    await startReplayBuffer()
-    sendAppNotification({
-      title: 'Replay-Buffer gestartet 🎬',
-      body: `Eclipse Replay-Buffer ist aktiv. Drücke ${settings.hotkey || 'F8'} im Spiel, um die letzten ${durationSeconds}s zu clippen.`,
-      type: 'info',
-      duration: 5000,
-    })
-    return true
+    const started = await startReplayBuffer()
+    if (started) {
+      sendAppNotification({
+        title: 'Replay-Buffer gestartet 🎬',
+        body: `Eclipse Replay-Buffer ist jetzt aktiv. Drücke ${settings.hotkey || 'F8'} im Spiel, um die letzten ${durationSeconds}s zu clippen.`,
+        type: 'info',
+        duration: 5000,
+      })
+    } else {
+      sendAppNotification({
+        title: 'Aufnahme-Fehler ❌',
+        body: 'Konnte Bildschirmaufnahme nicht starten. Prüfe die Monitor-Auswahl in den Einstellungen.',
+        type: 'error',
+        duration: 5000,
+      })
+    }
+    return false
   }
 
   try {
@@ -273,14 +330,17 @@ export async function triggerInstantClip(): Promise<boolean> {
       try {
         mediaRecorder.requestData()
       } catch {}
-      await new Promise(r => setTimeout(r, 100))
+      await new Promise(r => setTimeout(r, 120))
     }
 
-    const totalBytes = currentSessionChunks.reduce((acc, c) => acc + c.size, 0)
-    if (totalBytes < 5000 && !previousSessionBlob) {
+    const currentBytes = currentSessionChunks.reduce((acc, c) => acc + c.size, 0)
+    const prevBytes = previousSessionBlob ? previousSessionBlob.size : 0
+    const totalBytes = currentBytes + prevBytes
+
+    if (totalBytes < 5000) {
       sendAppNotification({
-        title: 'Buffer füllt sich ⏳',
-        body: `Bitte warte einen Moment, damit der Puffer gefüllt ist.`,
+        title: 'Puffer wird noch gefüllt ⏳',
+        body: `Bitte warte ein paar Sekunden, damit der Puffer gefüllt ist.`,
         type: 'info',
         duration: 4000,
       })
