@@ -139,20 +139,26 @@ function saveClipSettings(settings: Partial<ClipSettingsRecord>) {
 }
 
 /**
- * Process Raw Video Chunk with FFmpeg to produce a pristine, valid video file
+ * Process Raw Video Chunk with FFmpeg to produce a pristine, exact-duration valid video file
  */
-async function processVideoFile(tempInputPath: string, finalOutputPath: string, format: string): Promise<void> {
+async function processVideoFile(tempInputPath: string, finalOutputPath: string, format: string, targetDurationSec: number): Promise<void> {
   const ffmpeg = getFFmpegPath()
   if (!ffmpeg || !fs.existsSync(ffmpeg)) {
     fs.copyFileSync(tempInputPath, finalOutputPath)
     return
   }
 
+  const duration = targetDurationSec > 0 ? targetDurationSec : 30
+
   return new Promise((resolve) => {
     const args = [
       '-y',
       '-err_detect', 'ignore_err',
+      '-sseof', `-${duration}`,
       '-i', tempInputPath,
+      '-t', `${duration}`,
+      '-avoid_negative_ts', 'make_zero',
+      '-fflags', '+genpts+discardcorrupt',
     ]
 
     if (format === 'mp4') {
@@ -184,12 +190,23 @@ async function processVideoFile(tempInputPath: string, finalOutputPath: string, 
 
     execFile(ffmpeg, args, { timeout: 45000 }, (err) => {
       if (err) {
-        console.warn('[FFmpeg] Transcode warning, fallback to direct copy:', err.message)
-        try {
-          if (!fs.existsSync(finalOutputPath)) {
-            fs.copyFileSync(tempInputPath, finalOutputPath)
-          }
-        } catch {}
+        console.warn('[FFmpeg] Sseof transcode notice, attempting direct transcode fallback:', err.message)
+        execFile(ffmpeg, [
+          '-y',
+          '-err_detect', 'ignore_err',
+          '-i', tempInputPath,
+          '-t', `${duration}`,
+          '-c:v', 'libx264',
+          '-preset', 'ultrafast',
+          '-pix_fmt', 'yuv420p',
+          '-c:a', 'aac',
+          '-b:a', '160k',
+          '-movflags', '+faststart',
+          finalOutputPath
+        ], { timeout: 45000 }, () => {
+          resolve()
+        })
+        return
       }
       resolve()
     })
@@ -297,8 +314,9 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
       const buffer = Buffer.from(base64Data, 'base64')
       fs.writeFileSync(tempRawPath, buffer)
 
-      // 2. Process with FFmpeg into clean, valid MP4/WebM/MKV
-      await processVideoFile(tempRawPath, finalVideoPath, videoExt)
+      // 2. Process with FFmpeg into clean, valid MP4/WebM/MKV with exact trimmed duration
+      const targetDuration = payload.duration || settings.replayDurationSeconds || 30
+      await processVideoFile(tempRawPath, finalVideoPath, videoExt, targetDuration)
 
       // 3. Remove temporary file
       if (fs.existsSync(tempRawPath)) {
