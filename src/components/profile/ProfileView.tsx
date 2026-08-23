@@ -140,7 +140,7 @@ export function ProfileView() {
 
   // Customization Form States
   const [isEditing, setIsEditing] = useState(false)
-  const [editTab, setEditTab] = useState<'general' | 'banner' | 'frame' | 'socials' | 'steam' | 'hardware'>('general')
+  const [editTab, setEditTab] = useState<'general' | 'banner' | 'bg_steam' | 'frame' | 'socials' | 'steam' | 'hardware'>('general')
   const [editName, setEditName] = useState(settings.username || 'User')
   const [editAvatar, setEditAvatar] = useState(settings.avatarUrl || '')
   const [editBanner, setEditBanner] = useState(settings.bannerUrl || '')
@@ -195,15 +195,20 @@ export function ProfileView() {
     ? (profileData?.steamBackgroundUrl || friend?.steamBackgroundUrl)
     : settings.steamBackgroundUrl
 
-  const showSteamBgSetting = isViewingFriend
-    ? (profileData?.showSteamBackground !== false)
+  // 1. Full Profile View Background (Steam Live Video or Artwork)
+  const steamBg = isViewingFriend 
+    ? (profileData?.steamBackgroundMovie || profileData?.steamBackgroundUrl || friend?.steamBackgroundMovie || friend?.steamBackgroundUrl)
+    : (settings.steamBackgroundMovie || settings.steamBackgroundUrl)
+
+  const showSteamBg = isViewingFriend 
+    ? (profileData?.showSteamBackground !== false) 
     : (settings.profileShowSteamBackground !== false)
 
-  const steamBg = steamBackgroundMovie || steamBackgroundUrl
+  const activeProfileBg = showSteamBg ? steamBg : null
 
-  // Resolve active banner: explicit user banner > Steam Background > Default Preset
+  // 2. Profile Card Banner (Presets or Custom Link)
   const userBanner = isViewingFriend ? (profileData?.bannerUrl || friend?.bannerUrl) : settings.bannerUrl
-  const displayBanner = userBanner || steamBg || BANNER_PRESETS[0].url
+  const displayBanner = userBanner || BANNER_PRESETS[0].url
 
   const displayFrame = isViewingFriend
     ? (profileData?.avatarFrame || friend?.avatarFrame || 'none')
@@ -517,7 +522,7 @@ export function ProfileView() {
           steamGames: steamGames || [],
           steamBackgroundUrl: steamBackgroundUrl,
           steamBackgroundMovie: steamBackgroundMovie,
-          showSteamBackground: showSteamBgSetting
+          showSteamBackground: showSteamBg
         }
         updateSettings({
           eclipseFriends: [...currentFriends, newFriend]
@@ -581,10 +586,35 @@ export function ProfileView() {
 
   return (
     <div className="relative h-full overflow-y-auto bg-[#07080a] select-none">
+      {/* ─── 1. Full Profile View Background (Steam Live Video or High-Res Artwork) ─── */}
+      {activeProfileBg && (
+        <div className="absolute inset-0 pointer-events-none z-0 min-h-full overflow-hidden">
+          {isVideoBanner(activeProfileBg) ? (
+            <video 
+              src={activeProfileBg} 
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              className="w-full h-full object-cover object-center filter brightness-[0.38] saturate-110" 
+            />
+          ) : (
+            <img 
+              src={activeProfileBg} 
+              alt="Steam Profile Background" 
+              className="w-full h-full object-cover object-center filter brightness-[0.38] saturate-110" 
+            />
+          )}
+          {/* Smooth vignette fade for crisp card readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#07080a] via-[#07080a]/60 to-transparent" />
+          <div className="absolute inset-0 bg-black/35" />
+        </div>
+      )}
+
       {/* Main Content Area */}
-      <div className="max-w-5xl mx-auto px-6 py-8 md:px-10 md:py-10 space-y-6">
+      <div className="relative z-10 max-w-5xl mx-auto px-6 py-8 md:px-10 md:py-10 space-y-6">
         
-        {/* ─── Hero Header & Identity Card with Banner Background ─── */}
+        {/* ─── 2. Hero Header & Identity Card with Card Banner ─── */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -878,7 +908,8 @@ export function ProfileView() {
               <div className="flex flex-wrap gap-1.5 mb-6 border-b border-white/[0.06] pb-3">
                 {[
                   { id: 'general', label: language === 'de' ? 'Allgemein' : 'General', icon: User },
-                  { id: 'banner', label: language === 'de' ? 'Hintergrund' : 'Background', icon: ImageIcon },
+                  { id: 'banner', label: language === 'de' ? 'Banner' : 'Banner', icon: ImageIcon },
+                  { id: 'bg_steam', label: language === 'de' ? 'Profil-Hintergrund' : 'Profile Background', icon: Play },
                   { id: 'frame', label: language === 'de' ? 'Avatar-Rahmen' : 'Avatar Frames', icon: Sparkles },
                   { id: 'socials', label: language === 'de' ? 'Bio & Socials' : 'Bio & Socials', icon: MessageSquare },
                   { id: 'steam', label: 'Steam Sync', icon: RefreshCw },
@@ -957,69 +988,15 @@ export function ProfileView() {
                 </div>
               )}
 
-              {/* Tab 2: Banner & Background (Live Steam, Presets & Custom) */}
+              {/* Tab 2: Card Banner (Presets & Custom Link) */}
               {editTab === 'banner' && (
                 <div className="space-y-5">
-                  {/* Steam Live Background option if detected */}
-                  {(steamBackgroundMovie || steamBackgroundUrl) && (
-                    <div>
-                      <div className="flex items-center justify-between mb-2.5">
-                        <label className="text-[11px] font-semibold text-[#66c0f4] uppercase tracking-wider flex items-center gap-1.5">
-                          <Play size={12} className="text-[#66c0f4]" />
-                          {language === 'de' ? 'Steam Hintergrund (Automatisch erkannt)' : 'Steam Background (Auto-detected)'}
-                        </label>
-                        <button
-                          onClick={() => setEditShowSteamBg(!editShowSteamBg)}
-                          className={`px-2.5 py-0.5 rounded text-[10px] font-medium border cursor-pointer transition-colors ${
-                            editShowSteamBg ? 'bg-[#66c0f4]/20 border-[#66c0f4]/40 text-[#66c0f4]' : 'bg-white/5 border-white/10 text-white/40'
-                          }`}
-                        >
-                          {editShowSteamBg ? (language === 'de' ? 'Aktiv' : 'Enabled') : (language === 'de' ? 'Aus' : 'Disabled')}
-                        </button>
-                      </div>
-
-                      <div 
-                        onClick={() => {
-                          setEditBanner(steamBackgroundMovie || steamBackgroundUrl || '')
-                          setEditShowSteamBg(true)
-                        }}
-                        className={`group relative h-28 rounded-xl overflow-hidden border cursor-pointer transition-all ${
-                          editBanner === (steamBackgroundMovie || steamBackgroundUrl) ? 'border-[#66c0f4] ring-2 ring-[#66c0f4]/50' : 'border-white/[0.08] hover:border-white/30'
-                        }`}
-                      >
-                        {steamBackgroundMovie ? (
-                          <video 
-                            src={steamBackgroundMovie} 
-                            autoPlay 
-                            loop 
-                            muted 
-                            playsInline 
-                            className="w-full h-full object-cover" 
-                          />
-                        ) : (
-                          <img src={steamBackgroundUrl} alt="Steam Background" className="w-full h-full object-cover" />
-                        )}
-                        <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors" />
-                        
-                        <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/70 backdrop-blur-sm border border-white/20 text-white text-[10px] font-semibold">
-                          <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-3 h-3" alt="Steam" />
-                          <span>{steamBackgroundMovie ? 'Steam Live Animated Video' : 'Steam Profile Background'}</span>
-                        </div>
-
-                        {editBanner === (steamBackgroundMovie || steamBackgroundUrl) && (
-                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#66c0f4] flex items-center justify-center shadow-md">
-                            <Check size={12} className="text-black" strokeWidth={3} />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
+                  {/* Presets Grid */}
                   <div>
                     <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2.5">
-                      {language === 'de' ? 'Oder Vorlage auswählen' : 'Or Select Preset'}
+                      {language === 'de' ? 'Vorgegebene Vorlagen' : 'Presets'}
                     </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
                       {BANNER_PRESETS.map(preset => {
                         const isSelected = editBanner === preset.url
                         return (
@@ -1027,7 +1004,7 @@ export function ProfileView() {
                             key={preset.id}
                             onClick={() => setEditBanner(preset.url)}
                             className={`group relative h-20 rounded-xl overflow-hidden border cursor-pointer transition-all ${
-                              isSelected ? 'border-white ring-1 ring-white' : 'border-white/[0.08] hover:border-white/30'
+                              isSelected ? 'border-white ring-2 ring-white/50' : 'border-white/[0.08] hover:border-white/30'
                             }`}
                           >
                             <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
@@ -1048,18 +1025,93 @@ export function ProfileView() {
                     </div>
                   </div>
 
+                  {/* Custom Banner Link */}
                   <div className="pt-2">
                     <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">
-                      {language === 'de' ? 'Eigene Hintergrund-URL (Bild JPG/PNG oder Live Video MP4/WebM)' : 'Custom Background URL (Image JPG/PNG or Live Video MP4/WebM)'}
+                      {language === 'de' ? 'Eigener Banner-Link (Bild JPG/PNG oder Video MP4/WebM)' : 'Custom Banner Link (Image JPG/PNG or Video MP4/WebM)'}
                     </label>
                     <input 
                       type="text" 
-                      placeholder="https://... (JPG, PNG, WebM oder MP4)"
+                      placeholder="https://... (z. B. JPG, PNG, GIF, WebM oder MP4)"
                       value={editBanner}
                       onChange={e => setEditBanner(e.target.value)}
-                      className="w-full bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl px-3.5 py-2 text-xs text-white font-mono transition-colors focus:outline-none"
+                      className="w-full bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono transition-colors focus:outline-none"
                     />
+                    {editBanner && (
+                      <div className="mt-2 text-[11px] text-white/40 flex items-center gap-1.5">
+                        <span>{language === 'de' ? 'Aktiver Banner-Link:' : 'Active Banner Link:'}</span>
+                        <span className="text-white/70 truncate max-w-sm">{editBanner}</span>
+                      </div>
+                    )}
                   </div>
+                </div>
+              )}
+
+              {/* Tab 2.5: Profil-Hintergrund (Steam Live Background) */}
+              {editTab === 'bg_steam' && (
+                <div className="space-y-5">
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider block">
+                      {language === 'de' ? 'Profil-Hintergrund (Steam Live Background)' : 'Profile View Background (Steam Live Background)'}
+                    </span>
+                    <p className="text-xs text-white/60">
+                      {language === 'de'
+                        ? 'Dein synchronisierter Steam Live-Hintergrund (Video / HD-Artwork) wird als Hintergrund der gesamten Profil-Ansicht hinter deinen Karten angezeigt.'
+                        : 'Your synced Steam live animated background (video or HD artwork) is displayed as the full background of your profile view.'}
+                    </p>
+                  </div>
+
+                  {steamBg ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-[#66c0f4] font-medium flex items-center gap-1.5">
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-3.5 h-3.5" alt="Steam" />
+                          <span>{isVideoBanner(steamBg) ? 'Steam Live Animated Video (.mp4 / .webm)' : 'Steam High-Res Artwork'}</span>
+                        </span>
+
+                        <button
+                          onClick={() => setEditShowSteamBg(!editShowSteamBg)}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                            editShowSteamBg 
+                              ? 'bg-[#66c0f4]/20 border-[#66c0f4]/50 text-[#66c0f4]' 
+                              : 'bg-white/5 border-white/10 text-white/40'
+                          }`}
+                        >
+                          {editShowSteamBg ? (language === 'de' ? 'Aktiviert' : 'Enabled') : (language === 'de' ? 'Deaktiviert' : 'Disabled')}
+                        </button>
+                      </div>
+
+                      <div className="relative h-44 rounded-xl overflow-hidden border border-white/10">
+                        {isVideoBanner(steamBg) ? (
+                          <video 
+                            src={steamBg} 
+                            autoPlay 
+                            loop 
+                            muted 
+                            playsInline 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <img src={steamBg} alt="Steam Background Preview" className="w-full h-full object-cover" />
+                        )}
+                        <div className="absolute inset-0 bg-black/20" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center space-y-2">
+                      <p className="text-xs text-white/50">
+                        {language === 'de' 
+                          ? 'Noch kein Steam-Profil verknüpft oder kein Steam-Hintergrund vorhanden.' 
+                          : 'No Steam profile linked or no Steam background detected.'}
+                      </p>
+                      <button
+                        onClick={() => setEditTab('steam')}
+                        className="text-xs text-[#66c0f4] hover:underline cursor-pointer"
+                      >
+                        {language === 'de' ? 'Steam-Profil im Steam Sync Tab verknüpfen →' : 'Link Steam profile in Steam Sync Tab →'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
