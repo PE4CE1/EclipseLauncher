@@ -579,9 +579,9 @@ export function ProfileView() {
 
   return (
     <div className="relative h-full overflow-y-auto bg-[#07080a] select-none">
-      {/* ─── 1. Full Profile View Background (Steam Live Video or High-Res Artwork) ─── */}
+      {/* ─── 1. Full Profile View Background with Smooth Bottom Fade (Steam Live Video or High-Res Artwork) ─── */}
       {activeProfileBg && (
-        <div className="absolute inset-0 pointer-events-none z-0 min-h-full overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-[880px] pointer-events-none z-0 overflow-hidden">
           {isVideoBanner(activeProfileBg) ? (
             <video 
               src={activeProfileBg} 
@@ -589,18 +589,23 @@ export function ProfileView() {
               loop 
               muted 
               playsInline 
-              className="w-full h-full object-cover object-center filter brightness-[0.38] saturate-110" 
+              className="w-full h-full object-cover object-top filter brightness-[0.42] saturate-115" 
             />
           ) : (
             <img 
               src={activeProfileBg} 
               alt="Steam Profile Background" 
-              className="w-full h-full object-cover object-center filter brightness-[0.38] saturate-110" 
+              className="w-full h-full object-cover object-top filter brightness-[0.42] saturate-115" 
             />
           )}
-          {/* Smooth vignette fade for crisp card readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#07080a] via-[#07080a]/60 to-transparent" />
-          <div className="absolute inset-0 bg-black/35" />
+          {/* Subtle top edge fade */}
+          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#07080a] to-transparent" />
+          
+          {/* Massive smooth bottom fade into complete solid black #07080a */}
+          <div className="absolute inset-x-0 bottom-0 h-[480px] bg-gradient-to-t from-[#07080a] via-[#07080a]/85 to-transparent" />
+          
+          {/* Global subtle contrast overlay */}
+          <div className="absolute inset-0 bg-black/25" />
         </div>
       )}
 
