@@ -75,12 +75,28 @@ export interface ClipSettings {
   replayDurationSeconds: number // 15, 30, 45, 60, 90, 120, 180, 300
   hotkey: string                // e.g. 'F8', 'F9', 'Alt+C', custom
   fullRecordHotkey?: string     // e.g. 'F9'
-  quality: '1440p' | '1080p' | '720p' // resolution
-  fps: 60 | 30
-  bitrate?: 'ultra' | 'high' | 'medium' | 'low' // 20M, 12M, 8M, 5M
+  qualityPreset?: 'low' | 'standard' | 'high' | 'custom'
+  quality: '4k' | '1440p' | '1080p' | '720p' | '480p' | '360p'
+  fps: 120 | 60 | 30 | 24
+  bitrate?: '20M' | '15M' | '10M' | '8M' | '5M' | 'auto' | 'ultra' | 'high' | 'medium' | 'low'
+  videoEncoder?: 'gpu' | 'cpu'
+  selectedGpu?: string          // 'auto' or GPU name
+  codec?: 'h264' | 'hevc' | 'av1' | 'vp9'
+  
+  // Audio Mode (Screenshot 2 & 3)
+  audioRecordingOption: 'all' | 'game_only' | 'game_and_discord'
+  audioOutputDeviceId?: string  // 'auto' or deviceId
+  audioOutputVolume: number     // 0 - 100
   captureMic: boolean
+  monoAudioInput?: boolean
+  micDeviceId?: string          // 'auto' or deviceId
   micVolume: number             // 0 - 100
   gameAudioVolume?: number      // 0 - 100
+  
+  // Screen Recording & Monitor Selection
+  selectedMonitorId?: string    // sourceId from desktopCapturer
+  screenRecordingOnAppStart?: boolean
+  
   savePath?: string             // custom folder or default Videos/Eclipse Clips
   notifyOnClip: boolean
   playSoundOnClip?: boolean

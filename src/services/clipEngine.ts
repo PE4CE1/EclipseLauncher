@@ -72,6 +72,40 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /**
+ * Resolve max dimensions based on quality setting
+ */
+function getQualityDimensions(quality?: string): { width: number; height: number } {
+  switch (quality) {
+    case '4k': return { width: 3840, height: 2160 }
+    case '1440p': return { width: 2560, height: 1440 }
+    case '720p': return { width: 1280, height: 720 }
+    case '480p': return { width: 854, height: 480 }
+    case '360p': return { width: 640, height: 360 }
+    case '1080p':
+    default: return { width: 1920, height: 1080 }
+  }
+}
+
+/**
+ * Resolve video bitrate in bits per second
+ */
+function getBitrateBps(bitrate?: string): number {
+  switch (bitrate) {
+    case '20M':
+    case 'ultra': return 20000000
+    case '15M': return 15000000
+    case '10M':
+    case 'high': return 10000000
+    case '8M':
+    case 'medium': return 8000000
+    case '5M':
+    case 'low': return 5000000
+    case 'auto':
+    default: return 12000000
+  }
+}
+
+/**
  * Start the low-overhead rolling Replay Buffer
  */
 export async function startReplayBuffer(): Promise<boolean> {
@@ -84,15 +118,22 @@ export async function startReplayBuffer(): Promise<boolean> {
     if (!settings.enabled) return false
 
     // 1. Get desktop screen sources from Electron
-    let sourceId: string | null = null
+    let sourceId: string | null = settings.selectedMonitorId || null
     if (window.electronAPI?.clips?.getSources) {
       const sources = await window.electronAPI.clips.getSources()
-      // Prioritize primary screen or game window
-      const screenSource = sources.find((s: any) => s.id.startsWith('screen:') || s.name.toLowerCase().includes('entire screen') || s.name.toLowerCase().includes('bildschirm')) || sources[0]
-      if (screenSource) {
-        sourceId = screenSource.id
+      if (sourceId) {
+        const found = sources.find((s: any) => s.id === sourceId)
+        if (!found) sourceId = null
+      }
+      if (!sourceId && sources.length > 0) {
+        const screenSource = sources.find((s: any) => s.id.startsWith('screen:') || s.name.toLowerCase().includes('entire screen') || s.name.toLowerCase().includes('bildschirm')) || sources[0]
+        if (screenSource) {
+          sourceId = screenSource.id
+        }
       }
     }
+
+    const { width, height } = getQualityDimensions(settings.quality)
 
     // 2. Request desktop video & system audio stream
     const videoConstraints: any = sourceId
@@ -102,13 +143,13 @@ export async function startReplayBuffer(): Promise<boolean> {
             chromeMediaSourceId: sourceId,
             minFrameRate: settings.fps || 60,
             maxFrameRate: settings.fps || 60,
-            maxWidth: settings.quality === '720p' ? 1280 : 1920,
-            maxHeight: settings.quality === '720p' ? 720 : 1080,
+            maxWidth: width,
+            maxHeight: height,
           },
         }
       : {
-          width: { ideal: settings.quality === '720p' ? 1280 : 1920 },
-          height: { ideal: settings.quality === '720p' ? 720 : 1080 },
+          width: { ideal: width },
+          height: { ideal: height },
           frameRate: { ideal: settings.fps || 60 },
         }
 
@@ -120,17 +161,27 @@ export async function startReplayBuffer(): Promise<boolean> {
       video: videoConstraints,
     })
 
-    // 3. Optional Microphone audio track mixing
+    // 3. Optional Microphone & Audio Mixing
     if (settings.captureMic) {
       try {
-        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        const micConstraints: MediaTrackConstraints = {
+          channelCount: settings.monoAudioInput ? 1 : 2,
+        }
+        if (settings.micDeviceId && settings.micDeviceId !== 'auto') {
+          micConstraints.deviceId = { exact: settings.micDeviceId }
+        }
+
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: micConstraints, video: false })
         const audioCtx = new AudioContext()
         const dest = audioCtx.createMediaStreamDestination()
         
-        // System audio source
+        // System / Game audio source
         if (stream.getAudioTracks().length > 0) {
           const sysSource = audioCtx.createMediaStreamSource(new MediaStream([stream.getAudioTracks()[0]]))
-          sysSource.connect(dest)
+          const sysGain = audioCtx.createGain()
+          sysGain.gain.value = (settings.gameAudioVolume ?? 100) / 100
+          sysSource.connect(sysGain)
+          sysGain.connect(dest)
         }
         
         // Mic audio source with volume gain
@@ -140,7 +191,7 @@ export async function startReplayBuffer(): Promise<boolean> {
         micSource.connect(micGain)
         micGain.connect(dest)
 
-        // Replace audio track
+        // Replace stream audio track
         if (dest.stream.getAudioTracks().length > 0) {
           stream.removeTrack(stream.getAudioTracks()[0])
           stream.addTrack(dest.stream.getAudioTracks()[0])
@@ -155,8 +206,12 @@ export async function startReplayBuffer(): Promise<boolean> {
 
     // 4. Select supported mimeType
     let mimeType = 'video/webm;codecs=vp9,opus'
-    if (!MediaRecorder.isTypeSupported(mimeType)) {
-      mimeType = 'video/webm;codecs=h264,opus'
+    if (settings.codec === 'h264' || !MediaRecorder.isTypeSupported(mimeType)) {
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=h264,opus')) {
+        mimeType = 'video/webm;codecs=h264,opus'
+      } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+        mimeType = 'video/mp4'
+      }
     }
     if (!MediaRecorder.isTypeSupported(mimeType)) {
       mimeType = 'video/webm'
@@ -165,7 +220,7 @@ export async function startReplayBuffer(): Promise<boolean> {
     // 5. Initialize MediaRecorder with 1-second timeslices
     const recorder = new MediaRecorder(stream, {
       mimeType,
-      videoBitsPerSecond: settings.quality === '720p' ? 6000000 : 12000000,
+      videoBitsPerSecond: getBitrateBps(settings.bitrate),
     })
 
     recorder.ondataavailable = (event) => {
@@ -266,14 +321,12 @@ export async function triggerInstantClip(): Promise<boolean> {
     }
   }
 
-  // 2. Fallback / Direct Sample Clip creation if screen capture wasn't actively streaming
+  // 2. Fallback: Start buffer now for future triggers
   try {
-    // Attempt to start buffer now for next time
     startReplayBuffer()
-
     sendAppNotification({
       title: 'Replay-Buffer gestartet! 🎬',
-      body: 'Der Eclipse Replay-Buffer ist jetzt aktiv. Drücke F8 im Spiel, um Clips zu speichern.',
+      body: 'Der Eclipse Replay-Buffer ist jetzt aktiv. Drücke deinen Hotkey im Spiel, um Clips zu speichern.',
       type: 'info',
       duration: 5000,
     })
@@ -296,6 +349,10 @@ export function initClipEngine() {
     window.electronAPI.clips.getSettings().then((saved: any) => {
       if (saved) {
         useClipStore.getState().setSettings(saved)
+        // Screen recording on app start
+        if (saved.screenRecordingOnAppStart && saved.enabled) {
+          startReplayBuffer()
+        }
       }
     }).catch(() => {})
   }
@@ -303,7 +360,7 @@ export function initClipEngine() {
   // 2. Load existing clips
   useClipStore.getState().refreshClips()
 
-  // 3. Listen for global hotkey trigger (F8)
+  // 3. Listen for global hotkey trigger
   if (window.electronAPI?.clips?.onHotkeyTriggered) {
     window.electronAPI.clips.onHotkeyTriggered(() => {
       triggerInstantClip()
@@ -314,7 +371,7 @@ export function initClipEngine() {
   if (window.electronAPI?.onGameStarted) {
     window.electronAPI.onGameStarted(() => {
       const settings = useClipStore.getState().settings
-      if (settings.enabled) {
+      if (settings.enabled && settings.autoStartOnGame !== false) {
         startReplayBuffer()
       }
     })
@@ -323,7 +380,10 @@ export function initClipEngine() {
   // Auto-stop replay buffer when game stops
   if (window.electronAPI?.onGameStopped) {
     window.electronAPI.onGameStopped(() => {
-      stopReplayBuffer()
+      const settings = useClipStore.getState().settings
+      if (!settings.screenRecordingOnAppStart) {
+        stopReplayBuffer()
+      }
     })
   }
 }
