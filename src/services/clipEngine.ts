@@ -2,22 +2,15 @@ import { useClipStore } from '../store/clipStore'
 import { useGameStore } from '../store/gameStore'
 import { sendAppNotification } from './notificationService'
 
-// ─── Module-level state ───────────────────────────────────────────────────────
+// ─── State Management ────────────────────────────────────────────────────────
 let activeStream: MediaStream | null = null
 let mediaRecorder: MediaRecorder | null = null
 let isInitialized = false
 
-// Ring buffer – we always keep the WebM init segment (first chunk) plus
-// a sliding window of data chunks. Never removing the init chunk ensures
-// that FFmpeg and every video player can parse the stream.
-interface TimedChunk {
-  blob: Blob
-  ts: number       // absolute ms when this chunk arrived
-  isInit: boolean  // true only for the very first chunk (EBML + Tracks)
-}
-let ringBuffer: TimedChunk[] = []
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// Unbroken, contiguous session chunks
+let currentSessionChunks: Blob[] = []
+let previousSessionBlob: Blob | null = null
+let sessionTimer: any = null
 
 function getBitrateBps(bitrate?: string): number {
   switch (bitrate) {
@@ -26,7 +19,19 @@ function getBitrateBps(bitrate?: string): number {
     case '10M': case 'high': return 10_000_000
     case '8M':  case 'medium': return 8_000_000
     case '5M':  case 'low': return 5_000_000
-    default: return 8_000_000
+    default: return 10_000_000
+  }
+}
+
+function getQualityDimensions(quality?: string): { width: number; height: number } {
+  switch (quality) {
+    case '4k': return { width: 3840, height: 2160 }
+    case '1440p': return { width: 2560, height: 1440 }
+    case '720p': return { width: 1280, height: 720 }
+    case '480p': return { width: 854, height: 480 }
+    case '360p': return { width: 640, height: 360 }
+    case '1080p':
+    default: return { width: 1920, height: 1080 }
   }
 }
 
@@ -67,7 +72,7 @@ async function captureThumbnail(stream: MediaStream): Promise<string> {
               resolve(c.toDataURL('image/jpeg', 0.85))
             } catch { resolve('') }
             vid.srcObject = null
-          }, 300)
+          }, 200)
         }).catch(() => resolve(''))
       }
     } catch { resolve('') }
@@ -75,6 +80,10 @@ async function captureThumbnail(stream: MediaStream): Promise<string> {
 }
 
 function _cleanup() {
+  if (sessionTimer) {
+    clearTimeout(sessionTimer)
+    sessionTimer = null
+  }
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     try { mediaRecorder.stop() } catch {}
   }
@@ -83,13 +92,59 @@ function _cleanup() {
     activeStream = null
   }
   mediaRecorder = null
-  ringBuffer = []
+  currentSessionChunks = []
+  previousSessionBlob = null
 }
 
-// ─── Start Replay Buffer ──────────────────────────────────────────────────────
+function _startRecorderSession() {
+  if (!activeStream) return
 
+  const settings = useClipStore.getState().settings
+  const mimeType = getBestMimeType(settings.codec === 'h264')
+
+  try {
+    const recorder = new MediaRecorder(activeStream, {
+      mimeType,
+      videoBitsPerSecond: getBitrateBps(settings.bitrate),
+    })
+
+    currentSessionChunks = []
+
+    recorder.ondataavailable = (ev) => {
+      if (ev.data && ev.data.size > 0) {
+        currentSessionChunks.push(ev.data)
+      }
+    }
+
+    recorder.onerror = (e) => {
+      console.error('[ClipEngine] MediaRecorder error:', e)
+    }
+
+    recorder.start(1000) // 1-second chunks
+    mediaRecorder = recorder
+
+    // Seamlessly cycle session every (wantedDuration * 2) seconds (min 90s) to keep contiguous files bounded
+    const cycleIntervalMs = Math.max((settings.replayDurationSeconds || 30) * 2000, 90000)
+    if (sessionTimer) clearTimeout(sessionTimer)
+    sessionTimer = setTimeout(() => {
+      if (activeStream && mediaRecorder && mediaRecorder.state === 'recording') {
+        if (currentSessionChunks.length > 0) {
+          previousSessionBlob = new Blob(currentSessionChunks, { type: mimeType })
+        }
+        try {
+          mediaRecorder.stop()
+        } catch {}
+        _startRecorderSession()
+      }
+    }, cycleIntervalMs)
+
+  } catch (err) {
+    console.error('[ClipEngine] _startRecorderSession error:', err)
+  }
+}
+
+// ─── Start Continuous Replay Buffer ───────────────────────────────────────────
 export async function startReplayBuffer(): Promise<boolean> {
-  // Already running
   if (mediaRecorder && mediaRecorder.state === 'recording' && activeStream) {
     return true
   }
@@ -101,27 +156,24 @@ export async function startReplayBuffer(): Promise<boolean> {
     if (!settings.enabled) return false
 
     // 1. Resolve source ID
-    let sourceId: string | null = null
+    let sourceId: string | null = settings.selectedMonitorId || null
     if (window.electronAPI?.clips?.getSources) {
-      const sources: { id: string; name: string }[] = await window.electronAPI.clips.getSources()
-      const preferred = settings.selectedMonitorId
-        ? sources.find(s => s.id === settings.selectedMonitorId)
-        : null
-      const fallback = sources.find(s =>
-        s.id.startsWith('screen:') ||
-        s.name.toLowerCase().includes('entire screen') ||
-        s.name.toLowerCase().includes('bildschirm') ||
-        s.name.toLowerCase().includes('screen')
-      ) || sources[0]
-      sourceId = preferred?.id ?? fallback?.id ?? null
+      const sources = await window.electronAPI.clips.getSources()
+      if (sourceId) {
+        const found = sources.find((s: any) => s.id === sourceId)
+        if (!found) sourceId = null
+      }
+      if (!sourceId && sources.length > 0) {
+        const screenSource = sources.find((s: any) => s.id.startsWith('screen:') || s.name.toLowerCase().includes('entire screen') || s.name.toLowerCase().includes('bildschirm') || s.name.toLowerCase().includes('screen')) || sources[0]
+        if (screenSource) {
+          sourceId = screenSource.id
+        }
+      }
     }
 
-    if (!sourceId) {
-      console.error('[ClipEngine] No capture source found')
-      return false
-    }
+    const { width, height } = getQualityDimensions(settings.quality)
 
-    // 2. Acquire desktop stream
+    // 2. Request desktop video & system audio stream via Electron desktopCapturer
     const stream = await (navigator.mediaDevices as any).getUserMedia({
       audio: {
         mandatory: { chromeMediaSource: 'desktop' },
@@ -129,81 +181,58 @@ export async function startReplayBuffer(): Promise<boolean> {
       video: {
         mandatory: {
           chromeMediaSource: 'desktop',
-          chromeMediaSourceId: sourceId,
-          maxWidth: 1920,
-          maxHeight: 1080,
+          chromeMediaSourceId: sourceId || undefined,
+          maxWidth: width,
+          maxHeight: height,
           maxFrameRate: settings.fps || 60,
         },
       },
     })
 
-    // 3. Optional mic mixing
+    // 3. Optional Microphone & Audio Mixing
     if (settings.captureMic) {
       try {
-        const micStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            channelCount: settings.monoAudioInput ? 1 : 2,
-            ...(settings.micDeviceId && settings.micDeviceId !== 'auto'
-              ? { deviceId: { exact: settings.micDeviceId } }
-              : {}),
-          },
-          video: false,
-        })
-        const ctx = new AudioContext()
-        const dest = ctx.createMediaStreamDestination()
-        if (stream.getAudioTracks().length > 0) {
-          const g = ctx.createGain()
-          g.gain.value = (settings.gameAudioVolume ?? 100) / 100
-          ctx.createMediaStreamSource(new MediaStream([stream.getAudioTracks()[0]])).connect(g)
-          g.connect(dest)
+        const micConstraints: MediaTrackConstraints = {
+          channelCount: settings.monoAudioInput ? 1 : 2,
         }
-        const mg = ctx.createGain()
-        mg.gain.value = (settings.micVolume ?? 80) / 100
-        ctx.createMediaStreamSource(micStream).connect(mg)
-        mg.connect(dest)
+        if (settings.micDeviceId && settings.micDeviceId !== 'auto') {
+          micConstraints.deviceId = { exact: settings.micDeviceId }
+        }
+
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: micConstraints, video: false })
+        const audioCtx = new AudioContext()
+        const dest = audioCtx.createMediaStreamDestination()
+        
+        // System / Game audio
+        if (stream.getAudioTracks().length > 0) {
+          const sysSource = audioCtx.createMediaStreamSource(new MediaStream([stream.getAudioTracks()[0]]))
+          const sysGain = audioCtx.createGain()
+          sysGain.gain.value = (settings.gameAudioVolume ?? 100) / 100
+          sysSource.connect(sysGain)
+          sysGain.connect(dest)
+        }
+        
+        // Microphone audio with gain
+        const micSource = audioCtx.createMediaStreamSource(micStream)
+        const micGain = audioCtx.createGain()
+        micGain.gain.value = (settings.micVolume || 80) / 100
+        micSource.connect(micGain)
+        micGain.connect(dest)
+
         if (stream.getAudioTracks().length > 0) stream.removeTrack(stream.getAudioTracks()[0])
         if (dest.stream.getAudioTracks().length > 0) stream.addTrack(dest.stream.getAudioTracks()[0])
-      } catch (e) {
-        console.warn('[ClipEngine] Mic mix error:', e)
+      } catch (micErr) {
+        console.warn('[ClipEngine] Microphone access error:', micErr)
       }
     }
 
     activeStream = stream
-    ringBuffer = []
+    previousSessionBlob = null
+    currentSessionChunks = []
 
-    // 4. Create MediaRecorder
-    const mimeType = getBestMimeType(settings.codec === 'h264')
-    const recorder = new MediaRecorder(stream, {
-      mimeType,
-      videoBitsPerSecond: getBitrateBps(settings.bitrate),
-    })
-
-    let chunkCount = 0
-
-    recorder.ondataavailable = (ev) => {
-      if (!ev.data || ev.data.size < 50) return
-      const isInit = chunkCount === 0
-      chunkCount++
-      ringBuffer.push({ blob: ev.data, ts: Date.now(), isInit })
-
-      // Keep init chunk always + last (replayDurationSeconds + 5s) of data
-      const keepMs = ((useClipStore.getState().settings.replayDurationSeconds ?? 30) + 5) * 1000
-      const cutoff = Date.now() - keepMs
-      ringBuffer = ringBuffer.filter(c => c.isInit || c.ts >= cutoff)
-    }
-
-    recorder.onerror = (e: Event) => {
-      console.error('[ClipEngine] MediaRecorder error:', e)
-    }
-
-    recorder.onstop = () => {
-      useClipStore.getState().setIsReplayBufferActive(false)
-    }
-
-    recorder.start(1000) // 1-second slices
-    mediaRecorder = recorder
+    _startRecorderSession()
     useClipStore.getState().setIsReplayBufferActive(true)
-    console.log('[ClipEngine] Buffer started – mime:', mimeType)
+    console.log('[ClipEngine] Continuous replay buffer active')
     return true
 
   } catch (err) {
@@ -214,27 +243,24 @@ export async function startReplayBuffer(): Promise<boolean> {
   }
 }
 
-// ─── Stop Buffer ──────────────────────────────────────────────────────────────
-
 export function stopReplayBuffer() {
   _cleanup()
   useClipStore.getState().setIsReplayBufferActive(false)
 }
 
-// ─── Trigger Clip ─────────────────────────────────────────────────────────────
-
+// ─── Trigger Instant Clip (Medal.tv Style) ────────────────────────────────────
 export async function triggerInstantClip(): Promise<boolean> {
-  const settings   = useClipStore.getState().settings
+  const settings = useClipStore.getState().settings
   const activeGame = useGameStore.getState().activeGame
-  const gameTitle  = activeGame?.name || 'Gameplay'
-  const wantedSec  = settings.replayDurationSeconds || 30
+  const gameTitle = activeGame?.name || 'Gameplay'
+  const durationSeconds = settings.replayDurationSeconds || 30
 
-  // Buffer not running → start it
+  // 1. If buffer is not running, start it
   if (!mediaRecorder || mediaRecorder.state !== 'recording' || !activeStream) {
     await startReplayBuffer()
     sendAppNotification({
       title: 'Replay-Buffer gestartet 🎬',
-      body: `Drücke F8 erneut nach ${wantedSec}s, um einen Clip zu speichern.`,
+      body: `Eclipse Replay-Buffer ist aktiv. Drücke ${settings.hotkey || 'F8'} im Spiel, um die letzten ${durationSeconds}s zu clippen.`,
       type: 'info',
       duration: 5000,
     })
@@ -242,97 +268,107 @@ export async function triggerInstantClip(): Promise<boolean> {
   }
 
   try {
-    const initChunk  = ringBuffer.find(c => c.isInit)
-    const now        = Date.now()
-    const cutoff     = now - wantedSec * 1000
-    const dataChunks = ringBuffer.filter(c => !c.isInit && c.ts >= cutoff)
-
-    if (!initChunk || dataChunks.length < 2) {
+    const currentCount = currentSessionChunks.length
+    if (currentCount < 2 && !previousSessionBlob) {
       sendAppNotification({
-        title: 'Noch nicht genug Puffer ⏳',
-        body: `Bitte warte ${wantedSec}s nach dem Start des Buffers.`,
+        title: 'Buffer füllt sich ⏳',
+        body: `Bitte warte ein paar Sekunden, damit der Puffer gefüllt ist.`,
         type: 'info',
         duration: 4000,
       })
       return false
     }
 
-    // WebM: init segment + data chunks
-    const allBlobs = [initChunk.blob, ...dataChunks.map(c => c.blob)]
-    const fullBlob = new Blob(allBlobs, { type: 'video/webm' })
-
-    console.log(`[ClipEngine] Clip: ${dataChunks.length} chunks, ${Math.round(fullBlob.size / 1024)} KB`)
-
-    const [base64, thumbnail] = await Promise.all([
-      blobToBase64(fullBlob),
-      captureThumbnail(activeStream!),
-    ])
-
-    if (!window.electronAPI?.clips?.saveClip) return false
-
-    const res = await window.electronAPI.clips.saveClip({
-      videoBase64: base64,
-      title: `${gameTitle} – ${wantedSec}s Clip`,
-      gameTitle,
-      gameId: (activeGame as any)?.appId ?? activeGame?.id,
-      duration: wantedSec,
-      thumbnailDataUrl: thumbnail,
-      resolution: settings.quality || '1080p',
-      fps: settings.fps || 60,
-      format: settings.format || 'mp4',
-      tags: [gameTitle.toLowerCase(), 'replay'],
-    })
-
-    if (res.success && res.clip) {
-      useClipStore.getState().addClip(res.clip)
-      if (settings.notifyOnClip !== false) {
-        sendAppNotification({
-          title: 'Clip gespeichert! 🎮',
-          body: `${gameTitle} (${wantedSec}s) wurde gespeichert.`,
-          type: 'success',
-          duration: 5000,
-        })
-      }
-      return true
+    const mimeType = mediaRecorder.mimeType || 'video/webm'
+    const currentBlob = new Blob(currentSessionChunks, { type: mimeType })
+    const base64 = await blobToBase64(currentBlob)
+    
+    let prevBase64: string | undefined = undefined
+    if (currentCount < durationSeconds && previousSessionBlob) {
+      prevBase64 = await blobToBase64(previousSessionBlob)
     }
 
-    return false
+    const thumbnail = await captureThumbnail(activeStream)
+
+    if (window.electronAPI?.clips?.saveClip) {
+      const res = await window.electronAPI.clips.saveClip({
+        videoBase64: base64,
+        prevVideoBase64: prevBase64,
+        title: `${gameTitle} – ${durationSeconds}s Highlight`,
+        gameTitle: gameTitle,
+        gameId: (activeGame as any)?.appId || activeGame?.id,
+        duration: durationSeconds,
+        thumbnailDataUrl: thumbnail,
+        resolution: settings.quality || '1080p',
+        fps: settings.fps || 60,
+        format: settings.format || 'mp4',
+        tags: [gameTitle.toLowerCase(), 'replay'],
+      })
+
+      if (res.success && res.clip) {
+        useClipStore.getState().addClip(res.clip)
+        if (settings.notifyOnClip !== false) {
+          sendAppNotification({
+            title: 'Clip gespeichert! 🎮',
+            body: `${gameTitle} (${durationSeconds} Sek.) wurde in Eclipse Clips gespeichert.`,
+            type: 'success',
+            duration: 5000,
+          })
+        }
+        return true
+      }
+    }
   } catch (err) {
     console.error('[ClipEngine] triggerInstantClip error:', err)
-    return false
   }
+  return false
 }
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
-
+// ─── Initialization ──────────────────────────────────────────────────────────
 export function initClipEngine() {
   if (isInitialized) return
   isInitialized = true
 
-  window.electronAPI?.clips?.getSettings?.()
-    .then((saved: any) => {
+  // 1. Load saved settings from disk
+  if (window.electronAPI?.clips?.getSettings) {
+    window.electronAPI.clips.getSettings().then((saved: any) => {
       if (saved) {
         useClipStore.getState().setSettings(saved)
-        if (saved.enabled && saved.screenRecordingOnAppStart) {
+        // Auto-start buffer if enabled
+        if (saved.enabled) {
           startReplayBuffer()
         }
       }
-    })
-    .catch(() => {})
+    }).catch(() => {})
+  }
 
+  // 2. Load existing clips
   useClipStore.getState().refreshClips()
 
-  window.electronAPI?.clips?.onHotkeyTriggered?.(() => {
-    triggerInstantClip()
-  })
+  // 3. Listen for global hotkey trigger
+  if (window.electronAPI?.clips?.onHotkeyTriggered) {
+    window.electronAPI.clips.onHotkeyTriggered(() => {
+      triggerInstantClip()
+    })
+  }
 
-  window.electronAPI?.onGameStarted?.(() => {
-    const s = useClipStore.getState().settings
-    if (s.enabled && s.autoStartOnGame !== false) startReplayBuffer()
-  })
+  // 4. Auto-start replay buffer when a game starts
+  if (window.electronAPI?.onGameStarted) {
+    window.electronAPI.onGameStarted(() => {
+      const settings = useClipStore.getState().settings
+      if (settings.enabled && settings.autoStartOnGame !== false) {
+        startReplayBuffer()
+      }
+    })
+  }
 
-  window.electronAPI?.onGameStopped?.(() => {
-    const s = useClipStore.getState().settings
-    if (!s.screenRecordingOnAppStart) stopReplayBuffer()
-  })
+  // Auto-stop replay buffer when game stops
+  if (window.electronAPI?.onGameStopped) {
+    window.electronAPI.onGameStopped(() => {
+      const settings = useClipStore.getState().settings
+      if (!settings.screenRecordingOnAppStart) {
+        stopReplayBuffer()
+      }
+    })
+  }
 }

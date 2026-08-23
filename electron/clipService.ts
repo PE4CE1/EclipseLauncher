@@ -141,7 +141,13 @@ function saveClipSettings(settings: Partial<ClipSettingsRecord>) {
 /**
  * Process Raw Video Chunk with FFmpeg to produce a pristine, exact-duration valid video file
  */
-async function processVideoFile(tempInputPath: string, finalOutputPath: string, format: string, targetDurationSec: number): Promise<void> {
+async function processVideoFile(
+  tempInputPath: string, 
+  finalOutputPath: string, 
+  format: string, 
+  targetDurationSec: number,
+  concatListPath?: string | null
+): Promise<void> {
   const ffmpeg = getFFmpegPath()
   if (!ffmpeg || !fs.existsSync(ffmpeg)) {
     fs.copyFileSync(tempInputPath, finalOutputPath)
@@ -151,15 +157,20 @@ async function processVideoFile(tempInputPath: string, finalOutputPath: string, 
   const duration = targetDurationSec > 0 ? targetDurationSec : 30
 
   return new Promise((resolve) => {
-    const args = [
-      '-y',
-      '-err_detect', 'ignore_err',
+    const args: string[] = ['-y', '-err_detect', 'ignore_err']
+
+    if (concatListPath && fs.existsSync(concatListPath)) {
+      args.push('-f', 'concat', '-safe', '0', '-i', concatListPath)
+    } else {
+      args.push('-i', tempInputPath)
+    }
+
+    args.push(
       '-sseof', `-${duration}`,
-      '-i', tempInputPath,
       '-t', `${duration}`,
       '-avoid_negative_ts', 'make_zero',
-      '-fflags', '+genpts+discardcorrupt',
-    ]
+      '-fflags', '+genpts+discardcorrupt'
+    )
 
     if (format === 'mp4') {
       args.push(
@@ -190,12 +201,14 @@ async function processVideoFile(tempInputPath: string, finalOutputPath: string, 
 
     execFile(ffmpeg, args, { timeout: 45000 }, (err) => {
       if (err) {
-        console.warn('[FFmpeg] Sseof transcode notice, attempting direct transcode fallback:', err.message)
-        execFile(ffmpeg, [
-          '-y',
-          '-err_detect', 'ignore_err',
-          '-i', tempInputPath,
-          '-t', `${duration}`,
+        console.warn('[FFmpeg] Sseof notice, attempting direct transcode fallback:', err.message)
+        const fallbackArgs = ['-y', '-err_detect', 'ignore_err']
+        if (concatListPath && fs.existsSync(concatListPath)) {
+          fallbackArgs.push('-f', 'concat', '-safe', '0', '-i', concatListPath)
+        } else {
+          fallbackArgs.push('-i', tempInputPath)
+        }
+        fallbackArgs.push(
           '-c:v', 'libx264',
           '-preset', 'ultrafast',
           '-pix_fmt', 'yuv420p',
@@ -203,7 +216,8 @@ async function processVideoFile(tempInputPath: string, finalOutputPath: string, 
           '-b:a', '160k',
           '-movflags', '+faststart',
           finalOutputPath
-        ], { timeout: 45000 }, () => {
+        )
+        execFile(ffmpeg, fallbackArgs, { timeout: 45000 }, () => {
           resolve()
         })
         return
@@ -287,6 +301,7 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
   // 2. Save clip buffer to disk with FFmpeg processing
   ipcMain.handle('clips:save', async (_, payload: {
     videoBase64: string
+    prevVideoBase64?: string
     title: string
     gameTitle: string
     gameId?: string | number
@@ -309,18 +324,39 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
       const tempRawPath = path.join(dir, 'temp_' + clipId + '.webm')
       const metaFilePath = path.join(dir, clipId + '.json')
 
-      // 1. Write raw memory buffer to temporary file
+      let tempPrevPath: string | null = null
+      let concatListPath: string | null = null
+
+      // 1. Write current memory buffer to temporary file
       const base64Data = payload.videoBase64.replace(/^data:video\/[\w-]+;base64,/, '')
       const buffer = Buffer.from(base64Data, 'base64')
       fs.writeFileSync(tempRawPath, buffer)
 
+      // Optional previous session for continuous stitching
+      if (payload.prevVideoBase64) {
+        tempPrevPath = path.join(dir, 'temp_prev_' + clipId + '.webm')
+        const prevBase64Data = payload.prevVideoBase64.replace(/^data:video\/[\w-]+;base64,/, '')
+        fs.writeFileSync(tempPrevPath, Buffer.from(prevBase64Data, 'base64'))
+
+        concatListPath = path.join(dir, 'concat_' + clipId + '.txt')
+        const prevEscaped = tempPrevPath.replace(/\\/g, '/')
+        const currEscaped = tempRawPath.replace(/\\/g, '/')
+        fs.writeFileSync(concatListPath, `file '${prevEscaped}'\nfile '${currEscaped}'\n`, 'utf-8')
+      }
+
       // 2. Process with FFmpeg into clean, valid MP4/WebM/MKV with exact trimmed duration
       const targetDuration = payload.duration || settings.replayDurationSeconds || 30
-      await processVideoFile(tempRawPath, finalVideoPath, videoExt, targetDuration)
+      await processVideoFile(tempRawPath, finalVideoPath, videoExt, targetDuration, concatListPath)
 
-      // 3. Remove temporary file
+      // 3. Remove temporary files
       if (fs.existsSync(tempRawPath)) {
         try { fs.unlinkSync(tempRawPath) } catch {}
+      }
+      if (tempPrevPath && fs.existsSync(tempPrevPath)) {
+        try { fs.unlinkSync(tempPrevPath) } catch {}
+      }
+      if (concatListPath && fs.existsSync(concatListPath)) {
+        try { fs.unlinkSync(concatListPath) } catch {}
       }
 
       const finalStat = fs.existsSync(finalVideoPath) ? fs.statSync(finalVideoPath) : { size: buffer.length }
