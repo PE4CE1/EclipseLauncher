@@ -75,7 +75,7 @@ export function ProfileView() {
                 steamRecentGames: (steamData.steamRecentGames && steamData.steamRecentGames.length > 0) ? steamData.steamRecentGames : (data.steamRecentGames || []),
                 steamBackgroundUrl: steamData.steamBackgroundUrl || data.steamBackgroundUrl,
                 steamBackgroundMovie: steamData.steamBackgroundMovie || data.steamBackgroundMovie,
-                bannerUrl: steamData.steamBackgroundMovie || steamData.steamBackgroundUrl || data.bannerUrl,
+                bannerUrl: data.bannerUrl || undefined,
               }
             }
           }
@@ -97,7 +97,7 @@ export function ProfileView() {
               steamRecentGames: steamData.steamRecentGames || [],
               steamBackgroundUrl: steamData.steamBackgroundUrl,
               steamBackgroundMovie: steamData.steamBackgroundMovie,
-              bannerUrl: steamData.steamBackgroundMovie || steamData.steamBackgroundUrl,
+              bannerUrl: undefined,
               steamProfileUrl: `https://steamcommunity.com/profiles/${steamData.steamId64}`,
               status: steamData.onlineState === 'in-game' ? 'ingame' : steamData.onlineState === 'online' ? 'online' : 'offline',
             })
@@ -124,9 +124,6 @@ export function ProfileView() {
               steamGames: steamData.steamGames || settings.steamGames,
               steamBackgroundUrl: steamData.steamBackgroundUrl || settings.steamBackgroundUrl,
               steamBackgroundMovie: steamData.steamBackgroundMovie || settings.steamBackgroundMovie,
-            }
-            if (steamData.steamBackgroundMovie || steamData.steamBackgroundUrl) {
-              patch.bannerUrl = steamData.steamBackgroundMovie || steamData.steamBackgroundUrl
             }
             updateSettings(patch)
             if (window.electronAPI?.setSettings) {
@@ -206,9 +203,15 @@ export function ProfileView() {
 
   const activeProfileBg = showSteamBg ? steamBg : null
 
-  // 2. Profile Card Banner (Presets or Custom Link)
-  const userBanner = isViewingFriend ? (profileData?.bannerUrl || friend?.bannerUrl) : settings.bannerUrl
-  const displayBanner = userBanner || BANNER_PRESETS[0].url
+  // 2. Profile Card Banner (Presets or Custom Link) - strictly independent from Steam Background
+  const rawUserBanner = isViewingFriend ? (profileData?.bannerUrl || friend?.bannerUrl) : settings.bannerUrl
+  const isSteamBgUrl = rawUserBanner && (
+    (steamBg && rawUserBanner === steamBg) || 
+    rawUserBanner.includes('steamstatic.com') || 
+    rawUserBanner.includes('community_assets/images/items') || 
+    rawUserBanner.includes('steamcommunity/public/images/items')
+  )
+  const displayBanner = (rawUserBanner && !isSteamBgUrl) ? rawUserBanner : BANNER_PRESETS[0].url
 
   const displayFrame = isViewingFriend
     ? (profileData?.avatarFrame || friend?.avatarFrame || 'none')
@@ -414,16 +417,7 @@ export function ProfileView() {
         setEditName(profile.username)
         setEditAvatar(profile.avatarFull)
         
-        // Auto default banner to Steam background if user has not set a custom non-default one
-        const steamBg = profile.steamBackgroundMovie || profile.steamBackgroundUrl
-        const currentBannerIsCustom = settings.bannerUrl && !BANNER_PRESETS.some(p => p.url === settings.bannerUrl)
-        const newBannerUrl = currentBannerIsCustom ? settings.bannerUrl : (steamBg || settings.bannerUrl)
-
-        if (steamBg && !currentBannerIsCustom) {
-          setEditBanner(steamBg)
-        }
-
-        const patch = {
+        const patch: any = {
           username: profile.username,
           avatarUrl: profile.avatarFull,
           steamProfileUrl: editSteamUrl.trim(),
@@ -436,7 +430,6 @@ export function ProfileView() {
           steamGames: profile.steamGames || [],
           steamBackgroundUrl: profile.steamBackgroundUrl,
           steamBackgroundMovie: profile.steamBackgroundMovie,
-          bannerUrl: newBannerUrl
         }
         updateSettings(patch)
         if (window.electronAPI?.setSettings) {
