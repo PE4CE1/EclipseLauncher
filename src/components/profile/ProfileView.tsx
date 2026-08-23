@@ -201,13 +201,9 @@ export function ProfileView() {
 
   const steamBg = steamBackgroundMovie || steamBackgroundUrl
 
-  // Determine active full-page Steam background
-  const activeSteamBg = showSteamBgSetting ? steamBg : null
-
-  // Prioritize Steam Background if enabled and present, otherwise fallback cleanly
-  const displayBanner = isViewingFriend
-    ? (showSteamBgSetting && steamBg ? steamBg : (profileData?.bannerUrl || friend?.bannerUrl || steamBg || BANNER_PRESETS[0].url))
-    : (showSteamBgSetting && steamBg ? steamBg : (settings.bannerUrl || steamBg || BANNER_PRESETS[0].url))
+  // Resolve active banner: explicit user banner > Steam Background > Default Preset
+  const userBanner = isViewingFriend ? (profileData?.bannerUrl || friend?.bannerUrl) : settings.bannerUrl
+  const displayBanner = userBanner || steamBg || BANNER_PRESETS[0].url
 
   const displayFrame = isViewingFriend
     ? (profileData?.avatarFrame || friend?.avatarFrame || 'none')
@@ -585,41 +581,51 @@ export function ProfileView() {
 
   return (
     <div className="relative h-full overflow-y-auto bg-[#07080a] select-none">
-      {/* ─── Profile View Ambient Steam Background (Live Video or Artwork) ─── */}
-      {activeSteamBg && (
-        <div className="absolute inset-0 pointer-events-none z-0 min-h-full overflow-hidden">
-          {isVideoBanner(activeSteamBg) ? (
-            <video 
-              src={activeSteamBg} 
-              autoPlay 
-              loop 
-              muted 
-              playsInline 
-              className="w-full h-full object-cover object-center filter brightness-[0.40] saturate-110" 
-            />
-          ) : (
-            <img 
-              src={activeSteamBg} 
-              alt="Steam Profile Background" 
-              className="w-full h-full object-cover object-center filter brightness-[0.40] saturate-110" 
-            />
-          )}
-          {/* Subtle vignette gradients for perfect contrast and readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#07080a] via-[#07080a]/60 to-transparent" />
-          <div className="absolute inset-0 bg-black/30" />
-        </div>
-      )}
-
       {/* Main Content Area */}
-      <div className="relative z-10 max-w-5xl mx-auto px-6 py-8 md:px-10 md:py-10 space-y-6">
+      <div className="max-w-5xl mx-auto px-6 py-8 md:px-10 md:py-10 space-y-6">
         
-        {/* ─── Hero Identity Profile Card ─── */}
+        {/* ─── Hero Header & Identity Card with Banner Background ─── */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 md:p-8 shadow-2xl relative"
+          className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl relative"
         >
-          <div className="flex flex-col md:flex-row items-center md:items-end justify-between gap-6">
+          {/* Cover Banner (Presets, Steam Live Video, or Custom Link) */}
+          <div className="relative h-48 md:h-56 w-full overflow-hidden bg-[#06070a]">
+            {displayBanner && (
+              isVideoBanner(displayBanner) ? (
+                <video 
+                  src={displayBanner} 
+                  autoPlay 
+                  loop 
+                  muted 
+                  playsInline 
+                  className="w-full h-full object-cover object-center filter brightness-95" 
+                />
+              ) : (
+                <img 
+                  src={displayBanner} 
+                  alt="Profile Banner" 
+                  className="w-full h-full object-cover object-center filter brightness-95" 
+                />
+              )
+            )}
+            {/* Smooth Vignette Gradient Fade */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] via-[#0c0d12]/40 to-transparent" />
+            
+            {/* Quick Edit Background Button (local user) */}
+            {!isViewingFriend && !isEditing && (
+              <button 
+                onClick={() => { setIsEditing(true); setEditTab('banner'); }}
+                className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 text-white/80 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              >
+                <ImageIcon size={13} /> {language === 'de' ? 'Hintergrund bearbeiten' : 'Edit Background'}
+              </button>
+            )}
+          </div>
+
+          {/* Profile Identity Details */}
+          <div className="px-6 pb-6 md:px-8 md:pb-8 pt-0 relative z-10 flex flex-col md:flex-row items-center md:items-end justify-between gap-5 -mt-14 md:-mt-16">
             
             {/* Avatar & User Details */}
             <div className="flex flex-col md:flex-row items-center md:items-end gap-5 text-center md:text-left">
@@ -659,7 +665,7 @@ export function ProfileView() {
                         setCopiedFriendCode(true)
                         setTimeout(() => setCopiedFriendCode(false), 2000)
                       }}
-                      className="inline-flex items-center gap-1 text-[11px] font-mono font-medium px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/70 hover:text-white transition-all cursor-pointer shadow-sm"
+                      className="inline-flex items-center gap-1 text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/60 hover:text-white transition-all cursor-pointer"
                       title="Click to copy Friend Code"
                     >
                       <span>#{profileData.friendCode}</span>
@@ -711,7 +717,7 @@ export function ProfileView() {
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-0.5">
                   {/* Status Indicator */}
                   <div className="flex items-center gap-1.5 text-xs text-white/70 bg-white/[0.03] px-2.5 py-0.5 rounded-md border border-white/[0.06]">
-                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'bg-white/30'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-white/30'}`} />
                     <span className="font-medium">{isViewingFriend ? friendStatusText : t('online')}</span>
                   </div>
 
