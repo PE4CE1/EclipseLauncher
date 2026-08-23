@@ -4,7 +4,7 @@ import {
   User, RefreshCw, Save, Shield, ShieldCheck,
   Settings as SettingsIcon, Download, Bell, Gamepad2, 
   Link, Monitor, Check, Plus, Trash, Loader2, Folder, Volume2,
-  Paintbrush, ExternalLink, Trash2, Power, RotateCcw
+  Paintbrush, ExternalLink, Trash2, Power, RotateCcw, Film
 } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
@@ -13,6 +13,7 @@ import { useScanner } from '../../hooks/useScanner'
 import { useSourceStore } from '../../store/sourceStore'
 import { useTranslation } from '../../hooks/useTranslation'
 import { GameplayOverlayTab } from './GameplayOverlayTab'
+import { ClipSettingsPanel } from '../clips/ClipSettingsPanel'
 import { fetchSteamUserProfile } from '../../services/steamService'
 import { sendAppNotification } from '../../services/notificationService'
 import { playNotificationChime, playNotificationSound, getSoundPresets } from '../../services/soundService'
@@ -27,6 +28,7 @@ export function SettingsView() {
 
   const TABS = [
     { id: 'general', label: t('general'), icon: SettingsIcon },
+    { id: 'clips', label: t('clips') || 'Clips Studio', icon: Film },
     { id: 'downloads', label: t('downloads'), icon: Download },
     { id: 'notifications', label: t('notificationsTab'), icon: Bell },
     { id: 'gameplay', label: t('gameplay'), icon: Gamepad2 },
@@ -505,6 +507,12 @@ export function SettingsView() {
                   </div>
                 )}
               </section>
+            </motion.div>
+          )}
+
+          {activeSettingsTab === 'clips' && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+              <ClipSettingsPanel />
             </motion.div>
           )}
 
@@ -1454,7 +1462,7 @@ export function SettingsView() {
           )}
 
           {/* Fallback for empty tabs */}
-          {!['general', 'downloads', 'notifications', 'integrations', 'gameplay', 'profile', 'system'].includes(activeSettingsTab) && (
+          {!['general', 'clips', 'downloads', 'notifications', 'integrations', 'gameplay', 'profile', 'system'].includes(activeSettingsTab) && (
             <div className="flex flex-col items-center justify-center h-64 text-hub-muted">
               <SettingsIcon size={32} className="mb-4 opacity-50" />
               <p>{t('settingsUnderConstruction')}</p>
