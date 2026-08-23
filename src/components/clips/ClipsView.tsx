@@ -4,7 +4,7 @@ import {
   Film, Play, Pause, Scissors, Download, Share2, FolderOpen, Trash2,
   Copy, Check, Settings, Search, Clock, HardDrive, Gamepad2, Mic,
   Volume2, VolumeX, Maximize, RotateCcw, AlertCircle, Sparkles, X,
-  Sliders, Plus, Radio, Eye
+  Sliders, Plus, Radio, Eye, Keyboard, Bell, CheckCircle2, ShieldCheck
 } from 'lucide-react'
 import { useClipStore } from '../../store/clipStore'
 import { useGameStore } from '../../store/gameStore'
@@ -27,6 +27,10 @@ export function ClipsView() {
   const [copiedClipId, setCopiedClipId] = useState<string | null>(null)
   const [selectedSort, setSelectedSort] = useState<'newest' | 'duration' | 'size'>('newest')
   const [hoveredClipId, setHoveredClipId] = useState<string | null>(null)
+
+  // Settings Tab Navigation
+  const [activeSettingsCategory, setActiveSettingsCategory] = useState<'capture' | 'video' | 'audio' | 'hotkeys' | 'storage'>('capture')
+  const [isRecordingCustomHotkey, setIsRecordingCustomHotkey] = useState(false)
 
   // Trimmer & Player State
   const [isPlaying, setIsPlaying] = useState(false)
@@ -55,6 +59,44 @@ export function ClipsView() {
       setIsPlaying(false)
     }
   }, [activeClip])
+
+  // Custom Hotkey Listener
+  useEffect(() => {
+    if (!isRecordingCustomHotkey) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      // Ignore lone modifier keys
+      if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return
+
+      const parts: string[] = []
+      if (e.ctrlKey) parts.push('Ctrl')
+      if (e.altKey) parts.push('Alt')
+      if (e.shiftKey) parts.push('Shift')
+
+      let keyName = e.key.toUpperCase()
+      if (keyName.startsWith('ARROW')) keyName = keyName.replace('ARROW', '')
+      if (keyName === ' ') keyName = 'Space'
+
+      parts.push(keyName)
+      const hotkeyStr = parts.join('+')
+
+      setSettings({ hotkey: hotkeyStr })
+      setIsRecordingCustomHotkey(false)
+
+      sendAppNotification({
+        title: language === 'de' ? 'Hotkey aktualisiert! ⌨️' : 'Hotkey Updated! ⌨️',
+        body: language === 'de' ? `Neuer Clipping-Hotkey: ${hotkeyStr}` : `New clipping hotkey: ${hotkeyStr}`,
+        type: 'info',
+        duration: 3000
+      })
+    }
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
+  }, [isRecordingCustomHotkey, language, setSettings])
 
   // Extract unique games from clips for filtering
   const uniqueGames = useMemo(() => {
@@ -135,7 +177,7 @@ export function ClipsView() {
       setTimeout(() => setCopiedClipId(null), 2500)
       sendAppNotification({
         title: language === 'de' ? 'In Zwischenablage kopiert! 📋' : 'Copied to Clipboard! 📋',
-        body: language === 'de' ? 'Clip-Pfad kopiert. Bereit zum Einfügen in Discord/WhatsApp.' : 'Clip copied. Ready to paste.',
+        body: language === 'de' ? 'Clip kopiert. Bereit zum Einfügen in Discord.' : 'Clip copied. Ready to paste.',
         type: 'info',
         duration: 3000,
       })
@@ -147,6 +189,17 @@ export function ClipsView() {
     e?.stopPropagation()
     if (window.electronAPI?.clips?.openFolder) {
       window.electronAPI.clips.openFolder(clip?.filePath || '')
+    }
+  }
+
+  // Handle Pick Custom Folder
+  const handlePickFolder = async () => {
+    if (window.electronAPI?.clips?.pickFolder) {
+      const folder = await window.electronAPI.clips.pickFolder()
+      if (folder) {
+        setSettings({ savePath: folder })
+        refreshClips()
+      }
     }
   }
 
@@ -198,7 +251,7 @@ export function ClipsView() {
   }
 
   return (
-    <div className="relative h-full overflow-y-auto bg-[#07080a] select-none text-white px-6 py-8 md:px-10 md:py-10 space-y-6">
+    <div className="relative h-full overflow-y-auto bg-black select-none text-white px-6 py-8 md:px-10 md:py-10 space-y-6">
       
       {/* ─── Header & Top Actions ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
@@ -211,7 +264,7 @@ export function ClipsView() {
               <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
                 <span>{t('clipsTab') || 'Clips Studio'}</span>
                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/10 text-white/70">
-                  BETA
+                  STUDIO
                 </span>
               </h1>
             </div>
@@ -237,10 +290,10 @@ export function ClipsView() {
                 ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
                 : 'bg-white/[0.04] border-white/[0.08] text-white/50 hover:border-white/20 hover:text-white'
             }`}
-            title={isReplayBufferActive ? 'Replay-Buffer läuft im Hintergrund' : 'Klicken zum Aktivieren'}
+            title={isReplayBufferActive ? (language === 'de' ? 'Replay-Buffer läuft im Hintergrund' : 'Replay buffer active') : (language === 'de' ? 'Klicken zum Aktivieren' : 'Click to enable')}
           >
             <span className={`w-2 h-2 rounded-full ${isReplayBufferActive ? 'bg-emerald-400 animate-pulse' : 'bg-white/30'}`} />
-            <span>{isReplayBufferActive ? `Buffer Aktiv (${settings.replayDurationSeconds}s)` : 'Buffer Starten'}</span>
+            <span>{isReplayBufferActive ? `Buffer ${language === 'de' ? 'Aktiv' : 'Active'} (${settings.replayDurationSeconds}s)` : (language === 'de' ? 'Buffer Starten' : 'Start Buffer')}</span>
           </button>
 
           {/* Quick Clip Trigger */}
@@ -249,7 +302,7 @@ export function ClipsView() {
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-white/90 transition-all shadow-md active:scale-95 cursor-pointer"
           >
             <Scissors size={14} strokeWidth={2.5} />
-            <span>{t('recordClip') || 'Clip erstellen'}</span>
+            <span>{t('recordClip') || (language === 'de' ? 'Clip erstellen' : 'Clip That')}</span>
             <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/10 text-black font-bold">
               {settings.hotkey || 'F8'}
             </span>
@@ -268,7 +321,7 @@ export function ClipsView() {
           <button
             onClick={() => setIsSettingsOpen(true)}
             className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 transition-all text-white/70 hover:text-white cursor-pointer"
-            title={t('clipSettings') || 'Einstellungen'}
+            title={t('clipSettings') || (language === 'de' ? 'Einstellungen' : 'Settings')}
           >
             <Settings size={16} />
           </button>
@@ -287,7 +340,7 @@ export function ClipsView() {
                 : 'bg-white/[0.04] text-white/50 hover:bg-white/[0.08] hover:text-white border border-white/[0.06]'
             }`}
           >
-            {t('allGames') || 'Alle Spiele'} ({clips.length})
+            {t('allGames') || (language === 'de' ? 'Alle Spiele' : 'All Games')} ({clips.length})
           </button>
 
           {uniqueGames.map(game => (
@@ -328,7 +381,6 @@ export function ClipsView() {
       {filteredClips.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filteredClips.map(clip => {
-            const isHovered = hoveredClipId === clip.id
             const isCopied = copiedClipId === clip.id
 
             return (
@@ -409,7 +461,7 @@ export function ClipsView() {
                     >
                       {isCopied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       <span className={isCopied ? 'text-emerald-400 font-semibold' : ''}>
-                        {isCopied ? 'Kopiert' : 'Kopieren'}
+                        {isCopied ? (language === 'de' ? 'Kopiert' : 'Copied') : (language === 'de' ? 'Kopieren' : 'Copy')}
                       </span>
                     </button>
 
@@ -417,21 +469,21 @@ export function ClipsView() {
                       <button
                         onClick={(e) => handleExportClip(clip, e)}
                         className="p-1.5 rounded hover:bg-white/5 hover:text-white transition-colors"
-                        title={t('exportClip') || 'Exportieren'}
+                        title={t('exportClip') || (language === 'de' ? 'Exportieren' : 'Export')}
                       >
                         <Download size={13} />
                       </button>
                       <button
                         onClick={(e) => handleOpenFolder(clip, e)}
                         className="p-1.5 rounded hover:bg-white/5 hover:text-white transition-colors"
-                        title={t('openInFolder') || 'In Ordner öffnen'}
+                        title={t('openInFolder') || (language === 'de' ? 'In Ordner öffnen' : 'Open in Folder')}
                       >
                         <FolderOpen size={13} />
                       </button>
                       <button
                         onClick={(e) => handleDeleteClip(clip, e)}
                         className="p-1.5 rounded hover:bg-red-500/10 hover:text-red-400 transition-colors"
-                        title={t('deleteClip') || 'Löschen'}
+                        title={t('deleteClip') || (language === 'de' ? 'Löschen' : 'Delete')}
                       >
                         <Trash2 size={13} />
                       </button>
@@ -450,10 +502,10 @@ export function ClipsView() {
           </div>
           <div className="space-y-1">
             <h3 className="text-sm font-semibold text-white">
-              {t('noClipsYet') || 'Noch keine Clips vorhanden'}
+              {t('noClipsYet') || (language === 'de' ? 'Noch keine Clips vorhanden' : 'No clips recorded yet')}
             </h3>
             <p className="text-xs text-white/50 leading-relaxed">
-              {t('noClipsDesc') || 'Drücke deinen Hotkey im Spiel oder klicke oben auf "Clip erstellen", um Highlights festzuhalten.'}
+              {t('noClipsDesc') || (language === 'de' ? 'Drücke deinen Hotkey im Spiel oder klicke oben auf "Clip erstellen", um Highlights festzuhalten.' : 'Press your hotkey in-game or click "Clip That" above.')}
             </p>
           </div>
           <button
@@ -461,7 +513,7 @@ export function ClipsView() {
             className="px-4 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-white/90 transition-all inline-flex items-center gap-2 cursor-pointer shadow-md"
           >
             <Scissors size={14} />
-            <span>Jetzt ersten Clip aufnehmen</span>
+            <span>{language === 'de' ? 'Jetzt ersten Clip aufnehmen' : 'Record first clip now'}</span>
           </button>
         </div>
       )}
@@ -510,7 +562,7 @@ export function ClipsView() {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-black font-semibold text-xs hover:bg-white/90 transition-all cursor-pointer"
                   >
                     <Download size={13} />
-                    <span>{t('exportClip') || 'Exportieren'}</span>
+                    <span>{t('exportClip') || (language === 'de' ? 'Exportieren' : 'Export')}</span>
                   </button>
 
                   <button
@@ -577,8 +629,8 @@ export function ClipsView() {
                   <div className="flex items-center justify-between text-xs font-mono text-white/50">
                     <span className="flex items-center gap-1 text-white">
                       <Scissors size={12} className="text-emerald-400" />
-                      <span>{language === 'de' ? 'Clip-Dauer:' : 'Clip Duration:'}</span>
-                      <strong className="text-white font-bold">{formatTime(trimEnd - trimStart)}</strong>
+                      <span>{language === 'de' ? 'Getrimmte Clip-Dauer:' : 'Trimmed Duration:'}</span>
+                      <strong className="text-white font-bold">{formatTime(Math.max(0, trimEnd - trimStart))}</strong>
                     </span>
                     <span>{formatTime(currentTime)} / {formatTime(duration || activeClip.duration)}</span>
                   </div>
@@ -727,14 +779,14 @@ export function ClipsView() {
                     <button
                       onClick={() => handleOpenFolder(activeClip)}
                       className="p-2 rounded-xl hover:bg-white/5 text-white/50 hover:text-white transition-all cursor-pointer"
-                      title={t('openInFolder') || 'In Ordner anzeigen'}
+                      title={t('openInFolder') || (language === 'de' ? 'In Ordner anzeigen' : 'Open in Folder')}
                     >
                       <FolderOpen size={16} />
                     </button>
                     <button
                       onClick={() => handleDeleteClip(activeClip)}
                       className="p-2 rounded-xl hover:bg-red-500/10 text-white/50 hover:text-red-400 transition-all cursor-pointer"
-                      title={t('deleteClip') || 'Löschen'}
+                      title={t('deleteClip') || (language === 'de' ? 'Löschen' : 'Delete')}
                     >
                       <Trash2 size={16} />
                     </button>
@@ -746,149 +798,452 @@ export function ClipsView() {
         )}
       </AnimatePresence>
 
-      {/* ─── Clips Settings Modal ─── */}
+      {/* ─── Ultra-Minimalist & Feature-Rich Clips Settings Modal ─── */}
       <AnimatePresence>
         {isSettingsOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#0c0d12] border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl p-6 space-y-6"
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="bg-[#0b0c10] border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              {/* Settings Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08]">
                 <div className="flex items-center gap-2.5">
-                  <Settings size={16} className="text-white/80" />
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                    {t('clipSettings') || 'Clip-Einstellungen'}
-                  </h3>
+                  <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white">
+                    <Settings size={15} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white tracking-wide">
+                      {language === 'de' ? 'ECLIPSE CLIPS EINSTELLUNGEN' : 'ECLIPSE CLIPS SETTINGS'}
+                    </h3>
+                  </div>
                 </div>
                 <button
                   onClick={() => setIsSettingsOpen(false)}
-                  className="p-1 rounded-lg text-white/40 hover:text-white hover:bg-white/5"
+                  className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   <X size={16} />
                 </button>
               </div>
 
-              <div className="space-y-4 text-xs">
-                {/* Enable / Disable */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                  <div>
-                    <span className="font-semibold text-white block">{language === 'de' ? 'Replay-Buffer aktivieren' : 'Enable Replay Buffer'}</span>
-                    <span className="text-white/40 text-[11px]">{language === 'de' ? 'Hält laufend die letzten Sekunden im Speicher für F8' : 'Keep rolling buffer in memory'}</span>
-                  </div>
-                  <button
-                    onClick={() => setSettings({ enabled: !settings.enabled })}
-                    className={`px-3 py-1.5 rounded-xl font-bold border transition-all cursor-pointer ${
-                      settings.enabled ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' : 'bg-white/5 border-white/10 text-white/40'
-                    }`}
-                  >
-                    {settings.enabled ? (language === 'de' ? 'Aktiv' : 'On') : (language === 'de' ? 'Aus' : 'Off')}
-                  </button>
-                </div>
-
-                {/* Replay Duration */}
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="font-semibold text-white/80">{t('replayDuration') || 'Replay-Dauer'}:</span>
-                    <span className="font-mono text-emerald-400 font-bold">{settings.replayDurationSeconds} Sekunden</span>
-                  </div>
-                  <div className="grid grid-cols-6 gap-1.5">
-                    {[15, 30, 45, 60, 90, 120].map(sec => (
-                      <button
-                        key={sec}
-                        onClick={() => setSettings({ replayDurationSeconds: sec })}
-                        className={`py-2 rounded-xl text-center font-mono font-semibold text-xs border transition-all cursor-pointer ${
-                          settings.replayDurationSeconds === sec
-                            ? 'bg-white text-black border-white'
-                            : 'bg-white/[0.02] border-white/[0.06] text-white/60 hover:text-white'
-                        }`}
-                      >
-                        {sec}s
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Quality & FPS */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <span className="font-semibold text-white/80">{t('clipQuality') || 'Qualität'}:</span>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {(['1080p', '720p'] as const).map(q => (
-                        <button
-                          key={q}
-                          onClick={() => setSettings({ quality: q })}
-                          className={`py-1.5 rounded-xl font-semibold border text-center transition-all cursor-pointer ${
-                            settings.quality === q ? 'bg-white text-black border-white' : 'bg-white/[0.02] border-white/[0.06] text-white/50'
-                          }`}
-                        >
-                          {q}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="font-semibold text-white/80">{t('clipFps') || 'FPS'}:</span>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {([60, 30] as const).map(f => (
-                        <button
-                          key={f}
-                          onClick={() => setSettings({ fps: f })}
-                          className={`py-1.5 rounded-xl font-semibold border text-center transition-all cursor-pointer ${
-                            settings.fps === f ? 'bg-white text-black border-white' : 'bg-white/[0.02] border-white/[0.06] text-white/50'
-                          }`}
-                        >
-                          {f} FPS
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hotkey */}
-                <div className="space-y-1.5">
-                  <span className="font-semibold text-white/80">{t('clipHotkey') || 'Clipping Hotkey'}:</span>
-                  <div className="grid grid-cols-4 gap-2">
-                    {['F8', 'F9', 'F10', 'Alt+C'].map(hk => (
-                      <button
-                        key={hk}
-                        onClick={() => setSettings({ hotkey: hk })}
-                        className={`py-2 rounded-xl font-mono font-bold text-center border transition-all cursor-pointer ${
-                          settings.hotkey === hk ? 'bg-white text-black border-white' : 'bg-white/[0.02] border-white/[0.06] text-white/50'
-                        }`}
-                      >
-                        {hk}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Microphone Toggle */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                  <div className="flex items-center gap-2">
-                    <Mic size={15} className="text-white/60" />
-                    <span className="font-semibold text-white">{t('captureMic') || 'Mikrofon mit aufnehmen'}</span>
-                  </div>
-                  <button
-                    onClick={() => setSettings({ captureMic: !settings.captureMic })}
-                    className={`px-3 py-1 rounded-lg font-semibold text-xs border transition-all cursor-pointer ${
-                      settings.captureMic ? 'bg-white text-black border-white' : 'bg-white/5 border-white/10 text-white/40'
-                    }`}
-                  >
-                    {settings.captureMic ? 'Ja' : 'Nein'}
-                  </button>
-                </div>
+              {/* Category Tab Selector */}
+              <div className="flex items-center gap-1 px-6 pt-3 pb-2 border-b border-white/[0.06] overflow-x-auto scrollbar-none">
+                {[
+                  { id: 'capture', label: language === 'de' ? 'Aufnahme' : 'Capture', icon: Scissors },
+                  { id: 'video', label: language === 'de' ? 'Qualität' : 'Quality', icon: Film },
+                  { id: 'audio', label: language === 'de' ? 'Audio & Mic' : 'Audio & Mic', icon: Mic },
+                  { id: 'hotkeys', label: language === 'de' ? 'Hotkeys' : 'Hotkeys', icon: Keyboard },
+                  { id: 'storage', label: language === 'de' ? 'Speicherort' : 'Storage', icon: FolderOpen },
+                ].map(tab => {
+                  const Icon = tab.icon
+                  const isSelected = activeSettingsCategory === tab.id
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveSettingsCategory(tab.id as any)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
+                        isSelected 
+                          ? 'bg-white text-black font-semibold shadow-sm' 
+                          : 'text-white/50 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <Icon size={13} />
+                      <span>{tab.label}</span>
+                    </button>
+                  )
+                })}
               </div>
 
-              <div className="pt-2">
+              {/* Settings Body */}
+              <div className="p-6 overflow-y-auto space-y-5 text-xs">
+                
+                {/* ── Tab 1: Capture & Replay Buffer ── */}
+                {activeSettingsCategory === 'capture' && (
+                  <div className="space-y-4">
+                    {/* Enable Replay Buffer Toggle */}
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                      <div className="space-y-0.5">
+                        <span className="font-semibold text-white block">
+                          {language === 'de' ? 'Replay-Buffer aktivieren' : 'Enable Replay Buffer'}
+                        </span>
+                        <span className="text-white/40 text-[11px] block">
+                          {language === 'de' ? 'Hält laufend die letzten Sekunden im Speicher für den Hotkey-Klick' : 'Keeps rolling buffer in memory for one-click clip hotkey'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setSettings({ enabled: !settings.enabled })}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          settings.enabled 
+                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]' 
+                            : 'bg-white/5 border-white/10 text-white/40'
+                        }`}
+                      >
+                        {settings.enabled ? (language === 'de' ? 'Aktiv' : 'On') : (language === 'de' ? 'Aus' : 'Off')}
+                      </button>
+                    </div>
+
+                    {/* Replay Buffer Duration Grid */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-white/80">
+                          {language === 'de' ? 'Replay-Buffer Dauer:' : 'Replay Buffer Duration:'}
+                        </span>
+                        <span className="font-mono text-emerald-400 font-bold">
+                          {settings.replayDurationSeconds} {language === 'de' ? 'Sekunden' : 'Seconds'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                        {[15, 30, 45, 60, 90, 120, 180, 300].map(sec => {
+                          const isSel = settings.replayDurationSeconds === sec
+                          return (
+                            <button
+                              key={sec}
+                              onClick={() => setSettings({ replayDurationSeconds: sec })}
+                              className={`py-2 rounded-xl text-center font-mono font-semibold text-xs border transition-all cursor-pointer ${
+                                isSel
+                                  ? 'bg-white text-black border-white shadow-sm'
+                                  : 'bg-white/[0.02] border-white/[0.06] text-white/60 hover:text-white hover:border-white/20'
+                              }`}
+                            >
+                              {sec >= 60 ? `${sec / 60}m` : `${sec}s`}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Auto-Start on Game Launch Toggle */}
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                      <div className="space-y-0.5">
+                        <span className="font-semibold text-white block">
+                          {language === 'de' ? 'Auto-Start bei Spielstart' : 'Auto-Start on Game Launch'}
+                        </span>
+                        <span className="text-white/40 text-[11px] block">
+                          {language === 'de' ? 'Startet den Replay-Buffer automatisch im Hintergrund, wenn ein Spiel erkannt wird' : 'Automatically starts buffer when a game is launched'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setSettings({ autoStartOnGame: settings.autoStartOnGame !== false ? false : true })}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          settings.autoStartOnGame !== false
+                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+                            : 'bg-white/5 border-white/10 text-white/40'
+                        }`}
+                      >
+                        {settings.autoStartOnGame !== false ? (language === 'de' ? 'Aktiv' : 'On') : (language === 'de' ? 'Aus' : 'Off')}
+                      </button>
+                    </div>
+
+                    {/* HUD Notification Toast Toggle */}
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                      <div className="space-y-0.5">
+                        <span className="font-semibold text-white block">
+                          {language === 'de' ? 'HUD-Benachrichtigung nach Clip' : 'HUD Notification on Clip'}
+                        </span>
+                        <span className="text-white/40 text-[11px] block">
+                          {language === 'de' ? 'Zeigt "Clip gespeichert! 🎮" Toast im Launcher nach dem Hotkey-Druck an' : 'Show notification toast when a clip is captured'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setSettings({ notifyOnClip: settings.notifyOnClip !== false ? false : true })}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          settings.notifyOnClip !== false
+                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+                            : 'bg-white/5 border-white/10 text-white/40'
+                        }`}
+                      >
+                        {settings.notifyOnClip !== false ? (language === 'de' ? 'Aktiv' : 'On') : (language === 'de' ? 'Aus' : 'Off')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Tab 2: Video & Quality ── */}
+                {activeSettingsCategory === 'video' && (
+                  <div className="space-y-4">
+                    {/* Resolution */}
+                    <div className="space-y-1.5">
+                      <span className="font-semibold text-white/80">
+                        {language === 'de' ? 'Aufnahme-Auflösung' : 'Capture Resolution'}:
+                      </span>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: '1440p', label: '1440p (2K Ultra)' },
+                          { id: '1080p', label: '1080p (Full HD)' },
+                          { id: '720p', label: '720p (HD)' },
+                        ].map(q => (
+                          <button
+                            key={q.id}
+                            onClick={() => setSettings({ quality: q.id as any })}
+                            className={`py-2.5 px-2 rounded-xl font-semibold border text-center transition-all cursor-pointer ${
+                              settings.quality === q.id 
+                                ? 'bg-white text-black border-white shadow-sm' 
+                                : 'bg-white/[0.02] border-white/[0.06] text-white/60 hover:text-white'
+                            }`}
+                          >
+                            {q.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Frame Rate (FPS) */}
+                    <div className="space-y-1.5">
+                      <span className="font-semibold text-white/80">
+                        {language === 'de' ? 'Bildwiederholrate (FPS)' : 'Frame Rate (FPS)'}:
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { id: 60, label: '60 FPS (Flüssig / Silky Smooth)' },
+                          { id: 30, label: '30 FPS (Standard)' },
+                        ].map(f => (
+                          <button
+                            key={f.id}
+                            onClick={() => setSettings({ fps: f.id as any })}
+                            className={`py-2.5 px-2 rounded-xl font-semibold border text-center transition-all cursor-pointer ${
+                              settings.fps === f.id 
+                                ? 'bg-white text-black border-white shadow-sm' 
+                                : 'bg-white/[0.02] border-white/[0.06] text-white/60 hover:text-white'
+                            }`}
+                          >
+                            {f.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Bitrate Control */}
+                    <div className="space-y-1.5">
+                      <span className="font-semibold text-white/80">
+                        {language === 'de' ? 'Video-Bitrate & Kodierung' : 'Video Bitrate'}:
+                      </span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { id: 'ultra', label: 'Ultra (20M)' },
+                          { id: 'high', label: 'Hoch (12M)' },
+                          { id: 'medium', label: 'Mittel (8M)' },
+                          { id: 'low', label: 'Sparsam (5M)' },
+                        ].map(b => (
+                          <button
+                            key={b.id}
+                            onClick={() => setSettings({ bitrate: b.id as any })}
+                            className={`py-2 rounded-xl font-semibold text-center border transition-all cursor-pointer ${
+                              (settings.bitrate || 'high') === b.id 
+                                ? 'bg-white text-black border-white' 
+                                : 'bg-white/[0.02] border-white/[0.06] text-white/50 hover:text-white'
+                            }`}
+                          >
+                            {b.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Zero Watermark Guarantee */}
+                    <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center gap-3">
+                      <ShieldCheck size={18} className="text-emerald-400 flex-shrink-0" />
+                      <div className="space-y-0.5">
+                        <span className="font-semibold text-white block">
+                          {language === 'de' ? '100% Kostenlos & Ohne Wasserzeichen' : '100% Free & No Watermarks'}
+                        </span>
+                        <span className="text-white/40 text-[11px] block">
+                          {language === 'de' ? 'Alle Clips werden sauber ohne Wasserzeichen in voller Qualität exportiert.' : 'All clips exported cleanly with zero watermarks.'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Tab 3: Audio & Voice ── */}
+                {activeSettingsCategory === 'audio' && (
+                  <div className="space-y-4">
+                    {/* Game Audio Volume */}
+                    <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Volume2 size={15} className="text-white/60" />
+                          <span className="font-semibold text-white">
+                            {language === 'de' ? 'Spiel-Audio Lautstärke' : 'Game Audio Volume'}
+                          </span>
+                        </div>
+                        <span className="font-mono text-emerald-400 font-bold">
+                          {settings.gameAudioVolume ?? 100}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={settings.gameAudioVolume ?? 100}
+                        onChange={e => setSettings({ gameAudioVolume: parseInt(e.target.value) })}
+                        className="w-full accent-white"
+                      />
+                    </div>
+
+                    {/* Microphone Capture Toggle */}
+                    <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Mic size={15} className="text-white/60" />
+                          <div>
+                            <span className="font-semibold text-white block">
+                              {language === 'de' ? 'Eigenes Mikrofon mit aufnehmen' : 'Include Microphone in Clips'}
+                            </span>
+                            <span className="text-white/40 text-[11px]">
+                              {language === 'de' ? 'Nimmt deine Stimme parallel zum Spiel-Sound auf' : 'Records your voice alongside game audio'}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setSettings({ captureMic: !settings.captureMic })}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                            settings.captureMic 
+                              ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+                              : 'bg-white/5 border-white/10 text-white/40'
+                          }`}
+                        >
+                          {settings.captureMic ? (language === 'de' ? 'Ja' : 'Yes') : (language === 'de' ? 'Nein' : 'No')}
+                        </button>
+                      </div>
+
+                      {/* Microphone Volume Slider */}
+                      {settings.captureMic && (
+                        <div className="pt-2 border-t border-white/[0.06] space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] text-white/60">
+                              {language === 'de' ? 'Mikrofon-Lautstärke' : 'Mic Gain'}:
+                            </span>
+                            <span className="font-mono text-emerald-400 font-bold">{settings.micVolume || 80}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={settings.micVolume || 80}
+                            onChange={e => setSettings({ micVolume: parseInt(e.target.value) })}
+                            className="w-full accent-emerald-400"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Tab 4: Hotkeys & Keyboard ── */}
+                {activeSettingsCategory === 'hotkeys' && (
+                  <div className="space-y-4">
+                    {/* Replay Clipping Hotkey Selector */}
+                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-semibold text-white block">
+                            {language === 'de' ? 'Replay-Clip Hotkey (Letzte Sekunden)' : 'Replay Clip Hotkey'}
+                          </span>
+                          <span className="text-white/40 text-[11px]">
+                            {language === 'de' ? 'Drücke diesen Hotkey in jedem Spiel, um den Buffer zu speichern' : 'Press in any game to capture replay'}
+                          </span>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-lg bg-white/10 font-mono font-bold text-white border border-white/10">
+                          {settings.hotkey || 'F8'}
+                        </span>
+                      </div>
+
+                      {/* Preset Hotkeys */}
+                      <div className="grid grid-cols-4 gap-2">
+                        {['F8', 'F9', 'F10', 'Alt+C'].map(hk => (
+                          <button
+                            key={hk}
+                            onClick={() => setSettings({ hotkey: hk })}
+                            className={`py-2 rounded-xl font-mono font-bold text-center border transition-all cursor-pointer ${
+                              settings.hotkey === hk 
+                                ? 'bg-white text-black border-white shadow-sm' 
+                                : 'bg-white/[0.02] border-white/[0.06] text-white/60 hover:text-white'
+                            }`}
+                          >
+                            {hk}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Custom Hotkey Record Button */}
+                      <button
+                        onClick={() => setIsRecordingCustomHotkey(!isRecordingCustomHotkey)}
+                        className={`w-full py-2.5 rounded-xl border font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          isRecordingCustomHotkey 
+                            ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 animate-pulse' 
+                            : 'bg-white/[0.04] border-white/10 hover:border-white/30 text-white'
+                        }`}
+                      >
+                        <Keyboard size={14} />
+                        <span>
+                          {isRecordingCustomHotkey 
+                            ? (language === 'de' ? 'Drücke eine beliebige Taste auf der Tastatur...' : 'Press any key on keyboard...') 
+                            : (language === 'de' ? 'Eigener Hotkey (Tastenkombination aufnehmen)' : 'Record Custom Hotkey')}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Tab 5: Storage & Folders ── */}
+                {activeSettingsCategory === 'storage' && (
+                  <div className="space-y-4">
+                    {/* Storage Directory */}
+                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                      <div>
+                        <span className="font-semibold text-white block">
+                          {language === 'de' ? 'Speicherort für Eclipse Clips' : 'Clips Storage Folder'}
+                        </span>
+                        <span className="text-white/40 text-[11px]">
+                          {language === 'de' ? 'Hier werden alle aufgenommenen Videoclips und Highlights abgelegt' : 'Where all recorded clips are saved'}
+                        </span>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-[#14161c] border border-white/[0.06] font-mono text-[11px] text-white/70 truncate flex items-center justify-between">
+                        <span className="truncate pr-2">{settings.savePath || 'Videos / Eclipse Clips'}</span>
+                        <button
+                          onClick={handlePickFolder}
+                          className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-sans text-xs font-semibold whitespace-nowrap cursor-pointer"
+                        >
+                          {language === 'de' ? 'Ändern' : 'Browse'}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <button
+                          onClick={() => handleOpenFolder()}
+                          className="text-xs text-white/70 hover:text-white flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <FolderOpen size={14} />
+                          <span>{language === 'de' ? 'Ordner in Windows Explorer öffnen' : 'Open in Windows Explorer'}</span>
+                        </button>
+
+                        <span className="text-xs font-mono text-white/40">
+                          {clips.length} Clips • {totalDiskSpace}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Settings Footer */}
+              <div className="px-6 py-4 border-t border-white/[0.08] flex items-center justify-between">
+                <span className="text-[11px] text-white/40">
+                  {language === 'de' ? 'Änderungen werden automatisch gespeichert' : 'Changes are saved automatically'}
+                </span>
+
                 <button
-                  onClick={() => setIsSettingsOpen(false)}
-                  className="w-full py-2.5 rounded-xl bg-white text-black font-semibold text-xs hover:bg-white/90 transition-all cursor-pointer shadow-md"
+                  onClick={() => {
+                    setIsRecordingCustomHotkey(false)
+                    setIsSettingsOpen(false)
+                  }}
+                  className="px-5 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-white/90 transition-all cursor-pointer shadow-md"
                 >
-                  {language === 'de' ? 'Einstellungen schließen' : 'Close Settings'}
+                  {language === 'de' ? 'Schließen' : 'Close'}
                 </button>
               </div>
             </motion.div>

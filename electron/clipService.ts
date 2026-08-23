@@ -21,23 +21,35 @@ export interface ClipSettingsRecord {
   enabled: boolean
   replayDurationSeconds: number
   hotkey: string
-  quality: '1080p' | '720p'
+  fullRecordHotkey?: string
+  quality: '1440p' | '1080p' | '720p'
   fps: 60 | 30
+  bitrate?: 'ultra' | 'high' | 'medium' | 'low'
   captureMic: boolean
   micVolume: number
+  gameAudioVolume?: number
   savePath?: string
   notifyOnClip: boolean
+  playSoundOnClip?: boolean
+  autoStartOnGame?: boolean
+  maxStorageGB?: number
 }
 
 const DEFAULT_SETTINGS: ClipSettingsRecord = {
   enabled: true,
   replayDurationSeconds: 30,
   hotkey: 'F8',
+  fullRecordHotkey: 'F9',
   quality: '1080p',
   fps: 60,
+  bitrate: 'high',
   captureMic: false,
   micVolume: 80,
+  gameAudioVolume: 100,
   notifyOnClip: true,
+  playSoundOnClip: true,
+  autoStartOnGame: true,
+  maxStorageGB: 25,
 }
 
 function getClipsDirectory(customPath?: string): string {
@@ -84,40 +96,55 @@ function saveClipSettings(settings: Partial<ClipSettingsRecord>) {
   return updated
 }
 
-let activeRegisteredHotkey: string | null = null
+let activeReplayHotkey: string | null = null
+let activeRecordHotkey: string | null = null
 
 export function registerClipsGlobalHotkey(mainWindow?: BrowserWindow) {
   const settings = loadClipSettings()
-  if (!settings.enabled) {
-    if (activeRegisteredHotkey) {
-      globalShortcut.unregister(activeRegisteredHotkey)
-      activeRegisteredHotkey = null
-    }
-    return
+  
+  // Unregister existing
+  if (activeReplayHotkey) {
+    try { globalShortcut.unregister(activeReplayHotkey) } catch {}
+    activeReplayHotkey = null
+  }
+  if (activeRecordHotkey) {
+    try { globalShortcut.unregister(activeRecordHotkey) } catch {}
+    activeRecordHotkey = null
   }
 
-  const targetHotkey = settings.hotkey || 'F8'
-  if (activeRegisteredHotkey === targetHotkey) return
+  if (!settings.enabled) return
 
-  if (activeRegisteredHotkey) {
-    globalShortcut.unregister(activeRegisteredHotkey)
-    activeRegisteredHotkey = null
-  }
-
+  // 1. Register Replay Clip Hotkey (e.g. F8 or custom)
+  const replayHk = settings.hotkey || 'F8'
   try {
-    const success = globalShortcut.register(targetHotkey, () => {
+    const success = globalShortcut.register(replayHk, () => {
       const targetWindow = mainWindow || BrowserWindow.getAllWindows().find(w => !w.isDestroyed())
       if (targetWindow && !targetWindow.isDestroyed()) {
-        targetWindow.webContents.send('clips:hotkey-pressed', { hotkey: targetHotkey })
+        targetWindow.webContents.send('clips:hotkey-pressed', { action: 'replay', hotkey: replayHk })
       }
     })
     if (success) {
-      activeRegisteredHotkey = targetHotkey
+      activeReplayHotkey = replayHk
     } else {
-      console.warn('[Clips] Failed to register global hotkey:', targetHotkey)
+      console.warn('[Clips] Failed to register global replay hotkey:', replayHk)
     }
   } catch (err) {
-    console.warn('[Clips] Error registering global hotkey:', targetHotkey, err)
+    console.warn('[Clips] Error registering global replay hotkey:', replayHk, err)
+  }
+
+  // 2. Register Full Record Hotkey (e.g. F9)
+  if (settings.fullRecordHotkey && settings.fullRecordHotkey !== replayHk) {
+    try {
+      const success = globalShortcut.register(settings.fullRecordHotkey, () => {
+        const targetWindow = mainWindow || BrowserWindow.getAllWindows().find(w => !w.isDestroyed())
+        if (targetWindow && !targetWindow.isDestroyed()) {
+          targetWindow.webContents.send('clips:hotkey-pressed', { action: 'full_record', hotkey: settings.fullRecordHotkey })
+        }
+      })
+      if (success) {
+        activeRecordHotkey = settings.fullRecordHotkey
+      }
+    } catch {}
   }
 }
 
@@ -125,7 +152,7 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
   // Ensure default directory
   getClipsDirectory()
 
-  // Register hotkey
+  // Register hotkeys
   registerClipsGlobalHotkey(mainWindow)
 
   // 1. Get screen / window capture sources

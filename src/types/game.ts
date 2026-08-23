@@ -72,14 +72,20 @@ export interface EclipseClip {
 
 export interface ClipSettings {
   enabled: boolean
-  replayDurationSeconds: number // 15, 30, 45, 60, 90, 120
-  hotkey: string                // e.g. 'F8', 'F9', 'Alt+C'
-  quality: '1080p' | '720p'     // resolution
+  replayDurationSeconds: number // 15, 30, 45, 60, 90, 120, 180, 300
+  hotkey: string                // e.g. 'F8', 'F9', 'Alt+C', custom
+  fullRecordHotkey?: string     // e.g. 'F9'
+  quality: '1440p' | '1080p' | '720p' // resolution
   fps: 60 | 30
+  bitrate?: 'ultra' | 'high' | 'medium' | 'low' // 20M, 12M, 8M, 5M
   captureMic: boolean
   micVolume: number             // 0 - 100
+  gameAudioVolume?: number      // 0 - 100
   savePath?: string             // custom folder or default Videos/Eclipse Clips
   notifyOnClip: boolean
+  playSoundOnClip?: boolean
+  autoStartOnGame?: boolean
+  maxStorageGB?: number         // e.g. 25
 }
 
 export interface SteamRecentGame {
