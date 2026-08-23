@@ -58,11 +58,31 @@ export function ProfileView() {
       setIsLoadingProfile(true)
       setRequestSent(false)
       fetchUserProfile(selectedFriendId).then(async (data) => {
+        let finalProfile = data
+        const steamUrl = data?.steamProfileUrl || friend?.steamProfileUrl
         if (data) {
-          setFetchedProfile(data)
+          if (steamUrl && (!data.steamBackgroundMovie && !data.steamBackgroundUrl)) {
+            const steamData = await fetchSteamUserProfile(steamUrl)
+            if (steamData) {
+              finalProfile = {
+                ...data,
+                steamLevel: steamData.steamLevel ?? data.steamLevel,
+                steamGamesCount: steamData.steamGamesCount ?? data.steamGamesCount,
+                steamBadgesCount: steamData.steamBadgesCount ?? data.steamBadgesCount,
+                steamFavoriteBadge: steamData.steamFavoriteBadge || data.steamFavoriteBadge,
+                steamBadges: (steamData.steamBadges && steamData.steamBadges.length > 0) ? steamData.steamBadges : (data.steamBadges || []),
+                steamGames: (steamData.steamGames && steamData.steamGames.length > 0) ? steamData.steamGames : (data.steamGames || []),
+                steamRecentGames: (steamData.steamRecentGames && steamData.steamRecentGames.length > 0) ? steamData.steamRecentGames : (data.steamRecentGames || []),
+                steamBackgroundUrl: steamData.steamBackgroundUrl || data.steamBackgroundUrl,
+                steamBackgroundMovie: steamData.steamBackgroundMovie || data.steamBackgroundMovie,
+                bannerUrl: steamData.steamBackgroundMovie || steamData.steamBackgroundUrl || data.bannerUrl,
+              }
+            }
+          }
+          setFetchedProfile(finalProfile)
         } else {
-          // Fallback to Steam profile lookup if numeric ID
-          const steamData = await fetchSteamUserProfile(selectedFriendId)
+          // Fallback to Steam profile lookup if numeric ID or friend
+          const steamData = await fetchSteamUserProfile(steamUrl || selectedFriendId)
           if (steamData && steamData.steamId64) {
             setFetchedProfile({
               username: steamData.username,

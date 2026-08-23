@@ -246,9 +246,13 @@ export async function syncMyProfile() {
       steamLevel: settings.steamLevel || 1,
       steamProfileUrl: settings.steamProfileUrl || '',
       steamGamesCount: settings.steamGamesCount || 0,
-      steamBadgesCount: settings.steamBadgesCount || 0,
       steamFavoriteBadge: settings.steamFavoriteBadge || null,
       steamRecentGames: settings.steamRecentGames || [],
+      steamBadges: settings.steamBadges || [],
+      steamGames: settings.steamGames || [],
+      steamBackgroundUrl: settings.steamBackgroundUrl || null,
+      steamBackgroundMovie: settings.steamBackgroundMovie || null,
+      showSteamBackground: settings.profileShowSteamBackground !== false,
       totalPlaytimeMins,
       totalPlaytimeHours,
       totalLibraryCount,
@@ -423,6 +427,11 @@ function listenToFriendsPresence(friendUids: string[]) {
         friendCode: u.friendCode || undefined,
         steamRecentGames: u.steamRecentGames || [],
         steamFavoriteBadge: u.steamFavoriteBadge || null,
+        steamBadges: u.steamBadges || [],
+        steamGames: u.steamGames || [],
+        steamBackgroundUrl: u.steamBackgroundUrl || undefined,
+        steamBackgroundMovie: u.steamBackgroundMovie || undefined,
+        showSteamBackground: u.showSteamBackground !== false,
       }
       liveFriendsMap.set(u.uid, friendObj)
 
@@ -552,6 +561,12 @@ async function performBilateralAdd(myUid: string, targetUid: string, targetData:
       friendCode: targetData.friendCode || undefined,
       steamRecentGames: targetData.steamRecentGames || [],
       steamFavoriteBadge: targetData.steamFavoriteBadge || null,
+      steamBadges: targetData.steamBadges || [],
+      steamGames: targetData.steamGames || [],
+      steamBackgroundUrl: targetData.steamBackgroundUrl || undefined,
+      steamBackgroundMovie: targetData.steamBackgroundMovie || undefined,
+      bannerUrl: targetData.bannerUrl || targetData.steamBackgroundMovie || targetData.steamBackgroundUrl || undefined,
+      showSteamBackground: targetData.showSteamBackground !== false,
     }
 
     knownFriendIds.add(friendObj.id)
