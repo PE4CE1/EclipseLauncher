@@ -89,8 +89,34 @@ export function ProfileView() {
       setFetchedProfile(null)
       // When viewing own profile, sync latest playtime & games to Firebase
       syncMyProfile()
+
+      // Auto-fetch/refresh Steam data if steamProfileUrl is linked to ensure live background is always fresh
+      if (settings.steamProfileUrl) {
+        fetchSteamUserProfile(settings.steamProfileUrl).then(steamData => {
+          if (steamData) {
+            const patch: any = {
+              steamLevel: steamData.steamLevel ?? settings.steamLevel,
+              steamGamesCount: steamData.steamGamesCount ?? settings.steamGamesCount,
+              steamBadgesCount: steamData.steamBadgesCount ?? settings.steamBadgesCount,
+              steamRecentGames: steamData.steamRecentGames || settings.steamRecentGames,
+              steamFavoriteBadge: steamData.steamFavoriteBadge || settings.steamFavoriteBadge,
+              steamBadges: steamData.steamBadges || settings.steamBadges,
+              steamGames: steamData.steamGames || settings.steamGames,
+              steamBackgroundUrl: steamData.steamBackgroundUrl || settings.steamBackgroundUrl,
+              steamBackgroundMovie: steamData.steamBackgroundMovie || settings.steamBackgroundMovie,
+            }
+            if (steamData.steamBackgroundMovie || steamData.steamBackgroundUrl) {
+              patch.bannerUrl = steamData.steamBackgroundMovie || steamData.steamBackgroundUrl
+            }
+            updateSettings(patch)
+            if (window.electronAPI?.setSettings) {
+              window.electronAPI.setSettings(patch)
+            }
+          }
+        }).catch(err => console.warn('Auto Steam refresh error:', err))
+      }
     }
-  }, [selectedFriendId])
+  }, [selectedFriendId, settings.steamProfileUrl])
 
   // Customization Form States
   const [isEditing, setIsEditing] = useState(false)
@@ -153,13 +179,15 @@ export function ProfileView() {
     ? (profileData?.showSteamBackground !== false)
     : (settings.profileShowSteamBackground !== false)
 
-  // Determine active full-page Steam background
-  const activeSteamBg = showSteamBgSetting ? (steamBackgroundMovie || steamBackgroundUrl) : null
+  const steamBg = steamBackgroundMovie || steamBackgroundUrl
 
-  // Default to live Steam background (movie or image) if available, otherwise bannerUrl or default preset
+  // Determine active full-page Steam background
+  const activeSteamBg = showSteamBgSetting ? steamBg : null
+
+  // Prioritize Steam Background if enabled and present, otherwise fallback cleanly
   const displayBanner = isViewingFriend
-    ? (profileData?.bannerUrl || friend?.bannerUrl || steamBackgroundMovie || steamBackgroundUrl || BANNER_PRESETS[0].url)
-    : (settings.bannerUrl || steamBackgroundMovie || steamBackgroundUrl || BANNER_PRESETS[0].url)
+    ? (showSteamBgSetting && steamBg ? steamBg : (profileData?.bannerUrl || friend?.bannerUrl || steamBg || BANNER_PRESETS[0].url))
+    : (showSteamBgSetting && steamBg ? steamBg : (settings.bannerUrl || steamBg || BANNER_PRESETS[0].url))
 
   const displayFrame = isViewingFriend
     ? (profileData?.avatarFrame || friend?.avatarFrame || 'none')

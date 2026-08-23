@@ -963,7 +963,7 @@ export async function fetchSteamUserProfile(profileUrl: string): Promise<SteamUs
       const htmlDoc = parser.parseFromString(htmlText, 'text/html');
 
       // 1. Live Animated Background (video)
-      const videoEl = htmlDoc.querySelector('.profile_animated_background video, video.profile_animated_background, .profile_background_holder_content video');
+      const videoEl = htmlDoc.querySelector('.profile_animated_background video, video.profile_animated_background, .profile_background_holder_content video, video');
       if (videoEl) {
         const mp4 = videoEl.querySelector('source[type="video/mp4"]')?.getAttribute('src');
         const webm = videoEl.querySelector('source[type="video/webm"]')?.getAttribute('src');
@@ -971,16 +971,17 @@ export async function fetchSteamUserProfile(profileUrl: string): Promise<SteamUs
         steamBackgroundMovie = mp4 || webm || direct || undefined;
       }
       
-      // Fallback regex for animated movie
+      // Fallback regex for animated movie (Fastly, Cloudflare, Akamai)
       if (!steamBackgroundMovie) {
-        const videoMatch = htmlText.match(/https:\/\/[^"'\s<>]+\/items\/\d+\/[a-zA-Z0-9_-]+\.(?:mp4|webm)/i);
+        const videoMatch = htmlText.match(/https:\/\/[^"'\s<>]+\/(?:items|community_assets|public\/images\/items)\/\d+\/[a-zA-Z0-9_\-\.]+\.(?:mp4|webm)/i) ||
+                           htmlText.match(/https:\/\/[^"'\s<>]*(?:fastly|steamstatic|steamcommunity)[^"'\s<>]*\.(?:mp4|webm)/i);
         if (videoMatch) {
           steamBackgroundMovie = videoMatch[0];
         }
       }
 
       // 2. Static Background image
-      const bgHolders = htmlDoc.querySelectorAll('.has_profile_background, .profile_background_image_content, .profile_background_holder_content, .no_header, .profile_header_bg');
+      const bgHolders = htmlDoc.querySelectorAll('.has_profile_background, .profile_background_image_content, .profile_background_holder_content, .no_header, .profile_header_bg, .profile_animated_background');
       bgHolders.forEach(el => {
         const style = el.getAttribute('style') || '';
         const urlMatch = style.match(/url\(\s*['"]?(https:\/\/[^'")]+)['"]?\s*\)/i);
@@ -991,9 +992,10 @@ export async function fetchSteamUserProfile(profileUrl: string): Promise<SteamUs
 
       // Fallback regex for steam item background image
       if (!steamBackgroundUrl) {
-        const imgMatch = htmlText.match(/https:\/\/[^"'\s<>]+\/items\/\d+\/[a-zA-Z0-9_-]+\.(?:jpg|png|jpeg)/i);
-        if (imgMatch) {
-          steamBackgroundUrl = imgMatch[0];
+        const bgUrlMatches = htmlText.match(/background-image:\s*url\(\s*['"]?(https:\/\/[^'")]+items\/\d+\/[^'")]+)['"]?\s*\)/i) ||
+                             htmlText.match(/https:\/\/[^"'\s<>]+\/(?:items|community_assets|public\/images\/items)\/\d+\/[a-zA-Z0-9_\-\.]+\.(?:jpg|png|jpeg)/i);
+        if (bgUrlMatches) {
+          steamBackgroundUrl = bgUrlMatches[1] || bgUrlMatches[0];
         }
       }
     }
