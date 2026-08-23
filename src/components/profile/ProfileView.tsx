@@ -588,14 +588,14 @@ export function ProfileView() {
       {/* Main Content Area */}
       <div className="max-w-5xl mx-auto px-6 py-8 md:px-10 md:py-10 space-y-6">
         
-        {/* ─── Hero Header & Identity Card with Live Background ─── */}
+        {/* ─── Hero Identity Profile Card (Full Steam Background Container) ─── */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl relative"
+          className="relative rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl min-h-[260px] md:min-h-[290px] flex flex-col justify-end"
         >
-          {/* Cover Banner (Live Video or Static Image) */}
-          <div className="relative h-56 md:h-64 w-full overflow-hidden bg-[#06070a]">
+          {/* Full Card Background: Live Steam Video or High-Res Image */}
+          <div className="absolute inset-0 z-0 overflow-hidden bg-[#06070a]">
             {displayBanner && (
               isVideoBanner(displayBanner) ? (
                 <video 
@@ -604,38 +604,41 @@ export function ProfileView() {
                   loop 
                   muted 
                   playsInline 
-                  className="w-full h-full object-cover object-center filter brightness-95" 
+                  className="w-full h-full object-cover object-center filter brightness-[0.75] saturate-110" 
                 />
               ) : (
                 <img 
                   src={displayBanner} 
-                  alt="Profile Banner" 
-                  className="w-full h-full object-cover object-center filter brightness-95" 
+                  alt="Profile Background" 
+                  className="w-full h-full object-cover object-center filter brightness-[0.75] saturate-110" 
                 />
               )
             )}
-            {/* Smooth Vignette Gradient Fade */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] via-[#0c0d12]/40 to-transparent" />
-            
-            {/* Quick Edit Banner Button (local user) */}
-            {!isViewingFriend && !isEditing && (
-              <button 
-                onClick={() => { setIsEditing(true); setEditTab('banner'); }}
-                className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 text-white/80 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-              >
-                <ImageIcon size={13} /> {language === 'de' ? 'Hintergrund bearbeiten' : 'Edit Background'}
-              </button>
-            )}
+            {/* Elegant Steam-style vignette and content legibility overlays */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] via-[#0c0d12]/75 to-black/35" />
+            <div className="absolute inset-0 bg-black/20" />
           </div>
 
-          {/* Profile Identity Details */}
-          <div className="px-6 pb-6 md:px-8 md:pb-8 pt-0 relative z-10 flex flex-col md:flex-row items-center md:items-end justify-between gap-5 -mt-16 md:-mt-18">
+          {/* Quick Edit Background Button (Top Right) */}
+          {!isViewingFriend && !isEditing && (
+            <div className="absolute top-4 right-4 z-20">
+              <button 
+                onClick={() => { setIsEditing(true); setEditTab('banner'); }}
+                className="bg-black/60 hover:bg-black/85 backdrop-blur-md border border-white/15 text-white/80 hover:text-white px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
+              >
+                <ImageIcon size={13} /> {language === 'de' ? 'Hintergrund anpassen' : 'Customize Background'}
+              </button>
+            </div>
+          )}
+
+          {/* Profile Identity Details sitting seamlessly on the Steam Background */}
+          <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row items-center md:items-end justify-between gap-6">
             
             {/* Avatar & User Details */}
             <div className="flex flex-col md:flex-row items-center md:items-end gap-5 text-center md:text-left">
               {/* Avatar with selected frame */}
               <div className="relative group flex-shrink-0">
-                <div className={`w-28 h-28 md:w-32 md:h-32 rounded-full p-1 bg-[#0c0d12] border-2 ${getFrameClass(displayFrame)} transition-all duration-200 relative flex items-center justify-center`}>
+                <div className={`w-28 h-28 md:w-32 md:h-32 rounded-full p-1 bg-[#0c0d12]/90 backdrop-blur-sm border-2 ${getFrameClass(displayFrame)} transition-all duration-200 relative flex items-center justify-center shadow-xl`}>
                   <div className="w-full h-full rounded-full overflow-hidden bg-black/90 flex items-center justify-center">
                     {displayAvatar ? (
                       <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
@@ -658,7 +661,7 @@ export function ProfileView() {
               {/* Identity Typography & Badges */}
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
-                  <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight uppercase">
+                  <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight uppercase drop-shadow-md">
                     {displayName}
                   </h1>
                   
@@ -669,11 +672,11 @@ export function ProfileView() {
                         setCopiedFriendCode(true)
                         setTimeout(() => setCopiedFriendCode(false), 2000)
                       }}
-                      className="inline-flex items-center gap-1 text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/60 hover:text-white transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1 text-[11px] font-mono font-medium px-2.5 py-1 rounded-lg bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/15 text-white/80 hover:text-white transition-all cursor-pointer shadow-sm"
                       title="Click to copy Friend Code"
                     >
                       <span>#{profileData.friendCode}</span>
-                      {copiedFriendCode ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} className="opacity-40" />}
+                      {copiedFriendCode ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} className="opacity-50" />}
                     </button>
                   )}
                 </div>
@@ -682,13 +685,13 @@ export function ProfileView() {
                 {(isViewingFriend ? (profileData?.steamProfileUrl || friend?.steamProfileUrl) : settings.steamProfileUrl) && (
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-0.5">
                     {/* Steam Logo */}
-                    <div className="w-7 h-7 rounded-full bg-[#1b2838] border border-[#2a475e]/70 flex items-center justify-center flex-shrink-0 shadow-sm" title="Linked Steam Profile">
+                    <div className="w-7 h-7 rounded-full bg-[#1b2838]/95 border border-[#2a475e]/80 flex items-center justify-center flex-shrink-0 shadow-md" title="Linked Steam Profile">
                       <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-4 h-4" alt="Steam" />
                     </div>
 
                     {/* Level Pill */}
                     {steamLevel !== undefined && (
-                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1b2838]/90 border border-[#2a475e]/80 text-[#66c0f4] text-xs font-bold shadow-sm">
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1b2838]/95 border border-[#2a475e]/90 text-[#66c0f4] text-xs font-bold shadow-md">
                         <Trophy size={13} className="text-[#66c0f4]" />
                         <span>Level {steamLevel}</span>
                       </div>
@@ -696,7 +699,7 @@ export function ProfileView() {
 
                     {/* Games Count Pill */}
                     {steamGamesCount !== undefined && steamGamesCount > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1b2838]/90 border border-[#2a475e]/80 text-[#66c0f4] text-xs font-bold shadow-sm">
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1b2838]/95 border border-[#2a475e]/90 text-[#66c0f4] text-xs font-bold shadow-md">
                         <Gamepad2 size={13} className="text-[#66c0f4]" />
                         <span>{steamGamesCount} Games</span>
                       </div>
@@ -704,7 +707,7 @@ export function ProfileView() {
 
                     {/* Featured Favorite Badge Pill */}
                     {steamFavoriteBadge && steamFavoriteBadge.name && (
-                      <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-[#1b2838]/90 border border-[#2a475e]/80 shadow-sm" title={steamFavoriteBadge.xp ? `${steamFavoriteBadge.name} (${steamFavoriteBadge.xp})` : steamFavoriteBadge.name}>
+                      <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-[#1b2838]/95 border border-[#2a475e]/90 shadow-md" title={steamFavoriteBadge.xp ? `${steamFavoriteBadge.name} (${steamFavoriteBadge.xp})` : steamFavoriteBadge.name}>
                         {steamFavoriteBadge.iconUrl && (
                           <img src={steamFavoriteBadge.iconUrl} alt={steamFavoriteBadge.name} className="w-5 h-5 object-contain flex-shrink-0" />
                         )}
@@ -720,14 +723,14 @@ export function ProfileView() {
                 {/* Inline Status Row */}
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-0.5">
                   {/* Status Indicator */}
-                  <div className="flex items-center gap-1.5 text-xs text-white/70 bg-white/[0.03] px-2.5 py-0.5 rounded-md border border-white/[0.06]">
-                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-white/30'}`} />
+                  <div className="flex items-center gap-1.5 text-xs text-white/85 bg-black/40 backdrop-blur-md px-2.5 py-0.5 rounded-md border border-white/10 shadow-sm">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'bg-white/30'}`} />
                     <span className="font-medium">{isViewingFriend ? friendStatusText : t('online')}</span>
                   </div>
 
                   {/* Active In-Game Badge */}
                   {!isViewingFriend && activeGame && (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-200 text-xs">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-950/80 backdrop-blur-md border border-indigo-500/30 text-indigo-200 text-xs shadow-sm">
                       <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
                       <Gamepad2 size={12} className="text-indigo-400" />
                       <span className="truncate max-w-[200px]">
@@ -738,7 +741,7 @@ export function ProfileView() {
                   )}
 
                   {isViewingFriend && friendCurrentGame && (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-200 text-xs">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-950/80 backdrop-blur-md border border-purple-500/30 text-purple-200 text-xs shadow-sm">
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
                       <Gamepad2 size={12} className="text-purple-400" />
                       <span className="truncate max-w-[200px]">
@@ -751,7 +754,7 @@ export function ProfileView() {
 
                 {/* Bio / Quote */}
                 {displayBio && (
-                  <p className="text-xs text-white/65 italic max-w-md pt-1 leading-relaxed">
+                  <p className="text-xs text-white/80 italic max-w-md pt-1 leading-relaxed drop-shadow-sm">
                     "{displayBio}"
                   </p>
                 )}
@@ -766,11 +769,11 @@ export function ProfileView() {
                           setCopiedDiscord(true)
                           setTimeout(() => setCopiedDiscord(false), 2000)
                         }}
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-white/70 hover:text-white text-[11px] transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 text-white/80 hover:text-white text-[11px] transition-colors cursor-pointer shadow-sm"
                       >
                         <span className="text-white/40">Discord:</span>
                         <span>{displayDiscord}</span>
-                        {copiedDiscord ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} className="opacity-30" />}
+                        {copiedDiscord ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} className="opacity-40" />}
                       </button>
                     )}
                     {displayTwitch && (
@@ -778,11 +781,11 @@ export function ProfileView() {
                         href={`https://twitch.tv/${displayTwitch.replace('@', '')}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-white/70 hover:text-white text-[11px] transition-colors"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 text-white/80 hover:text-white text-[11px] transition-colors shadow-sm"
                       >
                         <span className="text-white/40">Twitch:</span>
                         <span>{displayTwitch}</span>
-                        <ExternalLink size={10} className="opacity-30" />
+                        <ExternalLink size={10} className="opacity-40" />
                       </a>
                     )}
                     {displayYoutube && (
@@ -790,11 +793,11 @@ export function ProfileView() {
                         href={`https://youtube.com/${displayYoutube.startsWith('@') ? displayYoutube : '@' + displayYoutube}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-white/70 hover:text-white text-[11px] transition-colors"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 text-white/80 hover:text-white text-[11px] transition-colors shadow-sm"
                       >
                         <span className="text-white/40">YouTube:</span>
                         <span>{displayYoutube}</span>
-                        <ExternalLink size={10} className="opacity-30" />
+                        <ExternalLink size={10} className="opacity-40" />
                       </a>
                     )}
                   </div>
@@ -803,12 +806,12 @@ export function ProfileView() {
             </div>
 
             {/* Profile Action Buttons */}
-            <div className="flex items-center gap-2 flex-shrink-0 pt-2 md:pt-0">
+            <div className="flex items-center gap-2.5 flex-shrink-0 pt-2 md:pt-0">
               {!isViewingFriend ? (
                 <>
                   <button 
                     onClick={() => setIsEditing(true)}
-                    className="bg-white text-black font-semibold hover:bg-white/90 px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    className="bg-white text-black font-semibold hover:bg-white/90 px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-lg"
                   >
                     <Edit3 size={13} /> {t('editProfile')}
                   </button>
@@ -817,7 +820,7 @@ export function ProfileView() {
                       setActiveSettingsTab('profile')
                       setActiveView('settings')
                     }}
-                    className="bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.08] px-3.5 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                    className="bg-black/50 hover:bg-black/75 backdrop-blur-md text-white/80 hover:text-white border border-white/15 px-3.5 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer shadow-md"
                   >
                     <Settings size={13} /> {t('settings')}
                   </button>
@@ -828,7 +831,7 @@ export function ProfileView() {
                     <button 
                       onClick={handleSendFriendReq}
                       disabled={isSendingRequest || requestSent}
-                      className="bg-white text-black font-semibold hover:bg-white/90 px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-60"
+                      className="bg-white text-black font-semibold hover:bg-white/90 px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-lg disabled:opacity-60"
                     >
                       {isSendingRequest ? (
                         <Loader2 size={13} className="animate-spin" />
@@ -844,7 +847,7 @@ export function ProfileView() {
                   )}
                   <button 
                     onClick={() => setSelectedFriendId(null)}
-                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-3.5 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                    className="bg-black/50 hover:bg-black/75 backdrop-blur-md border border-white/15 text-white px-3.5 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer shadow-md"
                   >
                     <ArrowLeft size={13} /> {language === 'de' ? 'Mein Profil' : 'My Profile'}
                   </button>
