@@ -123,7 +123,7 @@ function _startRecorderSession() {
     recorder.start(1000) // 1-second chunks
     mediaRecorder = recorder
 
-    // Seamlessly cycle session every (wantedDuration * 2) seconds (min 90s) to keep contiguous files bounded
+    // Seamlessly cycle session every 90-120 seconds to keep files bounded
     const cycleIntervalMs = Math.max((settings.replayDurationSeconds || 30) * 2000, 90000)
     if (sessionTimer) clearTimeout(sessionTimer)
     sessionTimer = setTimeout(() => {
@@ -268,23 +268,31 @@ export async function triggerInstantClip(): Promise<boolean> {
   }
 
   try {
-    const currentCount = currentSessionChunks.length
-    if (currentCount < 2 && !previousSessionBlob) {
+    // Force MediaRecorder to immediately flush all pending recorded bytes
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      try {
+        mediaRecorder.requestData()
+      } catch {}
+      await new Promise(r => setTimeout(r, 100))
+    }
+
+    const totalBytes = currentSessionChunks.reduce((acc, c) => acc + c.size, 0)
+    if (totalBytes < 5000 && !previousSessionBlob) {
       sendAppNotification({
         title: 'Buffer füllt sich ⏳',
-        body: `Bitte warte ein paar Sekunden, damit der Puffer gefüllt ist.`,
+        body: `Bitte warte einen Moment, damit der Puffer gefüllt ist.`,
         type: 'info',
         duration: 4000,
       })
       return false
     }
 
-    const mimeType = mediaRecorder.mimeType || 'video/webm'
+    const mimeType = mediaRecorder?.mimeType || 'video/webm'
     const currentBlob = new Blob(currentSessionChunks, { type: mimeType })
     const base64 = await blobToBase64(currentBlob)
     
     let prevBase64: string | undefined = undefined
-    if (currentCount < durationSeconds && previousSessionBlob) {
+    if (currentSessionChunks.length < durationSeconds && previousSessionBlob) {
       prevBase64 = await blobToBase64(previousSessionBlob)
     }
 
@@ -316,6 +324,13 @@ export async function triggerInstantClip(): Promise<boolean> {
           })
         }
         return true
+      } else if (res.error) {
+        sendAppNotification({
+          title: 'Clip-Fehler ❌',
+          body: res.error,
+          type: 'error',
+          duration: 5000,
+        })
       }
     }
   } catch (err) {

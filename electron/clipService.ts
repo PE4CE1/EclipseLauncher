@@ -147,11 +147,11 @@ async function processVideoFile(
   format: string, 
   targetDurationSec: number,
   concatListPath?: string | null
-): Promise<void> {
+): Promise<boolean> {
   const ffmpeg = getFFmpegPath()
   if (!ffmpeg || !fs.existsSync(ffmpeg)) {
     fs.copyFileSync(tempInputPath, finalOutputPath)
-    return
+    return true
   }
 
   const duration = targetDurationSec > 0 ? targetDurationSec : 30
@@ -199,30 +199,40 @@ async function processVideoFile(
       )
     }
 
-    execFile(ffmpeg, args, { timeout: 45000 }, (err) => {
-      if (err) {
-        console.warn('[FFmpeg] Sseof notice, attempting direct transcode fallback:', err.message)
-        const fallbackArgs = ['-y', '-err_detect', 'ignore_err']
-        if (concatListPath && fs.existsSync(concatListPath)) {
-          fallbackArgs.push('-f', 'concat', '-safe', '0', '-i', concatListPath)
+    execFile(ffmpeg, args, { timeout: 45000 }, (err, stdout, stderr) => {
+      if (err || !fs.existsSync(finalOutputPath) || fs.statSync(finalOutputPath).size < 500) {
+        console.warn('[FFmpeg] Direct trim attempt on input:', err?.message || 'File empty')
+        // Fallback without -sseof to transcode all available content
+        const fallbackArgs = ['-y', '-err_detect', 'ignore_err', '-i', tempInputPath]
+        if (format === 'mp4') {
+          fallbackArgs.push(
+            '-c:v', 'libx264',
+            '-preset', 'ultrafast',
+            '-pix_fmt', 'yuv420p',
+            '-c:a', 'aac',
+            '-b:a', '160k',
+            '-movflags', '+faststart',
+            finalOutputPath
+          )
         } else {
-          fallbackArgs.push('-i', tempInputPath)
+          fallbackArgs.push(
+            '-c:v', 'copy',
+            '-c:a', 'copy',
+            finalOutputPath
+          )
         }
-        fallbackArgs.push(
-          '-c:v', 'libx264',
-          '-preset', 'ultrafast',
-          '-pix_fmt', 'yuv420p',
-          '-c:a', 'aac',
-          '-b:a', '160k',
-          '-movflags', '+faststart',
-          finalOutputPath
-        )
-        execFile(ffmpeg, fallbackArgs, { timeout: 45000 }, () => {
-          resolve()
+        execFile(ffmpeg, fallbackArgs, { timeout: 45000 }, (fErr) => {
+          if (fErr || !fs.existsSync(finalOutputPath) || fs.statSync(finalOutputPath).size < 500) {
+            console.warn('[FFmpeg] Fallback copy initiated')
+            try {
+              fs.copyFileSync(tempInputPath, finalOutputPath)
+            } catch {}
+          }
+          resolve(fs.existsSync(finalOutputPath))
         })
         return
       }
-      resolve()
+      resolve(true)
     })
   })
 }
@@ -317,6 +327,14 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
       const dir = getClipsDirectory(settings.savePath)
       const clipId = 'clip_' + Date.now()
 
+      const base64Data = payload.videoBase64.replace(/^data:video\/[\w-]+;base64,/, '')
+      const buffer = Buffer.from(base64Data, 'base64')
+
+      if (buffer.length < 1000) {
+        console.error('[Clips] Incoming video buffer too small:', buffer.length)
+        return { success: false, error: 'Aufnahme-Puffer enthält noch keine Videodaten.' }
+      }
+
       const chosenFormat = payload.format || settings.format || 'mp4'
       const videoExt = chosenFormat.replace('.', '').toLowerCase()
       const fileName = clipId + '.' + videoExt
@@ -328,20 +346,20 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
       let concatListPath: string | null = null
 
       // 1. Write current memory buffer to temporary file
-      const base64Data = payload.videoBase64.replace(/^data:video\/[\w-]+;base64,/, '')
-      const buffer = Buffer.from(base64Data, 'base64')
       fs.writeFileSync(tempRawPath, buffer)
 
       // Optional previous session for continuous stitching
       if (payload.prevVideoBase64) {
         tempPrevPath = path.join(dir, 'temp_prev_' + clipId + '.webm')
         const prevBase64Data = payload.prevVideoBase64.replace(/^data:video\/[\w-]+;base64,/, '')
-        fs.writeFileSync(tempPrevPath, Buffer.from(prevBase64Data, 'base64'))
-
-        concatListPath = path.join(dir, 'concat_' + clipId + '.txt')
-        const prevEscaped = tempPrevPath.replace(/\\/g, '/')
-        const currEscaped = tempRawPath.replace(/\\/g, '/')
-        fs.writeFileSync(concatListPath, `file '${prevEscaped}'\nfile '${currEscaped}'\n`, 'utf-8')
+        const prevBuf = Buffer.from(prevBase64Data, 'base64')
+        if (prevBuf.length > 1000) {
+          fs.writeFileSync(tempPrevPath, prevBuf)
+          concatListPath = path.join(dir, 'concat_' + clipId + '.txt')
+          const prevEscaped = tempPrevPath.replace(/\\/g, '/')
+          const currEscaped = tempRawPath.replace(/\\/g, '/')
+          fs.writeFileSync(concatListPath, `file '${prevEscaped}'\nfile '${currEscaped}'\n`, 'utf-8')
+        }
       }
 
       // 2. Process with FFmpeg into clean, valid MP4/WebM/MKV with exact trimmed duration
@@ -359,7 +377,12 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
         try { fs.unlinkSync(concatListPath) } catch {}
       }
 
-      const finalStat = fs.existsSync(finalVideoPath) ? fs.statSync(finalVideoPath) : { size: buffer.length }
+      if (!fs.existsSync(finalVideoPath) || fs.statSync(finalVideoPath).size < 500) {
+        console.error('[Clips] Final video file does not exist after processing')
+        return { success: false, error: 'Video-Konvertierung fehlgeschlagen.' }
+      }
+
+      const finalStat = fs.statSync(finalVideoPath)
 
       const meta: ClipMetadata = {
         id: clipId,
