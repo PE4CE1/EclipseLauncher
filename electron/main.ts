@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, Notification } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, Notification, protocol, net } from 'electron'
 
 if (require('electron-squirrel-startup')) {
   app.quit()
@@ -20,6 +20,21 @@ import { setRLPlaylist, setRLApiKey, destroyRLScraper } from './rlService'
 import { fetchSteamAvatar } from './steamService'
 import { startInputService, stopInputService, setInputKeybinds } from './inputService'
 import { detectHardwareSpecs } from './hardwareService'
+import { initClipsIPC } from './clipService'
+
+// Register privileged scheme for local clips video playback
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'local-media',
+    privileges: {
+      secure: true,
+      standard: true,
+      supportFetchAPI: true,
+      bypassCSP: true,
+      stream: true,
+    },
+  },
+])
 
 
 
@@ -410,6 +425,9 @@ function createWindow() {
   
   // Initialize Discord RPC
   initDiscordRPC()
+
+  // Initialize Clips Studio IPC & Global Hotkey
+  initClipsIPC(mainWindow)
 
   // Start background process monitoring for running games on Windows
   startProcessMonitor(() => mainWindow)
@@ -1166,6 +1184,22 @@ ipcMain.handle('rl:fetch-steam-avatar', async (_, url: string) => {
 })
 
 app.whenReady().then(() => {
+  try {
+    protocol.handle('local-media', (request) => {
+      let raw = request.url.replace(/^local-media:\/\//, '')
+      let filePath = decodeURIComponent(raw)
+      // Fix Windows paths: e.g. "C:/Users/..." -> "file:///C:/Users/..."
+      if (!filePath.startsWith('/') && !filePath.startsWith('file:///')) {
+        filePath = 'file:///' + filePath
+      } else if (filePath.startsWith('/') && !filePath.startsWith('file:///')) {
+        filePath = 'file://' + filePath
+      }
+      return net.fetch(filePath)
+    })
+  } catch (err) {
+    console.warn('[Protocol] local-media registration error:', err)
+  }
+
   // Check for old versions and silently uninstall them
   try {
     const localAppData = path.join(app.getPath('appData'), '../Local')

@@ -11,6 +11,7 @@ import { SettingsView } from './components/settings/SettingsView'
 import { ProfileView } from './components/profile/ProfileView'
 import { NotificationsView } from './components/notifications/NotificationsView'
 import { EclipseInfoView } from './components/eclipse/EclipseInfoView'
+import { ClipsView } from './components/clips/ClipsView'
 import { EclipseCinemaModal } from './components/eclipse/EclipseCinemaModal'
 import { GameDetailModal } from './components/shared/GameDetailModal'
 import { Notification } from './components/shared/Notification'
@@ -23,6 +24,7 @@ import { useDownloadStore } from './store/downloadStore'
 import { useScanner } from './hooks/useScanner'
 import { sendAppNotification } from './services/notificationService'
 import { initSocialNetwork, updateSocialPresence } from './services/socialService'
+import { initClipEngine } from './services/clipEngine'
 import { useThemeStore } from './store/themeStore'
 
 const pageVariants = {
@@ -43,6 +45,7 @@ function ViewRouter() {
     profile:       <div className="h-full pt-16"><ProfileView /></div>,
     notifications: <div className="h-full pt-16"><NotificationsView /></div>,
     'eclipse-info':<div className="h-full pt-16"><EclipseInfoView /></div>,
+    clips:         <div className="h-full pt-16"><ClipsView /></div>,
   }
 
   return (
@@ -95,6 +98,9 @@ export default function App() {
         }
       }).catch(() => {})
     }
+
+    // Initialize Eclipse Clips Studio Background Engine & Replay Hotkeys
+    initClipEngine()
 
     const unsubStart = window.electronAPI?.onGameStarted?.((data) => {
       if (data?.name) {

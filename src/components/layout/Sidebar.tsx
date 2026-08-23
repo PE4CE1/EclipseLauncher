@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, BookOpen, Library, Download, Settings,
-  Bell, Gamepad2, Zap, Search, ChevronDown, User, Users, LogOut,
+  Bell, Gamepad2, Zap, Search, ChevronDown, User, Users, LogOut, Film,
   Star, Clock, Loader2, ScanLine, Github, Play, Square,
   FolderOpen, Trash2, MoreVertical,
   type LucideIcon,
@@ -242,9 +242,15 @@ export function Sidebar() {
               
               <div className="h-px bg-white/10 my-1 mx-4" />
               
-              <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-white/5 transition-colors text-left">
-                <LogOut size={16} className="text-white/70" />
-                <span className="flex-1">{t('logOut')}</span>
+              <button 
+                onClick={() => { setActiveView('clips'); setIsProfileDropdownOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-white/5 transition-colors text-left cursor-pointer group"
+              >
+                <Film size={16} className="text-white/70 group-hover:text-white transition-colors" />
+                <span className="flex-1 font-medium">{t('clips')}</span>
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/10 text-white/70">
+                  STUDIO
+                </span>
               </button>
             </motion.div>
           )}

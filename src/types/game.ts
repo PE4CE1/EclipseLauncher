@@ -52,7 +52,35 @@ export interface DownloadItem {
 }
 
 // ─── UI State ────────────────────────────────────────────────────────────────
-export type ActiveView = 'home' | 'catalogue' | 'library' | 'downloads' | 'settings' | 'profile' | 'notifications' | 'eclipse-info'
+export type ActiveView = 'home' | 'catalogue' | 'library' | 'downloads' | 'settings' | 'profile' | 'notifications' | 'eclipse-info' | 'clips'
+
+export interface EclipseClip {
+  id: string
+  title: string
+  gameTitle: string
+  gameId?: string | number
+  duration: number           // in seconds
+  thumbnailUrl: string       // base64 data url or local-media path
+  videoUrl: string           // local-media:// path
+  filePath: string           // absolute disk file path
+  fileSize: number           // in bytes
+  createdAt: number          // timestamp in ms
+  resolution?: string        // e.g. "1080p"
+  fps?: number               // e.g. 60
+  tags?: string[]
+}
+
+export interface ClipSettings {
+  enabled: boolean
+  replayDurationSeconds: number // 15, 30, 45, 60, 90, 120
+  hotkey: string                // e.g. 'F8', 'F9', 'Alt+C'
+  quality: '1080p' | '720p'     // resolution
+  fps: 60 | 30
+  captureMic: boolean
+  micVolume: number             // 0 - 100
+  savePath?: string             // custom folder or default Videos/Eclipse Clips
+  notifyOnClip: boolean
+}
 
 export interface SteamRecentGame {
   name: string
@@ -359,6 +387,22 @@ export interface ElectronAPI {
 
   // Hardware Specs
   getHardwareSpecs?: () => Promise<{ cpu: string; gpu: string; ram: string; display: string; os: string } | null>
+
+  // Eclipse Clips Studio (Medal.tv Style)
+  clips?: {
+    getSources: () => Promise<Array<{ id: string; name: string; thumbnail?: string; appIcon?: string }>>
+    saveClip: (payload: any) => Promise<{ success: boolean; clip?: EclipseClip; error?: string }>
+    listClips: () => Promise<EclipseClip[]>
+    deleteClip: (clipId: string) => Promise<{ success: boolean; error?: string }>
+    updateMeta: (payload: { clipId: string; title: string; tags?: string[] }) => Promise<{ success: boolean; meta?: any; error?: string }>
+    openFolder: (filePath: string) => Promise<{ success: boolean; error?: string }>
+    copyFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
+    exportClip: (payload: { filePath: string; suggestedName: string }) => Promise<{ success: boolean; exportedPath?: string; canceled?: boolean; error?: string }>
+    getSettings: () => Promise<ClipSettings>
+    saveSettings: (settings: Partial<ClipSettings>) => Promise<ClipSettings>
+    pickFolder: () => Promise<string | null>
+    onHotkeyTriggered: (callback: (data: { hotkey: string }) => void) => () => void
+  }
 }
 
 declare global {

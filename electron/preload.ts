@@ -237,5 +237,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPendingTheme: () => ipcRenderer.invoke('theme:get-pending'),
 
   // Hardware Specs Detection
-  getHardwareSpecs: () => ipcRenderer.invoke('system:get-hardware-specs')
+  getHardwareSpecs: () => ipcRenderer.invoke('system:get-hardware-specs'),
+
+  // ─── Eclipse Clips Studio (Medal.tv Style) ───────────────────────────────────
+  clips: {
+    getSources: () => ipcRenderer.invoke('clips:get-sources'),
+    saveClip: (payload: any) => ipcRenderer.invoke('clips:save', payload),
+    listClips: () => ipcRenderer.invoke('clips:list'),
+    deleteClip: (clipId: string) => ipcRenderer.invoke('clips:delete', clipId),
+    updateMeta: (payload: { clipId: string; title: string; tags?: string[] }) => ipcRenderer.invoke('clips:update-meta', payload),
+    openFolder: (filePath: string) => ipcRenderer.invoke('clips:open-folder', filePath),
+    copyFile: (filePath: string) => ipcRenderer.invoke('clips:copy-file', filePath),
+    exportClip: (payload: { filePath: string; suggestedName: string }) => ipcRenderer.invoke('clips:export', payload),
+    getSettings: () => ipcRenderer.invoke('clips:get-settings'),
+    saveSettings: (settings: any) => ipcRenderer.invoke('clips:save-settings', settings),
+    pickFolder: () => ipcRenderer.invoke('clips:pick-folder'),
+    onHotkeyTriggered: (callback: (data: { hotkey: string }) => void) => {
+      const handler = (_: any, data: any) => callback(data)
+      ipcRenderer.on('clips:hotkey-pressed', handler)
+      return () => ipcRenderer.removeListener('clips:hotkey-pressed', handler)
+    }
+  }
 })
