@@ -10,6 +10,7 @@ interface BufferedChunk {
 let activeStream: MediaStream | null = null
 let mediaRecorder: MediaRecorder | null = null
 let rollingChunks: BufferedChunk[] = []
+let initHeaderBlob: Blob | null = null
 let offscreenVideo: HTMLVideoElement | null = null
 let isInitialized = false
 
@@ -203,6 +204,7 @@ export async function startReplayBuffer(): Promise<boolean> {
 
     activeStream = stream
     rollingChunks = []
+    initHeaderBlob = null
 
     // 4. Select supported mimeType
     let mimeType = 'video/webm;codecs=vp9,opus'
@@ -226,10 +228,13 @@ export async function startReplayBuffer(): Promise<boolean> {
     recorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0) {
         const now = Date.now()
+        if (!initHeaderBlob) {
+          initHeaderBlob = event.data // Store container initialization header
+        }
         rollingChunks.push({ blob: event.data, timestamp: now })
         
-        // Discard chunks older than replayDurationSeconds + 3s margin
-        const maxAgeMs = (useClipStore.getState().settings.replayDurationSeconds + 3) * 1000
+        // Discard chunks older than replayDurationSeconds + 2s margin
+        const maxAgeMs = (useClipStore.getState().settings.replayDurationSeconds + 2) * 1000
         const cutoff = now - maxAgeMs
         rollingChunks = rollingChunks.filter(c => c.timestamp >= cutoff)
       }
@@ -265,6 +270,7 @@ export function stopReplayBuffer() {
   }
   mediaRecorder = null
   rollingChunks = []
+  initHeaderBlob = null
   useClipStore.getState().setIsReplayBufferActive(false)
 }
 
@@ -285,7 +291,14 @@ export async function triggerInstantClip(): Promise<boolean> {
       const validChunks = rollingChunks.filter(c => c.timestamp >= cutoff).map(c => c.blob)
       
       if (validChunks.length > 0) {
-        const fullBlob = new Blob(validChunks, { type: 'video/webm' })
+        // Guarantee container header chunk is present at chunk index 0
+        const finalChunks: Blob[] = []
+        if (initHeaderBlob && validChunks[0] !== initHeaderBlob) {
+          finalChunks.push(initHeaderBlob)
+        }
+        finalChunks.push(...validChunks)
+
+        const fullBlob = new Blob(finalChunks, { type: 'video/webm' })
         const base64 = await blobToBase64(fullBlob)
         const thumbnail = await captureThumbnail(activeStream)
 
@@ -299,6 +312,7 @@ export async function triggerInstantClip(): Promise<boolean> {
             thumbnailDataUrl: thumbnail,
             resolution: settings.quality || '1080p',
             fps: settings.fps || 60,
+            format: settings.format || 'mp4',
             tags: [gameTitle.toLowerCase(), 'replay'],
           })
 
@@ -349,7 +363,6 @@ export function initClipEngine() {
     window.electronAPI.clips.getSettings().then((saved: any) => {
       if (saved) {
         useClipStore.getState().setSettings(saved)
-        // Screen recording on app start
         if (saved.screenRecordingOnAppStart && saved.enabled) {
           startReplayBuffer()
         }

@@ -1,6 +1,23 @@
 import { app, ipcMain, desktopCapturer, shell, dialog, globalShortcut, clipboard, BrowserWindow } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import { execFile } from 'child_process'
+
+// Resolve ffmpeg-static path
+function getFFmpegPath(): string | null {
+  try {
+    const ffmpegModule = require('ffmpeg-static')
+    if (ffmpegModule && typeof ffmpegModule === 'string' && fs.existsSync(ffmpegModule)) {
+      return ffmpegModule
+    }
+  } catch {}
+
+  const fallback = path.join(app.getAppPath(), 'node_modules', 'ffmpeg-static', 'ffmpeg.exe')
+  if (fs.existsSync(fallback)) {
+    return fallback
+  }
+  return null
+}
 
 export interface ClipMetadata {
   id: string
@@ -121,6 +138,64 @@ function saveClipSettings(settings: Partial<ClipSettingsRecord>) {
   return updated
 }
 
+/**
+ * Process Raw Video Chunk with FFmpeg to produce a pristine, valid video file
+ */
+async function processVideoFile(tempInputPath: string, finalOutputPath: string, format: string): Promise<void> {
+  const ffmpeg = getFFmpegPath()
+  if (!ffmpeg || !fs.existsSync(ffmpeg)) {
+    fs.copyFileSync(tempInputPath, finalOutputPath)
+    return
+  }
+
+  return new Promise((resolve) => {
+    const args = [
+      '-y',
+      '-err_detect', 'ignore_err',
+      '-i', tempInputPath,
+    ]
+
+    if (format === 'mp4') {
+      args.push(
+        '-c:v', 'libx264',
+        '-preset', 'ultrafast',
+        '-pix_fmt', 'yuv420p',
+        '-c:a', 'aac',
+        '-b:a', '160k',
+        '-movflags', '+faststart',
+        finalOutputPath
+      )
+    } else if (format === 'mkv') {
+      args.push(
+        '-c:v', 'copy',
+        '-c:a', 'copy',
+        finalOutputPath
+      )
+    } else {
+      // webm
+      args.push(
+        '-c:v', 'libvpx-vp9',
+        '-crf', '28',
+        '-b:v', '0',
+        '-c:a', 'libopus',
+        finalOutputPath
+      )
+    }
+
+    execFile(ffmpeg, args, { timeout: 45000 }, (err) => {
+      if (err) {
+        console.warn('[FFmpeg] Transcode warning, fallback to direct copy:', err.message)
+        try {
+          if (!fs.existsSync(finalOutputPath)) {
+            fs.copyFileSync(tempInputPath, finalOutputPath)
+          }
+        } catch {}
+      }
+      resolve()
+    })
+  })
+}
+
 let activeReplayHotkey: string | null = null
 let activeRecordHotkey: string | null = null
 
@@ -192,7 +267,7 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
     }
   })
 
-  // 2. Save clip buffer to disk with user chosen format (.mp4, .webm, .mkv)
+  // 2. Save clip buffer to disk with FFmpeg processing
   ipcMain.handle('clips:save', async (_, payload: {
     videoBase64: string
     title: string
@@ -210,17 +285,27 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
       const dir = getClipsDirectory(settings.savePath)
       const clipId = 'clip_' + Date.now()
 
-      // Determine container format
       const chosenFormat = payload.format || settings.format || 'mp4'
       const videoExt = chosenFormat.replace('.', '').toLowerCase()
       const fileName = clipId + '.' + videoExt
-      const videoFilePath = path.join(dir, fileName)
+      const finalVideoPath = path.join(dir, fileName)
+      const tempRawPath = path.join(dir, 'temp_' + clipId + '.webm')
       const metaFilePath = path.join(dir, clipId + '.json')
 
-      // Convert base64 to buffer
+      // 1. Write raw memory buffer to temporary file
       const base64Data = payload.videoBase64.replace(/^data:video\/[\w-]+;base64,/, '')
       const buffer = Buffer.from(base64Data, 'base64')
-      fs.writeFileSync(videoFilePath, buffer)
+      fs.writeFileSync(tempRawPath, buffer)
+
+      // 2. Process with FFmpeg into clean, valid MP4/WebM/MKV
+      await processVideoFile(tempRawPath, finalVideoPath, videoExt)
+
+      // 3. Remove temporary file
+      if (fs.existsSync(tempRawPath)) {
+        try { fs.unlinkSync(tempRawPath) } catch {}
+      }
+
+      const finalStat = fs.existsSync(finalVideoPath) ? fs.statSync(finalVideoPath) : { size: buffer.length }
 
       const meta: ClipMetadata = {
         id: clipId,
@@ -230,7 +315,7 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
         duration: payload.duration || 30,
         thumbnailUrl: payload.thumbnailDataUrl || '',
         fileName: fileName,
-        fileSize: buffer.length,
+        fileSize: finalStat.size,
         createdAt: Date.now(),
         resolution: payload.resolution || '1080p',
         fps: payload.fps || 60,
@@ -240,14 +325,14 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
 
       fs.writeFileSync(metaFilePath, JSON.stringify(meta, null, 2), 'utf-8')
 
-      const normalizedPath = videoFilePath.replace(/\\/g, '/')
+      const normalizedPath = finalVideoPath.replace(/\\/g, '/')
 
       return {
         success: true,
         clip: {
           ...meta,
           videoUrl: 'local-media://' + encodeURIComponent(normalizedPath),
-          filePath: videoFilePath,
+          filePath: finalVideoPath,
         },
       }
     } catch (err: any) {
@@ -284,9 +369,7 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
               videoUrl: 'local-media://' + encodeURIComponent(normalizedPath),
             })
           }
-        } catch {
-          // ignore corrupted metadata files
-        }
+        } catch {}
       }
 
       clips.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
