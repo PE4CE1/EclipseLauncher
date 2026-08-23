@@ -44,9 +44,6 @@ export function ProfileView() {
   const [requestSent, setRequestSent] = useState(false)
   const [copiedDiscord, setCopiedDiscord] = useState(false)
   const [copiedFriendCode, setCopiedFriendCode] = useState(false)
-  
-  const [steamGamesSearch, setSteamGamesSearch] = useState('')
-  const [activeSteamTab, setActiveSteamTab] = useState<'recent' | 'all'>('recent')
 
   const friend = selectedFriendId ? settings.eclipseFriends?.find(f => f.id === selectedFriendId) : null
   const isViewingFriend = !!selectedFriendId
@@ -299,13 +296,6 @@ export function ProfileView() {
     const clean = url.toLowerCase().split('?')[0]
     return clean.endsWith('.webm') || clean.endsWith('.mp4') || url.includes('.webm') || url.includes('.mp4')
   }
-
-  // Filtered Steam Games for search
-  const filteredSteamGames = useMemo(() => {
-    if (!steamGamesSearch.trim()) return steamGames
-    const q = steamGamesSearch.toLowerCase().trim()
-    return steamGames.filter(g => g.name.toLowerCase().includes(q))
-  }, [steamGames, steamGamesSearch])
 
   // Local Playtime Calculations (for own profile)
   const allUserGamesMap = new Map<string, any>()
@@ -1522,125 +1512,56 @@ export function ProfileView() {
         )}
 
         {/* ─── Steam Games Showcase ─── */}
-        {(settings.profileShowSteamStats !== false) && ((steamGames && steamGames.length > 0) || (steamRecentGames && steamRecentGames.length > 0)) && (
+        {/* ─── Steam Recent Games Showcase ─── */}
+        {(settings.profileShowSteamStats !== false) && steamRecentGames && steamRecentGames.length > 0 && (
           <motion.div 
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
             className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm space-y-4"
           >
-            {/* Header & Sub-Tabs */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
-              <div className="flex items-center gap-3">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
                 <Gamepad2 size={15} className="text-[#66c0f4]" />
                 <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
-                  Steam Games
+                  {language === 'de' ? 'Kürzlich auf Steam gespielt' : 'Recently Played on Steam'}
                 </h3>
-                
-                {/* Switcher: Recent / All Games */}
-                <div className="flex items-center gap-1 bg-white/[0.04] p-0.5 rounded-lg border border-white/[0.06]">
-                  <button
-                    onClick={() => setActiveSteamTab('recent')}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
-                      activeSteamTab === 'recent' 
-                        ? 'bg-white/10 text-white font-semibold' 
-                        : 'text-white/40 hover:text-white'
-                    }`}
-                  >
-                    {language === 'de' ? 'Kürzlich gespielt' : 'Recent'} ({steamRecentGames.length})
-                  </button>
-                  {steamGames.length > 0 && (
-                    <button
-                      onClick={() => setActiveSteamTab('all')}
-                      className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
-                        activeSteamTab === 'all' 
-                          ? 'bg-white/10 text-white font-semibold' 
-                          : 'text-white/40 hover:text-white'
-                      }`}
-                    >
-                      {language === 'de' ? 'Alle Steam-Spiele' : 'All Steam Games'} ({steamGamesCount || steamGames.length})
-                    </button>
-                  )}
-                </div>
+                <span className="text-[11px] font-mono text-white/40">
+                  ({steamRecentGames.length})
+                </span>
               </div>
-
-              {/* Search if in 'all' view */}
-              {activeSteamTab === 'all' && steamGames.length > 0 && (
-                <div className="relative">
-                  <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/30" />
-                  <input
-                    type="text"
-                    placeholder={language === 'de' ? 'Steam-Spiel suchen...' : 'Search Steam game...'}
-                    value={steamGamesSearch}
-                    onChange={e => setSteamGamesSearch(e.target.value)}
-                    className="bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-lg pl-7 pr-3 py-1 text-xs text-white placeholder:text-white/30 focus:outline-none w-48"
-                  />
-                </div>
-              )}
             </div>
 
-            {/* Tab: Recent Games */}
-            {activeSteamTab === 'recent' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-                {steamRecentGames.map((game: any) => (
-                  <div 
-                    key={game.appId || game.name} 
-                    onClick={() => {
-                      if (game.appId) openGameDetails(Number(game.appId), game.name)
-                    }}
-                    className="bg-white/[0.02] hover:bg-white/[0.05] rounded-xl overflow-hidden border border-white/[0.06] hover:border-white/20 transition-all shadow-sm cursor-pointer group"
-                  >
-                    <div className="relative h-24 overflow-hidden bg-black/50">
-                      <img 
-                        src={game.iconUrl} 
-                        alt={game.name} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] via-transparent to-transparent" />
-                    </div>
-                    <div className="p-3">
-                      <h4 className="font-semibold text-white text-xs truncate mb-1 group-hover:text-white transition-colors">
-                        {game.name}
-                      </h4>
-                      <p className="text-[11px] text-[#66c0f4] font-medium font-mono">
-                        {game.playtime}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Tab: All Steam Games Library */}
-            {activeSteamTab === 'all' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-[420px] overflow-y-auto pr-1">
-                {filteredSteamGames.map((game: any) => (
-                  <div
-                    key={game.appId || game.name}
-                    onClick={() => {
-                      if (game.appId) openGameDetails(Number(game.appId), game.name)
-                    }}
-                    className="flex items-center gap-2.5 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.04] hover:border-white/15 transition-all cursor-pointer group"
-                  >
+            {/* Clean Recent Games Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 pt-1">
+              {steamRecentGames.map((game: any) => (
+                <div 
+                  key={game.appId || game.name} 
+                  onClick={() => {
+                    if (game.appId) openGameDetails(Number(game.appId), game.name)
+                  }}
+                  className="bg-white/[0.02] hover:bg-white/[0.05] rounded-xl overflow-hidden border border-white/[0.06] hover:border-white/20 transition-all shadow-sm cursor-pointer group flex flex-col"
+                >
+                  <div className="relative aspect-[460/215] w-full overflow-hidden bg-black/60">
                     <img 
                       src={game.iconUrl || `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appId}/header.jpg`} 
                       alt={game.name} 
-                      className="w-10 h-6 object-cover rounded bg-black/60 flex-shrink-0"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
                     />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-white/90 group-hover:text-white truncate">
-                        {game.name}
-                      </p>
-                      {game.playtime && (
-                        <p className="text-[10px] text-white/40 font-mono truncate">
-                          {game.playtime}
-                        </p>
-                      )}
-                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] via-transparent to-transparent" />
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="p-3.5 space-y-1">
+                    <h4 className="font-semibold text-white text-xs truncate group-hover:text-white transition-colors">
+                      {game.name}
+                    </h4>
+                    <p className="text-[11px] text-[#66c0f4] font-medium font-mono">
+                      {game.playtime}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </motion.div>
         )}
 
