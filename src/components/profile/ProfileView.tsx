@@ -585,39 +585,14 @@ export function ProfileView() {
 
   return (
     <div className="relative h-full overflow-y-auto bg-[#07080a] select-none">
-      {/* ─── Full-Page Ambient Steam Background (Live Video or High-Res Image) ─── */}
-      {activeSteamBg && (
-        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-          {isVideoBanner(activeSteamBg) ? (
-            <video 
-              src={activeSteamBg} 
-              autoPlay 
-              loop 
-              muted 
-              playsInline 
-              className="w-full h-full object-cover object-center filter brightness-[0.40] saturate-125 transition-opacity duration-700"
-            />
-          ) : (
-            <img 
-              src={activeSteamBg} 
-              alt="Steam Full Background" 
-              className="w-full h-full object-cover object-center filter brightness-[0.40] saturate-125 transition-opacity duration-700"
-            />
-          )}
-          {/* Edge and Bottom Vignette Overlays */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#07080a] via-[#07080a]/50 to-transparent" />
-          <div className="absolute inset-0 bg-black/30" />
-        </div>
-      )}
-
       {/* Main Content Area */}
-      <div className="relative z-10 max-w-5xl mx-auto px-6 py-8 md:px-10 md:py-10 space-y-6">
+      <div className="max-w-5xl mx-auto px-6 py-8 md:px-10 md:py-10 space-y-6">
         
         {/* ─── Hero Header & Identity Card with Live Background ─── */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl relative"
+          className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl relative"
         >
           {/* Cover Banner (Live Video or Static Image) */}
           <div className="relative h-56 md:h-64 w-full overflow-hidden bg-[#06070a]">
@@ -888,7 +863,7 @@ export function ProfileView() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.15 }}
-              className="bg-[#0c0d12]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 shadow-2xl relative"
+              className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-6 shadow-2xl relative"
             >
               {/* Header */}
               <div className="flex items-center justify-between pb-4 border-b border-white/[0.06] mb-5">
@@ -1322,7 +1297,7 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
+            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
           >
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 mb-4 border-b border-white/[0.06]">
@@ -1402,7 +1377,7 @@ export function ProfileView() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl p-4 shadow-sm"
+              className="bg-[#0c0d12] border border-white/[0.08] rounded-xl p-4 shadow-sm"
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-mono font-medium uppercase text-white/40 tracking-wider">
@@ -1418,7 +1393,7 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl p-4 shadow-sm"
+            className="bg-[#0c0d12] border border-white/[0.08] rounded-xl p-4 shadow-sm"
           >
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] font-mono font-medium uppercase text-white/40 tracking-wider">
@@ -1433,7 +1408,7 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl p-4 shadow-sm"
+            className="bg-[#0c0d12] border border-white/[0.08] rounded-xl p-4 shadow-sm"
           >
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] font-mono font-medium uppercase text-white/40 tracking-wider">
@@ -1451,7 +1426,7 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
+            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
           >
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2.5">
@@ -1505,7 +1480,7 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm space-y-4"
+            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm space-y-4"
           >
             {/* Header & Sub-Tabs */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
@@ -1628,7 +1603,7 @@ export function ProfileView() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-[#0c0d12]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
+            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
           >
             <h3 className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-3 flex items-center gap-2">
               <Trophy size={13} className="text-amber-400/90" />
