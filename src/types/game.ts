@@ -82,6 +82,7 @@ export interface ClipSettings {
   videoEncoder?: 'gpu' | 'cpu'
   selectedGpu?: string          // 'auto' or GPU name
   codec?: 'h264' | 'hevc' | 'av1' | 'vp9'
+  format?: 'mp4' | 'webm' | 'mkv' // container format (default: 'mp4')
   
   // Audio Mode (Screenshot 2 & 3)
   audioRecordingOption: 'all' | 'game_only' | 'game_and_discord'
@@ -420,6 +421,7 @@ export interface ElectronAPI {
     openFolder: (filePath: string) => Promise<{ success: boolean; error?: string }>
     copyFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
     exportClip: (payload: { filePath: string; suggestedName: string }) => Promise<{ success: boolean; exportedPath?: string; canceled?: boolean; error?: string }>
+    readVideoData?: (filePath: string) => Promise<{ success: boolean; dataUrl?: string; error?: string }>
     getSettings: () => Promise<ClipSettings>
     saveSettings: (settings: Partial<ClipSettings>) => Promise<ClipSettings>
     pickFolder: () => Promise<string | null>

@@ -116,6 +116,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
         fps: 30,
         bitrate: '5M',
         codec: 'h264',
+        format: 'mp4',
         videoEncoder: 'gpu',
       })
     } else if (preset === 'standard') {
@@ -125,6 +126,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
         fps: 60,
         bitrate: '8M',
         codec: 'h264',
+        format: 'mp4',
         videoEncoder: 'gpu',
       })
     } else if (preset === 'high') {
@@ -134,6 +136,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
         fps: 60,
         bitrate: '15M',
         codec: 'h264',
+        format: 'mp4',
         videoEncoder: 'gpu',
       })
     } else {
@@ -669,6 +672,38 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
                         <option value="av1">AV1 (Next-Gen)</option>
                         <option value="vp9">VP9</option>
                       </select>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Container Format Selection (.mp4, .webm, .mkv) */}
+                  <div className="pt-3 border-t border-white/[0.04] space-y-2">
+                    <label className="text-[11px] font-semibold text-white/60 block">
+                      {language === 'de' ? 'Video-Format / Dateityp (Container)' : 'Video Format (Container)'}
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        { id: 'mp4', label: 'MP4 (.mp4)', desc: language === 'de' ? 'Standard & Empfohlen – 100% kompatibel mit Discord, WhatsApp & Premiere' : 'Recommended – 100% compatible with Discord, WhatsApp & Premiere' },
+                        { id: 'webm', label: 'WebM (.webm)', desc: language === 'de' ? 'Web-optimiert & geringe CPU-Last' : 'Web-optimized & lowest CPU overhead' },
+                        { id: 'mkv', label: 'MKV (.mkv)', desc: language === 'de' ? 'Crash-sicherer Container für lange Aufnahmen' : 'Crash-resistant container' },
+                      ].map(fmt => (
+                        <div
+                          key={fmt.id}
+                          onClick={() => setSettings({ format: fmt.id as any, qualityPreset: 'custom' })}
+                          className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                            (settings.format || 'mp4') === fmt.id
+                              ? 'bg-white/10 border-white text-white shadow-md'
+                              : 'bg-white/[0.02] border-white/[0.06] text-white/60 hover:text-white hover:border-white/20'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-xs">{fmt.label}</span>
+                            {(settings.format || 'mp4') === fmt.id && (
+                              <CheckCircle2 size={14} className="text-emerald-400" />
+                            )}
+                          </div>
+                          <span className="text-[10px] text-white/40 mt-1 leading-snug">{fmt.desc}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>

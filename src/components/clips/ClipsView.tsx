@@ -39,6 +39,7 @@ export function ClipsView() {
   const [trimEnd, setTrimEnd] = useState(0)
   const [isExporting, setIsExporting] = useState(false)
   const [editingTitle, setEditingTitle] = useState('')
+  const [videoSrc, setVideoSrc] = useState('')
   const videoRef = useRef<HTMLVideoElement>(null)
 
   // Load clips on mount
@@ -54,6 +55,10 @@ export function ClipsView() {
       setTrimEnd(activeClip.duration || 30)
       setCurrentTime(0)
       setIsPlaying(false)
+      const cleanPath = activeClip.filePath.replace(/\\/g, '/')
+      setVideoSrc('local-media://' + encodeURIComponent(cleanPath))
+    } else {
+      setVideoSrc('')
     }
   }, [activeClip])
 
@@ -536,8 +541,20 @@ export function ClipsView() {
               <div className="relative bg-black flex items-center justify-center overflow-hidden max-h-[50vh]">
                 <video
                   ref={videoRef}
-                  src={activeClip.videoUrl || `local-media://${activeClip.filePath.replace(/\\/g, '/')}`}
+                  src={videoSrc}
                   className="w-full h-full max-h-[50vh] object-contain"
+                  onError={async () => {
+                    if (activeClip && window.electronAPI?.clips?.readVideoData) {
+                      try {
+                        const res = await window.electronAPI.clips.readVideoData(activeClip.filePath)
+                        if (res.success && res.dataUrl) {
+                          setVideoSrc(res.dataUrl)
+                        }
+                      } catch (err) {
+                        console.warn('[ClipsView] Fallback video load error:', err)
+                      }
+                    }
+                  }}
                   onTimeUpdate={() => {
                     if (videoRef.current) {
                       setCurrentTime(videoRef.current.currentTime)

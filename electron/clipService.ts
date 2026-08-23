@@ -14,6 +14,7 @@ export interface ClipMetadata {
   createdAt: number
   resolution?: string
   fps?: number
+  format?: 'mp4' | 'webm' | 'mkv'
   tags?: string[]
 }
 
@@ -22,12 +23,24 @@ export interface ClipSettingsRecord {
   replayDurationSeconds: number
   hotkey: string
   fullRecordHotkey?: string
-  quality: '1440p' | '1080p' | '720p'
-  fps: 60 | 30
-  bitrate?: 'ultra' | 'high' | 'medium' | 'low'
+  qualityPreset?: 'low' | 'standard' | 'high' | 'custom'
+  quality: '4k' | '1440p' | '1080p' | '720p' | '480p' | '360p'
+  fps: 120 | 60 | 30 | 24
+  bitrate?: '20M' | '15M' | '10M' | '8M' | '5M' | 'auto' | 'ultra' | 'high' | 'medium' | 'low'
+  videoEncoder?: 'gpu' | 'cpu'
+  selectedGpu?: string
+  codec?: 'h264' | 'hevc' | 'av1' | 'vp9'
+  format?: 'mp4' | 'webm' | 'mkv'
+  audioRecordingOption?: 'all' | 'game_only' | 'game_and_discord'
+  audioOutputDeviceId?: string
+  audioOutputVolume?: number
   captureMic: boolean
+  monoAudioInput?: boolean
+  micDeviceId?: string
   micVolume: number
   gameAudioVolume?: number
+  selectedMonitorId?: string
+  screenRecordingOnAppStart?: boolean
   savePath?: string
   notifyOnClip: boolean
   playSoundOnClip?: boolean
@@ -40,12 +53,24 @@ const DEFAULT_SETTINGS: ClipSettingsRecord = {
   replayDurationSeconds: 30,
   hotkey: 'F8',
   fullRecordHotkey: 'F9',
+  qualityPreset: 'high',
   quality: '1080p',
   fps: 60,
-  bitrate: 'high',
+  bitrate: '10M',
+  videoEncoder: 'gpu',
+  selectedGpu: 'auto',
+  codec: 'h264',
+  format: 'mp4',
+  audioRecordingOption: 'all',
+  audioOutputDeviceId: 'auto',
+  audioOutputVolume: 100,
   captureMic: false,
+  monoAudioInput: false,
+  micDeviceId: 'auto',
   micVolume: 80,
   gameAudioVolume: 100,
+  selectedMonitorId: 'screen:0:0',
+  screenRecordingOnAppStart: false,
   notifyOnClip: true,
   playSoundOnClip: true,
   autoStartOnGame: true,
@@ -102,7 +127,6 @@ let activeRecordHotkey: string | null = null
 export function registerClipsGlobalHotkey(mainWindow?: BrowserWindow) {
   const settings = loadClipSettings()
   
-  // Unregister existing
   if (activeReplayHotkey) {
     try { globalShortcut.unregister(activeReplayHotkey) } catch {}
     activeReplayHotkey = null
@@ -114,7 +138,6 @@ export function registerClipsGlobalHotkey(mainWindow?: BrowserWindow) {
 
   if (!settings.enabled) return
 
-  // 1. Register Replay Clip Hotkey (e.g. F8 or custom)
   const replayHk = settings.hotkey || 'F8'
   try {
     const success = globalShortcut.register(replayHk, () => {
@@ -125,14 +148,11 @@ export function registerClipsGlobalHotkey(mainWindow?: BrowserWindow) {
     })
     if (success) {
       activeReplayHotkey = replayHk
-    } else {
-      console.warn('[Clips] Failed to register global replay hotkey:', replayHk)
     }
   } catch (err) {
     console.warn('[Clips] Error registering global replay hotkey:', replayHk, err)
   }
 
-  // 2. Register Full Record Hotkey (e.g. F9)
   if (settings.fullRecordHotkey && settings.fullRecordHotkey !== replayHk) {
     try {
       const success = globalShortcut.register(settings.fullRecordHotkey, () => {
@@ -149,17 +169,14 @@ export function registerClipsGlobalHotkey(mainWindow?: BrowserWindow) {
 }
 
 export function initClipsIPC(mainWindow?: BrowserWindow) {
-  // Ensure default directory
   getClipsDirectory()
-
-  // Register hotkeys
   registerClipsGlobalHotkey(mainWindow)
 
   // 1. Get screen / window capture sources
   ipcMain.handle('clips:get-sources', async () => {
     try {
       const sources = await desktopCapturer.getSources({
-        types: ['window', 'screen'],
+        types: ['screen', 'window'],
         thumbnailSize: { width: 320, height: 180 },
         fetchWindowIcons: true,
       })
@@ -175,7 +192,7 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
     }
   })
 
-  // 2. Save clip buffer to disk
+  // 2. Save clip buffer to disk with user chosen format (.mp4, .webm, .mkv)
   ipcMain.handle('clips:save', async (_, payload: {
     videoBase64: string
     title: string
@@ -185,19 +202,23 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
     thumbnailDataUrl: string
     resolution?: string
     fps?: number
+    format?: 'mp4' | 'webm' | 'mkv'
     tags?: string[]
   }) => {
     try {
       const settings = loadClipSettings()
       const dir = getClipsDirectory(settings.savePath)
       const clipId = 'clip_' + Date.now()
-      const videoExt = payload.videoBase64.startsWith('data:video/mp4') ? 'mp4' : 'webm'
+
+      // Determine container format
+      const chosenFormat = payload.format || settings.format || 'mp4'
+      const videoExt = chosenFormat.replace('.', '').toLowerCase()
       const fileName = clipId + '.' + videoExt
       const videoFilePath = path.join(dir, fileName)
       const metaFilePath = path.join(dir, clipId + '.json')
 
       // Convert base64 to buffer
-      const base64Data = payload.videoBase64.replace(/^data:video\/\w+;base64,/, '')
+      const base64Data = payload.videoBase64.replace(/^data:video\/[\w-]+;base64,/, '')
       const buffer = Buffer.from(base64Data, 'base64')
       fs.writeFileSync(videoFilePath, buffer)
 
@@ -213,16 +234,19 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
         createdAt: Date.now(),
         resolution: payload.resolution || '1080p',
         fps: payload.fps || 60,
+        format: chosenFormat as any,
         tags: payload.tags || ['highlight'],
       }
 
       fs.writeFileSync(metaFilePath, JSON.stringify(meta, null, 2), 'utf-8')
 
+      const normalizedPath = videoFilePath.replace(/\\/g, '/')
+
       return {
         success: true,
         clip: {
           ...meta,
-          videoUrl: 'local-media://' + videoFilePath.replace(/\\/g, '/'),
+          videoUrl: 'local-media://' + encodeURIComponent(normalizedPath),
           filePath: videoFilePath,
         },
       }
@@ -252,11 +276,12 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
           
           if (fs.existsSync(videoFilePath)) {
             const stat = fs.statSync(videoFilePath)
+            const normalizedPath = videoFilePath.replace(/\\/g, '/')
             clips.push({
               ...meta,
               fileSize: stat.size,
               filePath: videoFilePath,
-              videoUrl: 'local-media://' + videoFilePath.replace(/\\/g, '/'),
+              videoUrl: 'local-media://' + encodeURIComponent(normalizedPath),
             })
           }
         } catch {
@@ -264,7 +289,6 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
         }
       }
 
-      // Sort by createdAt descending
       clips.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
       return clips
     } catch (err: any) {
@@ -273,7 +297,22 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
     }
   })
 
-  // 4. Delete clip
+  // 4. Read Video Data URL as 100% fail-safe fallback
+  ipcMain.handle('clips:read-video-data', async (_, filePath: string) => {
+    try {
+      if (fs.existsSync(filePath)) {
+        const buf = fs.readFileSync(filePath)
+        const ext = path.extname(filePath).toLowerCase()
+        const mime = ext === '.webm' ? 'video/webm' : ext === '.mkv' ? 'video/x-matroska' : 'video/mp4'
+        return { success: true, dataUrl: `data:${mime};base64,${buf.toString('base64')}` }
+      }
+      return { success: false, error: 'File not found' }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // 5. Delete clip
   ipcMain.handle('clips:delete', async (_, clipId: string) => {
     try {
       const settings = loadClipSettings()
@@ -296,7 +335,7 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
     }
   })
 
-  // 5. Rename clip or update tags
+  // 6. Rename clip or update tags
   ipcMain.handle('clips:update-meta', async (_, payload: { clipId: string; title: string; tags?: string[] }) => {
     try {
       const settings = loadClipSettings()
@@ -316,7 +355,7 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
     }
   })
 
-  // 6. Open clip in explorer
+  // 7. Open clip in explorer
   ipcMain.handle('clips:open-folder', async (_, filePath: string) => {
     try {
       if (fs.existsSync(filePath)) {
@@ -331,7 +370,7 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
     }
   })
 
-  // 7. Copy clip to clipboard
+  // 8. Copy clip to clipboard
   ipcMain.handle('clips:copy-file', async (_, filePath: string) => {
     try {
       if (fs.existsSync(filePath)) {
@@ -344,7 +383,7 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
     }
   })
 
-  // 8. Export clip
+  // 9. Export clip
   ipcMain.handle('clips:export', async (_, payload: { filePath: string; suggestedName: string }) => {
     try {
       const ext = path.extname(payload.filePath) || '.mp4'
@@ -364,7 +403,7 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
     }
   })
 
-  // 9. Get & save settings
+  // 10. Get & save settings
   ipcMain.handle('clips:get-settings', async () => {
     return loadClipSettings()
   })
@@ -375,7 +414,7 @@ export function initClipsIPC(mainWindow?: BrowserWindow) {
     return updated
   })
 
-  // 10. Select custom folder
+  // 11. Select custom folder
   ipcMain.handle('clips:pick-folder', async () => {
     const win = mainWindow || BrowserWindow.getFocusedWindow()
     const res = await dialog.showOpenDialog(win as any, {

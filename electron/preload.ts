@@ -249,6 +249,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     openFolder: (filePath: string) => ipcRenderer.invoke('clips:open-folder', filePath),
     copyFile: (filePath: string) => ipcRenderer.invoke('clips:copy-file', filePath),
     exportClip: (payload: { filePath: string; suggestedName: string }) => ipcRenderer.invoke('clips:export', payload),
+    readVideoData: (filePath: string) => ipcRenderer.invoke('clips:read-video-data', filePath),
     getSettings: () => ipcRenderer.invoke('clips:get-settings'),
     saveSettings: (settings: any) => ipcRenderer.invoke('clips:save-settings', settings),
     pickFolder: () => ipcRenderer.invoke('clips:pick-folder'),

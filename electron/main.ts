@@ -8,6 +8,7 @@ import { execFile, ChildProcess, exec } from 'child_process'
 
 import path from 'path'
 import fs from 'fs'
+import { pathToFileURL } from 'url'
 import { scanGames } from './scanner'
 import { initTorrentIPC } from './torrentService'
 import { initHttpDownloadIPC } from './httpDownloadService'
@@ -1186,15 +1187,35 @@ ipcMain.handle('rl:fetch-steam-avatar', async (_, url: string) => {
 app.whenReady().then(() => {
   try {
     protocol.handle('local-media', (request) => {
-      let raw = request.url.replace(/^local-media:\/\//, '')
-      let filePath = decodeURIComponent(raw)
-      // Fix Windows paths: e.g. "C:/Users/..." -> "file:///C:/Users/..."
-      if (!filePath.startsWith('/') && !filePath.startsWith('file:///')) {
-        filePath = 'file:///' + filePath
-      } else if (filePath.startsWith('/') && !filePath.startsWith('file:///')) {
-        filePath = 'file://' + filePath
+      try {
+        let raw = request.url.replace(/^local-media:\/\//, '')
+        let decoded = decodeURIComponent(raw)
+        
+        // Fix leading slash before Windows drive letter: e.g. "/C:/Users" -> "C:/Users"
+        if (/^\/[a-zA-Z]:/.test(decoded)) {
+          decoded = decoded.substring(1)
+        }
+        
+        let diskPath = path.normalize(decoded)
+
+        if (!fs.existsSync(diskPath)) {
+          // Check in default Eclipse Clips directory
+          const defaultDir = path.join(app.getPath('videos'), 'Eclipse Clips')
+          const fallback = path.join(defaultDir, path.basename(diskPath))
+          if (fs.existsSync(fallback)) {
+            diskPath = fallback
+          }
+        }
+
+        if (fs.existsSync(diskPath)) {
+          const fileUrl = pathToFileURL(diskPath).toString()
+          return net.fetch(fileUrl)
+        }
+        console.warn('[Protocol] local-media file not found:', diskPath)
+      } catch (err) {
+        console.error('[Protocol] local-media handler error:', err)
       }
-      return net.fetch(filePath)
+      return new Response('File Not Found', { status: 404 })
     })
   } catch (err) {
     console.warn('[Protocol] local-media registration error:', err)
