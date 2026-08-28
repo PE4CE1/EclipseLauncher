@@ -16,12 +16,14 @@ import { sendAppNotification } from '../../services/notificationService'
 import type { EclipseFriend, SteamBadge, SteamProfileGame } from '../../types/game'
 
 const BANNER_PRESETS = [
-  { id: 'galaxy', name: 'Eclipse Galaxy', url: 'https://images.unsplash.com/photo-1538370965046-79c0d6907d47?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'cyberpunk', name: 'Cyberpunk Night', url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'synthwave', name: 'Retro Sunset', url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'minimal', name: 'Dark Flow', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'aurora', name: 'Nordic Aurora', url: 'https://images.unsplash.com/photo-1579033461380-adb47c3eb938?q=80&w=1600&auto=format&fit=crop' },
-  { id: 'deep_space', name: 'Deep Nebula', url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=1600&auto=format&fit=crop' },
+  { id: 'eclipse_solar', name: 'Total Solar Eclipse', url: 'https://images.unsplash.com/photo-1712625209079-4802d8168822?q=85&w=1600&auto=format&fit=crop' },
+  { id: 'cyberpunk', name: 'Cyberpunk Neon City', url: 'https://images.unsplash.com/photo-1604315841269-a1f298321670?q=85&w=1600&auto=format&fit=crop' },
+  { id: 'synthwave', name: 'Retro Synthwave Grid', url: 'https://images.unsplash.com/photo-1706466615917-e44750d177d7?q=85&w=1600&auto=format&fit=crop' },
+  { id: 'deep_nebula', name: 'Deep Cosmic Nebula', url: 'https://images.unsplash.com/photo-1502134249126-9f3755a50d78?q=85&w=1600&auto=format&fit=crop' },
+  { id: 'aurora', name: 'Nordic Aurora', url: 'https://images.unsplash.com/photo-1759675739458-6e5a4a60a117?q=85&w=1600&auto=format&fit=crop' },
+  { id: 'obsidian', name: 'Dark Obsidian Flow', url: 'https://images.unsplash.com/photo-1710438399422-2fca27686bcd?q=85&w=1600&auto=format&fit=crop' },
+  { id: 'blood_moon', name: 'Crimson Blood Moon', url: 'https://images.unsplash.com/photo-1523597020744-b68b1edd3e1c?q=85&w=1600&auto=format&fit=crop' },
+  { id: 'neon_gaming', name: 'Neon Battlestation', url: 'https://images.unsplash.com/photo-1616588589676-62b3bd4ff6d2?q=85&w=1600&auto=format&fit=crop' },
 ]
 
 const AVATAR_FRAMES = [
@@ -59,46 +61,54 @@ export function ProfileView() {
         const steamUrl = data?.steamProfileUrl || friend?.steamProfileUrl
         if (data) {
           if (steamUrl && (!data.steamBackgroundMovie && !data.steamBackgroundUrl)) {
-            const steamData = await fetchSteamUserProfile(steamUrl)
-            if (steamData) {
-              finalProfile = {
-                ...data,
-                steamLevel: steamData.steamLevel ?? data.steamLevel,
-                steamGamesCount: steamData.steamGamesCount ?? data.steamGamesCount,
-                steamBadgesCount: steamData.steamBadgesCount ?? data.steamBadgesCount,
-                steamFavoriteBadge: steamData.steamFavoriteBadge || data.steamFavoriteBadge,
-                steamBadges: (steamData.steamBadges && steamData.steamBadges.length > 0) ? steamData.steamBadges : (data.steamBadges || []),
-                steamGames: (steamData.steamGames && steamData.steamGames.length > 0) ? steamData.steamGames : (data.steamGames || []),
-                steamRecentGames: (steamData.steamRecentGames && steamData.steamRecentGames.length > 0) ? steamData.steamRecentGames : (data.steamRecentGames || []),
-                steamBackgroundUrl: steamData.steamBackgroundUrl || data.steamBackgroundUrl,
-                steamBackgroundMovie: steamData.steamBackgroundMovie || data.steamBackgroundMovie,
-                bannerUrl: data.bannerUrl || undefined,
+            try {
+              const steamData = await fetchSteamUserProfile(steamUrl)
+              if (steamData) {
+                finalProfile = {
+                  ...data,
+                  // Preserve Firebase live status and game title!
+                  status: data.status || 'offline',
+                  currentGame: data.currentGame || undefined,
+                  steamLevel: steamData.steamLevel ?? data.steamLevel,
+                  steamGamesCount: steamData.steamGamesCount ?? data.steamGamesCount,
+                  steamBadgesCount: steamData.steamBadgesCount ?? data.steamBadgesCount,
+                  steamFavoriteBadge: steamData.steamFavoriteBadge || data.steamFavoriteBadge,
+                  steamBadges: (steamData.steamBadges && steamData.steamBadges.length > 0) ? steamData.steamBadges : (data.steamBadges || []),
+                  steamGames: (steamData.steamGames && steamData.steamGames.length > 0) ? steamData.steamGames : (data.steamGames || []),
+                  steamRecentGames: (steamData.steamRecentGames && steamData.steamRecentGames.length > 0) ? steamData.steamRecentGames : (data.steamRecentGames || []),
+                  steamBackgroundUrl: steamData.steamBackgroundUrl || data.steamBackgroundUrl,
+                  steamBackgroundMovie: steamData.steamBackgroundMovie || data.steamBackgroundMovie,
+                  bannerUrl: data.bannerUrl || undefined,
+                }
               }
-            }
+            } catch {}
           }
           setFetchedProfile(finalProfile)
         } else {
           // Fallback to Steam profile lookup if numeric ID or friend
-          const steamData = await fetchSteamUserProfile(steamUrl || selectedFriendId)
-          if (steamData && steamData.steamId64) {
-            setFetchedProfile({
-              username: steamData.username,
-              avatarUrl: steamData.avatarFull,
-              level: steamData.steamLevel,
-              steamLevel: steamData.steamLevel,
-              steamGamesCount: steamData.steamGamesCount,
-              steamBadgesCount: steamData.steamBadgesCount,
-              steamFavoriteBadge: steamData.steamFavoriteBadge,
-              steamBadges: steamData.steamBadges || [],
-              steamGames: steamData.steamGames || [],
-              steamRecentGames: steamData.steamRecentGames || [],
-              steamBackgroundUrl: steamData.steamBackgroundUrl,
-              steamBackgroundMovie: steamData.steamBackgroundMovie,
-              bannerUrl: undefined,
-              steamProfileUrl: `https://steamcommunity.com/profiles/${steamData.steamId64}`,
-              status: steamData.onlineState === 'in-game' ? 'ingame' : steamData.onlineState === 'online' ? 'online' : 'offline',
-            })
-          }
+          try {
+            const steamData = await fetchSteamUserProfile(steamUrl || selectedFriendId)
+            if (steamData && steamData.steamId64) {
+              setFetchedProfile({
+                username: steamData.username,
+                avatarUrl: steamData.avatarFull,
+                level: steamData.steamLevel,
+                steamLevel: steamData.steamLevel,
+                steamGamesCount: steamData.steamGamesCount,
+                steamBadgesCount: steamData.steamBadgesCount,
+                steamFavoriteBadge: steamData.steamFavoriteBadge,
+                steamBadges: steamData.steamBadges || [],
+                steamGames: steamData.steamGames || [],
+                steamRecentGames: steamData.steamRecentGames || [],
+                steamBackgroundUrl: steamData.steamBackgroundUrl,
+                steamBackgroundMovie: steamData.steamBackgroundMovie,
+                bannerUrl: undefined,
+                steamProfileUrl: `https://steamcommunity.com/profiles/${steamData.steamId64}`,
+                status: steamData.onlineState === 'in-game' ? 'ingame' : (steamData.onlineState === 'online' ? 'online' : 'offline'),
+                currentGame: steamData.stateMessage ? steamData.stateMessage.replace(/<[^>]+>/g, ' ').replace(/^in-game:?\s*/i, '').trim() : undefined,
+              })
+            }
+          } catch {}
         }
         setIsLoadingProfile(false)
       }).catch(() => setIsLoadingProfile(false))
@@ -289,6 +299,8 @@ export function ProfileView() {
       : formatLastSeen(friendLastSeen, language)
 
   const isOnline = isViewingFriend ? friendStatus !== 'offline' : true
+  const isIngame = isViewingFriend ? (friendStatus === 'ingame' && !!friendCurrentGame) : !!activeGame
+  const currentGameName = isViewingFriend ? friendCurrentGame : activeGame?.name
 
   // Helper to check if banner is a video (Live Steam Background)
   const isVideoBanner = (url: string | undefined | null) => {
@@ -572,10 +584,10 @@ export function ProfileView() {
       {/* ─── 1. Full Profile View Background with Direct CSS Alpha Mask Fade to Pure Black ─── */}
       {activeProfileBg && (
         <div 
-          className="absolute top-0 left-0 right-0 h-[800px] pointer-events-none z-0 overflow-hidden"
+          className="absolute top-0 left-0 right-0 h-[1050px] pointer-events-none z-0 overflow-hidden"
           style={{
-            WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 25%, rgba(0,0,0,0.6) 55%, rgba(0,0,0,0) 100%)',
-            maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 25%, rgba(0,0,0,0.6) 55%, rgba(0,0,0,0) 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 65%, rgba(0,0,0,0.4) 85%, rgba(0,0,0,0) 100%)',
+            maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 65%, rgba(0,0,0,0.4) 85%, rgba(0,0,0,0) 100%)',
           }}
         >
           {isVideoBanner(activeProfileBg) ? (
@@ -585,18 +597,17 @@ export function ProfileView() {
               loop 
               muted 
               playsInline 
-              className="w-full h-full object-cover object-top filter brightness-[0.45] saturate-115" 
+              className="w-full h-full object-cover object-top filter brightness-[0.80] saturate-110" 
             />
           ) : (
             <img 
               src={activeProfileBg} 
               alt="Steam Profile Background" 
-              className="w-full h-full object-cover object-top filter brightness-[0.45] saturate-115" 
+              className="w-full h-full object-cover object-top filter brightness-[0.80] saturate-110" 
             />
           )}
-          {/* Secondary fade overlay to guarantee pure 100% pitch black transition */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-          <div className="absolute inset-0 bg-black/20" />
+          {/* Subtle bottom fade to guarantee clean transition to black at bottom */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80" />
         </div>
       )}
 
@@ -732,34 +743,25 @@ export function ProfileView() {
                   </div>
                 )}
 
-                {/* Inline Status Row */}
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-0.5">
-                  {/* Status Indicator */}
-                  <div className="flex items-center gap-1.5 text-xs text-white/70 bg-white/[0.03] px-2.5 py-0.5 rounded-md border border-white/[0.06]">
-                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-white/30'}`} />
-                    <span className="font-medium">{isViewingFriend ? friendStatusText : t('online')}</span>
-                  </div>
-
-                  {/* Active In-Game Badge */}
-                  {!isViewingFriend && activeGame && (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-200 text-xs">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-                      <Gamepad2 size={12} className="text-indigo-400" />
-                      <span className="truncate max-w-[200px]">
-                        <span className="text-white/40">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
-                        <span className="text-white font-medium">{activeGame.name}</span>
+                {/* Minimalist Inline Status Pill */}
+                <div className="flex items-center justify-center md:justify-start pt-1">
+                  {isIngame ? (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/25 text-xs text-purple-200 shadow-sm backdrop-blur-md">
+                      <span className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)] animate-pulse" />
+                      <Gamepad2 size={13} className="text-purple-400 flex-shrink-0" />
+                      <span className="text-purple-300 font-medium">
+                        {language === 'de' ? 'Spielt' : 'Playing'} <span className="text-white font-semibold">{currentGameName}</span>
                       </span>
                     </div>
-                  )}
-
-                  {isViewingFriend && friendCurrentGame && (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-200 text-xs">
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-                      <Gamepad2 size={12} className="text-purple-400" />
-                      <span className="truncate max-w-[200px]">
-                        <span className="text-white/40">{language === 'de' ? 'Spielt' : 'Playing'}</span>{' '}
-                        <span className="text-white font-medium">{friendCurrentGame}</span>
-                      </span>
+                  ) : isOnline ? (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-xs text-emerald-200 shadow-sm backdrop-blur-md">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                      <span className="text-emerald-300 font-medium">{t('online')}</span>
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs text-white/50 shadow-sm">
+                      <span className="w-2 h-2 rounded-full bg-white/20" />
+                      <span className="text-white/50 font-normal">{formatLastSeen(friendLastSeen, language)}</span>
                     </div>
                   )}
                 </div>

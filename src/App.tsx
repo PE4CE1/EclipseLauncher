@@ -25,6 +25,7 @@ import { useScanner } from './hooks/useScanner'
 import { sendAppNotification } from './services/notificationService'
 import { initSocialNetwork, updateSocialPresence } from './services/socialService'
 import { initClipEngine } from './services/clipEngine'
+import { initVoiceEngine } from './services/voiceEngine'
 import { useThemeStore } from './store/themeStore'
 
 const pageVariants = {
@@ -49,19 +50,9 @@ function ViewRouter() {
   }
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={activeView}
-        variants={pageVariants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-        className="h-full"
-      >
-        {views[activeView] ?? <HomeView />}
-      </motion.div>
-    </AnimatePresence>
+    <div className="h-full w-full relative">
+      {views[activeView] ?? <HomeView />}
+    </div>
   )
 }
 
@@ -101,6 +92,7 @@ export default function App() {
 
     // Initialize Eclipse Clips Studio Background Engine & Replay Hotkeys
     initClipEngine()
+    initVoiceEngine()
 
     const unsubStart = window.electronAPI?.onGameStarted?.((data) => {
       if (data?.name) {
@@ -116,6 +108,14 @@ export default function App() {
       document.body.classList.remove('game-performance-mode')
     })
 
+    const unsubMin = window.electronAPI?.onAppMinimized?.(() => {
+      document.body.classList.add('app-minimized')
+    })
+
+    const unsubRes = window.electronAPI?.onAppRestored?.(() => {
+      document.body.classList.remove('app-minimized')
+    })
+
     const interval = setInterval(() => {
       const state = useGameStore.getState()
       if (state.activeGame) {
@@ -126,8 +126,11 @@ export default function App() {
     return () => {
       unsubStart?.()
       unsubStop?.()
+      unsubMin?.()
+      unsubRes?.()
       clearInterval(interval)
       document.body.classList.remove('game-performance-mode')
+      document.body.classList.remove('app-minimized')
     }
   }, [])
 
@@ -358,40 +361,50 @@ export default function App() {
   const discordRpcIdleEnabled = settings.discordRpcIdle !== false
   const discordRpcShowDownloads = settings.discordRpcShowDownloads !== false
   const discordRpcPrivacyMode = !!settings.discordRpcPrivacyMode
+  const discordActivityStyle = settings.discordActivityStyle || settings.discordRpcActivityStyle || 'clipping'
 
   useEffect(() => {
-    if (!discordRpcEnabled) {
+    if (!discordRpcEnabled && !discordRpcIdleEnabled && !discordRpcShowDownloads) {
       if (window.electronAPI?.clearDiscordActivity) {
         window.electronAPI.clearDiscordActivity()
       }
       return
     }
 
+    const isAnimated = settings.discordRpcAnimatedText ?? false
+
     if (activeGame) {
-      if (window.electronAPI?.setDiscordActivity) {
-        window.electronAPI.setDiscordActivity(activeGame.name, activeGame.startTime, discordRpcPrivacyMode)
+      if (discordRpcEnabled && window.electronAPI?.setDiscordActivity) {
+        window.electronAPI.setDiscordActivity(activeGame.name, activeGame.startTime, discordRpcPrivacyMode, discordActivityStyle, undefined, undefined, undefined, undefined, undefined, isAnimated)
+        return
+      } else if (!discordRpcEnabled) {
+        if (discordRpcIdleEnabled && window.electronAPI?.setDiscordIdleActivity) {
+          window.electronAPI.setDiscordIdleActivity(isAnimated)
+        } else if (window.electronAPI?.clearDiscordActivity) {
+          window.electronAPI.clearDiscordActivity()
+        }
+        return
       }
-      return
     }
 
     const activeDownload = Object.values(downloads).find(d => d.status === 'downloading' || d.status === 'extracting')
     if (activeDownload && discordRpcShowDownloads) {
       if (window.electronAPI?.setDiscordDownloadActivity) {
-        window.electronAPI.setDiscordDownloadActivity(activeDownload.name)
+        window.electronAPI.setDiscordDownloadActivity(activeDownload.name, isAnimated)
       }
       return
     }
 
     if (discordRpcIdleEnabled) {
       if (window.electronAPI?.setDiscordIdleActivity) {
-        window.electronAPI.setDiscordIdleActivity()
+        window.electronAPI.setDiscordIdleActivity(isAnimated)
       }
     } else {
       if (window.electronAPI?.clearDiscordActivity) {
         window.electronAPI.clearDiscordActivity()
       }
     }
-  }, [activeGame, downloads, discordRpcEnabled, discordRpcIdleEnabled, discordRpcShowDownloads, discordRpcPrivacyMode])
+  }, [activeGame, downloads, discordRpcEnabled, discordRpcIdleEnabled, discordRpcShowDownloads, discordRpcPrivacyMode, discordActivityStyle, settings.discordRpcRobloxSubGame, settings.discordRpcAnimatedText])
 
   // Live Cloud Presence Heartbeat (Every 20s) & on activeGame change
   useEffect(() => {

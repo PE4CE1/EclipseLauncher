@@ -1,20 +1,28 @@
 ﻿/* ═══════════════════════════════════════════════════════════════════════════
-   🌃 NIGHT CITY (CYBERPUNK NEON) THEME
+   🌃 OVERDRIVE CITY (CYBERPUNK GLITCH)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --theme-accent: #f3e600;
+  --theme-accent: #fffb00;
   --theme-secondary: #00f0ff;
-  --theme-tertiary: #ff003c;
+  --theme-tertiary: #ff0055;
   --theme-silver: #e4e4e7;
 }
 
+@keyframes cyberpunkScan {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 0% 100%; }
+}
+
 html, body {
-  background-color: #0b0213 !important;
+  background-color: #05000a !important;
   background-image: 
-    linear-gradient(135deg, rgba(255, 0, 60, 0.1) 0%, transparent 40%),
-    linear-gradient(225deg, rgba(0, 240, 255, 0.1) 0%, transparent 40%) !important;
-  background-size: cover !important;
+    linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 0, 85, 0.05) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(255, 251, 0, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at bottom right, rgba(0, 240, 255, 0.15) 0%, transparent 60%) !important;
+  background-size: 20px 20px, 20px 20px, 100% 100%, 100% 100% !important;
+  animation: cyberpunkScan 20s linear infinite !important;
   background-attachment: fixed !important;
   color: #ffffff !important;
 }
@@ -24,63 +32,63 @@ html, body {
   background-image: none !important;
 }
 
-.splash-screen-overlay {
-  background-color: #0b0213 !important;
-  background-image: radial-gradient(circle at 50% 50%, #150524 0%, #0b0213 100%) !important;
+.splash-screen-overlay { background-color: #05000a !important; }
+.game-detail-modal-overlay { background-color: rgba(5,0,10, 0.98) !important; }
+.game-detail-modal-hero-gradient { background: linear-gradient(to top, #05000a 0%, rgba(5,0,10,0.8) 50%, transparent 100%) !important; }
+
+/* Neon Panels */
+.bg-white\/5, .bg-hub-base\/50 {
+  background-color: rgba(0, 240, 255, 0.02) !important;
+  backdrop-filter: blur(10px) !important;
+  border-top: 2px solid rgba(255, 251, 0, 0.2) !important;
+  border-bottom: 2px solid rgba(0, 240, 255, 0.2) !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-radius: 0 !important;
 }
 
-.game-detail-modal-overlay {
-  background-color: #0b0213 !important;
-  background-image: linear-gradient(180deg, rgba(11,2,19, 0.95) 0%, rgba(11,2,19, 1) 100%) !important;
-}
-.game-detail-modal-hero-gradient {
-  background: linear-gradient(to top, #0b0213 0%, rgba(11,2,19,0.7) 40%, transparent 100%) !important;
-}
-
-/* Transparent Neon Panels */
-.bg-white\/5, .bg-hub-base\/50, .hover\:bg-white\/5:hover, .hover\:bg-hub-base\/50:hover {
-  background-color: rgba(0, 240, 255, 0.03) !important;
-  backdrop-filter: blur(15px) !important;
-  border: 1px solid rgba(0, 240, 255, 0.15) !important;
+.hover\:bg-white\/5:hover, .hover\:bg-hub-base\/50:hover {
+  background-color: rgba(255, 0, 85, 0.1) !important;
+  border-left: 4px solid var(--theme-tertiary) !important;
+  box-shadow: inset 10px 0 20px rgba(255,0,85,0.2) !important;
+  transform: skewX(-2deg);
+  border-top: none !important;
+  border-bottom: none !important;
+  border-right: none !important;
 }
 
-.border-white\/10, .border-white\/5 {
-  border-color: rgba(255, 0, 60, 0.2) !important;
-}
+.text-hub-muted { color: #8faab8 !important; }
 
-.text-white\/70 { color: rgba(255, 255, 255, 0.8) !important; }
-.text-hub-muted { color: #9d8db3 !important; }
+/* Cyberpunk Yellow Accents */
+.text-hub-accent { color: var(--theme-accent) !important; text-shadow: 2px 2px 0px #ff0055 !important; }
+.bg-hub-accent { background: var(--theme-accent) !important; box-shadow: 4px 4px 0px #00f0ff !important; }
 
-/* The Cyberpunk Yellow Accents */
-.text-hub-accent { color: var(--theme-accent) !important; }
-.bg-hub-accent { background-color: var(--theme-accent) !important; }
-.border-hub-accent { border-color: var(--theme-accent) !important; }
-.ring-hub-accent { --tw-ring-color: var(--theme-accent) !important; }
-
-.hover\:text-hub-accent:hover { color: #ffffff !important; }
-.hover\:bg-hub-accent:hover { background-color: #ffffff !important; color: #000000 !important; }
-
+/* Active Game Neon Glow */
 .playing-glow {
-  box-shadow: 0 0 20px 2px rgba(243, 230, 0, 0.3) !important;
-  border-color: rgba(243, 230, 0, 0.6) !important;
+  box-shadow: 0 0 20px 5px rgba(0, 240, 255, 0.4), inset 0 0 10px rgba(0,240,255,0.2) !important;
+  border-color: #00f0ff !important;
+  border-radius: 0 !important;
 }
 .playing-equalizer-bar {
-  background-color: var(--theme-secondary) !important;
+  background-color: #ff0055 !important;
+  box-shadow: 0 0 10px #ff0055 !important;
 }
 
-/* Primary Button Styling (Cyberpunk Yellow) */
+/* Insane Cyberpunk Button */
 button.bg-white, button.bg-white.text-black {
   background: var(--theme-accent) !important;
   color: #000000 !important;
-  border: 1px solid var(--theme-accent) !important;
-  box-shadow: 0 0 15px rgba(243, 230, 0, 0.4) !important;
-  border-radius: 0 !important; /* Sharp edges */
+  border: 2px solid #000000 !important;
+  box-shadow: 4px 4px 0px #00f0ff, -2px -2px 0px #ff0055 !important;
+  border-radius: 0 !important;
   text-transform: uppercase;
-  font-weight: 800;
-  letter-spacing: 1px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px) !important;
+  transition: all 0.1s !important;
 }
 button.bg-white:hover {
-  background: var(--theme-secondary) !important;
-  border-color: var(--theme-secondary) !important;
-  box-shadow: 0 0 25px rgba(0, 240, 255, 0.6) !important;
+  background: #00f0ff !important;
+  box-shadow: 4px 4px 0px #ff0055, -2px -2px 0px var(--theme-accent) !important;
+  transform: translate(-2px, -2px);
 }

@@ -9,6 +9,7 @@ import {
   getSteamAppDetails,
   getSteamAppsDetailsFromStore,
   getSteamFeaturedCategories,
+  fetchTopSteamSpecialOffers,
   detailsToGame,
   POPULAR_STEAM_IDS,
   NEW_RELEASE_IDS,
@@ -170,6 +171,31 @@ export function useFeaturedGames() {
     },
     staleTime: 1000 * 60 * 20,
     retry: 1,
+  })
+}
+
+/**
+ * Featured Categories from Steam Store API (Top Sellers, New Releases, Specials, Coming Soon)
+ */
+export function useFeaturedCategories() {
+  return useQuery({
+    queryKey: ['steam', 'featuredCategories', 'v1'],
+    queryFn: () => getSteamFeaturedCategories(),
+    staleTime: 1000 * 60 * 15,
+  })
+}
+
+/**
+ * Top Special Offers / Discounts from Steam (Auto-updating in background)
+ */
+export function useSpecialOffers() {
+  return useQuery<SteamGame[]>({
+    queryKey: ['steam', 'specials', 'v3'],
+    queryFn: () => fetchTopSteamSpecialOffers(),
+    staleTime: 1000 * 60 * 10,       // 10 minutes cache
+    refetchInterval: 1000 * 60 * 15, // Automatically re-fetch every 15 minutes in background
+    refetchOnWindowFocus: true,      // Automatically refresh when returning to launcher
+    retry: 2,
   })
 }
 

@@ -24,6 +24,47 @@ interface ScreenSource {
   thumbnail?: string
 }
 
+function CustomSelect({ value, onChange, options, className }: { value: any, onChange: (val: any) => void, options: { value: any, label: string }[], className?: string }) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const selectedLabel = options.find(o => String(o.value) === String(value))?.label || options[0]?.label || "";
+  
+  return (
+    <div className={"relative " + (className || "")}>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full bg-[#161822] border border-white/10 rounded-xl px-3 py-2 text-xs text-white cursor-pointer flex items-center justify-between hover:border-white/30 transition-colors select-none"
+      >
+        <span className="truncate">{selectedLabel}</span>
+        <svg className={"w-4 h-4 transition-transform " + (isOpen ? "rotate-180" : "")} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+      </div>
+      <AnimatePresence>
+        {isOpen && (
+          <React.Fragment>
+            <div className="fixed inset-0 z-[9999]" onClick={() => setIsOpen(false)} />
+            <motion.div 
+              initial={{ opacity: 0, y: -4, scale: 0.98 }} 
+              animate={{ opacity: 1, y: 0, scale: 1 }} 
+              exit={{ opacity: 0, y: -4, scale: 0.98 }} 
+              transition={{ duration: 0.12 }}
+              className="absolute z-[10000] w-full mt-1.5 bg-[#161822] border border-white/15 rounded-xl shadow-2xl overflow-y-auto max-h-56 custom-scrollbar p-1 backdrop-blur-xl"
+            >
+              {options.map((opt, i) => (
+                <div 
+                  key={opt.value + "-" + i}
+                  onClick={() => { onChange(opt.value); setIsOpen(false) }}
+                  className={"px-3 py-2 text-xs rounded-lg cursor-pointer transition-colors " + (String(value) === String(opt.value) ? "bg-amber-400/20 text-amber-400 font-bold" : "text-white/80 hover:bg-white/10 hover:text-white")}
+                >
+                  {opt.label}
+                </div>
+              ))}
+            </motion.div>
+          </React.Fragment>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
   const { language } = useTranslation()
   const { settings, setSettings, clips, refreshClips } = useClipStore()
@@ -567,20 +608,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
                       <label className="text-[11px] font-semibold text-white/60 block">
                         {language === 'de' ? 'Auflösung (Resolution)' : 'Resolution'}
                       </label>
-                      <select
-                        value={settings.quality || '1080p'}
-                        onChange={e => {
-                          setSettings({ quality: e.target.value as any, qualityPreset: 'custom' })
-                        }}
-                        className="w-full bg-[#161822] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer"
-                      >
-                        <option value="4k">4K Ultra HD (2160p)</option>
-                        <option value="1440p">2K Quad HD (1440p)</option>
-                        <option value="1080p">Full HD (1080p)</option>
-                        <option value="720p">Standard HD (720p)</option>
-                        <option value="480p">Low (480p)</option>
-                        <option value="360p">Fast Share (360p)</option>
-                      </select>
+                      <CustomSelect value={settings.quality || "1080p"} onChange={val => setSettings({ quality: val as any, qualityPreset: "custom" })} options={[{ value: "4k", label: "4K Ultra HD (2160p)" }, { value: "1440p", label: "2K Quad HD (1440p)" }, { value: "1080p", label: "Full HD (1080p)" }, { value: "720p", label: "Standard HD (720p)" }, { value: "480p", label: "Low (480p)" }, { value: "360p", label: "Fast Share (360p)" }]} />
                     </div>
 
                     {/* FPS */}
@@ -588,18 +616,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
                       <label className="text-[11px] font-semibold text-white/60 block">
                         {language === 'de' ? 'Bildwiederholrate (FPS)' : 'FPS'}
                       </label>
-                      <select
-                        value={settings.fps || 60}
-                        onChange={e => {
-                          setSettings({ fps: parseInt(e.target.value) as any, qualityPreset: 'custom' })
-                        }}
-                        className="w-full bg-[#161822] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer"
-                      >
-                        <option value={120}>120 FPS</option>
-                        <option value={60}>60 FPS</option>
-                        <option value={30}>30 FPS</option>
-                        <option value={24}>24 FPS</option>
-                      </select>
+                      <CustomSelect value={settings.fps || 60} onChange={val => setSettings({ fps: parseInt(val) as any, qualityPreset: "custom" })} options={[{ value: 60, label: language === "de" ? "60 FPS (Flüssig & Standard)" : "60 FPS (Smooth & Standard)" }, { value: 30, label: language === "de" ? "30 FPS (Ressourcensparend)" : "30 FPS (Resource Saving)" }, { value: 24, label: language === "de" ? "24 FPS (Kino-Look)" : "24 FPS (Cinematic)" }]} />
                     </div>
 
                     {/* Bitrate */}
@@ -607,20 +624,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
                       <label className="text-[11px] font-semibold text-white/60 block">
                         {language === 'de' ? 'Bitrate' : 'Bitrate'}
                       </label>
-                      <select
-                        value={settings.bitrate || '10M'}
-                        onChange={e => {
-                          setSettings({ bitrate: e.target.value as any, qualityPreset: 'custom' })
-                        }}
-                        className="w-full bg-[#161822] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer"
-                      >
-                        <option value="20M">20M (Ultra)</option>
-                        <option value="15M">15M (High)</option>
-                        <option value="10M">10M (Standard)</option>
-                        <option value="8M">8M (Medium)</option>
-                        <option value="5M">5M (Low)</option>
-                        <option value="auto">Auto</option>
-                      </select>
+                      <CustomSelect value={settings.bitrate || "10M"} onChange={val => setSettings({ bitrate: val as any, qualityPreset: "custom" })} options={[{ value: "50M", label: "50 Mbps (Max)" }, { value: "30M", label: "30 Mbps (Ultra)" }, { value: "15M", label: "15 Mbps (High)" }, { value: "10M", label: "10 Mbps (Standard)" }, { value: "5M", label: "5 Mbps (Low)" }]} />
                     </div>
                   </div>
 
@@ -631,14 +635,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
                       <label className="text-[11px] font-semibold text-white/60 block">
                         {language === 'de' ? 'Video-Encoder' : 'Video Encoder'}
                       </label>
-                      <select
-                        value={settings.videoEncoder || 'gpu'}
-                        onChange={e => setSettings({ videoEncoder: e.target.value as any, qualityPreset: 'custom' })}
-                        className="w-full bg-[#161822] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer"
-                      >
-                        <option value="gpu">GPU (Hardware-Beschleunigt)</option>
-                        <option value="cpu">Software (CPU)</option>
-                      </select>
+                      <CustomSelect value={settings.videoEncoder || "gpu"} onChange={val => setSettings({ videoEncoder: val as any, qualityPreset: "custom" })} options={[{ value: "gpu", label: language === "de" ? "Hardware GPU (Empfohlen)" : "Hardware GPU (Recommended)" }, { value: "cpu", label: language === "de" ? "Software CPU (Langsam)" : "Software CPU (Slow)" }]} />
                     </div>
 
                     {/* Selected GPU */}
@@ -646,15 +643,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
                       <label className="text-[11px] font-semibold text-white/60 block">
                         {language === 'de' ? 'Gewählte GPU' : 'Selected GPU'}
                       </label>
-                      <select
-                        value={settings.selectedGpu || 'auto'}
-                        onChange={e => setSettings({ selectedGpu: e.target.value, qualityPreset: 'custom' })}
-                        className="w-full bg-[#161822] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer"
-                      >
-                        <option value="auto">Auto (Primäre Grafikkarte)</option>
-                        <option value="dedicated">Dedizierte GPU</option>
-                        <option value="integrated">Integrierte GPU</option>
-                      </select>
+                      <CustomSelect value={settings.selectedGpu || "auto"} onChange={val => setSettings({ selectedGpu: val, qualityPreset: "custom" })} options={[{ value: "auto", label: language === "de" ? "Automatisch (Beste verfügbare GPU)" : "Auto (Best available GPU)" }, { value: "nvidia", label: "NVIDIA (NVENC)" }, { value: "amd", label: "AMD (AMF)" }, { value: "intel", label: "Intel (QuickSync)" }]} />
                     </div>
 
                     {/* Codec */}
@@ -662,16 +651,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
                       <label className="text-[11px] font-semibold text-white/60 block">
                         {language === 'de' ? 'Codec' : 'Codec'}
                       </label>
-                      <select
-                        value={settings.codec || 'h264'}
-                        onChange={e => setSettings({ codec: e.target.value as any, qualityPreset: 'custom' })}
-                        className="w-full bg-[#161822] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer"
-                      >
-                        <option value="h264">H264 / AVC (Universell)</option>
-                        <option value="hevc">H265 / HEVC</option>
-                        <option value="av1">AV1 (Next-Gen)</option>
-                        <option value="vp9">VP9</option>
-                      </select>
+                      <CustomSelect value={settings.codec || "h264"} onChange={val => setSettings({ codec: val as any, qualityPreset: "custom" })} options={[{ value: "h264", label: "H.264 (Maximale Kompatibilität)" }, { value: "vp8", label: "VP8 (Web-Optimiert)" }]} />
                     </div>
                   </div>
 
@@ -878,18 +858,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
                     <label className="text-[11px] font-semibold text-white/60 block">
                       {language === 'de' ? 'Audio-Ausgabequelle' : 'Audio Output Sources'}
                     </label>
-                    <select
-                      value={settings.audioOutputDeviceId || 'auto'}
-                      onChange={e => setSettings({ audioOutputDeviceId: e.target.value })}
-                      className="w-full bg-[#161822] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer"
-                    >
-                      <option value="auto">Auto (Standard-Audiogerät)</option>
-                      {audioOutputs.map(dev => (
-                        <option key={dev.deviceId} value={dev.deviceId}>
-                          {dev.label}
-                        </option>
-                      ))}
-                    </select>
+                    <CustomSelect value={settings.audioOutputDeviceId || "auto"} onChange={val => setSettings({ audioOutputDeviceId: val })} options={[{ value: "auto", label: language === "de" ? "Auto (Standard-Audiogerät)" : "Auto (Default Audio Device)" }, ...audioOutputs.map(dev => ({ value: dev.deviceId, label: dev.label }))]} />
                   </div>
 
                   {/* Output Volume Slider */}
@@ -976,18 +945,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
                         <label className="text-[11px] font-semibold text-white/60 block">
                           {language === 'de' ? 'Mikrofon-Gerät' : 'Microphone Device'}
                         </label>
-                        <select
-                          value={settings.micDeviceId || 'auto'}
-                          onChange={e => setSettings({ micDeviceId: e.target.value })}
-                          className="w-full bg-[#161822] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer"
-                        >
-                          <option value="auto">Auto (Standard-Mikrofon)</option>
-                          {audioInputs.map(dev => (
-                            <option key={dev.deviceId} value={dev.deviceId}>
-                              {dev.label}
-                            </option>
-                          ))}
-                        </select>
+                        <CustomSelect value={settings.micDeviceId || "auto"} onChange={val => setSettings({ micDeviceId: val })} options={[{ value: "auto", label: language === "de" ? "Auto (Standard-Mikrofon)" : "Auto (Default Microphone)" }, ...audioInputs.map(dev => ({ value: dev.deviceId, label: dev.label }))]} />
                       </div>
 
                       <div className="space-y-2">
@@ -1081,6 +1039,95 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
                         : (language === 'de' ? 'Eigene Tastenkombination aufnehmen (Klicken & Taste drücken)' : 'Record Custom Keybind (Click & Press Key)')}
                     </span>
                   </button>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-[#0e1017] border border-white/[0.08] space-y-4 relative">
+                  <div className="absolute top-0 right-0 px-3 py-1 bg-amber-500 text-black text-[9px] font-bold uppercase rounded-bl-xl rounded-tr-2xl z-10">BETA</div>
+                  <div className="flex items-start gap-3">
+                    <Mic className="text-amber-500 mt-0.5" size={18} />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-white block">
+                          {language === 'de' ? 'Voice Capture (Clips per Sprachbefehl)' : 'Voice Capture (Clips via Voice)'}
+                        </span>
+                        <button
+                          onClick={() => setSettings({ voiceCaptureEnabled: !settings.voiceCaptureEnabled })}
+                          className={`w-10 h-5 rounded-full relative transition-colors ${settings.voiceCaptureEnabled ? 'bg-amber-500' : 'bg-white/10'}`}
+                        >
+                          <span className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white transition-all shadow-sm ${settings.voiceCaptureEnabled ? 'left-[22px]' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      <span className="text-white/40 text-[10px] leading-relaxed block mt-1">
+                        {language === 'de' 
+                          ? 'Erstelle Clips nur mit deiner Stimme, ohne die Hände von der Tastatur zu nehmen! (Mikrofonzugriff erforderlich)'
+                          : 'Create clips using just your voice without taking your hands off the keyboard! (Requires microphone access)'}
+                      </span>
+                    </div>
+                  </div>
+                  <AnimatePresence>
+                    {settings.voiceCaptureEnabled && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="pt-3 border-t border-white/5 space-y-4"
+                      >
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-semibold text-white/60 block">
+                            {language === 'de' ? 'Sprachbefehl auswählen (100% Zuverlässig)' : 'Select Voice Phrase (100% Reliable)'}
+                          </label>
+                          
+                          {/* Predefined Guaranteed Hotword Buttons */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {[
+                              { phrase: 'clip that', label: 'Clip That', tag: 'Standard' },
+                              { phrase: 'eclipse that', label: 'Eclipse That', tag: 'Eclipse' },
+                              { phrase: 'clip it', label: 'Clip It', tag: 'Quick' },
+                              { phrase: 'save clip', label: 'Save Clip', tag: 'Classic' },
+                              { phrase: 'clip das', label: 'Clip das', tag: 'DE' },
+                              { phrase: 'clip das mal', label: 'Clip das mal', tag: 'DE' },
+                            ].map((preset) => {
+                              const isSelected = (settings.voiceCapturePhrase || 'clip that').toLowerCase().trim() === preset.phrase.toLowerCase()
+                              return (
+                                <button
+                                  key={preset.phrase}
+                                  type="button"
+                                  onClick={() => setSettings({ voiceCapturePhrase: preset.phrase })}
+                                  className={`px-3 py-2 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                                    isSelected
+                                      ? 'bg-amber-500/15 border-amber-500/60 text-amber-300 shadow-md ring-1 ring-amber-500/30'
+                                      : 'bg-[#161822] border-white/10 text-white/80 hover:bg-white/[0.06] hover:text-white'
+                                  }`}
+                                >
+                                  <span className="text-xs font-semibold">{preset.label}</span>
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                    isSelected ? 'bg-amber-500/30 text-amber-200' : 'bg-white/5 text-white/40'
+                                  }`}>
+                                    {preset.tag}
+                                  </span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                          <span className="text-[10px] text-white/40 leading-tight block pt-1">
+                            {language === 'de' 
+                              ? 'Wähle deinen gewünschten Sprachbefehl. Das System reagiert präzise auf diese Phrase.' 
+                              : 'Select your preferred voice command. The system listens precisely for this phrase.'}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold text-white/60 block flex justify-between">
+                            {language === 'de' ? 'Mikrofon für Sprachsteuerung' : 'Voice Capture Microphone'}
+                          </label>
+                          <CustomSelect value={settings.micDeviceId || 'auto'} onChange={val => setSettings({ micDeviceId: val })} options={[{ value: 'auto', label: language === 'de' ? 'Auto (Standard-Mikrofon)' : 'Auto (Default Microphone)' }, ...audioInputs.map(dev => ({ value: dev.deviceId, label: dev.label }))]} />
+                          <span className="text-[10px] text-white/40 leading-tight block">
+                            {language === 'de' ? 'Stelle sicher, dass dein primäres Mikrofon ausgewählt ist.' : 'Ensure your primary microphone is selected.'}
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
             )}

@@ -336,9 +336,9 @@ function ensurePresenceDecayTimer() {
     let changed = false
 
     const updated = currentFriends.map((friend) => {
-      // Only decay cloud friends with lastSeen timestamp
+      // Only decay cloud friends with lastSeen timestamp (after 5 minutes of no heartbeat)
       if (friend.lastSeen && friend.status !== 'offline') {
-        if (now - friend.lastSeen >= 60000) {
+        if (now - friend.lastSeen >= 300000) {
           changed = true
           return {
             ...friend,
@@ -353,7 +353,7 @@ function ensurePresenceDecayTimer() {
     if (changed) {
       useGameStore.getState().updateSettings({ eclipseFriends: updated })
     }
-  }, 10000)
+  }, 15000)
 }
 
 /**
@@ -391,8 +391,8 @@ function listenToFriendsPresence(friendUids: string[]) {
         else if (typeof u.lastSeen?.seconds === 'number') lastSeenMs = u.lastSeen.seconds * 1000
       }
 
-      // A user is ONLY active if last seen within the last 60 seconds and status is not explicitly offline
-      const isRecentlyActive = !!(lastSeenMs && (now - lastSeenMs < 60000))
+      // Active if last seen within 5 minutes or explicitly in-game / online
+      const isRecentlyActive = lastSeenMs ? (now - lastSeenMs < 300000) : (u.status && u.status !== 'offline')
       let status: 'online' | 'offline' | 'ingame' = 'offline'
       let currentGame: string | undefined = undefined
 

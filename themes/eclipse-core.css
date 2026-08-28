@@ -1,20 +1,27 @@
 ﻿/* ═══════════════════════════════════════════════════════════════════════════
-   🌘 ECLIPSE CORE (BLACK & ORANGE) THEME
+   🌘 ECLIPSE CORE (ULTIMATE EDITION)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --theme-accent: #ff6a00;
-  --theme-secondary: #ff3300;
+  --theme-accent: #ff5500;
+  --theme-secondary: #ff1100;
   --theme-silver: #e4e4e7;
 }
 
+@keyframes eclipseGlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 html, body {
-  background-color: #030303 !important;
+  background-color: #020202 !important;
   background-image: 
-    radial-gradient(circle at 15% 50%, rgba(255, 106, 0, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 85% 30%, rgba(255, 51, 0, 0.05) 0%, transparent 50%) !important;
-  background-size: cover !important;
-  background-position: center center !important;
+    radial-gradient(circle at 10% 20%, rgba(255, 85, 0, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(255, 17, 0, 0.08) 0%, transparent 40%),
+    linear-gradient(270deg, #020202, #070301, #020202) !important;
+  background-size: 200% 200%, 200% 200%, 400% 400% !important;
+  animation: eclipseGlow 15s ease infinite !important;
   background-attachment: fixed !important;
   color: #ffffff !important;
 }
@@ -27,77 +34,90 @@ html, body {
 
 /* Splash Screen */
 .splash-screen-overlay {
-  background-color: #030303 !important;
-  background-image: radial-gradient(circle at 50% 50%, #1a0a00 0%, #030303 100%) !important;
+  background-color: #000000 !important;
+  background-image: radial-gradient(circle at 50% 50%, #1a0500 0%, #000000 100%) !important;
 }
 
 /* Modal Overlays */
 .game-detail-modal-overlay {
-  background-color: #050505 !important;
-  background-image: linear-gradient(180deg, rgba(5, 5, 5, 0.95) 0%, rgba(0, 0, 0, 1) 100%) !important;
+  background-color: #000000 !important;
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 1) 100%) !important;
 }
 .game-detail-modal-hero-gradient {
-  background: linear-gradient(to top, #050505 0%, rgba(5,5,5,0.7) 40%, transparent 100%) !important;
+  background: linear-gradient(to top, #000000 0%, rgba(0,0,0,0.6) 50%, transparent 100%) !important;
 }
 
-/* Sidebars & Glass Panels */
-.bg-white\/5, .bg-hub-base\/50, .hover\:bg-white\/5:hover, .hover\:bg-hub-base\/50:hover {
-  background-color: rgba(255, 106, 0, 0.03) !important;
-  backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 106, 0, 0.05) !important;
+/* Base Glass Panels - NO FORCED BORDERS to fix menu glitches */
+.bg-white\/5, .bg-hub-base\/50 {
+  background-color: rgba(255, 85, 0, 0.02) !important;
+  backdrop-filter: blur(16px) !important;
 }
 
-/* Borders & Dividers */
+/* Hover States for Menu Items */
+.hover\:bg-white\/5:hover, .hover\:bg-hub-base\/50:hover {
+  background-color: rgba(255, 85, 0, 0.08) !important;
+  backdrop-filter: blur(16px) !important;
+  transform: translateX(4px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border: none !important; /* Fixes the outline bug */
+}
+
+/* Dynamic Borders & Dividers */
 .border-white\/10, .border-white\/5 {
-  border-color: rgba(255, 106, 0, 0.1) !important;
+  border-color: rgba(255, 85, 0, 0.15) !important;
+  box-shadow: 0 1px 0 rgba(255, 85, 0, 0.05) inset;
 }
 .divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
-  border-color: rgba(255, 106, 0, 0.1) !important;
+  border-color: rgba(255, 85, 0, 0.1) !important;
 }
 
-/* Text Colors */
-.text-white { color: #ffffff !important; }
-.text-white\/70 { color: rgba(255, 255, 255, 0.7) !important; }
-.text-white\/50 { color: rgba(255, 255, 255, 0.5) !important; }
+/* Text Enhancements */
+.text-white { color: #ffffff !important; text-shadow: 0 0 10px rgba(255,255,255,0.1); }
+.text-white\/70 { color: rgba(255, 255, 255, 0.75) !important; }
 .text-hub-muted { color: #a1a1aa !important; }
 
 /* The Eclipse Orange Accents */
-.text-hub-accent { color: var(--theme-accent) !important; }
-.bg-hub-accent { background-color: var(--theme-accent) !important; }
+.text-hub-accent { color: var(--theme-accent) !important; text-shadow: 0 0 15px rgba(255,85,0,0.4); }
+.bg-hub-accent { background: linear-gradient(135deg, var(--theme-accent), var(--theme-secondary)) !important; box-shadow: 0 0 15px rgba(255,85,0,0.3) !important; }
 .border-hub-accent { border-color: var(--theme-accent) !important; }
-.ring-hub-accent { --tw-ring-color: var(--theme-accent) !important; }
+.ring-hub-accent { --tw-ring-color: var(--theme-accent) !important; box-shadow: 0 0 15px rgba(255,85,0,0.3) !important;}
 
-.hover\:text-hub-accent:hover { color: var(--theme-accent) !important; }
-.hover\:bg-hub-accent:hover { background-color: var(--theme-accent) !important; }
-.hover\:border-hub-accent:hover { border-color: var(--theme-accent) !important; }
+.hover\:text-hub-accent:hover { color: #ffffff !important; text-shadow: 0 0 20px rgba(255,85,0,0.8); }
+.hover\:bg-hub-accent:hover { filter: brightness(1.2); box-shadow: 0 0 25px rgba(255,85,0,0.5) !important; }
+.hover\:border-hub-accent:hover { border-color: #ff8800 !important; }
 
-/* Premium Orange Glows */
+/* Premium Floating Cards */
 .shadow-lg {
-  box-shadow: 0 10px 25px -5px rgba(255, 106, 0, 0.05), 0 8px 10px -6px rgba(255, 106, 0, 0.02) !important;
+  box-shadow: 0 20px 40px -10px rgba(255, 85, 0, 0.08), 0 0 20px rgba(255, 85, 0, 0.03) !important;
 }
 
+/* Intense Playing Indicator */
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 10px rgba(255,85,0,0.2); }
+  50% { box-shadow: 0 0 25px rgba(255,85,0,0.5); }
+  100% { box-shadow: 0 0 10px rgba(255,85,0,0.2); }
+}
 .playing-glow {
-  box-shadow: 0 0 15px 2px rgba(255, 106, 0, 0.2) !important;
-  border-color: rgba(255, 106, 0, 0.5) !important;
+  border-color: rgba(255, 85, 0, 0.8) !important;
+  animation: pulseGlow 2s infinite !important;
 }
 .playing-equalizer-bar {
-  background-color: var(--theme-accent) !important;
+  background: linear-gradient(to top, var(--theme-secondary), var(--theme-accent)) !important;
+  box-shadow: 0 0 10px var(--theme-accent) !important;
 }
 
-/* Special Focus Rings */
-*:focus-visible {
-  outline-color: var(--theme-accent) !important;
-  box-shadow: 0 0 0 2px rgba(255, 106, 0, 0.3) !important;
-}
-
-/* Primary Button Styling */
+/* Ultimate Primary Button */
 button.bg-white, button.bg-white.text-black {
-  background: linear-gradient(135deg, var(--theme-accent) 0%, var(--theme-secondary) 100%) !important;
+  background: linear-gradient(135deg, #ff5500 0%, #ff0000 100%) !important;
   color: #ffffff !important;
-  border: none !important;
-  box-shadow: 0 4px 15px rgba(255, 106, 0, 0.3) !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  box-shadow: 0 0 20px rgba(255, 85, 0, 0.4), inset 0 0 10px rgba(255,255,255,0.2) !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 800;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
 button.bg-white:hover {
-  filter: brightness(1.1);
-  box-shadow: 0 6px 20px rgba(255, 106, 0, 0.4) !important;
+  transform: scale(1.02) translateY(-2px);
+  box-shadow: 0 10px 30px rgba(255, 85, 0, 0.6), inset 0 0 15px rgba(255,255,255,0.3) !important;
 }

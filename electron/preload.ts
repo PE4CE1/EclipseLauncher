@@ -139,9 +139,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setSettings: (data: Partial<Settings>) => ipcRenderer.invoke('settings:set', data),
 
   // Discord RPC
-  setDiscordActivity: (gameName: string, startTime: number, isPrivacyMode?: boolean) => ipcRenderer.invoke('discord:set-activity', gameName, startTime, isPrivacyMode),
-  setDiscordDownloadActivity: (downloadName: string) => ipcRenderer.invoke('discord:set-download-activity', downloadName),
-  setDiscordIdleActivity: () => ipcRenderer.invoke('discord:set-idle-activity'),
+  setDiscordActivity: (gameName: string, startTime: number, isPrivacyMode?: boolean, style?: 'clipping' | 'playing', appId?: string | number, customIconUrl?: string, customState?: string, customSmallIconUrl?: string, customSmallText?: string, isAnimated?: boolean) => 
+    ipcRenderer.invoke('discord:set-activity', gameName, startTime, isPrivacyMode, style, appId, customIconUrl, customState, customSmallIconUrl, customSmallText, isAnimated),
+  setDiscordDownloadActivity: (downloadName: string, isAnimated?: boolean) => ipcRenderer.invoke('discord:set-download-activity', downloadName, isAnimated),
+  setDiscordIdleActivity: (isAnimated?: boolean) => ipcRenderer.invoke('discord:set-idle-activity', isAnimated),
   clearDiscordActivity: () => ipcRenderer.invoke('discord:clear-activity'),
 
 
@@ -258,5 +259,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('clips:hotkey-pressed', handler)
       return () => ipcRenderer.removeListener('clips:hotkey-pressed', handler)
     }
-  }
+  },
+
+  // ─── Native Windows Voice Listener (Offline Speech API) ────────────────────
+  voice: {
+    start: (phrase?: string) => ipcRenderer.invoke('voice:start', phrase),
+    stop: () => ipcRenderer.invoke('voice:stop'),
+    setPhrase: (phrase: string) => ipcRenderer.send('voice:set-phrase', phrase),
+    onHotwordDetected: (callback: (data: { text: string; confidence: number }) => void) => {
+      const handler = (_: any, data: any) => callback(data)
+      ipcRenderer.on('voice:hotword-detected', handler)
+      return () => ipcRenderer.removeListener('voice:hotword-detected', handler)
+    }
+  },
+
+  // Window minimize / restore state listener
+  onAppMinimized: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('app:minimized', handler)
+    return () => ipcRenderer.removeListener('app:minimized', handler)
+  },
+  onAppRestored: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('app:restored', handler)
+    return () => ipcRenderer.removeListener('app:restored', handler)
+  },
 })

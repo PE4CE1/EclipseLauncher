@@ -1,19 +1,28 @@
 import { useEffect } from 'react'
 import { HeroSection } from './HeroSection'
 import { GameCarousel } from './GameCarousel'
-import { usePopularGames, useTrendingGames, useNewReleases, useFeaturedGames } from '../../hooks/useGames'
+import {
+  usePopularGames,
+  useTrendingGames,
+  useNewReleases,
+  useFeaturedGames,
+  useSpecialOffers,
+} from '../../hooks/useGames'
 import { useUIStore } from '../../store/uiStore'
+import { useTranslation } from '../../hooks/useTranslation'
 
 export function HomeView() {
   const { setFeaturedGame } = useUIStore()
+  const { language } = useTranslation()
 
-  const featured     = useFeaturedGames()
-  const popular      = usePopularGames()
-  const trending     = useTrendingGames()
-  const newReleases  = useNewReleases()
+  const featured = useFeaturedGames()
+  const popular = usePopularGames()
+  const trending = useTrendingGames()
+  const newReleases = useNewReleases()
+  const specials = useSpecialOffers()
 
-  const heroGames = (featured.data && featured.data.length > 0) 
-    ? featured.data 
+  const heroGames = (featured.data && featured.data.length > 0)
+    ? featured.data
     : (popular.data ?? []).slice(0, 15)
 
   useEffect(() => {
@@ -21,34 +30,56 @@ export function HomeView() {
   }, [featured.data, popular.data])
 
   return (
-    <div className="h-full overflow-y-auto">
-      {/* Hero section */}
+    <div className="h-full overflow-y-auto overflow-x-hidden bg-[#040405]">
+      {/* 1. Hero Showcase Section */}
       {heroGames.length > 0 ? (
         <HeroSection games={heroGames} />
       ) : (
-        <div className="w-full h-[420px] skeleton" />
+        <div className="w-full h-[520px] skeleton" />
       )}
 
-      {/* Game carousels */}
-      <div className="px-6 py-6">
-        <GameCarousel
-          id="carousel-popular"
-          title="🔥 Popular Games"
-          games={popular.data ?? []}
-          isLoading={popular.isLoading}
-        />
-        <GameCarousel
-          id="carousel-trending"
-          title="📈 Trending Now"
-          games={trending.data ?? []}
-          isLoading={trending.isLoading}
-        />
-        <GameCarousel
-          id="carousel-new"
-          title="✨ New Releases"
-          games={newReleases.data ?? []}
-          isLoading={newReleases.isLoading}
-        />
+      <div className="py-6 space-y-8">
+        {/* 2. Special Offers & Deals */}
+        {specials.data && specials.data.length > 0 && (
+          <div className="px-6">
+            <GameCarousel
+              id="carousel-specials"
+              title={language === 'de' ? '🏷️ Sonderangebote & Deals' : '🏷️ Special Offers & Deals'}
+              games={specials.data}
+              isLoading={specials.isLoading}
+            />
+          </div>
+        )}
+
+        {/* 3. Popular Games */}
+        <div className="px-6">
+          <GameCarousel
+            id="carousel-popular"
+            title={language === 'de' ? '🔥 Beliebte Spiele' : '🔥 Popular Games'}
+            games={popular.data ?? []}
+            isLoading={popular.isLoading}
+          />
+        </div>
+
+        {/* 4. Trending Games */}
+        <div className="px-6">
+          <GameCarousel
+            id="carousel-trending"
+            title={language === 'de' ? '📈 Trends & Meistgespielt' : '📈 Trending Now'}
+            games={trending.data ?? []}
+            isLoading={trending.isLoading}
+          />
+        </div>
+
+        {/* 5. New Releases */}
+        <div className="px-6 pb-8">
+          <GameCarousel
+            id="carousel-new"
+            title={language === 'de' ? '✨ Neuerscheinungen' : '✨ New Releases'}
+            games={newReleases.data ?? []}
+            isLoading={newReleases.isLoading}
+          />
+        </div>
       </div>
     </div>
   )

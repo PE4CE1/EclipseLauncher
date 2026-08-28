@@ -38,10 +38,14 @@ function getRamInfo() {
   }
 }
 
+let lastGpuQueryTime = 0
+
 function queryGpu() {
-  if (isGpuQueryRunning) return
+  const now = Date.now()
+  if (isGpuQueryRunning || now - lastGpuQueryTime < 3000) return
   isGpuQueryRunning = true
-  execFile('nvidia-smi', ['--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'], { timeout: 1000 }, (err, stdout) => {
+  lastGpuQueryTime = now
+  execFile('nvidia-smi', ['--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'], { timeout: 800, windowsHide: true }, (err, stdout) => {
     isGpuQueryRunning = false
     if (!err && stdout) {
       const val = parseInt(stdout.trim(), 10)

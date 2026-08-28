@@ -10,6 +10,7 @@ import {
   acceptFriendRequest, 
   declineFriendRequest,
 } from '../../services/socialService';
+import { fetchSteamUserProfile } from '../../services/steamService';
 import { formatLastSeen } from '../../services/assetHelper';
 
 interface FriendsWindowProps {

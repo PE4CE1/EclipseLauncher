@@ -238,7 +238,7 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
 
         {/* Discount badge */}
         {(game.discountPercent ?? 0) > 0 && (
-          <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+          <div className="absolute top-2 right-2 z-30 flex items-center justify-center bg-[#4c6b22] text-[#beee11] border border-[#beee11]/40 text-xs font-black px-2 py-0.5 rounded-md shadow-xl tracking-tight backdrop-blur-sm">
             -{game.discountPercent}%
           </div>
         )}
@@ -253,20 +253,30 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
       </div>
 
       {/* Info below card */}
-      <div className="mt-3 px-1 transition-all duration-300 group-hover:translate-y-1">
+      <div className="mt-3 px-1 transition-all duration-300 group-hover:translate-y-0.5">
         <p className="text-xs font-semibold text-hub-text truncate leading-tight transition-colors group-hover:text-white">{game.name}</p>
-        <div className="flex items-center justify-between mt-1">
+        <div className="flex items-center justify-between mt-1.5 gap-1.5">
           <p className="text-[11px] text-hub-muted truncate">
             {game.releaseDate?.split(',').pop()?.trim() || game.genres?.[0] || '—'}
           </p>
-          {game.priceFormatted && !game.isFree && (
+          {(game.discountPercent ?? 0) > 0 ? (
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {game.initialPriceFormatted && (
+                <span className="text-[10px] text-white/40 line-through decoration-white/40 font-medium">
+                  {game.initialPriceFormatted}
+                </span>
+              )}
+              <span className="text-xs font-bold text-[#beee11] bg-[#4c6b22]/50 border border-[#beee11]/30 px-1.5 py-0.5 rounded">
+                {game.priceFormatted}
+              </span>
+            </div>
+          ) : game.priceFormatted && !game.isFree ? (
             <p className="text-[11px] font-semibold text-hub-text flex-shrink-0">
               {game.priceFormatted}
             </p>
-          )}
-          {game.isFree && (
+          ) : game.isFree ? (
             <p className="text-[11px] font-semibold text-indigo-400 flex-shrink-0">Free</p>
-          )}
+          ) : null}
         </div>
       </div>
     </motion.div>

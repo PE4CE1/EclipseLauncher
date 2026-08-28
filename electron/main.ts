@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, Notification, protocol, net } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, Notification, protocol, net, session } from 'electron'
 
 if (require('electron-squirrel-startup')) {
   app.quit()
@@ -14,7 +14,7 @@ import { initTorrentIPC } from './torrentService'
 import { initHttpDownloadIPC } from './httpDownloadService'
 import { initUpdater } from './updaterService'
 import { initDiscordRPC, setDiscordActivity, clearDiscordActivity, setDiscordIdleActivity } from './discordRPC'
-import { startProcessMonitor, registerGameExe, getCurrentDetectedGame, resetCurrentDetectedGame, invalidateSettingsCache, syncOverlaySettingsLive } from './processMonitor'
+import { startProcessMonitor, registerGameExe, getCurrentDetectedGame, resetCurrentDetectedGame, invalidateSettingsCache, syncOverlaySettingsLive, isAnyGameRunning } from './processMonitor'
 import { loadPlaytimeDb, savePlaytimeDb, addPlaytimeRecord } from './playtimeService'
 import { initOverlayManager, openOverlayEditMode, exitEditMode, getOverlayWindow } from './overlayManager'
 import { setRLPlaylist, setRLApiKey, destroyRLScraper } from './rlService'
@@ -22,6 +22,7 @@ import { fetchSteamAvatar } from './steamService'
 import { startInputService, stopInputService, setInputKeybinds } from './inputService'
 import { detectHardwareSpecs } from './hardwareService'
 import { initClipsIPC } from './clipService'
+import { initVoiceIPC } from './voiceService'
 
 // Register privileged scheme for local clips video playback
 protocol.registerSchemesAsPrivileged([
@@ -252,6 +253,10 @@ if (startupSettings.hardwareAcceleration === false) {
   app.disableHardwareAcceleration()
 }
 
+// Enable Web Speech API and experimental features
+app.commandLine.appendSwitch('enable-speech-dispatcher')
+app.commandLine.appendSwitch('enable-experimental-web-platform-features')
+
 // Enable background gamepad polling so gamepads work when games are focused
 app.commandLine.appendSwitch('enable-gamepad-background-polling')
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -328,7 +333,8 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
-      webSecurity: false, // Allows renderer to fetch from Steam API (bypasses CORS)
+      webSecurity: false,
+      autoplayPolicy: 'no-user-gesture-required'
     },
     icon: fs.existsSync(getAppIconPath()) ? getAppIconPath() : undefined,
   })
@@ -357,6 +363,38 @@ function createWindow() {
     mainWindow.once('ready-to-show', () => {
       mainWindow?.show()
       mainWindow?.focus()
+      mainWindow?.webContents.setFrameRate(60)
+      mainWindow?.webContents.setBackgroundThrottling(true)
+    })
+
+    mainWindow.on('blur', () => {
+      mainWindow?.webContents.setFrameRate(30)
+    })
+
+    mainWindow.on('focus', () => {
+      mainWindow?.webContents.setFrameRate(60)
+    })
+
+    mainWindow.on('minimize', () => {
+      mainWindow?.webContents.setFrameRate(1)
+      mainWindow?.webContents.setBackgroundThrottling(true)
+      mainWindow?.webContents.send('app:minimized')
+    })
+
+    mainWindow.on('restore', () => {
+      mainWindow?.webContents.setFrameRate(60)
+      mainWindow?.webContents.send('app:restored')
+    })
+
+    mainWindow.on('hide', () => {
+      mainWindow?.webContents.setFrameRate(1)
+      mainWindow?.webContents.setBackgroundThrottling(true)
+      mainWindow?.webContents.send('app:minimized')
+    })
+
+    mainWindow.on('show', () => {
+      mainWindow?.webContents.setFrameRate(60)
+      mainWindow?.webContents.send('app:restored')
     })
 
     mainWindow.webContents.once('did-finish-load', () => {
@@ -429,6 +467,7 @@ function createWindow() {
 
   // Initialize Clips Studio IPC & Global Hotkey
   initClipsIPC(mainWindow)
+  initVoiceIPC(() => mainWindow)
 
   // Start background process monitoring for running games on Windows
   startProcessMonitor(() => mainWindow)
@@ -1185,10 +1224,22 @@ ipcMain.handle('rl:fetch-steam-avatar', async (_, url: string) => {
 })
 
 app.whenReady().then(() => {
+  session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
+    if (permission === 'media') return true
+    return true
+  })
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'media') {
+      callback(true)
+    } else {
+      callback(true)
+    }
+  })
+
   try {
-    protocol.handle('local-media', (request) => {
+    protocol.registerFileProtocol('local-media', (request, callback) => {
       try {
-        let raw = request.url.replace(/^local-media:\/\//, '')
+        let raw = request.url.replace(/^local-media:\/\/(file\/|localhost\/)?/, '')
         let decoded = decodeURIComponent(raw)
         
         // Fix leading slash before Windows drive letter: e.g. "/C:/Users" -> "C:/Users"
@@ -1208,14 +1259,13 @@ app.whenReady().then(() => {
         }
 
         if (fs.existsSync(diskPath)) {
-          const fileUrl = pathToFileURL(diskPath).toString()
-          return net.fetch(fileUrl)
+          return callback({ path: diskPath })
         }
         console.warn('[Protocol] local-media file not found:', diskPath)
       } catch (err) {
         console.error('[Protocol] local-media handler error:', err)
       }
-      return new Response('File Not Found', { status: 404 })
+      return callback({ error: -6 }) // net::ERR_FILE_NOT_FOUND
     })
   } catch (err) {
     console.warn('[Protocol] local-media registration error:', err)
@@ -1252,19 +1302,26 @@ app.on('activate', () => {
 })
 
 // ─── Discord RPC ─────────────────────────────────────────────────────────────
-ipcMain.handle('discord:set-activity', (_event, gameName: string, startTime: number, isPrivacyMode?: boolean) => {
-  setDiscordActivity(gameName, startTime, !!isPrivacyMode)
+ipcMain.handle('discord:set-activity', (_event, gameName: string, startTime: number, isPrivacyMode?: boolean, style?: 'clipping' | 'playing', appId?: string | number, customIconUrl?: string, customState?: string, customSmallIconUrl?: string, customSmallText?: string, isAnimated?: boolean) => {
+  const s = getSavedSettings()
+  const resolvedStyle = style || s.discordActivityStyle || s.discordRpcActivityStyle || 'clipping'
+  const resolvedAnimated = isAnimated !== undefined ? isAnimated : (s.discordRpcAnimatedText ?? false)
+  setDiscordActivity(gameName, startTime, !!isPrivacyMode, resolvedStyle, appId, customIconUrl, customState, customSmallIconUrl, customSmallText, resolvedAnimated)
   return { success: true }
 })
 
-ipcMain.handle('discord:set-download-activity', (_event, downloadName: string) => {
+ipcMain.handle('discord:set-download-activity', (_event, downloadName: string, isAnimated?: boolean) => {
   const { setDiscordDownloadActivity } = require('./discordRPC')
-  setDiscordDownloadActivity(downloadName)
+  const s = getSavedSettings()
+  const resolvedAnimated = isAnimated !== undefined ? isAnimated : (s.discordRpcAnimatedText ?? false)
+  setDiscordDownloadActivity(downloadName, resolvedAnimated)
   return { success: true }
 })
 
-ipcMain.handle('discord:set-idle-activity', () => {
-  setDiscordIdleActivity()
+ipcMain.handle('discord:set-idle-activity', (_event, isAnimated?: boolean) => {
+  const s = getSavedSettings()
+  const resolvedAnimated = isAnimated !== undefined ? isAnimated : (s.discordRpcAnimatedText ?? false)
+  setDiscordIdleActivity(resolvedAnimated)
   return { success: true }
 })
 
@@ -1273,3 +1330,5 @@ ipcMain.handle('discord:clear-activity', () => {
   return { success: true }
 })
 
+
+app.on('web-contents-created', (e, wc) => { wc.on('console-message', (e, level, msg) => { if (level >= 2) console.log('RENDERER ERROR:', msg) }) })

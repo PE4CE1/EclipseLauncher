@@ -28,7 +28,6 @@ export function SettingsView() {
 
   const TABS = [
     { id: 'general', label: t('general'), icon: SettingsIcon },
-    { id: 'clips', label: t('clips') || 'Clips Studio', icon: Film },
     { id: 'downloads', label: t('downloads'), icon: Download },
     { id: 'notifications', label: t('notificationsTab'), icon: Bell },
     { id: 'gameplay', label: t('gameplay'), icon: Gamepad2 },
@@ -149,29 +148,36 @@ export function SettingsView() {
   }
 
   // Reusable clean monochrome checkbox
-  const CleanCheckbox = ({ checked, onChange, label, description }: { checked: boolean; onChange: () => void; label: string; description?: string }) => (
-    <label className="flex items-start gap-3 cursor-pointer group select-none">
-      <div 
-        className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all duration-150 flex-shrink-0 mt-0.5 ${
-          checked 
-            ? 'bg-white border-white text-black shadow-sm' 
-            : 'bg-white/[0.04] border-white/20 group-hover:border-white/40'
-        }`}
-      >
-        {checked && <Check size={13} strokeWidth={3} className="text-black" />}
-      </div>
-      <div className="flex-1">
-        <span className="text-sm text-white/80 group-hover:text-white transition-colors block font-medium">
-          {label}
-        </span>
-        {description && (
-          <span className="text-xs text-hub-muted block mt-0.5">
-            {description}
+  const CleanCheckbox = ({ checked, onChange, label, description, rightElement }: { checked: boolean; onChange: () => void; label: string; description?: string; rightElement?: React.ReactNode }) => (
+    <div className="flex items-center justify-between gap-4">
+      <label className="flex items-start gap-3 cursor-pointer group select-none flex-1">
+        <div 
+          className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all duration-150 flex-shrink-0 mt-0.5 ${
+            checked 
+              ? 'bg-white border-white text-black shadow-sm' 
+              : 'bg-white/[0.04] border-white/20 group-hover:border-white/40'
+          }`}
+        >
+          {checked && <Check size={13} strokeWidth={3} className="text-black" />}
+        </div>
+        <div className="flex-1">
+          <span className="text-sm text-white/80 group-hover:text-white transition-colors block font-medium">
+            {label}
           </span>
-        )}
-      </div>
-      <input type="checkbox" className="hidden" checked={checked} onChange={onChange} />
-    </label>
+          {description && (
+            <span className="text-xs text-hub-muted block mt-0.5 leading-relaxed">
+              {description}
+            </span>
+          )}
+        </div>
+        <input type="checkbox" className="hidden" checked={checked} onChange={onChange} />
+      </label>
+      {rightElement && (
+        <div className="flex-shrink-0">
+          {rightElement}
+        </div>
+      )}
+    </div>
   )
 
   return (
@@ -391,7 +397,7 @@ export function SettingsView() {
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => {
-                        const url = 'https://eclipse-launcher.netlify.app/#/themes'
+                        const url = 'https://eclipselauncher.pages.dev/#/themes'
                         if (window.electronAPI?.openUrl) {
                           window.electronAPI.openUrl(url)
                         } else {
@@ -431,7 +437,7 @@ export function SettingsView() {
                     </div>
                     <button 
                       onClick={() => {
-                        const url = 'https://eclipse-launcher.netlify.app/#/themes'
+                        const url = 'https://eclipselauncher.pages.dev/#/themes'
                         if (window.electronAPI?.openUrl) {
                           window.electronAPI.openUrl(url)
                         } else {
@@ -836,18 +842,16 @@ export function SettingsView() {
                         ? 'Download-Quellen (JSON) für automatische Repack- und Direct-Download-Optionen im Launcher.' 
                         : 'Download sources (JSON) for automatic repacks and direct download options.'}
                     </p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-                    <button 
+                              <button 
                       onClick={() => {
-                        const url = 'https://eclipse-launcher.netlify.app/#/downloads'
+                        const url = 'https://eclipselauncher.pages.dev/#/downloads'
                         if (window.electronAPI?.openUrl) {
                           window.electronAPI.openUrl(url)
                         } else {
                           window.open(url, '_blank')
                         }
                       }}
-                      className="px-3 py-1.5 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                      className="px-3.5 py-1.5 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                     >
                       <ExternalLink size={12} className="text-black" />
                       {language === 'de' ? 'Web Store Quellen' : 'Web Store Sources'}
@@ -884,7 +888,7 @@ export function SettingsView() {
                       <div className="flex items-center justify-center gap-2.5 pt-1">
                         <button
                           onClick={() => {
-                            const url = 'https://eclipse-launcher.netlify.app/#/downloads'
+                            const url = 'https://eclipselauncher.pages.dev/#/downloads'
                             if (window.electronAPI?.openUrl) {
                               window.electronAPI.openUrl(url)
                             } else {
@@ -1095,6 +1099,79 @@ export function SettingsView() {
                       updateSettings({ discordRpc: val })
                       if (window.electronAPI) {
                         window.electronAPI.setSettings({ discordRpc: val })
+                      }
+                    }}
+                    rightElement={
+                      <div className="inline-flex p-1 rounded-lg bg-black/40 border border-white/10 flex-shrink-0 backdrop-blur-md">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const current = settings.discordActivityStyle || settings.discordRpcActivityStyle || 'clipping'
+                            if (current !== 'playing') {
+                              updateSettings({ discordActivityStyle: 'playing', discordRpcActivityStyle: 'playing' })
+                              if (window.electronAPI) {
+                                window.electronAPI.setSettings({ discordActivityStyle: 'playing', discordRpcActivityStyle: 'playing' })
+                              }
+                            }
+                          }}
+                          className={`px-3 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+                            ((settings.discordActivityStyle || settings.discordRpcActivityStyle) === 'playing')
+                              ? 'bg-white text-black font-bold shadow-sm'
+                              : 'text-white/60 hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          <Gamepad2 size={12} className={((settings.discordActivityStyle || settings.discordRpcActivityStyle) === 'playing') ? 'text-black' : 'text-white/60'} />
+                          <span>Playing</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const current = settings.discordActivityStyle || settings.discordRpcActivityStyle || 'clipping'
+                            if (current !== 'clipping') {
+                              updateSettings({ discordActivityStyle: 'clipping', discordRpcActivityStyle: 'clipping' })
+                              if (window.electronAPI) {
+                                window.electronAPI.setSettings({ discordActivityStyle: 'clipping', discordRpcActivityStyle: 'clipping' })
+                              }
+                            }
+                          }}
+                          className={`px-3 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+                            ((settings.discordActivityStyle || settings.discordRpcActivityStyle) !== 'playing')
+                              ? 'bg-white text-black font-bold shadow-sm'
+                              : 'text-white/60 hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          <Film size={12} className={((settings.discordActivityStyle || settings.discordRpcActivityStyle) !== 'playing') ? 'text-black' : 'text-white/60'} />
+                          <span>Clipping</span>
+                        </button>
+                      </div>
+                    }
+                  />
+
+                  <CleanCheckbox
+                    checked={settings.discordRpcRobloxSubGame ?? true}
+                    label={language === 'de' ? 'Detaillierte Roblox Game-Erkennung' : 'Detailed Roblox Game Detection'}
+                    description={language === 'de' ? 'Erkennt das exakte Roblox-Spiel (z. B. Blox Fruits) samt individuellem Thumbnail auf Discord statt nur das Standard Roblox-Logo.' : 'Detects the exact Roblox game (e.g. Blox Fruits) with official thumbnail instead of only standard Roblox.'}
+                    onChange={() => {
+                      const val = !(settings.discordRpcRobloxSubGame ?? true)
+                      updateSettings({ discordRpcRobloxSubGame: val })
+                      if (window.electronAPI) {
+                        window.electronAPI.setSettings({ discordRpcRobloxSubGame: val })
+                      }
+                    }}
+                  />
+
+                  <CleanCheckbox
+                    checked={settings.discordRpcAnimatedText ?? false}
+                    label={language === 'de' ? 'Animierter Discord-Status & Text' : 'Animated Discord Status & Text'}
+                    description={language === 'de' ? 'Animiert die Statuszeilen und Untertitel deines Discord-Status dynamisch in Echtzeit mit wechselnden Effekten und Glyphen.' : 'Dynamically animates the status lines and subtitles of your Discord status in real-time with cycling effects.'}
+                    onChange={() => {
+                      const val = !(settings.discordRpcAnimatedText ?? false)
+                      updateSettings({ discordRpcAnimatedText: val })
+                      if (window.electronAPI) {
+                        window.electronAPI.setSettings({ discordRpcAnimatedText: val })
                       }
                     }}
                   />

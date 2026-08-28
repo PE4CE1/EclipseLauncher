@@ -60,6 +60,10 @@ function createOverlayWindow() {
   overlayWindow.setIgnoreMouseEvents(true, { forward: true })
   overlayWindow.setAlwaysOnTop(true, 'screen-saver', 1)
 
+  // Critical for Borderless Windowed FPS: 
+  // Limit overlay to 30 FPS so DWM doesn't force the game's swapchain to sync at high refresh rates
+  overlayWindow.webContents.setFrameRate(30)
+
   loadOverlay()
 
   overlayWindow.on('closed', () => {

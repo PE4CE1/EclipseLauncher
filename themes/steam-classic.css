@@ -1,20 +1,24 @@
 ﻿/* ═══════════════════════════════════════════════════════════════════════════
-   🚂 STEAM CLASSIC (DEEP NAVY & GREY) THEME
+   🚂 STEAM DECK PRO (DEEP NAVY & GLASS)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --theme-accent: #66c0f4;
+  --theme-accent: #1a9fff;
   --theme-silver: #8f98a0;
   --steam-base: #171a21;
-  --steam-light: #1b2838;
-  --steam-card: #2a475e;
+}
+
+@keyframes steamWave {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
 }
 
 html, body {
   background-color: var(--steam-base) !important;
   background-image: 
-    linear-gradient(to bottom, #1b2838 0%, #171a21 100%) !important;
-  background-size: cover !important;
+    radial-gradient(circle at top right, rgba(26, 159, 255, 0.08) 0%, transparent 60%),
+    radial-gradient(circle at bottom left, rgba(42, 71, 94, 0.15) 0%, transparent 60%),
+    url('data:image/svg+xml;utf8,<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h40v40H0V0zm20 20h20v20H20V20zM0 20h20v20H0V20z" fill="%231b2838" fill-opacity="0.4" fill-rule="evenodd"/></svg>') !important;
   background-attachment: fixed !important;
   color: #c6d4df !important;
 }
@@ -31,55 +35,58 @@ html, body {
 
 .game-detail-modal-overlay {
   background-color: #171a21 !important;
-  background-image: linear-gradient(180deg, rgba(23,26,33, 0.95) 0%, rgba(23,26,33, 1) 100%) !important;
+  background-image: linear-gradient(180deg, rgba(23,26,33, 0.98) 0%, rgba(23,26,33, 1) 100%) !important;
 }
 .game-detail-modal-hero-gradient {
-  background: linear-gradient(to top, #171a21 0%, rgba(23,26,33,0.7) 40%, transparent 100%) !important;
+  background: linear-gradient(to top, #171a21 0%, rgba(23,26,33,0.8) 50%, transparent 100%) !important;
 }
 
-/* Sidebars & Glass Panels -> Solid flat panels like Steam */
-.bg-white\/5, .bg-hub-base\/50, .hover\:bg-white\/5:hover, .hover\:bg-hub-base\/50:hover {
-  background-color: rgba(42, 71, 94, 0.4) !important;
-  backdrop-filter: blur(5px) !important;
-  border: 1px solid rgba(102, 192, 244, 0.1) !important;
+/* Glass Panels */
+.bg-white\/5, .bg-hub-base\/50 {
+  background-color: rgba(27, 40, 56, 0.6) !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
 }
 
-/* Borders & Dividers */
+.hover\:bg-white\/5:hover, .hover\:bg-hub-base\/50:hover {
+  background-color: rgba(42, 71, 94, 0.8) !important;
+  border-left: 3px solid #1a9fff !important;
+  transition: all 0.15s ease !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-right: none !important;
+}
+
 .border-white\/10, .border-white\/5 {
-  border-color: rgba(102, 192, 244, 0.15) !important;
+  border-color: rgba(42, 71, 94, 0.5) !important;
 }
-
-/* Text Colors */
-.text-white { color: #ffffff !important; }
-.text-white\/70 { color: #8f98a0 !important; }
-.text-white\/50 { color: #5a6673 !important; }
-.text-hub-muted { color: #8f98a0 !important; }
 
 /* The Steam Blue Accents */
-.text-hub-accent { color: var(--theme-accent) !important; }
-.bg-hub-accent { background-color: var(--theme-accent) !important; }
-.border-hub-accent { border-color: var(--theme-accent) !important; }
-.ring-hub-accent { --tw-ring-color: var(--theme-accent) !important; }
+.text-hub-accent { color: var(--theme-accent) !important; text-shadow: 0 0 10px rgba(26,159,255,0.3); }
+.bg-hub-accent { background: linear-gradient(to right, #1a9fff, #2a475e) !important; }
 
 .hover\:text-hub-accent:hover { color: #ffffff !important; }
-.hover\:bg-hub-accent:hover { background-color: #73c8fb !important; }
-.hover\:border-hub-accent:hover { border-color: #73c8fb !important; }
+.hover\:bg-hub-accent:hover { background: #1a9fff !important; box-shadow: 0 0 15px rgba(26,159,255,0.4) !important;}
 
+/* Steam Playing Glow */
 .playing-glow {
-  box-shadow: 0 0 10px 2px rgba(102, 192, 244, 0.15) !important;
-  border-color: rgba(102, 192, 244, 0.4) !important;
+  box-shadow: 0 0 15px 2px rgba(117, 176, 34, 0.2) !important;
+  border-color: #75b022 !important;
 }
 .playing-equalizer-bar {
-  background-color: #5c7e10 !important; /* Steam's classic playing green */
+  background-color: #75b022 !important; 
+  box-shadow: 0 0 8px #75b022 !important;
 }
 
-/* Primary Button Styling (Steam Green gradient style) */
+/* Steam Deck Button */
 button.bg-white, button.bg-white.text-black {
-  background: linear-gradient(135deg, #75b022 0%, #588a1b 100%) !important;
-  color: #d2efa9 !important;
-  border: none !important;
+  background: linear-gradient(to right, #1a9fff 0%, #2a475e 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  box-shadow: 0 4px 15px rgba(26,159,255,0.2) !important;
+  border-radius: 4px !important;
 }
 button.bg-white:hover {
-  background: linear-gradient(135deg, #8ed029 0%, #6aa621 100%) !important;
-  color: #ffffff !important;
+  background: #1a9fff !important;
+  box-shadow: 0 0 20px rgba(26,159,255,0.5) !important;
 }

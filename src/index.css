@@ -102,6 +102,15 @@ button[role="switch"] > span {
   background-clip: text;
 }
 
+/* ─── Equalizer Animation ─────────────────────────────────────────────────── */
+@keyframes eq-bar1 { 0%, 100% { height: 4px; } 50% { height: 12px; } }
+@keyframes eq-bar2 { 0%, 100% { height: 3px; } 50% { height: 10px; } }
+@keyframes eq-bar3 { 0%, 100% { height: 5px; } 50% { height: 11px; } }
+
+.equalizer-icon .bar-1 { animation: eq-bar1 1s ease-in-out infinite; }
+.equalizer-icon .bar-2 { animation: eq-bar2 1.4s ease-in-out infinite 0.2s; }
+.equalizer-icon .bar-3 { animation: eq-bar3 1.2s ease-in-out infinite 0.4s; }
+
 /* ─── Game Card Optimization ─── */
 .game-card {
   content-visibility: auto;
@@ -304,21 +313,27 @@ button[role="switch"] > span {
   color: #374151;
 }
 
-/* ─── Auto Game Performance Mode (0% FPS Loss) ───────────────────────────── */
+/* ─── Auto Game Performance & Minimized Mode (0% FPS Loss) ─────────────────── */
+body.app-minimized,
 body.game-performance-mode {
-  /* Suppress GPU compositing layers during gameplay */
   will-change: auto !important;
 }
 
+body.app-minimized *,
 body.game-performance-mode * {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
   text-shadow: none !important;
+  animation: none !important;
   animation-play-state: paused !important;
   transition: none !important;
 }
 
+body.app-minimized [class*="blur-"],
+body.app-minimized .blur-\[100px\],
+body.app-minimized .blur-\[120px\],
+body.app-minimized .blur-\[80px\],
 body.game-performance-mode [class*="blur-"],
 body.game-performance-mode .blur-\[100px\],
 body.game-performance-mode .blur-\[120px\],

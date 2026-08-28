@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { createPortal } from 'react-dom'
 import {
   Home, BookOpen, Library, Download, Settings,
   Bell, Gamepad2, Zap, Search, ChevronDown, User, Users, LogOut, Film,
@@ -383,10 +384,10 @@ export function Sidebar() {
                     </span>
                     
                     {isPlaying && (
-                      <div className="flex gap-0.5 items-end h-3 flex-shrink-0 mr-0.5">
-                        <motion.div animate={{ height: ["4px", "12px"] }} transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.0 }} className="w-1 bg-green-400 rounded-sm opacity-90" />
-                        <motion.div animate={{ height: ["3px", "10px"] }} transition={{ duration: 0.7, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.2 }} className="w-1 bg-green-400 rounded-sm opacity-90" />
-                        <motion.div animate={{ height: ["5px", "11px"] }} transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.4 }} className="w-1 bg-green-400 rounded-sm opacity-90" />
+                      <div className="flex gap-0.5 items-end h-3 flex-shrink-0 mr-0.5 equalizer-icon">
+                        <div className="w-1 bg-green-400 rounded-sm opacity-90 bar-1" />
+                        <div className="w-1 bg-green-400 rounded-sm opacity-90 bar-2" />
+                        <div className="w-1 bg-green-400 rounded-sm opacity-90 bar-3" />
                       </div>
                     )}
 
@@ -437,121 +438,124 @@ export function Sidebar() {
       </div>
 
       {/* ─── Steam-Style Game Context Menu & Submenus ─────────────────── */}
-      <AnimatePresence>
-        {contextMenu && (
-          <div
-            ref={contextMenuRef}
-            className="fixed z-[999999] select-none"
-            style={{
-              left: contextMenu.x,
-              top: contextMenu.y,
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: -2 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.1, ease: 'easeOut' }}
-              className="bg-[#0b0c10]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl shadow-[0_16px_36px_rgba(0,0,0,0.85),0_0_1px_rgba(255,255,255,0.12)] p-1.5 w-48 text-[11.5px] font-sans"
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {contextMenu && (
+            <div
+              ref={contextMenuRef}
+              className="fixed z-[999999] select-none"
+              style={{
+                left: contextMenu.x,
+                top: contextMenu.y,
+              }}
             >
-              {/* ─── Minimalist Clean Play / Stop Button ─── */}
-              <button
-                onClick={() => {
-                  if (isPlayingSelected) {
-                    window.electronAPI?.stopGame?.()
-                    stopPlaySession()
-                  } else {
-                    launchGame(contextMenu.game.launchUrl || contextMenu.game.installPath, contextMenu.game.name)
-                  }
-                  setContextMenu(null)
-                }}
-                className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-[11.5px] font-semibold transition-all mb-1.5 cursor-pointer active:scale-[0.98] ${
-                  isPlayingSelected
-                    ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/20'
-                    : 'bg-white text-black hover:bg-white/90 shadow-sm'
-                }`}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: -2 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.1, ease: 'easeOut' }}
+                className="bg-[#0b0c10]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl shadow-[0_16px_36px_rgba(0,0,0,0.85),0_0_1px_rgba(255,255,255,0.12)] p-1.5 w-48 text-[11.5px] font-sans"
               >
-                {isPlayingSelected ? (
-                  <Square size={11} fill="currentColor" strokeWidth={0} />
-                ) : (
-                  <Play size={11} fill="currentColor" strokeWidth={0} />
-                )}
-                <span className="tracking-wide">
-                  {isPlayingSelected ? t('stopGame') : t('playGame')}
-                </span>
-              </button>
-
-              {/* ─── Add / Remove Favorite ─── */}
-              <button
-                onClick={() => {
-                  toggleFavorite(contextMenu.game.id)
-                  setContextMenu(null)
-                }}
-                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/[0.05] transition-colors text-left cursor-pointer font-medium"
-              >
-                <Star 
-                  size={13} 
-                  className={isFavoriteSelected ? 'text-amber-400 fill-amber-400' : 'text-white/40'} 
-                />
-                <span>{isFavoriteSelected ? t('removeFromFavorites') : t('addToFavorites')}</span>
-              </button>
-
-              {/* ─── Browse Local Files ─── */}
-              <button
-                onClick={async () => {
-                  if (contextMenu.game.installPath) {
-                    await window.electronAPI?.openPath(contextMenu.game.installPath)
-                  } else {
-                    showNotification(t('pathNotFound'), 'error')
-                  }
-                  setContextMenu(null)
-                }}
-                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/[0.05] transition-colors text-left cursor-pointer font-medium"
-              >
-                <FolderOpen size={13} className="text-white/40" />
-                <span>{t('browseLocalFiles')}</span>
-              </button>
-
-              <div className="h-px bg-white/[0.06] my-1 mx-1" />
-
-              {/* ─── Fully Functional Uninstall ─── */}
-              <button
-                onClick={async () => {
-                  const targetGame = contextMenu.game
-                  setContextMenu(null)
-
-                  if (window.electronAPI?.uninstallGame) {
-                    const res = await window.electronAPI.uninstallGame({
-                      id: targetGame.id,
-                      name: targetGame.name,
-                      installPath: targetGame.installPath,
-                      launchUrl: targetGame.launchUrl,
-                      steamId: targetGame.steamId,
-                      appId: targetGame.appId,
-                      platform: targetGame.platform,
-                    })
-
-                    if (!res?.success && res?.error) {
-                      showNotification(res.error, 'error')
-                      return
+                {/* ─── Minimalist Clean Play / Stop Button ─── */}
+                <button
+                  onClick={() => {
+                    if (isPlayingSelected) {
+                      window.electronAPI?.stopGame?.()
+                      stopPlaySession()
+                    } else {
+                      launchGame(contextMenu.game.launchUrl || contextMenu.game.installPath, contextMenu.game.name)
                     }
-                  }
+                    setContextMenu(null)
+                  }}
+                  className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-[11.5px] font-semibold transition-all mb-1.5 cursor-pointer active:scale-[0.98] ${
+                    isPlayingSelected
+                      ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/20'
+                      : 'bg-white text-black hover:bg-white/90 shadow-sm'
+                  }`}
+                >
+                  {isPlayingSelected ? (
+                    <Square size={11} fill="currentColor" strokeWidth={0} />
+                  ) : (
+                    <Play size={11} fill="currentColor" strokeWidth={0} />
+                  )}
+                  <span className="tracking-wide">
+                    {isPlayingSelected ? t('stopGame') : t('playGame')}
+                  </span>
+                </button>
 
-                  // Remove from installed games and library in launcher
-                  const state = useGameStore.getState()
-                  state.setInstalledGames(state.installedGames.filter(g => g.id !== targetGame.id && g.name !== targetGame.name))
-                  state.removeFromLibrary(targetGame.id)
-                  showNotification(t('gameRemoved'), 'info')
-                }}
-                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-red-400/90 hover:text-red-300 hover:bg-red-500/[0.08] transition-colors text-left cursor-pointer font-medium"
-              >
-                <Trash2 size={13} className="text-red-400/70" />
-                <span>{t('uninstallGame')}</span>
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                {/* ─── Add / Remove Favorite ─── */}
+                <button
+                  onClick={() => {
+                    toggleFavorite(contextMenu.game.id)
+                    setContextMenu(null)
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/[0.05] transition-colors text-left cursor-pointer font-medium"
+                >
+                  <Star 
+                    size={13} 
+                    className={isFavoriteSelected ? 'text-amber-400 fill-amber-400' : 'text-white/40'} 
+                  />
+                  <span>{isFavoriteSelected ? t('removeFromFavorites') : t('addToFavorites')}</span>
+                </button>
+
+                {/* ─── Browse Local Files ─── */}
+                <button
+                  onClick={async () => {
+                    if (contextMenu.game.installPath) {
+                      await window.electronAPI?.openPath(contextMenu.game.installPath)
+                    } else {
+                      showNotification(t('pathNotFound'), 'error')
+                    }
+                    setContextMenu(null)
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/[0.05] transition-colors text-left cursor-pointer font-medium"
+                >
+                  <FolderOpen size={13} className="text-white/40" />
+                  <span>{t('browseLocalFiles')}</span>
+                </button>
+
+                <div className="h-px bg-white/[0.06] my-1 mx-1" />
+
+                {/* ─── Fully Functional Uninstall ─── */}
+                <button
+                  onClick={async () => {
+                    const targetGame = contextMenu.game
+                    setContextMenu(null)
+
+                    if (window.electronAPI?.uninstallGame) {
+                      const res = await window.electronAPI.uninstallGame({
+                        id: targetGame.id,
+                        name: targetGame.name,
+                        installPath: targetGame.installPath,
+                        launchUrl: targetGame.launchUrl,
+                        steamId: targetGame.steamId,
+                        appId: targetGame.appId,
+                        platform: targetGame.platform,
+                      })
+
+                      if (!res?.success && res?.error) {
+                        showNotification(res.error, 'error')
+                        return
+                      }
+                    }
+
+                    // Remove from installed games and library in launcher
+                    const state = useGameStore.getState()
+                    state.setInstalledGames(state.installedGames.filter(g => g.id !== targetGame.id && g.name !== targetGame.name))
+                    state.removeFromLibrary(targetGame.id)
+                    showNotification(t('gameRemoved'), 'info')
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-red-400/90 hover:text-red-300 hover:bg-red-500/[0.08] transition-colors text-left cursor-pointer font-medium"
+                >
+                  <Trash2 size={13} className="text-red-400/70" />
+                  <span>{t('uninstallGame')}</span>
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </aside>
   )
 }

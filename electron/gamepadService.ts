@@ -167,6 +167,7 @@ export function startGamepadService(getOverlay: () => BrowserWindow | null) {
 }
 
 export function stopGamepadService() {
+  if (!isRunning && !xinputProc) return
   isRunning = false
   overlayWinRef = null
   if (xinputProc) {

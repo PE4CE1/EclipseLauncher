@@ -63,6 +63,7 @@ export interface EclipseClip {
   thumbnailUrl: string       // base64 data url or local-media path
   videoUrl: string           // local-media:// path
   filePath: string           // absolute disk file path
+  micFileName?: string       // name of the mic track file, if any
   fileSize: number           // in bytes
   createdAt: number          // timestamp in ms
   resolution?: string        // e.g. "1080p"
@@ -77,7 +78,7 @@ export interface ClipSettings {
   fullRecordHotkey?: string     // e.g. 'F9'
   qualityPreset?: 'low' | 'standard' | 'high' | 'custom'
   quality: '4k' | '1440p' | '1080p' | '720p' | '480p' | '360p'
-  fps: 120 | 60 | 30 | 24
+  fps: 60 | 30 | 24
   bitrate?: '20M' | '15M' | '10M' | '8M' | '5M' | 'auto' | 'ultra' | 'high' | 'medium' | 'low'
   videoEncoder?: 'gpu' | 'cpu'
   selectedGpu?: string          // 'auto' or GPU name
@@ -93,6 +94,10 @@ export interface ClipSettings {
   micDeviceId?: string          // 'auto' or deviceId
   micVolume: number             // 0 - 100
   gameAudioVolume?: number      // 0 - 100
+  
+  // Voice Capture (Beta)
+  voiceCaptureEnabled?: boolean
+  voiceCapturePhrase?: string
   
   // Screen Recording & Monitor Selection
   selectedMonitorId?: string    // sourceId from desktopCapturer
@@ -242,6 +247,10 @@ export interface AppSettings {
   discordRpcIdle: boolean
   discordRpcShowDownloads: boolean
   discordRpcPrivacyMode: boolean
+  discordRpcActivityStyle?: 'clipping' | 'playing'
+  discordActivityStyle?: 'clipping' | 'playing'
+  discordRpcRobloxSubGame?: boolean
+  discordRpcAnimatedText?: boolean
   overlayPerformance: boolean
   overlayGeneralAlwaysOn?: boolean
   overlayMetrics: {
@@ -359,11 +368,13 @@ export interface ElectronAPI {
   setSettings: (data: Partial<AppSettings>) => Promise<{ success: boolean; error?: string }>
   openPath: (path: string) => Promise<{ success: boolean; error?: string }>
   onNavigate?: (cb: (direction: 'back' | 'forward') => void) => () => void
+  onAppMinimized?: (cb: () => void) => () => void
+  onAppRestored?: (cb: () => void) => () => void
 
   // Discord RPC
-  setDiscordActivity: (gameName: string, startTime: number, isPrivacyMode?: boolean) => Promise<{ success: boolean; error?: string }>
-  setDiscordDownloadActivity?: (downloadName: string) => Promise<{ success: boolean; error?: string }>
-  setDiscordIdleActivity: () => Promise<{ success: boolean; error?: string }>
+  setDiscordActivity: (gameName: string, startTime: number, isPrivacyMode?: boolean, style?: 'clipping' | 'playing', appId?: string | number, customIconUrl?: string, customState?: string, customSmallIconUrl?: string, customSmallText?: string, isAnimated?: boolean) => Promise<{ success: boolean; error?: string }>
+  setDiscordDownloadActivity?: (downloadName: string, isAnimated?: boolean) => Promise<{ success: boolean; error?: string }>
+  setDiscordIdleActivity: (isAnimated?: boolean) => Promise<{ success: boolean; error?: string }>
   clearDiscordActivity: () => Promise<{ success: boolean; error?: string }>
 
 
@@ -420,12 +431,20 @@ export interface ElectronAPI {
     updateMeta: (payload: { clipId: string; title: string; tags?: string[] }) => Promise<{ success: boolean; meta?: any; error?: string }>
     openFolder: (filePath: string) => Promise<{ success: boolean; error?: string }>
     copyFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
-    exportClip: (payload: { filePath: string; suggestedName: string }) => Promise<{ success: boolean; exportedPath?: string; canceled?: boolean; error?: string }>
+    exportClip: (payload: { filePath: string; suggestedName: string; trimStart?: number; trimEnd?: number }) => Promise<{ success: boolean; exportedPath?: string; canceled?: boolean; error?: string }>
     readVideoData?: (filePath: string) => Promise<{ success: boolean; dataUrl?: string; error?: string }>
     getSettings: () => Promise<ClipSettings>
     saveSettings: (settings: Partial<ClipSettings>) => Promise<ClipSettings>
     pickFolder: () => Promise<string | null>
     onHotkeyTriggered: (callback: (data: { hotkey: string }) => void) => () => void
+  }
+
+  // Native Offline Voice Engine
+  voice?: {
+    start: (phrase?: string) => Promise<{ success: boolean }>
+    stop: () => Promise<{ success: boolean }>
+    setPhrase: (phrase: string) => void
+    onHotwordDetected: (callback: (data: { text: string; confidence: number }) => void) => () => void
   }
 }
 

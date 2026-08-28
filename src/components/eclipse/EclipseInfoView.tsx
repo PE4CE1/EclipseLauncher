@@ -22,6 +22,23 @@ interface GitHubRelease {
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
   {
+    id: 122,
+    tag_name: 'v1.2.2',
+    name: 'v1.2.2 - Roblox Sub-Game Live RPC & Artwork Tracker, Playing/Clipping Switcher & Wallpaper Blacklist',
+    published_at: '2026-08-26T00:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.2.2',
+    body: `### 🟥 Roblox Sub-Game Detection & Live Artworks
+* **Medal-Style Game Detection:** Real-time recognition of active Roblox experiences (e.g. Blox Fruits, Brookhaven, Rivals) with official HD artwork directly on Discord.
+* **Menu State Awareness:** Automatically displays the classic Roblox logo when browsing in menus.
+* **On/Off Toggle:** Dedicated setting for detailed Roblox game detection with instant retroactive state sync.
+
+### 🎛️ Discord RPC Enhancements
+* **Minimalist Playing / Clipping Switcher:** Toggle between "Playing [Game]" and "Clipping [Game]" with instant 0ms Discord updates.
+* **Wallpaper Engine Blacklist:** Background wallpaper processes are automatically ignored.
+* **Bulletproof Connection Management:** Connection lock and resilient auto-reconnect logic.`,
+    prerelease: false
+  },
+  {
     id: 121,
     tag_name: 'v1.2.1',
     name: 'v1.2.1 - Live Steam Backgrounds, Full Badges & Games Showcase & Minimalist Profile Suite',

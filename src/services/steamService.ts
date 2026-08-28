@@ -61,6 +61,7 @@ export interface SteamAppDetails {
     initial: number
     final: number
     discount_percent: number
+    initial_formatted?: string
     final_formatted: string
   }
   categories?: Array<{ id: number; description: string }>
@@ -93,74 +94,76 @@ export interface FeaturedCategory {
 }
 
 // ─── Curated popular game IDs for the home carousel ──────────────────────────
-// These are evergreen top-sellers/popular titles that always have great assets.
+// Evergreen top-sellers/popular titles — great assets, no obscure or mobile-style games.
 export const POPULAR_STEAM_IDS = [
   730,    // CS2
-  570,    // Dota 2
   1086940,// Baldur's Gate 3
   1245620,// Elden Ring
-  1091500,// Cyberpunk 2077
+  1091500,// Cyberpunk 2077 (2.0)
+  2246340,// Monster Hunter Wilds
+  2183900,// Warhammer 40K: Space Marine 2
+  2358720,// Black Myth: Wukong
   1172470,// Apex Legends
-  578080, // PUBG
   252490, // Rust
-  374320, // Dark Souls 3
-  1145360,// Hades
-  1172620,// Sea of Thieves
   892970, // Valheim
-  1938090,// Call of Duty HQ
-  526870, // Satisfactory
-  881100, // Noita
+  526870, // Satisfactory 1.0
   990080, // Hogwarts Legacy
   1817190,// Marvel's Spider-Man Remastered
-  2138710,// God of War
-  1332010,// Stray
-  990080, // Hogwarts Legacy (dedupe handled client-side)
-  2379780,// Starfield
-  105600, // Terraria
+  2138710,// God of War (2018)
   1174180,// Red Dead Redemption 2
   271590, // GTA V
-  489830, // Skyrim SE
-  292030, // Witcher 3
-  1091500,// Cyberpunk 2077
+  292030, // Witcher 3 (Next-Gen)
   814380, // Sekiro
-  739630, // Disco Elysium
-  1517290,// Returnal
-]
-
-export const NEW_RELEASE_IDS = [
-  2379780,// Starfield
-  2420510,// Sons of the Forest
-  1716740,// Lies of P
-  1426210,// It Takes Two
+  1145360,// Hades
+  2767030,// Marvel Rivals
+  1771300,// Kingdom Come: Deliverance II
+  2457220,// Avowed
+  2677660,// Indiana Jones and the Great Circle
+  3017860,// DOOM: The Dark Ages
+  1158670,// Dune: Awakening
+  3280350,// Death Stranding 2
   1888160,// Palworld
-  2379780,// Monster Hunter Wilds
-  1840454,// Dave the Diver
-  1850570,// Alan Wake 2
-  2413570,// Dredge
-  1922900,// Like a Dragon: Ishin
-  2050650,// Resident Evil 4 Remake
-  1877840,// Sonic Superstars
-  1714350,// Warhammer 40K Darktide
-  1971650,// Ori and the Will of the Wisps
-  2183900,// Jagged Alliance 3
 ]
 
+// Recently-released acclaimed titles (2024-2026). Curated — no obscure/mobile/asset-flip games.
+export const NEW_RELEASE_IDS = [
+  3280350,// Death Stranding 2 (2026)
+  3017860,// DOOM: The Dark Ages (2025)
+  2677660,// Indiana Jones and the Great Circle (2025)
+  1158670,// Dune: Awakening (2025)
+  2246340,// Monster Hunter Wilds (2025)
+  2457220,// Avowed (2025)
+  1771300,// Kingdom Come: Deliverance II (2025)
+  2301850,// Civilization VII (2025)
+  2842040,// Star Wars Outlaws (2025)
+  2767030,// Marvel Rivals (2024)
+  2358720,// Black Myth: Wukong (2024)
+  2183900,// Warhammer 40K: Space Marine 2 (2024)
+  1601580,// Frostpunk 2 (2024)
+  2124490,// Silent Hill 2 Remake (2024)
+  1790600,// Dragon Ball: Sparking! ZERO (2024)
+  1643320,// S.T.A.L.K.E.R. 2 (2024)
+  2322010,// God of War: Ragnarök (2024)
+  2694490,// Path of Exile 2 (2024)
+]
+
+// Trending = critically acclaimed & widely played. High review scores and player counts.
 export const TRENDING_IDS = [
   1888160,// Palworld
   1245620,// Elden Ring
-  1091500,// Cyberpunk 2077
-  1145360,// Hades
-  892970, // Valheim
-  526870, // Satisfactory
   1086940,// Baldur's Gate 3
-  2138710,// God of War
-  1332010,// Stray
-  1388770,// Persona 5 Royal
-  2215430,// Hi-Fi Rush
-  1817190,// Marvel's Spider-Man Remastered
+  2358720,// Black Myth: Wukong
+  1091500,// Cyberpunk 2077
+  526870, // Satisfactory
+  2183900,// Space Marine 2
   1716740,// Lies of P
+  2215430,// Hi-Fi Rush
   1850570,// Alan Wake 2
-  1888160,// Palworld
+  2050650,// Resident Evil 4 Remake
+  1840454,// Dave the Diver
+  1332010,// Stray
+  1145360,// Hades
+  1388770,// Persona 5 Royal
 ]
 
 // ─── API Functions ─────────────────────────────────────────────────────────────
@@ -563,6 +566,94 @@ export async function getSteamFeaturedCategories(): Promise<{
   }
 }
 
+/**
+ * Fetches an expanded, rich list of live Steam Special Offers & Deals (combines Steam Store Featured Specials + CheapShark Steam Deals).
+ */
+export async function fetchTopSteamSpecialOffers(): Promise<SteamGame[]> {
+  const games: SteamGame[] = []
+  const seenIds = new Set<number>()
+
+  try {
+    // 1. Official Steam Store featured specials
+    const featured = await getSteamFeaturedCategories()
+    if (featured?.specials?.length) {
+      for (const item of featured.specials) {
+        if (!item.id || seenIds.has(item.id)) continue
+        seenIds.add(item.id)
+        const sym = item.currency === 'EUR' ? '€' : '$'
+        games.push({
+          steamId: item.id,
+          name: item.name,
+          headerImage: item.header_image || `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${item.id}/header.jpg`,
+          discountPercent: item.discount_percent,
+          initialPriceFormatted: item.original_price ? `${(item.original_price / 100).toFixed(2).replace('.', ',')} ${sym}` : undefined,
+          priceFormatted: item.final_price ? `${(item.final_price / 100).toFixed(2).replace('.', ',')} ${sym}` : undefined,
+          isFree: item.final_price === 0,
+        })
+      }
+    }
+
+    // 2. CheapShark top-rated Steam Store deals
+    const csRes = await fetch('https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Deal%20Rating&pageSize=40', {
+      headers: { 'User-Agent': 'EclipseLauncher/1.0' }
+    })
+    if (csRes.ok) {
+      const deals = await csRes.json()
+      if (Array.isArray(deals)) {
+        for (const deal of deals) {
+          const appId = Number(deal.steamAppID)
+          if (!appId || isNaN(appId) || seenIds.has(appId)) continue
+          seenIds.add(appId)
+          const discount = Math.round(parseFloat(deal.savings) || 0)
+          const salePrice = parseFloat(deal.salePrice) || 0
+          const normalPrice = parseFloat(deal.normalPrice) || 0
+          const metacritic = parseInt(deal.metacriticScore, 10) || undefined
+
+          games.push({
+            steamId: appId,
+            name: deal.title,
+            headerImage: `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`,
+            discountPercent: discount > 0 ? discount : undefined,
+            initialPriceFormatted: normalPrice > 0 ? `${normalPrice.toFixed(2).replace('.', ',')} €` : undefined,
+            priceFormatted: salePrice > 0 ? `${salePrice.toFixed(2).replace('.', ',')} €` : undefined,
+            isFree: salePrice === 0,
+            metacritic: metacritic && metacritic > 0 ? metacritic : undefined,
+          })
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[steamService] Error fetching top special offers:', err)
+  }
+
+  // 3. Batch-enrich top 25 deals with official store details if available
+  if (games.length > 0) {
+    try {
+      const topIds = games.slice(0, 25).map(g => g.steamId)
+      const detailsMap = await getSteamAppsDetailsFromStore(topIds)
+      for (let i = 0; i < games.length; i++) {
+        const d = detailsMap.get(games[i].steamId)
+        if (d) {
+          const enriched = detailsToGame(d)
+          games[i] = {
+            ...enriched,
+            discountPercent: enriched.discountPercent || games[i].discountPercent,
+            priceFormatted: enriched.priceFormatted || games[i].priceFormatted,
+            initialPriceFormatted: enriched.initialPriceFormatted || games[i].initialPriceFormatted,
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  return games.filter(g => 
+    g.name && 
+    !g.name.toLowerCase().includes('steam machine') && 
+    !g.name.toLowerCase().includes('steam controller') &&
+    (g.discountPercent ?? 0) > 0
+  )
+}
+
 export async function getLivePlayerCount(appId: number): Promise<number | null> {
   try {
     const res = await fetch(`https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid=${appId}`);
@@ -708,6 +799,7 @@ export interface SteamGame {
   rating?: number
   isFree?: boolean
   priceFormatted?: string
+  initialPriceFormatted?: string
   discountPercent?: number
   screenshots?: string[]
   movies?: Array<{ id: number; name: string; thumbnail: string; webm?: { 480: string; max: string }; mp4?: { 480: string; max: string } }>
@@ -750,6 +842,7 @@ export function detailsToGame(details: SteamAppDetails): SteamGame {
     metacritic: details.metacritic?.score,
     isFree: details.is_free,
     priceFormatted: details.price_overview?.final_formatted,
+    initialPriceFormatted: details.price_overview?.initial_formatted,
     discountPercent: details.price_overview?.discount_percent,
     screenshots: details.screenshots?.map(s => s.path_full),
     movies: details.movies,
