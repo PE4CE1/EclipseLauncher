@@ -128,5 +128,35 @@
     "tag": "Cosmic",
     "file": "nebula.css",
     "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/nebula.css"
+  },
+  {
+    "id": "eclipse-core",
+    "name": "Eclipse Core",
+    "author": "Eclipse",
+    "accentColor": "#ff6a00",
+    "description": "The ultimate official Eclipse theme. Zero bugs, pure performance, and beautiful deep space black with neon orange gradients.",
+    "tag": "Official",
+    "file": "eclipse-core.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/eclipse-core.css"
+  },
+  {
+    "id": "steam-classic",
+    "name": "Steam Classic",
+    "author": "Eclipse",
+    "accentColor": "#66c0f4",
+    "description": "Nostalgic deep navy and grey aesthetics paying homage to the classic Steam desktop experience. Clean and highly readable.",
+    "tag": "Retro",
+    "file": "steam-classic.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/steam-classic.css"
+  },
+  {
+    "id": "night-city",
+    "name": "Night City",
+    "author": "Eclipse",
+    "accentColor": "#f3e600",
+    "description": "A breathtaking Cyberpunk inspired theme with sharp edges, neon yellow accents, and magenta/cyan holographic fades.",
+    "tag": "Cyberpunk",
+    "file": "night-city.css",
+    "url": "https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/themes/night-city.css"
   }
 ]

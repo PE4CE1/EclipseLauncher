@@ -1,0 +1,85 @@
+﻿/* ═══════════════════════════════════════════════════════════════════════════
+   🚂 STEAM CLASSIC (DEEP NAVY & GREY) THEME
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --theme-accent: #66c0f4;
+  --theme-silver: #8f98a0;
+  --steam-base: #171a21;
+  --steam-light: #1b2838;
+  --steam-card: #2a475e;
+}
+
+html, body {
+  background-color: var(--steam-base) !important;
+  background-image: 
+    linear-gradient(to bottom, #1b2838 0%, #171a21 100%) !important;
+  background-size: cover !important;
+  background-attachment: fixed !important;
+  color: #c6d4df !important;
+}
+
+#root, main, .bg-hub-base, .bg-\[\#040405\]:not(.splash-screen-overlay), .bg-\[\#07080a\]:not(.game-detail-modal-overlay), .bg-\[\#0b0c0e\], .bg-\[\#07070a\], .bg-\[\#050507\] {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.splash-screen-overlay {
+  background-color: #171a21 !important;
+  background-image: radial-gradient(circle at 50% 50%, #1b2838 0%, #171a21 100%) !important;
+}
+
+.game-detail-modal-overlay {
+  background-color: #171a21 !important;
+  background-image: linear-gradient(180deg, rgba(23,26,33, 0.95) 0%, rgba(23,26,33, 1) 100%) !important;
+}
+.game-detail-modal-hero-gradient {
+  background: linear-gradient(to top, #171a21 0%, rgba(23,26,33,0.7) 40%, transparent 100%) !important;
+}
+
+/* Sidebars & Glass Panels -> Solid flat panels like Steam */
+.bg-white\/5, .bg-hub-base\/50, .hover\:bg-white\/5:hover, .hover\:bg-hub-base\/50:hover {
+  background-color: rgba(42, 71, 94, 0.4) !important;
+  backdrop-filter: blur(5px) !important;
+  border: 1px solid rgba(102, 192, 244, 0.1) !important;
+}
+
+/* Borders & Dividers */
+.border-white\/10, .border-white\/5 {
+  border-color: rgba(102, 192, 244, 0.15) !important;
+}
+
+/* Text Colors */
+.text-white { color: #ffffff !important; }
+.text-white\/70 { color: #8f98a0 !important; }
+.text-white\/50 { color: #5a6673 !important; }
+.text-hub-muted { color: #8f98a0 !important; }
+
+/* The Steam Blue Accents */
+.text-hub-accent { color: var(--theme-accent) !important; }
+.bg-hub-accent { background-color: var(--theme-accent) !important; }
+.border-hub-accent { border-color: var(--theme-accent) !important; }
+.ring-hub-accent { --tw-ring-color: var(--theme-accent) !important; }
+
+.hover\:text-hub-accent:hover { color: #ffffff !important; }
+.hover\:bg-hub-accent:hover { background-color: #73c8fb !important; }
+.hover\:border-hub-accent:hover { border-color: #73c8fb !important; }
+
+.playing-glow {
+  box-shadow: 0 0 10px 2px rgba(102, 192, 244, 0.15) !important;
+  border-color: rgba(102, 192, 244, 0.4) !important;
+}
+.playing-equalizer-bar {
+  background-color: #5c7e10 !important; /* Steam's classic playing green */
+}
+
+/* Primary Button Styling (Steam Green gradient style) */
+button.bg-white, button.bg-white.text-black {
+  background: linear-gradient(135deg, #75b022 0%, #588a1b 100%) !important;
+  color: #d2efa9 !important;
+  border: none !important;
+}
+button.bg-white:hover {
+  background: linear-gradient(135deg, #8ed029 0%, #6aa621 100%) !important;
+  color: #ffffff !important;
+}

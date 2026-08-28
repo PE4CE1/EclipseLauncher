@@ -1,0 +1,103 @@
+﻿/* ═══════════════════════════════════════════════════════════════════════════
+   🌘 ECLIPSE CORE (BLACK & ORANGE) THEME
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --theme-accent: #ff6a00;
+  --theme-secondary: #ff3300;
+  --theme-silver: #e4e4e7;
+}
+
+html, body {
+  background-color: #030303 !important;
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(255, 106, 0, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 85% 30%, rgba(255, 51, 0, 0.05) 0%, transparent 50%) !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-attachment: fixed !important;
+  color: #ffffff !important;
+}
+
+/* Core Transparent Backgrounds */
+#root, main, .bg-hub-base, .bg-\[\#040405\]:not(.splash-screen-overlay), .bg-\[\#07080a\]:not(.game-detail-modal-overlay), .bg-\[\#0b0c0e\], .bg-\[\#07070a\], .bg-\[\#050507\] {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Splash Screen */
+.splash-screen-overlay {
+  background-color: #030303 !important;
+  background-image: radial-gradient(circle at 50% 50%, #1a0a00 0%, #030303 100%) !important;
+}
+
+/* Modal Overlays */
+.game-detail-modal-overlay {
+  background-color: #050505 !important;
+  background-image: linear-gradient(180deg, rgba(5, 5, 5, 0.95) 0%, rgba(0, 0, 0, 1) 100%) !important;
+}
+.game-detail-modal-hero-gradient {
+  background: linear-gradient(to top, #050505 0%, rgba(5,5,5,0.7) 40%, transparent 100%) !important;
+}
+
+/* Sidebars & Glass Panels */
+.bg-white\/5, .bg-hub-base\/50, .hover\:bg-white\/5:hover, .hover\:bg-hub-base\/50:hover {
+  background-color: rgba(255, 106, 0, 0.03) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 106, 0, 0.05) !important;
+}
+
+/* Borders & Dividers */
+.border-white\/10, .border-white\/5 {
+  border-color: rgba(255, 106, 0, 0.1) !important;
+}
+.divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(255, 106, 0, 0.1) !important;
+}
+
+/* Text Colors */
+.text-white { color: #ffffff !important; }
+.text-white\/70 { color: rgba(255, 255, 255, 0.7) !important; }
+.text-white\/50 { color: rgba(255, 255, 255, 0.5) !important; }
+.text-hub-muted { color: #a1a1aa !important; }
+
+/* The Eclipse Orange Accents */
+.text-hub-accent { color: var(--theme-accent) !important; }
+.bg-hub-accent { background-color: var(--theme-accent) !important; }
+.border-hub-accent { border-color: var(--theme-accent) !important; }
+.ring-hub-accent { --tw-ring-color: var(--theme-accent) !important; }
+
+.hover\:text-hub-accent:hover { color: var(--theme-accent) !important; }
+.hover\:bg-hub-accent:hover { background-color: var(--theme-accent) !important; }
+.hover\:border-hub-accent:hover { border-color: var(--theme-accent) !important; }
+
+/* Premium Orange Glows */
+.shadow-lg {
+  box-shadow: 0 10px 25px -5px rgba(255, 106, 0, 0.05), 0 8px 10px -6px rgba(255, 106, 0, 0.02) !important;
+}
+
+.playing-glow {
+  box-shadow: 0 0 15px 2px rgba(255, 106, 0, 0.2) !important;
+  border-color: rgba(255, 106, 0, 0.5) !important;
+}
+.playing-equalizer-bar {
+  background-color: var(--theme-accent) !important;
+}
+
+/* Special Focus Rings */
+*:focus-visible {
+  outline-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 2px rgba(255, 106, 0, 0.3) !important;
+}
+
+/* Primary Button Styling */
+button.bg-white, button.bg-white.text-black {
+  background: linear-gradient(135deg, var(--theme-accent) 0%, var(--theme-secondary) 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(255, 106, 0, 0.3) !important;
+}
+button.bg-white:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 20px rgba(255, 106, 0, 0.4) !important;
+}
