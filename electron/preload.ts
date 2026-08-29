@@ -240,6 +240,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Hardware Specs Detection
   getHardwareSpecs: () => ipcRenderer.invoke('system:get-hardware-specs'),
 
+  // True Boost Memory & System Optimization
+  flushRam: () => ipcRenderer.invoke('boost:manual-flush'),
+  onBoostStatus: (callback: (data: { active: boolean; gameName?: string; freedMB?: number; timestamp: number }) => void) => {
+    const handler = (_: any, data: any) => callback(data)
+    ipcRenderer.on('boost:status', handler)
+    return () => ipcRenderer.removeListener('boost:status', handler)
+  },
+
   // ─── Eclipse Clips Studio (Medal.tv Style) ───────────────────────────────────
   clips: {
     getSources: () => ipcRenderer.invoke('clips:get-sources'),
@@ -258,6 +266,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
       const handler = (_: any, data: any) => callback(data)
       ipcRenderer.on('clips:hotkey-pressed', handler)
       return () => ipcRenderer.removeListener('clips:hotkey-pressed', handler)
+    },
+    onAutoClipTriggered: (callback: (data: { game: string; eventType: string; title: string; timestamp: number }) => void) => {
+      const handler = (_: any, data: any) => callback(data)
+      ipcRenderer.on('clip:auto-triggered', handler)
+      return () => ipcRenderer.removeListener('clip:auto-triggered', handler)
     }
   },
 

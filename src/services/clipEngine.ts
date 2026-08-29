@@ -411,7 +411,7 @@ function captureThumbnail(stream: MediaStream | null): Promise<string | undefine
 }
 let isSavingClip = false
 
-export async function triggerInstantClip(): Promise<boolean> {
+export async function triggerInstantClip(options?: { customTitle?: string; customTags?: string[]; isAutoClip?: boolean }): Promise<boolean> {
   if (isSavingClip) {
     console.log('[ClipEngine] Already saving a clip, ignoring request.')
     return false
@@ -438,7 +438,10 @@ export async function triggerInstantClip(): Promise<boolean> {
     const currentBytes = currentSessionChunks.reduce((acc, c) => acc + c.size, 0)
     const prevBytes = previousSessionBlob ? previousSessionBlob.size : 0
     if (currentBytes + prevBytes < 1000) {
-      sendAppNotification({ title: 'Puffer leer ⏳', body: 'Bitte warte etwas länger.', type: 'info', duration: 4000 })
+      if (!options?.isAutoClip) {
+        sendAppNotification({ title: 'Puffer leer ⏳', body: 'Bitte warte etwas länger.', type: 'info', duration: 4000 })
+      }
+      isSavingClip = false
       return false
     }
 
@@ -451,29 +454,34 @@ export async function triggerInstantClip(): Promise<boolean> {
 
     const thumbnail = await captureThumbnail(activeStream)
     if (window.electronAPI?.clips?.saveClip) {
+      const clipTitle = options?.customTitle || `${gameTitle} – ${durationSeconds}s Highlight`
+      const clipTags = options?.customTags || [gameTitle.toLowerCase(), 'replay']
+      
       const res = await window.electronAPI.clips.saveClip({
         videoBuffer, prevVideoBuffer,
-        title: `${gameTitle} – ${durationSeconds}s Highlight`,
+        title: clipTitle,
         gameTitle, gameId: (activeGame as any)?.appId || activeGame?.id,
         duration: durationSeconds, thumbnailDataUrl: thumbnail,
         resolution: settings.quality || '1080p', fps: settings.fps || 60,
-        format: settings.format || 'mp4', tags: [gameTitle.toLowerCase(), 'replay'],
+        format: settings.format || 'mp4', tags: clipTags,
       })
       if (!res.success) {
         sendAppNotification({ title: 'FEHLER', body: res.error || 'Fehler', type: 'error', duration: 5000 })
       } else {
         await useClipStore.getState().refreshClips()
         const store = useClipStore.getState()
-        if (store.clips.length > 0 && res.clip) {
+        if (store.clips.length > 0 && res.clip && !options?.isAutoClip) {
           const newClip = store.clips.find(c => c.id === res.clip?.id) || res.clip
           store.setActiveClip(newClip)
           store.setIsTrimmerOpen(true)
         }
         sendAppNotification({
-          title: 'Clip gespeichert! 🎬',
-          body: `${durationSeconds}s Clip von ${gameTitle} wurde erfolgreich gespeichert.`,
+          title: options?.isAutoClip ? '🎬 Smart Auto-Clip gespeichert!' : 'Clip gespeichert! 🎬',
+          body: options?.isAutoClip 
+            ? `${clipTitle} (${durationSeconds}s) wurde automatisch aufgenommen.` 
+            : `${durationSeconds}s Clip von ${gameTitle} wurde erfolgreich gespeichert.`,
           type: 'success',
-          duration: 4000
+          duration: 4500
         })
       }
       isSavingClip = false
@@ -518,6 +526,21 @@ export function initClipEngine() {
 
   useClipStore.getState().refreshClips()
   if (window.electronAPI?.clips?.onHotkeyTriggered) window.electronAPI.clips.onHotkeyTriggered(() => triggerInstantClip())
+  
+  // Smart Auto-Clipping Event Listener
+  if (window.electronAPI?.clips?.onAutoClipTriggered) {
+    window.electronAPI.clips.onAutoClipTriggered((eventData) => {
+      const s = useClipStore.getState().settings
+      if (!s.enabled || s.autoClipEnabled === false) return
+      console.log('[ClipEngine] Received Auto-Clip trigger:', eventData)
+      triggerInstantClip({
+        customTitle: `${eventData.title} (${eventData.game})`,
+        customTags: ['autoclip', eventData.game.toLowerCase(), eventData.eventType],
+        isAutoClip: true
+      })
+    })
+  }
+
   if (window.electronAPI?.onGameStarted) window.electronAPI.onGameStarted(() => {
     const s = useClipStore.getState().settings
     if (s.enabled && s.autoStartOnGame !== false) startReplayBuffer()

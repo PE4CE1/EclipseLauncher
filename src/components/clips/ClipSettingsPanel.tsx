@@ -69,7 +69,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
   const { language } = useTranslation()
   const { settings, setSettings, clips, refreshClips } = useClipStore()
   
-  const [activeTab, setActiveTab] = useState<'capture' | 'screen' | 'video' | 'audio' | 'hotkeys' | 'storage'>('capture')
+  const [activeTab, setActiveTab] = useState<'capture' | 'autoclip' | 'screen' | 'video' | 'audio' | 'hotkeys' | 'storage'>('capture')
   const [isRecordingCustomHotkey, setIsRecordingCustomHotkey] = useState(false)
   
   // Real Audio Devices & Screen Sources
@@ -236,6 +236,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
 
   const SIDEBAR_TABS = [
     { id: 'capture', label: language === 'de' ? 'Aufnahme & Replay' : 'Capture & Replay', icon: Scissors },
+    { id: 'autoclip', label: language === 'de' ? 'Smart Auto-Clipping' : 'Smart Auto-Clipping', icon: Sparkles },
     { id: 'screen', label: language === 'de' ? 'Screen Recording' : 'Screen Recording', icon: Monitor },
     { id: 'video', label: language === 'de' ? 'Qualität & Video' : 'Quality & Video', icon: Film },
     { id: 'audio', label: language === 'de' ? 'Audio & Mikrofon' : 'Audio & Mic', icon: Mic },
@@ -397,6 +398,144 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
                       checked={settings.notifyOnClip !== false}
                       onChange={() => setSettings({ notifyOnClip: settings.notifyOnClip !== false ? false : true })}
                     />
+                  </div>
+                </div>
+              </div>
+            )}
+
+
+            {/* ════════ TAB: Smart Auto-Clipping ════════ */}
+            {activeTab === 'autoclip' && (
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-amber-400/10 text-amber-400 border border-amber-400/20">
+                      <Sparkles size={16} />
+                    </span>
+                    <h2 className="text-lg font-bold text-white tracking-tight">
+                      {language === 'de' ? 'Smart Auto-Clipping (AI & Events)' : 'Smart Auto-Clipping (AI & Events)'}
+                    </h2>
+                  </div>
+                  <p className="text-xs text-white/50 mt-1">
+                    {language === 'de' 
+                      ? 'Nimmt Tore, Kills und epische Momente vollautomatisch im Hintergrund auf – ohne dass du eine Taste drücken musst. 100% bannfrei & ohne DLL-Injection.'
+                      : 'Automatically captures goals, frags, and highlight moments in the background without pressing a hotkey. 100% safe & anti-cheat certified.'}
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Master Switch */}
+                  <SettingToggle
+                    title={language === 'de' ? 'Smart Auto-Clipping aktivieren' : 'Enable Smart Auto-Clipping'}
+                    description={language === 'de' ? 'Aktiviert die automatische Erkennung von Match-Highlights in unterstützten Spielen.' : 'Enables automatic highlight detection for supported games.'}
+                    checked={settings.autoClipEnabled !== false}
+                    onChange={() => setSettings({ autoClipEnabled: settings.autoClipEnabled !== false ? false : true })}
+                  />
+
+                  {/* Rocket League Highlights */}
+                  <div className="p-5 rounded-2xl bg-[#0e1017] border border-white/[0.08] space-y-4">
+                    <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xs font-bold text-white block">
+                          ⚽ Rocket League Highlights
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                          Log & Replay Engine
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <SettingToggle
+                        title={language === 'de' ? 'Tore automatisch clippen' : 'Auto-Clip Goals'}
+                        description={language === 'de' ? 'Clippt automatisch, wenn ein Tor erzielt wird.' : 'Clips when a goal is scored.'}
+                        checked={settings.autoClipRocketLeagueGoals !== false}
+                        onChange={() => setSettings({ autoClipRocketLeagueGoals: settings.autoClipRocketLeagueGoals !== false ? false : true })}
+                      />
+                      <SettingToggle
+                        title={language === 'de' ? 'Glanzparaden / Saves clippen' : 'Auto-Clip Epic Saves'}
+                        description={language === 'de' ? 'Clippt spektakuläre Torhüter-Paraden.' : 'Clips incredible saves and goal stops.'}
+                        checked={settings.autoClipRocketLeagueSaves !== false}
+                        onChange={() => setSettings({ autoClipRocketLeagueSaves: settings.autoClipRocketLeagueSaves !== false ? false : true })}
+                      />
+                      <SettingToggle
+                        title={language === 'de' ? 'Demolitions clippen' : 'Auto-Clip Demolitions'}
+                        description={language === 'de' ? 'Clippt Explosionen von gegnerischen Fahrzeugen.' : 'Clips vehicle demolitions.'}
+                        checked={settings.autoClipRocketLeagueDemos === true}
+                        onChange={() => setSettings({ autoClipRocketLeagueDemos: !settings.autoClipRocketLeagueDemos })}
+                      />
+                      <SettingToggle
+                        title={language === 'de' ? 'Match-Siege clippen' : 'Auto-Clip Match Wins'}
+                        description={language === 'de' ? 'Clippt den Sieg-Bildschirm am Ende des Matches.' : 'Clips the victory celebration on match win.'}
+                        checked={settings.autoClipRocketLeagueWins !== false}
+                        onChange={() => setSettings({ autoClipRocketLeagueWins: settings.autoClipRocketLeagueWins !== false ? false : true })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* CS2 Highlights */}
+                  <div className="p-5 rounded-2xl bg-[#0e1017] border border-white/[0.08] space-y-4">
+                    <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xs font-bold text-white block">
+                          🎯 Counter-Strike 2 (CS2) Highlights
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          Valve Game State Integration
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <SettingToggle
+                        title={language === 'de' ? 'Kills & Multi-Kills clippen' : 'Auto-Clip Kills & Aces'}
+                        description={language === 'de' ? 'Clippt Kills, Multi-Kills und 5k Aces automatisch.' : 'Clips frags, multi-kills and aces automatically.'}
+                        checked={settings.autoClipCS2Kills !== false}
+                        onChange={() => setSettings({ autoClipCS2Kills: settings.autoClipCS2Kills !== false ? false : true })}
+                      />
+                      <SettingToggle
+                        title={language === 'de' ? 'Rundensiege clippen' : 'Auto-Clip Round Wins'}
+                        description={language === 'de' ? 'Clippt gewonnene Clutch-Runden.' : 'Clips clutch round victories.'}
+                        checked={settings.autoClipCS2Wins === true}
+                        onChange={() => setSettings({ autoClipCS2Wins: !settings.autoClipCS2Wins })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Clip Cooldown Setting */}
+                  <div className="p-5 rounded-2xl bg-[#0e1017] border border-white/[0.08] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-bold text-white block">
+                          {language === 'de' ? 'Anti-Spam Cooldown zwischen Auto-Clips' : 'Anti-Spam Cooldown between Auto-Clips'}
+                        </span>
+                        <span className="text-white/40 text-[11px]">
+                          {language === 'de' ? 'Mindestabstand zwischen zwei automatischen Clips, um Duplikate zu verhindern.' : 'Minimum interval between triggers to prevent duplicate clips.'}
+                        </span>
+                      </div>
+                      <span className="px-3 py-1 rounded-xl bg-white/10 font-mono text-amber-400 font-bold text-xs border border-white/10">
+                        {settings.autoClipCooldownSeconds || 15}s
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2 pt-1">
+                      {[10, 15, 20, 30].map(sec => {
+                        const isSel = (settings.autoClipCooldownSeconds || 15) === sec
+                        return (
+                          <button
+                            key={sec}
+                            onClick={() => setSettings({ autoClipCooldownSeconds: sec })}
+                            className={'py-2.5 rounded-xl text-center font-mono font-semibold text-xs border transition-all cursor-pointer ' + (
+                              isSel
+                                ? 'bg-white text-black border-white shadow-md'
+                                : 'bg-white/[0.02] border-white/[0.06] text-white/60 hover:text-white hover:border-white/20'
+                            )}
+                          >
+                            {sec}s Cooldown
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>

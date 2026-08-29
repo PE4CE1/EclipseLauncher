@@ -23,6 +23,8 @@ import { startInputService, stopInputService, setInputKeybinds } from './inputSe
 import { detectHardwareSpecs } from './hardwareService'
 import { initClipsIPC } from './clipService'
 import { initVoiceIPC } from './voiceService'
+import { flushSystemRam } from './boostService'
+import { initAutoClipService } from './autoClipService'
 
 // Register privileged scheme for local clips video playback
 protocol.registerSchemesAsPrivileged([
@@ -209,6 +211,15 @@ ipcMain.handle('system:get-hardware-specs', async () => {
   } catch (e) {
     console.warn('[HardwareService] Error detecting specs:', e)
     return null
+  }
+})
+
+ipcMain.handle('boost:manual-flush', async () => {
+  try {
+    return await flushSystemRam()
+  } catch (e) {
+    console.error('[TrueBoost] Manual flush error:', e)
+    return { freedMB: 0, currentFreeGB: '0' }
   }
 })
 
@@ -468,6 +479,7 @@ function createWindow() {
   // Initialize Clips Studio IPC & Global Hotkey
   initClipsIPC(mainWindow)
   initVoiceIPC(() => mainWindow)
+  initAutoClipService(() => mainWindow)
 
   // Start background process monitoring for running games on Windows
   startProcessMonitor(() => mainWindow)

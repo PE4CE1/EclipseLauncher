@@ -10,6 +10,8 @@ import { addPlaytimeRecord } from './playtimeService'
 import { setActiveGameMetrics } from './metricsService'
 import { startGameFpsMonitor, stopGameFpsMonitor } from './gameFpsService'
 import { startRobloxTracker, stopRobloxTracker } from './robloxService'
+import { enableTrueBoostForGame, disableTrueBoost } from './boostService'
+import { onGameStartedAutoClip, onGameStoppedAutoClip } from './autoClipService'
 
 interface ActiveDetectedGame {
   name: string
@@ -493,6 +495,10 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
         stopRobloxTracker()
       }
 
+      // Deactivate True Boost and AutoClip
+      disableTrueBoost(mainWindow)
+      onGameStoppedAutoClip()
+
       currentGame = null
       currentGamePid = 0
       setActiveGameMetrics(null)
@@ -577,8 +583,9 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           currentGamePid = gamePid
           setActiveGameMetrics(detectedName)
 
-          // Performance Mode: Pause all CSS animations and minimize if enabled
+          // Performance & True Boost: Flush RAM, optimize power plan, and set game priority
           if (appSettings.gamePerformanceMode !== false) {
+            enableTrueBoostForGame(detectedName, gamePid, appSettings, mainWindow)
             if (appSettings.autoMinimizeOnGame !== false) {
               try {
                 if (mainWindow && !mainWindow.isMinimized() && mainWindow.isVisible()) {
@@ -587,6 +594,9 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
               } catch (_) {}
             }
           }
+
+          // Start Smart Auto-Clipping event watcher for detected game
+          onGameStartedAutoClip(detectedName, appSettings)
 
           // Start real external FPS monitor ONLY if user actually enabled the performance overlay
           if (gamePid > 0 && appSettings.overlayPerformance) {
@@ -737,11 +747,9 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
             stopRobloxTracker()
           }
 
-          // Restore normal process priority & 60 FPS frame rate
-          try {
-            os.setPriority(os.constants.priority.PRIORITY_NORMAL)
-          } catch (_) {}
-          mainWindow?.webContents.setFrameRate(60)
+          // Deactivate True Boost and AutoClip
+          disableTrueBoost(mainWindow)
+          onGameStoppedAutoClip()
 
           if (appSettings.autoMinimizeOnGame !== false && appSettings.autoRestoreOnGameStop !== false) {
             try {

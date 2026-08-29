@@ -108,6 +108,17 @@ export interface ClipSettings {
   playSoundOnClip?: boolean
   autoStartOnGame?: boolean
   maxStorageGB?: number         // e.g. 25
+
+  // Smart Auto-Clipping (AI & Event Highlights)
+  autoClipEnabled?: boolean
+  autoClipRocketLeagueGoals?: boolean
+  autoClipRocketLeagueSaves?: boolean
+  autoClipRocketLeagueDemos?: boolean
+  autoClipRocketLeagueWins?: boolean
+  autoClipCS2Kills?: boolean
+  autoClipCS2Wins?: boolean
+  autoClipRobloxDeaths?: boolean
+  autoClipCooldownSeconds?: number
 }
 
 export interface SteamRecentGame {
@@ -223,6 +234,13 @@ export interface AppSettings {
   gamePerformanceMode?: boolean
   autoMinimizeOnGame?: boolean
   autoRestoreOnGameStop?: boolean
+
+  // Eclipse True Boost (Game Optimizer)
+  trueBoostEnabled?: boolean
+  trueBoostRamClean?: boolean
+  trueBoostPowerPlan?: boolean
+  trueBoostGamePriority?: boolean
+  trueBoostSuspendBackground?: boolean
   desktopNotifications?: boolean
   soundEffects?: boolean
   notificationSound?: string
@@ -422,6 +440,10 @@ export interface ElectronAPI {
   // Hardware Specs
   getHardwareSpecs?: () => Promise<{ cpu: string; gpu: string; ram: string; display: string; os: string } | null>
 
+  // True Boost
+  flushRam?: () => Promise<{ freedMB: number; currentFreeGB: string }>
+  onBoostStatus?: (callback: (data: { active: boolean; gameName?: string; freedMB?: number; timestamp: number }) => void) => () => void
+
   // Eclipse Clips Studio (Medal.tv Style)
   clips?: {
     getSources: () => Promise<Array<{ id: string; name: string; thumbnail?: string; appIcon?: string }>>
@@ -437,6 +459,7 @@ export interface ElectronAPI {
     saveSettings: (settings: Partial<ClipSettings>) => Promise<ClipSettings>
     pickFolder: () => Promise<string | null>
     onHotkeyTriggered: (callback: (data: { hotkey: string }) => void) => () => void
+    onAutoClipTriggered?: (callback: (data: { game: string; eventType: string; title: string; timestamp: number }) => void) => () => void
   }
 
   // Native Offline Voice Engine
