@@ -157,7 +157,10 @@ export async function fetchAndCacheSource(rawUrl: string): Promise<{ success: bo
       const solverWin = new BrowserWindow({
         width: 480,
         height: 520,
-        show: true,
+        show: false,
+        paintWhenInitiallyHidden: true,
+        enableLargerThanScreen: true,
+        paintWhenInitiallyHidden: true,
         center: true,
         title: 'Eclipse — Quelle wird verifiziert...',
         alwaysOnTop: true,
@@ -167,6 +170,8 @@ export async function fetchAndCacheSource(rawUrl: string): Promise<{ success: bo
           nodeIntegration: false,
           contextIsolation: true,
           sandbox: false,
+          disableBlinkFeatures: 'AutomationControlled',
+          
           backgroundThrottling: false
         }
       })
@@ -192,7 +197,7 @@ export async function fetchAndCacheSource(rawUrl: string): Promise<{ success: bo
             resolve({ success: false, error: 'Verification timed out' })
           }
         }
-      }, 45000)
+      }, 15000)
 
       solverWin.on('closed', () => {
         if (!resolved) {
@@ -216,6 +221,7 @@ export async function fetchAndCacheSource(rawUrl: string): Promise<{ success: bo
         }
 
         try {
+          
           const content = await solverWin.webContents.executeJavaScript(`
             (function() {
               const pre = document.querySelector('pre');
