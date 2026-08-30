@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Check, Plus, Play, X, Loader2, Trash2,
+  Check, Plus, Play, X, Loader2, Trash2, Download,
   Folder, Clock, Users, Tag, Star, Gamepad2, Monitor,
   Cpu, Globe, ExternalLink, ShieldCheck, CheckCircle2,
   Layers, Sparkles, Flame, Trophy, ChevronLeft
@@ -482,6 +482,27 @@ export function GameDetailModal() {
                           <Check size={14} className="group-hover:hidden text-white/40" />
                           <span className="group-hover:hidden">{t('inLibrary')}</span>
                           <span className="hidden group-hover:inline-flex items-center gap-1.5"><Trash2 size={13} /> Remove</span>
+                        </button>
+                      )}
+
+                      {!showDeleteConfirm && (
+                        <button
+                          onClick={() => setIsDownloadOptionsOpen(true)}
+                          disabled={availableDownloads.length === 0}
+                          className={`h-10 px-4 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border flex-shrink-0 whitespace-nowrap cursor-pointer ${
+                            availableDownloads.length === 0
+                              ? 'bg-white/[0.02] border-white/[0.05] text-white/20 cursor-not-allowed'
+                              : 'bg-white/[0.04] hover:bg-white/[0.08] text-white/90 hover:text-white border-white/10 hover:border-white/25 shadow-sm'
+                          }`}
+                          title={language === 'de' ? 'Download-Optionen & Repacks anzeigen' : 'View Download & Repack Options'}
+                        >
+                          <Download size={14} className={availableDownloads.length > 0 ? "text-amber-400" : "text-white/30"} />
+                          <span>{t('viewDownloadOptions') || (language === 'de' ? 'Downloads' : 'Downloads')}</span>
+                          {availableDownloads.length > 0 && (
+                            <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-400/15 text-amber-400 text-[10px] font-bold border border-amber-400/20">
+                              {availableDownloads.length}
+                            </span>
+                          )}
                         </button>
                       )}
 
