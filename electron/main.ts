@@ -25,6 +25,7 @@ import { initClipsIPC } from './clipService'
 import { initVoiceIPC } from './voiceService'
 import { flushSystemRam } from './boostService'
 import { initAutoClipService } from './autoClipService'
+import { getAllCachedSources, getCachedSource, fetchAndCacheSource, removeCachedSource } from './sourceFetcherService'
 
 // Register privileged scheme for local clips video playback
 protocol.registerSchemesAsPrivileged([
@@ -1025,73 +1026,42 @@ ipcMain.handle('overlay:save-positions', (_event, positions: Record<string, unkn
 })
 
 
-// ─── Cloudflare Turnstile Bypass Source Fetcher ──────────────────────────────
+// ─── Cloudflare-Proof Source Engine & Disk Caching ──────────────────────────────
+ipcMain.handle('sources:get-all-cached', async () => {
+  try {
+    return getAllCachedSources()
+  } catch (e) {
+    console.error('[Main] get-all-cached error:', e)
+    return []
+  }
+})
+
+ipcMain.handle('sources:fetch-and-cache', async (_event, rawUrl: string) => {
+  try {
+    return await fetchAndCacheSource(rawUrl)
+  } catch (e: any) {
+    console.error('[Main] fetch-and-cache error:', e)
+    return { success: false, error: e?.message || 'Fetch error' }
+  }
+})
+
+ipcMain.handle('sources:clear-cache', async (_event, rawUrl?: string) => {
+  try {
+    if (rawUrl) {
+      removeCachedSource(rawUrl)
+    }
+    return { success: true }
+  } catch (e) {
+    return { success: false }
+  }
+})
+
 ipcMain.handle('source:fetch-cf', async (_event, rawUrl: string) => {
-  const targetUrl = rawUrl.trim()
-  return new Promise((resolve) => {
-    let resolved = false
-    let hiddenWin: BrowserWindow | null = new BrowserWindow({
-      show: false,
-      width: 1000,
-      height: 800,
-      webPreferences: { 
-        nodeIntegration: false, 
-        contextIsolation: true,
-        sandbox: true 
-      }
-    })
-
-    const cleanup = () => {
-      if (hiddenWin && !hiddenWin.isDestroyed()) {
-        try { hiddenWin.destroy() } catch {}
-        hiddenWin = null
-      }
-    }
-
-    const timer = setTimeout(() => {
-      if (!resolved) {
-        resolved = true
-        cleanup()
-        resolve(null)
-      }
-    }, 20000)
-
-    let pollInterval: NodeJS.Timeout | null = null
-
-    const startPolling = () => {
-      if (pollInterval) return
-      pollInterval = setInterval(async () => {
-        if (resolved || !hiddenWin || hiddenWin.isDestroyed()) {
-          if (pollInterval) clearInterval(pollInterval)
-          return
-        }
-        try {
-          const content = await hiddenWin.webContents.executeJavaScript('document.querySelector("pre")?.textContent || document.body.innerText').catch(() => '')
-          if (content && (content.startsWith('{') || content.includes('"downloads"')) && content.length > 50) {
-            resolved = true
-            if (pollInterval) clearInterval(pollInterval)
-            clearTimeout(timer)
-            cleanup()
-            resolve(content)
-          }
-        } catch {}
-      }, 500)
-    }
-
-    hiddenWin.webContents.on('did-finish-load', () => {
-      startPolling()
-    })
-
-    hiddenWin.loadURL(targetUrl).catch(() => {
-      if (!resolved) {
-        resolved = true
-        if (pollInterval) clearInterval(pollInterval)
-        clearTimeout(timer)
-        cleanup()
-        resolve(null)
-      }
-    })
-  })
+  const result = await fetchAndCacheSource(rawUrl)
+  if (result.success && result.data) {
+    return JSON.stringify({ name: result.name, downloads: result.data })
+  }
+  return null
 })
 
 // ─── Generic Fetch (CORS Bypass) ──────────────────────────────────────────────

@@ -202,7 +202,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('show-friend-profile-modal', handler)
   },
 
-  // Cloudflare bypass fetch
+  // Source Management & Local Disk Caching
+  getCachedSources: () => ipcRenderer.invoke('sources:get-all-cached'),
+  fetchAndCacheSource: (url: string) => ipcRenderer.invoke('sources:fetch-and-cache', url),
+  clearSourceCache: (url?: string) => ipcRenderer.invoke('sources:clear-cache', url),
   fetchSourceCF: (url: string) => ipcRenderer.invoke('source:fetch-cf', url),
 
   // Generic CORS bypass fetch

@@ -1,85 +1,18 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { DownloadSource, HydraSourceData } from '../types/source'
+import type { DownloadSource, HydraSourceData, HydraDownload } from '../types/source'
 
 export const DEFAULT_SOURCES: string[] = []
 
 interface SourceStore {
   sources: DownloadSource[]
-  addSource: (url: string) => void
+  addSource: (url: string) => Promise<void>
   removeSource: (url: string) => void
   removeAllSources: () => void
   syncSource: (url: string) => Promise<void>
   syncAll: () => Promise<void>
+  loadFromDiskCache: () => Promise<void>
   initializeDefaults: () => void
-}
-
-async function fetchSourceContent(url: string): Promise<string | null> {
-  const isCloudflareDomain = url.includes('hydralinks.cloud')
-
-  // 1. If Cloudflare protected domain, use Electron Turnstile solver directly
-  if (isCloudflareDomain && typeof window !== 'undefined' && window.electronAPI?.fetchSourceCF) {
-    try {
-      const text = await window.electronAPI.fetchSourceCF(url)
-      if (text && text.includes('downloads') && text.length > 50) {
-        return text
-      }
-    } catch {}
-  }
-
-  // 2. Direct native fetch
-  try {
-    const res = await fetch(url, {
-      headers: {
-        'Accept': 'application/json, text/plain, */*',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-      }
-    })
-    if (res.ok) {
-      const text = await res.text()
-      if (text && text.includes('downloads') && text.length > 50) {
-        return text
-      }
-    }
-  } catch {}
-
-  // 3. Electron util:fetch (Native Chromium Stack)
-  if (typeof window !== 'undefined' && window.electronAPI?.utilFetch) {
-    try {
-      const text = await window.electronAPI.utilFetch(url)
-      if (text && text.includes('downloads') && text.length > 50) {
-        return text
-      }
-    } catch {}
-  }
-
-  // 4. Electron fetchSourceCF fallback
-  if (typeof window !== 'undefined' && window.electronAPI?.fetchSourceCF) {
-    try {
-      const text = await window.electronAPI.fetchSourceCF(url)
-      if (text && text.includes('downloads') && text.length > 50) {
-        return text
-      }
-    } catch {}
-  }
-
-  // 5. Smart fallback mirror for hydralinks.cloud / hydralinks.pages.dev
-  if (url.includes('hydralinks.cloud') || url.includes('hydralinks.pages.dev')) {
-    try {
-      const mirrorUrl = url.includes('hydralinks.cloud')
-        ? url.replace('hydralinks.cloud', 'hydralinks.pages.dev')
-        : url.replace('hydralinks.pages.dev', 'hydralinks.cloud')
-      const res = await fetch(mirrorUrl)
-      if (res.ok) {
-        const text = await res.text()
-        if (text && text.includes('downloads') && text.length > 50) {
-          return text
-        }
-      }
-    } catch {}
-  }
-
-  return null
 }
 
 export const useSourceStore = create<SourceStore>()(
@@ -89,49 +22,130 @@ export const useSourceStore = create<SourceStore>()(
       initializeDefaults: () => {
         // No default sources preloaded - user adds custom sources from Eclipse Web Store
       },
-      addSource: (url) => {
+
+      loadFromDiskCache: async () => {
+        if (typeof window === 'undefined' || !window.electronAPI?.getCachedSources) return
+        try {
+          const cachedList = await window.electronAPI.getCachedSources()
+          if (!Array.isArray(cachedList) || cachedList.length === 0) return
+
+          const cacheMap = new Map(cachedList.map(c => [c.url.trim().toLowerCase(), c]))
+
+          set(state => ({
+            sources: state.sources.map(s => {
+              const hit = cacheMap.get(s.url.trim().toLowerCase())
+              if (hit && Array.isArray(hit.data) && hit.data.length > 0) {
+                return {
+                  ...s,
+                  name: hit.name || s.name,
+                  status: 'up_to_date',
+                  optionsCount: hit.data.length,
+                  lastSynced: hit.lastSynced || s.lastSynced || Date.now(),
+                  data: hit.data as HydraDownload[]
+                }
+              }
+              return s
+            })
+          }))
+        } catch (e) {
+          console.warn('[SourceStore] Failed to load disk cache:', e)
+        }
+      },
+
+      addSource: async (url) => {
         const trimmed = url.trim()
         if (!trimmed || get().sources.some(s => s.url === trimmed)) return
         const name = new URL(trimmed).pathname.split('/').pop()?.replace('.json', '') || 'Source'
+        
         set(state => ({
-          sources: [...state.sources, { url: trimmed, name, status: 'pending', optionsCount: 0, data: [] }]
+          sources: [...state.sources, { url: trimmed, name, status: 'syncing', optionsCount: 0, data: [] }]
         }))
-        get().syncSource(trimmed)
+
+        await get().syncSource(trimmed)
       },
+
       removeSource: (url) => {
+        if (typeof window !== 'undefined' && window.electronAPI?.clearSourceCache) {
+          window.electronAPI.clearSourceCache(url).catch(() => {})
+        }
         set(state => ({ sources: state.sources.filter(s => s.url !== url) }))
       },
+
       removeAllSources: () => {
+        if (typeof window !== 'undefined' && window.electronAPI?.clearSourceCache) {
+          window.electronAPI.clearSourceCache().catch(() => {})
+        }
         set({ sources: [] })
       },
-      syncSource: async (url) => {
-        set(state => ({
-          sources: state.sources.map(s => s.url === url ? { ...s, status: 'syncing' } : s)
-        }))
-        try {
-          const jsonText = await fetchSourceContent(url)
-          if (!jsonText) throw new Error('Could not fetch source JSON')
 
-          const json = JSON.parse(jsonText) as HydraSourceData
-          const downloads = Array.isArray(json.downloads) ? json.downloads : []
-          
-          set(state => ({
-            sources: state.sources.map(s => s.url === url ? {
-              ...s,
-              name: json.name || s.name,
-              status: 'up_to_date',
-              optionsCount: downloads.length,
-              lastSynced: Date.now(),
-              data: downloads
-            } : s)
-          }))
+      syncSource: async (url) => {
+        const trimmed = url.trim()
+        const currentSource = get().sources.find(s => s.url === trimmed)
+
+        set(state => ({
+          sources: state.sources.map(s => s.url === trimmed ? { ...s, status: 'syncing' } : s)
+        }))
+
+        try {
+          // 1. Electron fetch & cache pipeline
+          if (typeof window !== 'undefined' && window.electronAPI?.fetchAndCacheSource) {
+            const res = await window.electronAPI.fetchAndCacheSource(trimmed)
+            if (res && res.success && Array.isArray(res.data)) {
+              set(state => ({
+                sources: state.sources.map(s => s.url === trimmed ? {
+                  ...s,
+                  name: res.name || s.name,
+                  status: 'up_to_date',
+                  optionsCount: res.data!.length,
+                  lastSynced: Date.now(),
+                  data: res.data as HydraDownload[]
+                } : s)
+              }))
+              return
+            }
+          }
+
+          // 2. Direct fetch fallback (for browser/preview mode)
+          const resp = await fetch(trimmed, {
+            headers: { 'Accept': 'application/json, text/plain, */*' }
+          })
+          if (resp.ok) {
+            const json = await resp.json() as HydraSourceData
+            const downloads = Array.isArray(json.downloads) ? json.downloads : []
+            set(state => ({
+              sources: state.sources.map(s => s.url === trimmed ? {
+                ...s,
+                name: json.name || s.name,
+                status: 'up_to_date',
+                optionsCount: downloads.length,
+                lastSynced: Date.now(),
+                data: downloads
+              } : s)
+            }))
+            return
+          }
+
+          throw new Error('Fetch failed')
         } catch (error) {
-          console.error(`[SourceStore] Failed to sync ${url}:`, error)
-          set(state => ({
-            sources: state.sources.map(s => s.url === url ? { ...s, status: 'error' } : s)
-          }))
+          console.warn(`[SourceStore] Sync error for ${trimmed}:`, error)
+          
+          // If we already have valid data in memory or disk cache, keep it active and marked up_to_date!
+          if (currentSource && currentSource.data && currentSource.data.length > 0) {
+            set(state => ({
+              sources: state.sources.map(s => s.url === trimmed ? {
+                ...s,
+                status: 'up_to_date',
+                optionsCount: s.data.length
+              } : s)
+            }))
+          } else {
+            set(state => ({
+              sources: state.sources.map(s => s.url === trimmed ? { ...s, status: 'error' } : s)
+            }))
+          }
         }
       },
+
       syncAll: async () => {
         const urls = get().sources.map(s => s.url)
         if (urls.length > 0) {
@@ -142,12 +156,20 @@ export const useSourceStore = create<SourceStore>()(
     {
       name: 'eclipse-sources',
       partialize: (state) => ({
-        // Store metadata without holding huge arrays permanently in localStorage
-        sources: state.sources.map(s => ({ ...s, data: [], status: 'pending' }))
+        // Keep metadata in localStorage, actual large payloads live in fast disk cache
+        sources: state.sources.map(s => ({
+          url: s.url,
+          name: s.name,
+          status: s.status === 'up_to_date' ? 'up_to_date' : 'pending',
+          optionsCount: s.optionsCount || 0,
+          lastSynced: s.lastSynced,
+          data: []
+        }))
       }),
       onRehydrateStorage: () => (state) => {
-        if (state && state.sources.length > 0) {
-          setTimeout(() => state.syncAll(), 300)
+        if (state) {
+          // Immediately load cached games from disk on startup without blocking UI
+          state.loadFromDiskCache()
         }
       }
     }

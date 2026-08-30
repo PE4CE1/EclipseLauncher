@@ -417,6 +417,9 @@ export interface ElectronAPI {
   disconnectVpn?: (vpnId?: string) => Promise<{ success: boolean; message?: string }>
 
   // Cloudflare bypass
+  getCachedSources: () => Promise<Array<{ url: string; name: string; lastSynced: number; data: any[] }>>
+  fetchAndCacheSource: (url: string) => Promise<{ success: boolean; name?: string; data?: any[]; error?: string }>
+  clearSourceCache: (url?: string) => Promise<{ success: boolean }>
   fetchSourceCF: (url: string) => Promise<string | null>
 
   // Generic fetch (CORS bypass)
