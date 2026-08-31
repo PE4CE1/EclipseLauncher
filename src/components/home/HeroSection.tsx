@@ -221,7 +221,7 @@ export function HeroSection({ games }: HeroSectionProps) {
           <div className="flex items-center gap-3">
             <button
               id={`hero-view-${currentAppId}`}
-              onClick={() => { if (currentAppId) openGameDetails(currentAppId) }}
+              onClick={() => { if (currentAppId) openGameDetails(currentAppId, current.name) }}
               className="btn-primary flex items-center gap-2 text-sm px-6 py-2.5 cursor-pointer"
             >
               <Play size={15} className="fill-black text-black" />

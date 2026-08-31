@@ -531,7 +531,7 @@ export function initClipEngine() {
   if (window.electronAPI?.clips?.onAutoClipTriggered) {
     window.electronAPI.clips.onAutoClipTriggered((eventData) => {
       const s = useClipStore.getState().settings
-      if (!s.enabled || s.autoClipEnabled === false) return
+      if (!s.enabled || !s.autoClipEnabled) return
       console.log('[ClipEngine] Received Auto-Clip trigger:', eventData)
       triggerInstantClip({
         customTitle: `${eventData.title} (${eventData.game})`,

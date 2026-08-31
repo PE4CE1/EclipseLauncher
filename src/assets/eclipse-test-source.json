@@ -1,0 +1,17 @@
+{
+  "name": "Eclipse Official Test Source",
+  "downloads": [
+    {
+      "title": "Counter-Strike: Source",
+      "uris": ["magnet:?xt=urn:btih:3e7e23df0b3b44865181b53e7774e7fc55a5b51a&dn=Counter-Strike+Source"],
+      "uploadDate": "2023-01-01",
+      "fileSize": "2.5 GB"
+    },
+    {
+      "title": "Half-Life 2",
+      "uris": ["magnet:?xt=urn:btih:4e7e23df0b3b44865181b53e7774e7fc55a5b51b&dn=Half-Life+2"],
+      "uploadDate": "2023-02-01",
+      "fileSize": "3.1 GB"
+    }
+  ]
+}

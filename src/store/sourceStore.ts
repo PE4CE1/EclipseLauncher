@@ -2,11 +2,14 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { DownloadSource, HydraSourceData, HydraDownload } from '../types/source'
 
+import kaosSource from '../assets/kaos.json'
+
 export const DEFAULT_SOURCES: string[] = []
 
 interface SourceStore {
   sources: DownloadSource[]
   addSource: (url: string) => Promise<void>
+  addRawSource: (jsonContent: string) => Promise<void>
   removeSource: (url: string) => void
   removeAllSources: () => void
   syncSource: (url: string) => Promise<void>
@@ -20,7 +23,9 @@ export const useSourceStore = create<SourceStore>()(
     (set, get) => ({
       sources: [],
       initializeDefaults: () => {
-        // No default sources preloaded - user adds custom sources from Eclipse Web Store
+        if (get().sources.length === 0) {
+          get().addRawSource(JSON.stringify(kaosSource)).catch(console.error)
+        }
       },
 
       loadFromDiskCache: async () => {
@@ -62,6 +67,48 @@ export const useSourceStore = create<SourceStore>()(
         }))
 
         await get().syncSource(trimmed)
+      },
+
+      addRawSource: async (jsonContent: string) => {
+        try {
+          const json = JSON.parse(jsonContent) as HydraSourceData
+          if (!json.name || !Array.isArray(json.downloads)) {
+            throw new Error('Invalid JSON format. Expected "name" and "downloads" array.')
+          }
+          const fakeUrl = `local://${json.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.json`
+          const currentSources = get().sources
+          
+          if (typeof window !== 'undefined' && window.electronAPI?.saveRawSourceToCache) {
+            await window.electronAPI.saveRawSourceToCache(fakeUrl, json.name, json.downloads)
+          }
+
+          if (currentSources.some(s => s.url === fakeUrl)) {
+            set(state => ({
+              sources: state.sources.map(s => s.url === fakeUrl ? {
+                ...s,
+                name: json.name,
+                status: 'up_to_date',
+                optionsCount: json.downloads.length,
+                lastSynced: Date.now(),
+                data: json.downloads
+              } : s)
+            }))
+          } else {
+            set(state => ({
+              sources: [...state.sources, { 
+                url: fakeUrl, 
+                name: json.name, 
+                status: 'up_to_date', 
+                optionsCount: json.downloads.length, 
+                data: json.downloads,
+                lastSynced: Date.now()
+              }]
+            }))
+          }
+        } catch (err) {
+          console.error('[SourceStore] Failed to parse and add raw source:', err)
+          throw err
+        }
       },
 
       removeSource: (url) => {

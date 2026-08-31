@@ -371,6 +371,9 @@ export function initHttpDownloadIPC(ipcMain: Electron.IpcMain, mainWindow: Elect
   })
 
   // Smart Native Start Download
+  // ── IMPORTANT: Returns IMMEDIATELY with { resolving: true } so the renderer
+  // never freezes while waiting for the browser resolver (up to 120s).
+  // The actual download starts in the background and sends torrent:progress events.
   ipcMain.handle('http-download:start', async (_event, rawUrl: string, gameTitle: string, customDownloadPath?: string, autoExtract = true, autoDelete = false) => {
     const targetDir = customDownloadPath || getDefaultDownloadPath()
     if (!fs.existsSync(targetDir)) {
@@ -383,28 +386,65 @@ export function initHttpDownloadIPC(ipcMain: Electron.IpcMain, mainWindow: Elect
       return { success: true, infoHash: downloadId }
     }
 
-    console.log(`[HttpDownload] Resolving link for "${gameTitle}": ${rawUrl}`)
-    const resolved = await resolveDownloadLink(rawUrl, gameTitle)
-
-    const downloader = new HttpDownloader(
-      downloadId,
-      resolved.streamUrl,
-      gameTitle,
-      targetDir,
-      autoExtract,
-      autoDelete,
-      resolved.headers || {}
-    )
-
-    activeHttpDownloads.set(downloadId, downloader)
-
-    downloader.start((payload) => {
+    // Send an immediate "resolving" progress update so the UI shows a spinner
+    // instead of freezing while we wait for the browser resolver window.
+    const sendProgress = (payload: any) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('torrent:progress', payload)
       }
-    })
+    }
 
-    return { success: true, infoHash: downloadId, provider: resolved.provider }
+    const resolveState: any = {
+      infoHash: downloadId,
+      name: gameTitle,
+      progress: 0,
+      downloadSpeed: 0,
+      timeRemaining: Infinity,
+      downloaded: 0,
+      length: 0,
+      status: 'downloading',
+      installPath: targetDir
+    }
+    sendProgress(resolveState)
+
+    // ── Run resolution + download entirely in background ─────────────────────
+    // We do NOT await here – the IPC call returns immediately below.
+    ;(async () => {
+      console.log(`[HttpDownload] Resolving link for "${gameTitle}": ${rawUrl}`)
+
+      let resolved
+      try {
+        resolved = await resolveDownloadLink(rawUrl, gameTitle)
+      } catch (resolveErr: any) {
+        console.warn(`[HttpDownload] Resolver threw: ${resolveErr?.message}`)
+        sendProgress({ ...resolveState, status: 'error', errorMessage: resolveErr?.message || 'Link konnte nicht aufgelöst werden.' })
+        return
+      }
+
+      // Guard: ensure URL is valid
+      if (!resolved.streamUrl || resolved.streamUrl.includes('undefined') ||
+          (!resolved.streamUrl.startsWith('http') && !resolved.streamUrl.startsWith('magnet:'))) {
+        console.error(`[HttpDownload] Resolved URL is invalid: "${resolved.streamUrl}" – aborting`)
+        sendProgress({ ...resolveState, status: 'error', errorMessage: 'Link konnte nicht aufgelöst werden.' })
+        return
+      }
+
+      const downloader = new HttpDownloader(
+        downloadId,
+        resolved.streamUrl,
+        gameTitle,
+        targetDir,
+        autoExtract,
+        autoDelete,
+        resolved.headers || {}
+      )
+
+      activeHttpDownloads.set(downloadId, downloader)
+      downloader.start(sendProgress)
+    })()
+
+    // Return IMMEDIATELY so the renderer stays responsive
+    return { success: true, infoHash: downloadId, resolving: true }
   })
 
   ipcMain.handle('http-download:pause', async (_event, infoHash: string) => {

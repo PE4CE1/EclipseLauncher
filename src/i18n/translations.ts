@@ -171,6 +171,7 @@ export const translations = {
     overlayCrosshair: 'Custom Crosshair',
     overlayRobloxTimer: 'Roblox: Game-Session & AFK Timer',
     overlayRobloxCps: 'Roblox: Live CPS Counter',
+    overlayRobloxAntiAfk: 'Roblox: Anti-AFK (Anti-Kick Protection)',
 
     // ProfileView
     editProfile: 'Edit Profile',
@@ -497,6 +498,7 @@ export const translations = {
     overlayCrosshair: 'Fadenkreuz (Crosshair)',
     overlayRobloxTimer: 'Roblox: Spiel-Session & AFK Timer',
     overlayRobloxCps: 'Roblox: Live-CPS-Zähler',
+    overlayRobloxAntiAfk: 'Roblox: Anti-AFK (Anti-Kick Schutz)',
 
     // ProfileView
     editProfile: 'Profil bearbeiten',

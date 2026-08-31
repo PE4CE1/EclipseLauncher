@@ -70,7 +70,7 @@ export function TopBar() {
   }
 
   function handleSelectGame(item: typeof results[0]) {
-    openGameDetails(item.id)
+    openGameDetails(item.id, item.name)
     setIsSearchOpen(false)
     setLocalQuery('')
   }

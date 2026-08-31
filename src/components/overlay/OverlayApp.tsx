@@ -223,6 +223,7 @@ export function OverlayApp() {
     crosshair: ds.crosshair ?? initialSettings?.overlayCrosshair ?? true,
     robloxTimer: ds.robloxTimer ?? initialSettings?.overlayRobloxTimer ?? false,
     robloxCps: ds.robloxCps ?? initialSettings?.overlayRobloxCps ?? false,
+    robloxAntiAfk: ds.robloxAntiAfk ?? initialSettings?.overlayRobloxAntiAfk ?? false,
     cps: ds.cps ?? initialSettings?.overlayCps ?? false,
     rlHud: ds.rlHud ?? initialSettings?.overlayRLHud ?? false,
     overlayRLHud: ds.rlHud ?? initialSettings?.overlayRLHud ?? false,
@@ -316,7 +317,7 @@ export function OverlayApp() {
         <Performance metrics={metrics} config={settings.metrics} editMode={editMode} />
       )}
       {settings.robloxTimer && (editMode || displayGame?.name === 'Roblox') && renderWidget('robloxTimer',
-        <RobloxTimer startTime={displayGame?.startTime || Date.now()} idleTime={metrics.idleTime} />
+        <RobloxTimer startTime={displayGame?.startTime || Date.now()} idleTime={metrics.idleTime} antiAfkEnabled={settings.robloxAntiAfk} />
       )}
       {(settings.cps || (settings.robloxCps && (editMode || displayGame?.name === 'Roblox')) || (editMode && (settings.cps || settings.robloxCps))) && renderWidget('robloxCps',
         <RobloxCPS />

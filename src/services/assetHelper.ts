@@ -7,10 +7,14 @@
 const STEAM_CDN = 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps'
 const STEAM_HEADER_CDN = 'https://cdn.akamai.steamstatic.com/steam/apps'
 
+const ROBLOX_POSTER = '/roblox/hero.png'
+const ROBLOX_LOGO = '/Roblox-Logo-Icon.png'
+
 /**
  * Vertical grid cover (600×900 poster) — best for GameCards
  */
 export function getCoverUrl(steamId: string | number): string {
+  if (String(steamId) === '999001') return ROBLOX_POSTER
   return `${STEAM_CDN}/${steamId}/library_600x900.jpg`
 }
 
@@ -18,6 +22,7 @@ export function getCoverUrl(steamId: string | number): string {
  * Hero banner (wide horizontal background) — best for HeroSection
  */
 export function getHeroUrl(steamId: string | number): string {
+  if (String(steamId) === '999001') return ROBLOX_POSTER
   return `${STEAM_CDN}/${steamId}/library_hero.jpg`
 }
 
@@ -25,6 +30,7 @@ export function getHeroUrl(steamId: string | number): string {
  * Transparent PNG logo — overlaid on hero banners
  */
 export function getLogoUrl(steamId: string | number): string {
+  if (String(steamId) === '999001') return ROBLOX_LOGO
   return `${STEAM_CDN}/${steamId}/logo.png`
 }
 
@@ -32,6 +38,7 @@ export function getLogoUrl(steamId: string | number): string {
  * Standard header (460×215) — universal fallback
  */
 export function getHeaderUrl(steamId: string | number): string {
+  if (String(steamId) === '999001') return ROBLOX_POSTER
   return `${STEAM_HEADER_CDN}/${steamId}/header.jpg`
 }
 
@@ -39,6 +46,7 @@ export function getHeaderUrl(steamId: string | number): string {
  * Small capsule (231×87) — sidebar icons
  */
 export function getCapsuleSmUrl(steamId: string | number): string {
+  if (String(steamId) === '999001') return ROBLOX_LOGO
   return `${STEAM_HEADER_CDN}/${steamId}/capsule_231x87.jpg`
 }
 
@@ -46,6 +54,7 @@ export function getCapsuleSmUrl(steamId: string | number): string {
  * Mini icon (tiny_image from search results, or fallback)
  */
 export function getMiniIconUrl(steamId: string | number): string {
+  if (String(steamId) === '999001') return ROBLOX_LOGO
   return `${STEAM_HEADER_CDN}/${steamId}/capsule_sm_120.jpg`
 }
 
@@ -54,6 +63,9 @@ export function getMiniIconUrl(steamId: string | number): string {
  * Use the returned array sequentially in onError handlers.
  */
 export function getFallbackChain(steamId: string | number): string[] {
+  if (String(steamId) === '999001') {
+    return [ROBLOX_POSTER, ROBLOX_LOGO]
+  }
   return [
     getCoverUrl(steamId),
     `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${steamId}/library_600x900.jpg`,

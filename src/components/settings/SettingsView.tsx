@@ -23,7 +23,7 @@ export function SettingsView() {
   const { showNotification, activeSettingsTab, setActiveSettingsTab } = useUIStore()
   const { installedThemes, activeThemeId, toggleTheme, deleteTheme, setActiveTheme } = useThemeStore()
   const { scan } = useScanner()
-  const { sources, syncSource, syncAll, addSource, removeSource, removeAllSources } = useSourceStore()
+  const { sources, syncSource, syncAll, addSource, addRawSource, removeSource, removeAllSources } = useSourceStore()
   const { t, language } = useTranslation()
 
   const TABS = [
@@ -36,27 +36,6 @@ export function SettingsView() {
     { id: 'profile', label: t('profileSettings'), icon: User },
   ]
 
-  const [isFlushingRam, setIsFlushingRam] = useState(false)
-  const [flushResult, setFlushResult] = useState<{ freedMB?: number; currentFreeGB?: string } | null>(null)
-
-  const handleManualFlush = async () => {
-    if (!window.electronAPI?.flushRam) return
-    setIsFlushingRam(true)
-    try {
-      const res = await window.electronAPI.flushRam()
-      setFlushResult(res)
-      showNotification(
-        language === 'de' 
-          ? `🚀 True Boost: ${res.freedMB} MB RAM freigegeben! (${res.currentFreeGB} GB frei)`
-          : `🚀 True Boost: ${res.freedMB} MB RAM freed! (${res.currentFreeGB} GB free)`,
-        'success'
-      )
-    } catch (e) {
-      showNotification(language === 'de' ? 'Fehler beim RAM Flush' : 'RAM flush failed', 'error')
-    } finally {
-      setIsFlushingRam(false)
-    }
-  }
   const [localSettings, setLocalSettings] = useState(settings)
   const [isSaving, setIsSaving] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -161,11 +140,35 @@ export function SettingsView() {
     }, 350)
   }
 
-  function handleAddSource() {
+  async function handleAddSource() {
     if (!newSourceUrl) return
-    addSource(newSourceUrl)
-    setNewSourceUrl('')
-    setShowAddSource(false)
+    const input = newSourceUrl.trim()
+    try {
+      if (input.startsWith('{')) {
+        await addRawSource(input)
+        showNotification(language === 'de' ? 'Lokale JSON-Quelle hinzugefügt' : 'Local JSON source added', 'success')
+      } else {
+        await addSource(input)
+      }
+      setNewSourceUrl('')
+      setShowAddSource(false)
+    } catch (e: any) {
+      showNotification(language === 'de' ? 'Fehler: ' + e.message : 'Error: ' + e.message, 'error')
+    }
+  }
+
+  async function handleImportFile() {
+    if (!window.electronAPI?.selectJSONFile) return
+    try {
+      const content = await window.electronAPI.selectJSONFile()
+      if (content) {
+        await addRawSource(content)
+        showNotification(language === 'de' ? 'Datei-Quelle importiert' : 'File source imported', 'success')
+        setShowAddSource(false)
+      }
+    } catch (e: any) {
+      showNotification(language === 'de' ? 'Fehler beim Importieren: ' + e.message : 'Import Error: ' + e.message, 'error')
+    }
   }
 
   // Reusable clean monochrome checkbox
@@ -973,12 +976,16 @@ export function SettingsView() {
                         type="text" 
                         value={newSourceUrl}
                         onChange={e => setNewSourceUrl(e.target.value)}
-                        placeholder="https://hydralinks.cloud/sources/dodi.json"
+                        placeholder="URL oder roher JSON Code einfügen..."
                         className="flex-1 bg-hub-base border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-white/30"
                         autoFocus
                         onKeyDown={e => e.key === 'Enter' && handleAddSource()}
                       />
                       <button onClick={handleAddSource} className="px-4 py-1.5 bg-white text-black hover:bg-white/90 rounded-lg text-xs font-semibold shadow-sm cursor-pointer">{t('add')}</button>
+                      <button onClick={handleImportFile} className="px-4 py-1.5 bg-hub-base hover:bg-white/10 text-white rounded-lg text-xs font-semibold border border-white/20 cursor-pointer flex items-center gap-1.5">
+                        <Download size={14} />
+                        {language === 'de' ? 'Datei öffnen' : 'Open File'}
+                      </button>
                       <button onClick={() => setShowAddSource(false)} className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold border border-white/10 cursor-pointer">{t('cancel')}</button>
                     </div>
                   ) : sources.length > 0 ? (
@@ -1341,214 +1348,23 @@ export function SettingsView() {
           {activeSettingsTab === 'system' && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-6">
               <section>
-                <div className="flex items-center justify-between gap-2.5 mb-5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-amber-400/10 text-amber-400 border border-amber-400/20">
-                      <Zap size={20} />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                        <span>{language === 'de' ? 'Eclipse True Boost™' : 'Eclipse True Boost™'}</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
-                          Next-Gen Engine
-                        </span>
-                      </h2>
-                      <p className="text-xs text-white/50">
-                        {language === 'de' 
-                          ? 'Vollautomatische Windows- & Systemoptimierung bei Spielstart für maximale FPS und 0% Latenz.'
-                          : 'Fully automated Windows & memory optimization on game launch for max FPS.'}
-                      </p>
-                    </div>
+                <div className="flex items-center gap-2.5 mb-5">
+                  <div className="p-2 rounded-xl bg-white/5 text-white/80 border border-white/10">
+                    <Monitor size={20} />
                   </div>
-
-                  {/* Manual Boost Trigger Button */}
-                  <button
-                    onClick={handleManualFlush}
-                    disabled={isFlushingRam}
-                    className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold text-xs rounded-xl shadow-lg shadow-orange-500/20 transition-all flex items-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-                  >
-                    {isFlushingRam ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
-                        <span>{language === 'de' ? 'Optimiere System...' : 'Optimizing...'}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Zap size={14} className="fill-black" />
-                        <span>{language === 'de' ? 'Jetzt RAM & PC Bereinigen' : 'Boost & Clean RAM Now'}</span>
-                      </>
-                    )}
-                  </button>
+                  <div>
+                    <h2 className="text-lg font-bold text-white tracking-tight">
+                      {language === 'de' ? 'System & Performance' : 'System & Performance'}
+                    </h2>
+                    <p className="text-xs text-white/50">
+                      {language === 'de' 
+                        ? 'Grafikbeschleunigung, Rendering-Pipeline und Systemressourcen-Einstellungen.'
+                        : 'Hardware graphics acceleration, rendering pipeline, and performance settings.'}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
-                  {/* True Boost Master Card */}
-                  <div className="bg-[#0e1017] border border-white/10 rounded-2xl p-5 space-y-4">
-                    <div className="flex items-start justify-between gap-6 pb-4 border-b border-white/[0.06]">
-                      <div className="space-y-1.5 flex-1">
-                        <div className="flex items-center gap-2.5">
-                          <h3 className="font-bold text-white text-sm tracking-wide">
-                            {language === 'de' ? 'Eclipse True Boost (Vollautomatischer Modus)' : 'Eclipse True Boost (Full Auto-Optimizer)'}
-                          </h3>
-                          <span className={`text-[10px] font-semibold tracking-wider px-2.5 py-0.5 rounded-full border ${
-                            localSettings.trueBoostEnabled !== false && localSettings.gamePerformanceMode !== false
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                              : 'bg-white/5 text-white/40 border-white/10'
-                          }`}>
-                            {localSettings.trueBoostEnabled !== false && localSettings.gamePerformanceMode !== false 
-                              ? (language === 'de' ? 'Aktiviert (Bereit)' : 'Active (Ready)') 
-                              : (language === 'de' ? 'Deaktiviert' : 'Disabled')}
-                          </span>
-                        </div>
-                        <p className="text-xs text-white/50 leading-relaxed max-w-xl">
-                          {language === 'de' 
-                            ? 'Erkennt automatisch aktive Spiele, leert den Standby-Arbeitsspeicher (RAM-Flush), schaltet Windows auf Höchstleistung und gibt 100% der GPU exklusiv frei.' 
-                            : 'Detects launched games, flushes standby RAM, activates High Performance power plan, and frees GPU resources exclusively.'}
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={localSettings.trueBoostEnabled !== false}
-                        onClick={() => {
-                          const val = !(localSettings.trueBoostEnabled !== false)
-                          set('trueBoostEnabled', val)
-                          set('gamePerformanceMode', val)
-                          updateSettings({ trueBoostEnabled: val, gamePerformanceMode: val })
-                          if (window.electronAPI) {
-                            window.electronAPI.setSettings({ trueBoostEnabled: val, gamePerformanceMode: val })
-                          }
-                        }}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          localSettings.trueBoostEnabled !== false ? 'bg-white' : 'bg-white/15'
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
-                            localSettings.trueBoostEnabled !== false ? 'translate-x-5 bg-black' : 'translate-x-0 bg-white/70'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    {/* Sub-Optimizations */}
-                    {(localSettings.trueBoostEnabled !== false) && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                        {/* RAM Flush */}
-                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between gap-3">
-                          <div>
-                            <span className="text-xs font-semibold text-white block">
-                              {language === 'de' ? '🧹 Auto-RAM Flush & Standby Cleaner' : '🧹 Auto-RAM Flush & Standby Cleaner'}
-                            </span>
-                            <span className="text-[11px] text-white/40 block mt-0.5">
-                              {language === 'de' ? 'Leert ungenutzten Cache bei Spielstart' : 'Trims background working sets on launch'}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const val = !(localSettings.trueBoostRamClean !== false)
-                              set('trueBoostRamClean', val)
-                              updateSettings({ trueBoostRamClean: val })
-                              if (window.electronAPI) window.electronAPI.setSettings({ trueBoostRamClean: val })
-                            }}
-                            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                              localSettings.trueBoostRamClean !== false ? 'bg-white' : 'bg-white/15'
-                            }`}
-                          >
-                            <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full transition ${
-                              localSettings.trueBoostRamClean !== false ? 'translate-x-4 bg-black' : 'translate-x-0 bg-white/70'
-                            }`} />
-                          </button>
-                        </div>
-
-                        {/* Power Plan */}
-                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between gap-3">
-                          <div>
-                            <span className="text-xs font-semibold text-white block">
-                              {language === 'de' ? '⚡ Windows Ultimate Power Plan' : '⚡ Windows Ultimate Power Plan'}
-                            </span>
-                            <span className="text-[11px] text-white/40 block mt-0.5">
-                              {language === 'de' ? 'Aktiviert Höchstleistung ingame' : 'Activates High Performance plan in-game'}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const val = !(localSettings.trueBoostPowerPlan !== false)
-                              set('trueBoostPowerPlan', val)
-                              updateSettings({ trueBoostPowerPlan: val })
-                              if (window.electronAPI) window.electronAPI.setSettings({ trueBoostPowerPlan: val })
-                            }}
-                            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                              localSettings.trueBoostPowerPlan !== false ? 'bg-white' : 'bg-white/15'
-                            }`}
-                          >
-                            <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full transition ${
-                              localSettings.trueBoostPowerPlan !== false ? 'translate-x-4 bg-black' : 'translate-x-0 bg-white/70'
-                            }`} />
-                          </button>
-                        </div>
-
-                        {/* Game Process Priority */}
-                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between gap-3">
-                          <div>
-                            <span className="text-xs font-semibold text-white block">
-                              {language === 'de' ? '🎯 Spielprozess-Priorität (AboveNormal)' : '🎯 Game Process Priority (AboveNormal)'}
-                            </span>
-                            <span className="text-[11px] text-white/40 block mt-0.5">
-                              {language === 'de' ? 'Stabilisiert 1% Low FPS & Frametimes' : 'Improves frame pacing and 1% low FPS'}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const val = !(localSettings.trueBoostGamePriority !== false)
-                              set('trueBoostGamePriority', val)
-                              updateSettings({ trueBoostGamePriority: val })
-                              if (window.electronAPI) window.electronAPI.setSettings({ trueBoostGamePriority: val })
-                            }}
-                            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                              localSettings.trueBoostGamePriority !== false ? 'bg-white' : 'bg-white/15'
-                            }`}
-                          >
-                            <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full transition ${
-                              localSettings.trueBoostGamePriority !== false ? 'translate-x-4 bg-black' : 'translate-x-0 bg-white/70'
-                            }`} />
-                          </button>
-                        </div>
-
-                        {/* Auto-Minimize */}
-                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between gap-3">
-                          <div>
-                            <span className="text-xs font-semibold text-white block">
-                              {language === 'de' ? '📴 Eclipse Render Freeze (0% GPU)' : '📴 Eclipse Render Freeze (0% GPU)'}
-                            </span>
-                            <span className="text-[11px] text-white/40 block mt-0.5">
-                              {language === 'de' ? 'Minimiert & friert Animationen ein' : 'Freezes animations and minimizes'}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const val = !(localSettings.autoMinimizeOnGame !== false)
-                              set('autoMinimizeOnGame', val)
-                              updateSettings({ autoMinimizeOnGame: val })
-                              if (window.electronAPI) window.electronAPI.setSettings({ autoMinimizeOnGame: val })
-                            }}
-                            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                              localSettings.autoMinimizeOnGame !== false ? 'bg-white' : 'bg-white/15'
-                            }`}
-                          >
-                            <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full transition ${
-                              localSettings.autoMinimizeOnGame !== false ? 'translate-x-4 bg-black' : 'translate-x-0 bg-white/70'
-                            }`} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
 
                   {/* GPU Hardware Acceleration Card */}
                   <div className="bg-[#0f1015] border border-white/10 rounded-xl p-5">

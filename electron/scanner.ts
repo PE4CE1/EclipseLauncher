@@ -7,6 +7,7 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 import { randomUUID } from 'crypto'
 
 const execAsync = promisify(exec)
@@ -24,7 +25,7 @@ export type InstalledGame = {
 }
 
 export type ScanProgress = {
-  stage: 'steam' | 'epic' | 'rockstar' | 'done'
+  stage: 'steam' | 'epic' | 'rockstar' | 'roblox' | 'done'
   message: string
   count: number
 }
@@ -78,6 +79,18 @@ export async function scanGames(onProgress?: ProgressCallback): Promise<Installe
   } catch (e) {
     console.warn('[Scanner] Rockstar scan failed:', e)
     onProgress?.({ stage: 'rockstar', message: 'Rockstar Games not found', count: results.length })
+  }
+
+  // Roblox
+  onProgress?.({ stage: 'roblox', message: 'Scanning Roblox…', count: results.length })
+  try {
+    const robloxGames = await scanRoblox()
+    results.push(...robloxGames)
+    if (robloxGames.length > 0) {
+      onProgress?.({ stage: 'roblox', message: `Found Roblox`, count: results.length })
+    }
+  } catch (e) {
+    console.warn('[Scanner] Roblox scan failed:', e)
   }
 
   onProgress?.({ stage: 'done', message: `Scan complete. ${results.length} games found.`, count: results.length })
@@ -448,6 +461,115 @@ export async function scanRockstar(): Promise<InstalledGame[]> {
       }
     } catch (e) {
       // Ignore read errors
+    }
+  }
+
+  return games
+}
+
+// ─── Roblox Scanner ────────────────────────────────────────────────────────────
+export async function scanRoblox(): Promise<InstalledGame[]> {
+  const games: InstalledGame[] = []
+  if (process.platform !== 'win32') return games
+
+  // 1. Direct registry lookup of roblox: protocol handler
+  try {
+    const regQueries = [
+      'reg query "HKCU\\Software\\Classes\\roblox\\shell\\open\\command" /ve 2>nul',
+      'reg query "HKCR\\roblox\\shell\\open\\command" /ve 2>nul',
+      'reg query "HKCU\\Software\\ROBLOX Corporation\\Environments\\roblox-player" /v "RootFolder" 2>nul'
+    ]
+
+    for (const q of regQueries) {
+      try {
+        const { stdout } = await execAsync(q)
+        // Extract quoted or unquoted .exe path
+        const exeMatch = stdout.match(/"([^"]+\.exe)"/i) || stdout.match(/([a-zA-Z]:\\[^ \r\n\t]+\.exe)/i)
+        if (exeMatch && exeMatch[1] && fs.existsSync(exeMatch[1])) {
+          const exePath = exeMatch[1]
+          games.push({
+            id: 'roblox',
+            name: 'Roblox',
+            platform: 'custom',
+            installPath: path.dirname(exePath),
+            launchUrl: exePath,
+            appId: '999001',
+            steamId: 999001,
+            installed: true,
+            iconUrl: '/Roblox-Logo-Icon.png',
+          })
+          return games
+        }
+
+        const rootMatch = stdout.match(/RootFolder\s+REG_SZ\s+(.+)/i)
+        if (rootMatch && rootMatch[1]) {
+          const root = rootMatch[1].trim()
+          if (fs.existsSync(root)) {
+            const playerBeta = path.join(root, 'RobloxPlayerBeta.exe')
+            const playerLauncher = path.join(root, 'RobloxPlayerLauncher.exe')
+            const exe = fs.existsSync(playerBeta) ? playerBeta : fs.existsSync(playerLauncher) ? playerLauncher : 'roblox:'
+            games.push({
+              id: 'roblox',
+              name: 'Roblox',
+              platform: 'custom',
+              installPath: root,
+              launchUrl: exe,
+              appId: '999001',
+              steamId: 999001,
+              installed: true,
+              iconUrl: '/Roblox-Logo-Icon.png',
+            })
+            return games
+          }
+        }
+      } catch {}
+    }
+  } catch {}
+
+  // 2. Scan %LocalAppData%\Roblox\Versions & Program Files
+  const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local')
+  const programFiles = process.env['ProgramFiles'] || 'C:\\Program Files'
+  const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)'
+
+  const candidatesDirs = [
+    path.join(localAppData, 'Roblox', 'Versions'),
+    path.join(programFiles, 'Roblox', 'Versions'),
+    path.join(programFilesX86, 'Roblox', 'Versions'),
+  ]
+
+  for (const versionsDir of candidatesDirs) {
+    if (fs.existsSync(versionsDir)) {
+      try {
+        const subdirs = fs.readdirSync(versionsDir, { withFileTypes: true })
+        for (const sub of subdirs) {
+          if (!sub.isDirectory()) continue
+          const fullPath = path.join(versionsDir, sub.name)
+          const playerBeta = path.join(fullPath, 'RobloxPlayerBeta.exe')
+          const playerLauncher = path.join(fullPath, 'RobloxPlayerLauncher.exe')
+          
+          let targetExe: string | null = null
+          if (fs.existsSync(playerBeta)) {
+            targetExe = playerBeta
+          } else if (fs.existsSync(playerLauncher)) {
+            targetExe = playerLauncher
+          }
+
+          if (targetExe) {
+            games.push({
+              id: 'roblox',
+              name: 'Roblox',
+              platform: 'custom',
+              installPath: fullPath,
+              launchUrl: targetExe,
+              appId: '999001',
+              steamId: 999001,
+              installed: true,
+              iconUrl: '/Roblox-Logo-Icon.png',
+            })
+            return games
+          }
+        }
+      } catch (err) {}
     }
   }
 

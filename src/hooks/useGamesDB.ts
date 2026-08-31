@@ -83,6 +83,24 @@ export function useGamesDB() {
             }
           }
 
+          if (!seen.has(999001)) {
+            uniqueData.unshift({
+              id: 999001,
+              name: 'Roblox',
+              developer: 'Roblox Corporation',
+              publisher: 'Roblox Corporation',
+              positive: 4500000,
+              negative: 250000,
+              price: '0',
+              initialprice: '0',
+              discount: '0',
+              ccu: 2841920,
+              year: 2006,
+            })
+            devSet.add('Roblox Corporation')
+            pubSet.add('Roblox Corporation')
+          }
+
           cachedDB = uniqueData;
           cachedDevs = Array.from(devSet).sort();
           cachedPubs = Array.from(pubSet).sort();

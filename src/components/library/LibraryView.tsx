@@ -33,6 +33,9 @@ export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { g
 
   const [imgSrc, setImgSrc] = useState<string>(() => {
     if (cached) return cached.url
+    if (resolvedId === 999001 || game.name?.toLowerCase() === 'roblox' || game.id === 'roblox') {
+      return '/roblox/hero.png'
+    }
     if (resolvedId) {
       return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/library_600x900.jpg`
     }
@@ -41,12 +44,17 @@ export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { g
     return getPlaceholderCover(game.name)
   })
 
-  const [isWide, setIsWide] = useState<boolean>(() => cached ? cached.isWide : false)
+  const [isWide, setIsWide] = useState<boolean>(() => cached ? cached.isWide : (resolvedId === 999001 || game.name?.toLowerCase() === 'roblox' || game.id === 'roblox'))
   const [isLoaded, setIsLoaded] = useState<boolean>(() => !!cached)
   const [fallbackStage, setFallbackStage] = useState(0)
 
   const handleError = useCallback(() => {
     setIsLoaded(false)
+    if (resolvedId === 999001 || game.name?.toLowerCase() === 'roblox' || game.id === 'roblox') {
+      setImgSrc('/Roblox-Logo-Icon.png')
+      setIsLoaded(true)
+      return
+    }
     if (resolvedId && fallbackStage === 0) {
       setFallbackStage(1)
       setImgSrc(`https://cdn.akamai.steamstatic.com/steam/apps/${resolvedId}/library_600x900.jpg`)
@@ -529,16 +537,19 @@ export function LibraryView() {
   }, [addCustomGame, showNotification])
 
   const openDetailsForGame = useCallback((game: any) => {
-    const sId = typeof game.steamId === 'number' && game.steamId > 0
-      ? game.steamId
-      : ('appId' in game && game.appId && !isNaN(Number(game.appId)))
-        ? Number(game.appId)
-        : typeof game.id === 'number' && game.id > 0
-          ? game.id
-          : typeof game.id === 'string' && game.id.startsWith('steam-')
-            ? Number(game.id.replace('steam-', ''))
-            : undefined
-    useUIStore.getState().openGameDetails(sId || 0, game.name)
+    const isRoblox = game.name?.toLowerCase() === 'roblox' || game.id === 'roblox' || game.steamId === 999001
+    const sId = isRoblox
+      ? 999001
+      : typeof game.steamId === 'number' && game.steamId > 0
+        ? game.steamId
+        : ('appId' in game && game.appId && !isNaN(Number(game.appId)))
+          ? Number(game.appId)
+          : typeof game.id === 'number' && game.id > 0
+            ? game.id
+            : typeof game.id === 'string' && game.id.startsWith('steam-')
+              ? Number(game.id.replace('steam-', ''))
+              : undefined
+    useUIStore.getState().openGameDetails(sId || (isRoblox ? 999001 : 0), game.name)
   }, [])
 
   const handleLaunchGame = useCallback((url: string, name: string) => {
@@ -688,7 +699,9 @@ export function LibraryView() {
             {visibleGames.map((game) => {
               const isInstalled = 'isInstalled' in game ? game.isInstalled : (game.installed ?? true)
               const isFav = favoriteIds.includes(game.id)
+              const isRoblox = game.name?.toLowerCase() === 'roblox' || game.id === 'roblox' || ('steamId' in game && game.steamId === 999001)
               const isPlaying = !!(activeGame && (
+                (isRoblox && (normalize(activeGame.name) === 'roblox' || activeGame.id === 'roblox' || activeGame.id === '999001' || activeGame.id === 'Roblox')) ||
                 normalize(activeGame.name) === normalize(game.name) ||
                 activeGame.id === String(game.steamId) ||
                 activeGame.id === game.launchUrl ||
@@ -718,7 +731,9 @@ export function LibraryView() {
             {visibleGames.map((game) => {
               const isInstalled = 'isInstalled' in game ? game.isInstalled : (game.installed ?? true)
               const isFav = favoriteIds.includes(game.id)
+              const isRoblox = game.name?.toLowerCase() === 'roblox' || game.id === 'roblox' || ('steamId' in game && game.steamId === 999001)
               const isPlaying = !!(activeGame && (
+                (isRoblox && (normalize(activeGame.name) === 'roblox' || activeGame.id === 'roblox' || activeGame.id === '999001' || activeGame.id === 'Roblox')) ||
                 normalize(activeGame.name) === normalize(game.name) ||
                 activeGame.id === String(game.steamId) ||
                 activeGame.id === game.launchUrl ||

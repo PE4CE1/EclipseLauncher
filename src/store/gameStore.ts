@@ -142,20 +142,28 @@ export const useGameStore = create<GameStore>()(
 
       activeGame: null,
       startPlaySession: (gameIdOrName, name) =>
-        set((state) => ({
-          activeGame: { id: gameIdOrName, name: name || gameIdOrName, startTime: Date.now(), lastTick: Date.now() },
-          lastPlayed: [gameIdOrName, ...state.lastPlayed.filter((x) => x !== gameIdOrName)].slice(0, 20),
-          installedGames: state.installedGames.map((g) =>
-            g.id === gameIdOrName || normalize(g.name) === normalize(name || gameIdOrName) || g.appId === gameIdOrName
-              ? { ...g, lastPlayed: Date.now() }
-              : g
-          ),
-          library: state.library.map((g) =>
-            g.id === gameIdOrName || normalize(g.name) === normalize(name || gameIdOrName) || String(g.steamId) === gameIdOrName
-              ? { ...g, lastPlayed: Date.now() }
-              : g
-          ),
-        })),
+        set((state) => {
+          const gameName = name || gameIdOrName
+          const norm = normalize(gameName)
+          const isRoblox = norm === 'roblox' || gameIdOrName === 'roblox' || gameIdOrName === '999001'
+          const isMatch = (g: any) =>
+            g.id === gameIdOrName ||
+            normalize(g.name) === norm ||
+            g.appId === gameIdOrName ||
+            String(g.steamId) === gameIdOrName ||
+            (isRoblox && (g.id === 'roblox' || normalize(g.name) === 'roblox' || g.steamId === 999001))
+
+          return {
+            activeGame: { id: gameIdOrName, name: gameName, startTime: Date.now(), lastTick: Date.now() },
+            lastPlayed: [gameIdOrName, ...state.lastPlayed.filter((x) => x !== gameIdOrName)].slice(0, 20),
+            installedGames: state.installedGames.map((g) =>
+              isMatch(g) ? { ...g, lastPlayed: Date.now() } : g
+            ),
+            library: state.library.map((g) =>
+              isMatch(g) ? { ...g, lastPlayed: Date.now() } : g
+            ),
+          }
+        }),
 
       stopPlaySession: () =>
         set((state) => {
@@ -165,19 +173,26 @@ export const useGameStore = create<GameStore>()(
           const deltaMins = Math.max(0, Math.round((now - last) / 60000))
           const gameId = state.activeGame.id
           const gameName = state.activeGame.name
+          const norm = normalize(gameName)
+          const isRoblox = norm === 'roblox' || gameId === 'roblox' || gameId === '999001'
 
           if (deltaMins > 0 && window.electronAPI?.addPlaytime) {
-            window.electronAPI.addPlaytime(gameId, deltaMins, gameName).catch(() => {})
+            window.electronAPI.addPlaytime(gameId, deltaMins, gameName, isRoblox ? 999001 : undefined).catch(() => {})
           }
 
-          const installedGames = state.installedGames.map((g) => {
-            const matches = g.id === gameId || normalize(g.name) === normalize(gameName) || g.appId === gameId
-            return matches ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
-          })
-          const library = state.library.map((g) => {
-            const matches = g.id === gameId || normalize(g.name) === normalize(gameName) || String(g.steamId) === gameId
-            return matches ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
-          })
+          const isMatch = (g: any) =>
+            g.id === gameId ||
+            normalize(g.name) === norm ||
+            g.appId === gameId ||
+            String(g.steamId) === gameId ||
+            (isRoblox && (g.id === 'roblox' || normalize(g.name) === 'roblox' || g.steamId === 999001))
+
+          const installedGames = state.installedGames.map((g) =>
+            isMatch(g) ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
+          )
+          const library = state.library.map((g) =>
+            isMatch(g) ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
+          )
 
           return { activeGame: null, installedGames, library }
         }),
@@ -192,19 +207,26 @@ export const useGameStore = create<GameStore>()(
 
           const gameId = state.activeGame.id
           const gameName = state.activeGame.name
+          const norm = normalize(gameName)
+          const isRoblox = norm === 'roblox' || gameId === 'roblox' || gameId === '999001'
 
           if (window.electronAPI?.addPlaytime) {
-            window.electronAPI.addPlaytime(gameId, deltaMins, gameName).catch(() => {})
+            window.electronAPI.addPlaytime(gameId, deltaMins, gameName, isRoblox ? 999001 : undefined).catch(() => {})
           }
 
-          const installedGames = state.installedGames.map((g) => {
-            const matches = g.id === gameId || normalize(g.name) === normalize(gameName) || g.appId === gameId
-            return matches ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
-          })
-          const library = state.library.map((g) => {
-            const matches = g.id === gameId || normalize(g.name) === normalize(gameName) || String(g.steamId) === gameId
-            return matches ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
-          })
+          const isMatch = (g: any) =>
+            g.id === gameId ||
+            normalize(g.name) === norm ||
+            g.appId === gameId ||
+            String(g.steamId) === gameId ||
+            (isRoblox && (g.id === 'roblox' || normalize(g.name) === 'roblox' || g.steamId === 999001))
+
+          const installedGames = state.installedGames.map((g) =>
+            isMatch(g) ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
+          )
+          const library = state.library.map((g) =>
+            isMatch(g) ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
+          )
 
           return {
             activeGame: { ...state.activeGame, lastTick: now },
@@ -217,17 +239,26 @@ export const useGameStore = create<GameStore>()(
         set((state) => {
           const cleanName = name || gameIdOrName
           const wholeMins = Math.max(0, Math.round(minutes))
+          const norm = normalize(cleanName)
+          const isRoblox = norm === 'roblox' || gameIdOrName === 'roblox' || gameIdOrName === '999001'
+
           if (window.electronAPI?.addPlaytime) {
-            window.electronAPI.addPlaytime(gameIdOrName, wholeMins, cleanName).catch(() => {})
+            window.electronAPI.addPlaytime(gameIdOrName, wholeMins, cleanName, isRoblox ? 999001 : undefined).catch(() => {})
           }
-          const installedGames = state.installedGames.map((g) => {
-            const matches = g.id === gameIdOrName || normalize(g.name) === normalize(cleanName) || g.appId === gameIdOrName
-            return matches ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + wholeMins), lastPlayed: Date.now() } : g
-          })
-          const library = state.library.map((g) => {
-            const matches = g.id === gameIdOrName || normalize(g.name) === normalize(cleanName) || String(g.steamId) === gameIdOrName
-            return matches ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + wholeMins), lastPlayed: Date.now() } : g
-          })
+
+          const isMatch = (g: any) =>
+            g.id === gameIdOrName ||
+            normalize(g.name) === norm ||
+            g.appId === gameIdOrName ||
+            String(g.steamId) === gameIdOrName ||
+            (isRoblox && (g.id === 'roblox' || normalize(g.name) === 'roblox' || g.steamId === 999001))
+
+          const installedGames = state.installedGames.map((g) =>
+            isMatch(g) ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + wholeMins), lastPlayed: Date.now() } : g
+          )
+          const library = state.library.map((g) =>
+            isMatch(g) ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + wholeMins), lastPlayed: Date.now() } : g
+          )
           return { installedGames, library }
         }),
 
@@ -297,6 +328,7 @@ export const useGameStore = create<GameStore>()(
         overlayCrosshair: false,
         overlayRobloxTimer: false,
         overlayRobloxCps: false,
+        overlayRobloxAntiAfk: false,
         overlayRLHud: false,
         overlayRLSteam: false,
         overlayPositions: {

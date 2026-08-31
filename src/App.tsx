@@ -145,6 +145,41 @@ export default function App() {
     }
   }, [])
 
+  // Anti-Idle Repaint Guard: Ensures GPU surface wakes immediately on user return
+  useEffect(() => {
+    let lastActive = Date.now()
+    const handleActivity = () => {
+      const now = Date.now()
+      if (now - lastActive > 60000) {
+        window.electronAPI?.invalidateWindow?.()
+        window.requestAnimationFrame(() => {})
+      }
+      lastActive = now
+    }
+
+    const handleWake = () => {
+      window.electronAPI?.invalidateWindow?.()
+      window.requestAnimationFrame(() => {})
+    }
+
+    window.addEventListener('mousemove', handleActivity, { passive: true })
+    window.addEventListener('mousedown', handleActivity, { passive: true })
+    window.addEventListener('keydown', handleActivity, { passive: true })
+    window.addEventListener('focus', handleWake)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        handleWake()
+      }
+    })
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity)
+      window.removeEventListener('mousedown', handleActivity)
+      window.removeEventListener('keydown', handleActivity)
+      window.removeEventListener('focus', handleWake)
+    }
+  }, [])
+
   // Initialize Cloudflare D1 Real-Time Social Sync
   useEffect(() => {
     initSocialNetwork()

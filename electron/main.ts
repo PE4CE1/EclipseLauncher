@@ -25,7 +25,7 @@ import { initClipsIPC } from './clipService'
 import { initVoiceIPC } from './voiceService'
 import { flushSystemRam } from './boostService'
 import { initAutoClipService } from './autoClipService'
-import { getAllCachedSources, getCachedSource, fetchAndCacheSource, removeCachedSource } from './sourceFetcherService'
+import { getAllCachedSources, getCachedSource, fetchAndCacheSource, removeCachedSource, saveCachedSource } from './sourceFetcherService'
 
 // Register privileged scheme for local clips video playback
 protocol.registerSchemesAsPrivileged([
@@ -54,6 +54,15 @@ if (process.platform === 'win32') {
   app.setAppUserModelId('Eclipse Launcher')
 }
 app.setPath('userData', path.join(app.getPath('appData'), 'GameHub'))
+
+// ─── GPU & Compositor Stability Flags (Prevent Idle Blackscreen on Windows) ───
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+app.commandLine.appendSwitch('enable-gpu-rasterization')
+app.commandLine.appendSwitch('enable-zero-copy')
+app.commandLine.appendSwitch('ignore-gpu-blocklist')
+app.commandLine.appendSwitch('disable-gpu-process-crash-limit')
 
 // ─── Deep Linking: eclipse:// protocol registration ──────────────────────────
 if (process.defaultApp) {
@@ -273,6 +282,12 @@ app.commandLine.appendSwitch('enable-experimental-web-platform-features')
 app.commandLine.appendSwitch('enable-gamepad-background-polling')
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
+// Prevent Chromium GPU occlusion sleep and black screen when idle on Windows
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+app.commandLine.appendSwitch('disable-background-timer-throttling')
+app.commandLine.appendSwitch('disable-features', 'CalculateWindowOcclusion,IntensiveWakeUpThrottling')
+
 let mainWindow: BrowserWindow | null = null
 let friendsWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -346,6 +361,7 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: false,
       webSecurity: false,
+      backgroundThrottling: false,
       autoplayPolicy: 'no-user-gesture-required'
     },
     icon: fs.existsSync(getAppIconPath()) ? getAppIconPath() : undefined,
@@ -376,36 +392,36 @@ function createWindow() {
       mainWindow?.show()
       mainWindow?.focus()
       mainWindow?.webContents.setFrameRate(60)
-      mainWindow?.webContents.setBackgroundThrottling(true)
+      mainWindow?.webContents.setBackgroundThrottling(false)
+      mainWindow?.webContents.invalidate()
     })
 
     mainWindow.on('blur', () => {
-      mainWindow?.webContents.setFrameRate(30)
+      mainWindow?.webContents.setBackgroundThrottling(false)
     })
 
     mainWindow.on('focus', () => {
       mainWindow?.webContents.setFrameRate(60)
+      mainWindow?.webContents.invalidate()
     })
 
     mainWindow.on('minimize', () => {
-      mainWindow?.webContents.setFrameRate(1)
-      mainWindow?.webContents.setBackgroundThrottling(true)
       mainWindow?.webContents.send('app:minimized')
     })
 
     mainWindow.on('restore', () => {
       mainWindow?.webContents.setFrameRate(60)
+      mainWindow?.webContents.invalidate()
       mainWindow?.webContents.send('app:restored')
     })
 
     mainWindow.on('hide', () => {
-      mainWindow?.webContents.setFrameRate(1)
-      mainWindow?.webContents.setBackgroundThrottling(true)
       mainWindow?.webContents.send('app:minimized')
     })
 
     mainWindow.on('show', () => {
       mainWindow?.webContents.setFrameRate(60)
+      mainWindow?.webContents.invalidate()
       mainWindow?.webContents.send('app:restored')
     })
 
@@ -511,6 +527,7 @@ function createFriendsWindow() {
       nodeIntegration: false,
       sandbox: false,
       webSecurity: false,
+      backgroundThrottling: false,
     },
     icon: fs.existsSync(getAppIconPath()) ? getAppIconPath() : undefined,
   })
@@ -604,6 +621,13 @@ ipcMain.on('window:set-size', (e, width: number, height: number, center: boolean
 
 ipcMain.on('window:set-resizable', (e, resizable: boolean) => {
   if (mainWindow) mainWindow.setResizable(resizable)
+})
+
+ipcMain.handle('window:invalidate', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.invalidate()
+  }
+  return true
 })
 
 ipcMain.handle('system:set-auto-launch', (_event, { enabled, startMinimized }: { enabled: boolean, startMinimized: boolean }) => {
@@ -831,6 +855,22 @@ ipcMain.handle('dialog:open-directory', async () => {
   return result.canceled ? null : result.filePaths[0]
 })
 
+ipcMain.handle('dialog:open-json-file', async () => {
+  const result = await dialog.showOpenDialog(mainWindow!, {
+    title: 'Select Source JSON File',
+    properties: ['openFile'],
+    filters: [{ name: 'JSON', extensions: ['json'] }]
+  })
+  if (result.canceled || !result.filePaths[0]) return null
+  try {
+    const content = require('fs').readFileSync(result.filePaths[0], 'utf-8')
+    return content
+  } catch (e) {
+    console.error('Failed to read JSON file:', e)
+    return null
+  }
+})
+
 // ─── Settings Storage & App Lifecycle ───────────────────────────────────────
 ipcMain.handle('app:relaunch', () => {
   app.relaunch()
@@ -1056,6 +1096,15 @@ ipcMain.handle('sources:clear-cache', async (_event, rawUrl?: string) => {
   }
 })
 
+ipcMain.handle('sources:save-raw-source', async (_event, rawUrl: string, name: string, data: any[]) => {
+  try {
+    saveCachedSource(rawUrl, name, data)
+    return { success: true }
+  } catch (e) {
+    return { success: false }
+  }
+})
+
 ipcMain.handle('source:fetch-cf', async (_event, rawUrl: string) => {
   const result = await fetchAndCacheSource(rawUrl)
   if (result.success && result.data) {
@@ -1093,8 +1142,22 @@ ipcMain.handle('rl:set-api-key', (_event, key: string) => {
 })
 
 // ─── App Lifecycle ────────────────────────────────────────────────────────────
-ipcMain.handle('system:open-url', (_event, url: string) => shell.openExternal(url))
-ipcMain.handle('open-url', (_event, url: string) => shell.openExternal(url))
+ipcMain.handle('system:open-url', async (_event, url: string) => {
+  try {
+    if (url) await shell.openExternal(url)
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) }
+  }
+})
+ipcMain.handle('open-url', async (_event, url: string) => {
+  try {
+    if (url) await shell.openExternal(url)
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) }
+  }
+})
 
 ipcMain.handle('debrid:test-key', async (_event, { provider, apiKey }: { provider: string; apiKey: string }) => {
   try {

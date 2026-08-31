@@ -300,6 +300,7 @@ export interface AppSettings {
   }
   overlayRobloxTimer: boolean
   overlayRobloxCps: boolean
+  overlayRobloxAntiAfk?: boolean
   overlayRLHud: boolean
   overlayRLSteam: boolean
   overlayRLController?: boolean
@@ -357,6 +358,7 @@ export interface ElectronAPI {
   isMaximized: () => Promise<boolean>
   setWindowSize: (w: number, h: number, center?: boolean) => void
   setWindowResizable: (resizable: boolean) => void
+  invalidateWindow?: () => Promise<boolean>
   setAutoLaunch: (enabled: boolean, startMinimized: boolean) => Promise<void>
   createDesktopShortcut?: () => Promise<{ success: boolean; error?: string }>
   createGameShortcut?: (game: { name: string; installPath?: string; launchUrl?: string; steamId?: number; appId?: string }) => Promise<{ success: boolean; error?: string }>
@@ -408,6 +410,7 @@ export interface ElectronAPI {
   cancelDownload: (infoHash: string) => Promise<void>
   onTorrentProgress: (callback: (payload: any) => void) => () => void
   selectDirectory: () => Promise<string | null>
+  selectJSONFile: () => Promise<string | null>
   getDefaultDownloadPath?: () => Promise<string>
 
   // VPN Management
@@ -420,6 +423,7 @@ export interface ElectronAPI {
   getCachedSources: () => Promise<Array<{ url: string; name: string; lastSynced: number; data: any[] }>>
   fetchAndCacheSource: (url: string) => Promise<{ success: boolean; name?: string; data?: any[]; error?: string }>
   clearSourceCache: (url?: string) => Promise<{ success: boolean }>
+  saveRawSourceToCache: (url: string, name: string, data: any[]) => Promise<{ success: boolean }>
   fetchSourceCF: (url: string) => Promise<string | null>
 
   // Generic fetch (CORS bypass)

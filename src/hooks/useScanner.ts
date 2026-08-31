@@ -266,8 +266,8 @@ async function enrichWithSteamIds(
       )
       results.forEach((r, idx) => {
         const g = batch[idx]
-        const steamId = r.status === 'fulfilled' ? (r.value ?? undefined) : undefined
-        enriched.push({ ...g, steamId })
+        const steamId = (r.status === 'fulfilled' && r.value) ? r.value : g.steamId
+        enriched.push({ ...g, steamId: g.steamId || steamId })
       })
   if (i + BATCH < nonSteam.length) {
         if (signal?.aborted) break;

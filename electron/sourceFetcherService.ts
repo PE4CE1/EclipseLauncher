@@ -160,7 +160,6 @@ export async function fetchAndCacheSource(rawUrl: string): Promise<{ success: bo
         show: false,
         paintWhenInitiallyHidden: true,
         enableLargerThanScreen: true,
-        paintWhenInitiallyHidden: true,
         center: true,
         title: 'Eclipse — Quelle wird verifiziert...',
         alwaysOnTop: true,

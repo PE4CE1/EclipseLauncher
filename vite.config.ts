@@ -41,6 +41,19 @@ export default defineConfig({
           },
         },
       },
+      {
+        // Stealth preload for the Cloudflare-compatible download resolver window
+        entry: 'electron/resolverPreload.ts',
+        vite: {
+          build: {
+            outDir: 'dist-electron',
+            sourcemap: false,
+            rollupOptions: {
+              external: ['electron'],
+            },
+          },
+        },
+      },
     ]),
     renderer(),
   ],

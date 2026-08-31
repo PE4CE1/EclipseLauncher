@@ -57,6 +57,16 @@ const DEFAULT_SETTINGS: ClipSettings = {
   playSoundOnClip: true,
   autoStartOnGame: true,
   maxStorageGB: 25,
+  
+  // Smart Auto-Clipping (Off by default)
+  autoClipEnabled: false,
+  autoClipRocketLeagueGoals: true,
+  autoClipRocketLeagueSaves: true,
+  autoClipRocketLeagueDemos: false,
+  autoClipRocketLeagueWins: true,
+  autoClipCS2Kills: true,
+  autoClipCS2Wins: false,
+  autoClipCooldownSeconds: 15,
 }
 
 export const useClipStore = create<ClipStore>((set, get) => ({

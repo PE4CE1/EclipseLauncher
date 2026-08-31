@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 export type ScanProgress = {
-  stage: 'steam' | 'epic' | 'done'
+  stage: 'steam' | 'epic' | 'rockstar' | 'roblox' | 'done'
   message: string
   count: number
 }
@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isMaximized:    () => ipcRenderer.invoke('window:is-maximized'),
   setWindowSize:  (w: number, h: number, center?: boolean) => ipcRenderer.send('window:set-size', w, h, center),
   setWindowResizable: (resizable: boolean) => ipcRenderer.send('window:set-resizable', resizable),
+  invalidateWindow: () => ipcRenderer.invoke('window:invalidate'),
   setAutoLaunch:  (enabled: boolean, startMinimized: boolean) => ipcRenderer.invoke('system:set-auto-launch', { enabled, startMinimized }),
   createDesktopShortcut: () => ipcRenderer.invoke('system:create-desktop-shortcut'),
   createGameShortcut: (game: { name: string; installPath?: string; launchUrl?: string; steamId?: number; appId?: string }) =>
@@ -124,6 +125,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startOverlayEdit: () => ipcRenderer.invoke('overlay:open-edit'),
   exitOverlayEdit: () => ipcRenderer.invoke('overlay:exit-edit'),
   saveOverlayPositions: (positions: any) => ipcRenderer.invoke('overlay:save-positions', positions),
+  triggerRobloxNudge: () => ipcRenderer.invoke('roblox:trigger-nudge'),
 
   onGameStarted: (callback: (data: { name: string; startTime: number }) => void) => {
     const handler = (_: any, data: { name: string; startTime: number }) => callback(data)
@@ -173,6 +175,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('http-download:cancel', infoHash).catch(() => {})
   ]),
   selectDirectory: () => ipcRenderer.invoke('dialog:open-directory'),
+  selectJSONFile: () => ipcRenderer.invoke('dialog:open-json-file'),
   getDefaultDownloadPath: () => ipcRenderer.invoke('app:get-default-download-path'),
   // VPN Management
   detectInstalledVpns: () => ipcRenderer.invoke('vpn:detect'),
@@ -206,6 +209,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCachedSources: () => ipcRenderer.invoke('sources:get-all-cached'),
   fetchAndCacheSource: (url: string) => ipcRenderer.invoke('sources:fetch-and-cache', url),
   clearSourceCache: (url?: string) => ipcRenderer.invoke('sources:clear-cache', url),
+  saveRawSourceToCache: (url: string, name: string, data: any[]) => ipcRenderer.invoke('sources:save-raw-source', url, name, data),
   fetchSourceCF: (url: string) => ipcRenderer.invoke('source:fetch-cf', url),
 
   // Generic CORS bypass fetch

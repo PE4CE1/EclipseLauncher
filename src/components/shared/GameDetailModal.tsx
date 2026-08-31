@@ -126,11 +126,29 @@ export function GameDetailModal() {
   }, [game?.name, sources])
 
   const mediaItems = useMemo(() => {
-    const items: Array<{ type: 'video' | 'image'; url: string; thumb: string; id: string; name?: string }> = []
+    const items: Array<{ type: 'video' | 'image'; url: string | string[]; thumb: string; id: string; name?: string }> = []
     if (detail?.movies) {
       detail.movies.forEach(m => {
-        const url = m.mp4?.max || m.webm?.max || `https://steamcdn-a.akamaihd.net/steam/apps/${m.id}/movie_max.mp4`
-        if (url) items.push({ type: 'video', url, thumb: m.thumbnail, id: `movie-${m.id}`, name: m.name })
+        const candidateUrls: string[] = [
+          m.hls_h264,
+          m.mp4?.max,
+          m.mp4?.['480'],
+          m.webm?.max,
+          m.webm?.['480'],
+          `https://cdn.akamai.steamstatic.com/steam/apps/${m.id}/movie_max.mp4`,
+          `https://steamcdn-a.akamaihd.net/steam/apps/${m.id}/movie_max.mp4`,
+          `https://cdn.cloudflare.steamstatic.com/steam/apps/${m.id}/movie_max.mp4`,
+        ].filter(Boolean) as string[]
+
+        if (candidateUrls.length > 0) {
+          items.push({
+            type: 'video',
+            url: candidateUrls.length === 1 ? candidateUrls[0] : candidateUrls,
+            thumb: m.thumbnail,
+            id: `movie-${m.id}`,
+            name: m.name
+          })
+        }
       })
     }
     if (detail?.screenshots) {
@@ -159,28 +177,32 @@ export function GameDetailModal() {
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
   }, [lightboxIndex, mediaItems.length])
 
-  const isInLibrary = library.some(g => g.steamId === steamId)
+  const isRoblox = steamId === 999001 || (steamId === 0 && selectedGameName?.toLowerCase() === 'roblox') || (game?.name?.toLowerCase() === 'roblox' && (!steamId || steamId === 999001))
+
+  const isInLibrary = library.some(g =>
+    (steamId && g.steamId === steamId) ||
+    (isRoblox && (g.id === 'roblox' || g.name.toLowerCase() === 'roblox' || g.steamId === 999001)) ||
+    (game && g.name.toLowerCase() === game.name.toLowerCase()) ||
+    (selectedGameName && g.name.toLowerCase() === selectedGameName.toLowerCase())
+  )
   const installed = installedGames.find(g =>
     (g.appId && g.appId === String(steamId)) ||
+    (steamId && g.steamId === steamId) ||
+    (isRoblox && (g.id === 'roblox' || g.name.toLowerCase() === 'roblox' || g.steamId === 999001)) ||
     (game && g.name.toLowerCase().includes(game.name.toLowerCase().slice(0, 8)))
   )
   const libraryItem = library.find(g =>
     (steamId && g.steamId === steamId) ||
+    (isRoblox && (g.id === 'roblox' || g.name.toLowerCase() === 'roblox' || g.steamId === 999001)) ||
     (game && g.name.toLowerCase() === game.name.toLowerCase()) ||
     (selectedGameName && g.name.toLowerCase() === selectedGameName.toLowerCase())
   )
 
-  const gamePlaytimeMins = Math.round(Math.max(installed?.playTimeMinutes || 0, libraryItem?.playTimeMinutes || 0))
-  const playtimeFormatted = gamePlaytimeMins >= 60 
-    ? `${(gamePlaytimeMins / 60).toFixed(1)} hrs played` 
-    : gamePlaytimeMins > 0 
-      ? `${gamePlaytimeMins} mins played` 
-      : '0 mins played'
-
   const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
-  
+
   const isCurrentlyPlaying = !!(
     activeGame && (
+      (isRoblox && (normalize(activeGame.name) === 'roblox' || activeGame.id === 'roblox' || activeGame.id === '999001')) ||
       (game?.name && normalize(activeGame.name) === normalize(game.name)) ||
       (installed?.name && normalize(activeGame.name) === normalize(installed.name)) ||
       activeGame.id === String(steamId) ||
@@ -190,6 +212,30 @@ export function GameDetailModal() {
     )
   )
 
+  const [liveSessionMins, setLiveSessionMins] = useState(0)
+
+  useEffect(() => {
+    if (!isCurrentlyPlaying || !activeGame?.startTime) {
+      setLiveSessionMins(0)
+      return
+    }
+    const update = () => {
+      const elapsed = Math.floor((Date.now() - activeGame.startTime) / 60000)
+      setLiveSessionMins(elapsed)
+    }
+    update()
+    const interval = setInterval(update, 10000)
+    return () => clearInterval(interval)
+  }, [isCurrentlyPlaying, activeGame?.startTime])
+
+  const gamePlaytimeMins = Math.round(Math.max(installed?.playTimeMinutes || 0, libraryItem?.playTimeMinutes || 0))
+  const totalPlaytimeMins = gamePlaytimeMins + (isCurrentlyPlaying ? liveSessionMins : 0)
+  const playtimeFormatted = totalPlaytimeMins >= 60 
+    ? `${(totalPlaytimeMins / 60).toFixed(1)} hrs played` 
+    : totalPlaytimeMins > 0 
+      ? `${totalPlaytimeMins} mins played` 
+      : '0 mins played'
+
   useEffect(() => {
     if (!isCurrentlyPlaying && isKilling) {
       setIsKilling(false)
@@ -197,28 +243,34 @@ export function GameDetailModal() {
   }, [isCurrentlyPlaying, isKilling])
 
   function handleLibraryToggle() {
-    if (!game || !steamId) return
+    if (!game) return
     
     if (isInLibrary) {
-      const existingGame = library.find(g => g.steamId === steamId)
+      const existingGame = library.find(g =>
+        (steamId && g.steamId === steamId) ||
+        (isRoblox && (g.id === 'roblox' || g.name.toLowerCase() === 'roblox' || g.steamId === 999001)) ||
+        (game && g.name.toLowerCase() === game.name.toLowerCase()) ||
+        (selectedGameName && g.name.toLowerCase() === selectedGameName.toLowerCase())
+      )
       if (existingGame) {
         removeFromLibrary(existingGame.id)
         showNotification(t('wasRemoved', { name: game.name }), 'info')
       }
     } else {
       const newGame: LibraryGame = {
-        id: `steam-${steamId}`,
-        steamId,
+        id: isRoblox ? 'roblox' : (steamId ? `steam-${steamId}` : `custom-${Date.now()}`),
+        steamId: steamId || (isRoblox ? 999001 : undefined),
         name: game.name,
         platform: installed?.platform ?? 'custom',
         installed: !!installed,
         installPath: installed?.installPath,
-        launchUrl: installed?.launchUrl,
+        launchUrl: installed?.launchUrl || (isRoblox ? 'roblox:' : undefined),
+        coverImage: isRoblox ? '/roblox/hero.png' : undefined,
         addedAt: Date.now(),
         isFavorite: false,
         releaseDate: game.releaseDate,
-        developer: game.developers?.[0],
-        publisher: game.publishers?.[0],
+        developer: game.developers?.[0] || (isRoblox ? 'Roblox Corporation' : undefined),
+        publisher: game.publishers?.[0] || (isRoblox ? 'Roblox Corporation' : undefined),
       }
       addToLibrary(newGame)
       showNotification(t('addedToLibrary', { name: game.name }), 'success')
@@ -370,23 +422,32 @@ export function GameDetailModal() {
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
             
             {/* Cinematic Hero Backdrop */}
-            <div className="relative w-full h-[46vh] min-h-[320px] max-h-[450px] flex-shrink-0 overflow-hidden bg-black">
+            <div className="relative w-full h-[52vh] min-h-[360px] max-h-[520px] flex-shrink-0 overflow-hidden bg-[#07080a]">
               <SmartImage 
+                key={steamId || selectedGameName}
                 appId={steamId ?? undefined} 
                 type="hero" 
                 alt={game?.name ?? 'Cover'} 
-                className="w-full h-full object-cover object-center scale-105 filter brightness-[0.80]" 
-                fallbackScreenshotUrl={detail?.screenshots?.[0]?.path_full}
+                className="w-full h-full object-cover object-center scale-100 filter brightness-100 contrast-105 transition-all duration-500" 
+                fallbackScreenshotUrl={detail?.screenshots?.[0]?.path_full || (detail as any)?.background_raw || (detail as any)?.background}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#07080a] via-[#07080a]/60 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#07080a]/90 via-[#07080a]/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#07080a] via-[#07080a]/35 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#07080a]/75 via-[#07080a]/20 to-transparent pointer-events-none" />
 
               {/* Title & Actions Bar */}
               <div className="absolute bottom-6 left-6 md:left-10 xl:left-14 right-6 md:right-10 xl:right-14 flex flex-col md:flex-row md:items-end justify-between gap-6 z-10">
                 <div className="flex flex-col gap-2 max-w-3xl">
                   
                   {/* Official Game Logo Artwork with Seamless Plain Text Fallback */}
-                  {steamId && logoState !== 'error' ? (
+                  {isRoblox ? (
+                    <div className="relative min-h-[80px] flex items-end">
+                      <img
+                        src="/Roblox-Logo-Icon.png"
+                        alt="Roblox"
+                        className="max-h-24 md:max-h-32 object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] filter contrast-105"
+                      />
+                    </div>
+                  ) : steamId && logoState !== 'error' ? (
                     <div className="relative min-h-[80px] flex items-end">
                       <img
                         key={steamId}
@@ -583,23 +644,40 @@ export function GameDetailModal() {
                         )}
                       </button>
 
-                      <button
-                        onClick={() => setIsDownloadOptionsOpen(true)}
-                        disabled={availableDownloads.length === 0}
-                        className={`h-10 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-lg flex-shrink-0 whitespace-nowrap ${
-                          availableDownloads.length === 0
-                            ? 'bg-white/[0.02] border border-white/[0.05] text-white/20 cursor-not-allowed'
-                            : 'bg-white hover:bg-gray-100 text-black shadow-white/10'
-                        }`}
-                      >
-                        <Play size={13} className="fill-current" />
-                        <span>{t('viewDownloadOptions')}</span>
-                        {availableDownloads.length > 0 && (
-                          <span className="ml-1 px-1.5 py-0.5 rounded-full bg-black/10 text-[10px] font-bold">
-                            {availableDownloads.length}
-                          </span>
-                        )}
-                      </button>
+                      {isRoblox ? (
+                        <button
+                          onClick={() => {
+                            if (window.electronAPI?.openUrl) {
+                              window.electronAPI.openUrl('https://www.roblox.com/download')
+                            } else {
+                              window.open('https://www.roblox.com/download', '_blank')
+                            }
+                            showNotification(language === 'de' ? 'Roblox Download-Seite wird geöffnet…' : 'Opening Roblox download page…', 'info')
+                          }}
+                          className="h-10 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-lg flex-shrink-0 whitespace-nowrap bg-white hover:bg-gray-100 text-black shadow-white/10 cursor-pointer"
+                        >
+                          <Download size={13} />
+                          <span>{language === 'de' ? 'Roblox Installieren' : 'Install Roblox'}</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setIsDownloadOptionsOpen(true)}
+                          disabled={availableDownloads.length === 0}
+                          className={`h-10 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-lg flex-shrink-0 whitespace-nowrap ${
+                            availableDownloads.length === 0
+                              ? 'bg-white/[0.02] border border-white/[0.05] text-white/20 cursor-not-allowed'
+                              : 'bg-white hover:bg-gray-100 text-black shadow-white/10'
+                          }`}
+                        >
+                          <Play size={13} className="fill-current" />
+                          <span>{t('viewDownloadOptions')}</span>
+                          {availableDownloads.length > 0 && (
+                            <span className="ml-1 px-1.5 py-0.5 rounded-full bg-black/10 text-[10px] font-bold">
+                              {availableDownloads.length}
+                            </span>
+                          )}
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
@@ -760,9 +838,11 @@ export function GameDetailModal() {
                         />
                       ) : (
                         <img 
-                          src={mediaItems[selectedMediaIdx]?.url} 
+                          src={Array.isArray(mediaItems[selectedMediaIdx]?.url) ? (mediaItems[selectedMediaIdx]?.url as string[])[0] : (mediaItems[selectedMediaIdx]?.url || mediaItems[selectedMediaIdx]?.thumb)} 
                           alt="Featured screenshot"
                           className="w-full h-full object-contain"
+                          referrerPolicy="no-referrer"
+                          loading="lazy"
                         />
                       )}
                     </div>
@@ -785,7 +865,13 @@ export function GameDetailModal() {
                               : 'border-white/[0.06] opacity-50 hover:opacity-100'
                           }`}
                         >
-                          <img src={item.thumb} alt={`Media ${idx}`} className="w-full h-full object-cover" />
+                          <img 
+                            src={item.thumb} 
+                            alt={`Media ${idx}`} 
+                            className="w-full h-full object-cover" 
+                            referrerPolicy="no-referrer"
+                            loading="lazy"
+                          />
                           {item.type === 'video' && (
                             <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
                               <div className="w-7 h-7 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white">
@@ -1083,10 +1169,11 @@ export function GameDetailModal() {
                       </div>
                     ) : (
                       <img 
-                        key={mediaItems[lightboxIndex]?.url}
-                        src={mediaItems[lightboxIndex]?.url} 
+                        key={Array.isArray(mediaItems[lightboxIndex]?.url) ? (mediaItems[lightboxIndex]?.url as string[])[0] : (mediaItems[lightboxIndex]?.url || mediaItems[lightboxIndex]?.thumb)}
+                        src={Array.isArray(mediaItems[lightboxIndex]?.url) ? (mediaItems[lightboxIndex]?.url as string[])[0] : (mediaItems[lightboxIndex]?.url || mediaItems[lightboxIndex]?.thumb)} 
                         alt="Fullscreen view" 
                         className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain bg-black/80 border border-white/15"
+                        referrerPolicy="no-referrer"
                         onClick={(e) => e.stopPropagation()}
                       />
                     )}

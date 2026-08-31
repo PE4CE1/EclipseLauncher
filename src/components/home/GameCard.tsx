@@ -57,12 +57,13 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
   )
 
   function handleOpenGamePreview(id: number) {
-    openGameDetails(id)
+    openGameDetails(id, game.name)
   }
 
-  const primaryUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
-  const secondaryUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`
-  const fallbackUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
+  const isRoblox = appId === 999001 || game.name?.toLowerCase() === 'roblox'
+  const primaryUrl = isRoblox ? '/roblox/hero.png' : `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
+  const secondaryUrl = isRoblox ? '/Roblox-Logo-Icon.png' : `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`
+  const fallbackUrl = isRoblox ? '/Roblox-Logo-Icon.png' : `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
 
   const [imgSrc, setImgSrc] = useState(primaryUrl)
   const [hasError, setHasError] = useState(!appId)

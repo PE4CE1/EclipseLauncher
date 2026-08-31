@@ -72,13 +72,11 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
   const [activeTab, setActiveTab] = useState<'capture' | 'autoclip' | 'screen' | 'video' | 'audio' | 'hotkeys' | 'storage'>('capture')
   const [isRecordingCustomHotkey, setIsRecordingCustomHotkey] = useState(false)
   
-  // Real Audio Devices & Screen Sources
   const [audioOutputs, setAudioOutputs] = useState<AudioDevice[]>([])
   const [audioInputs, setAudioInputs] = useState<AudioDevice[]>([])
   const [screenSources, setScreenSources] = useState<ScreenSource[]>([])
   const [isLoadingDevices, setIsLoadingDevices] = useState(false)
 
-  // Enumerate Connected Devices & Screens
   const loadHardwareDevices = async () => {
     setIsLoadingDevices(true)
     try {
@@ -111,7 +109,6 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
     loadHardwareDevices()
   }, [])
 
-  // Custom Hotkey Listener
   useEffect(() => {
     if (!isRecordingCustomHotkey) return
 
@@ -148,7 +145,6 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
   }, [isRecordingCustomHotkey, language, setSettings])
 
-  // Quality Preset Selection (Screenshot 1)
   const applyQualityPreset = (preset: 'low' | 'standard' | 'high' | 'custom') => {
     if (preset === 'low') {
       setSettings({
@@ -203,7 +199,6 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
     }
   }
 
-  // Clean Toggle Switch Component
   const SettingToggle = ({
     title,
     description,
@@ -236,7 +231,7 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
 
   const SIDEBAR_TABS = [
     { id: 'capture', label: language === 'de' ? 'Aufnahme & Replay' : 'Capture & Replay', icon: Scissors },
-    { id: 'autoclip', label: language === 'de' ? 'Smart Auto-Clipping' : 'Smart Auto-Clipping', icon: Sparkles },
+    { id: 'autoclip', label: language === 'de' ? 'Smart Auto-Clipping' : 'Smart Auto-Clipping', icon: Sparkles, badge: 'BETA' },
     { id: 'screen', label: language === 'de' ? 'Screen Recording' : 'Screen Recording', icon: Monitor },
     { id: 'video', label: language === 'de' ? 'Qualität & Video' : 'Quality & Video', icon: Film },
     { id: 'audio', label: language === 'de' ? 'Audio & Mikrofon' : 'Audio & Mic', icon: Mic },
@@ -283,14 +278,25 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${
                     isSelected
                       ? 'bg-white text-black font-bold shadow-md'
                       : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
                   }`}
                 >
-                  <Icon size={15} />
-                  <span>{tab.label}</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon size={15} />
+                    <span className="truncate">{tab.label}</span>
+                  </div>
+                  {tab.badge && (
+                    <span className={`px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md ${
+                      isSelected 
+                        ? 'bg-black text-amber-400 border border-black/20' 
+                        : 'bg-amber-400/20 text-amber-400 border border-amber-400/30'
+                    }`}>
+                      {tab.badge}
+                    </span>
+                  )}
                 </button>
               )
             })}
@@ -313,8 +319,6 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
           </div>
         </div>
       </div>
-
-      {/* ─── Right Content Area ─── */}
       <div className="flex-1 p-6 md:p-8 overflow-y-auto bg-[#08090d]">
         <AnimatePresence mode="wait">
           <motion.div
@@ -408,13 +412,16 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
             {activeTab === 'autoclip' && (
               <div className="space-y-6">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <span className="p-1.5 rounded-lg bg-amber-400/10 text-amber-400 border border-amber-400/20">
                       <Sparkles size={16} />
                     </span>
-                    <h2 className="text-lg font-bold text-white tracking-tight">
-                      {language === 'de' ? 'Smart Auto-Clipping (AI & Events)' : 'Smart Auto-Clipping (AI & Events)'}
+                    <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                      <span>{language === 'de' ? 'Smart Auto-Clipping (AI & Events)' : 'Smart Auto-Clipping (AI & Events)'}</span>
                     </h2>
+                    <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md bg-amber-400/20 text-amber-400 border border-amber-400/30">
+                      BETA
+                    </span>
                   </div>
                   <p className="text-xs text-white/50 mt-1">
                     {language === 'de' 
@@ -428,8 +435,8 @@ export function ClipSettingsPanel({ onBack }: ClipSettingsPanelProps) {
                   <SettingToggle
                     title={language === 'de' ? 'Smart Auto-Clipping aktivieren' : 'Enable Smart Auto-Clipping'}
                     description={language === 'de' ? 'Aktiviert die automatische Erkennung von Match-Highlights in unterstützten Spielen.' : 'Enables automatic highlight detection for supported games.'}
-                    checked={settings.autoClipEnabled !== false}
-                    onChange={() => setSettings({ autoClipEnabled: settings.autoClipEnabled !== false ? false : true })}
+                    checked={settings.autoClipEnabled === true}
+                    onChange={() => setSettings({ autoClipEnabled: !settings.autoClipEnabled })}
                   />
 
                   {/* Rocket League Highlights */}

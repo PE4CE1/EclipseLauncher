@@ -345,9 +345,21 @@ export function Sidebar() {
             </div>
           ) : (
             (() => {
+              const isGamePlaying = (g: any) => {
+                if (!activeGame) return false
+                const isRbx = g.name?.toLowerCase() === 'roblox' || g.id === 'roblox' || g.steamId === 999001
+                return !!(
+                  (isRbx && (normalize(activeGame.name) === 'roblox' || activeGame.id === 'roblox' || activeGame.id === '999001' || activeGame.id === 'Roblox')) ||
+                  normalize(activeGame.name) === normalize(g.name) ||
+                  activeGame.id === String(g.steamId) ||
+                  activeGame.id === g.launchUrl ||
+                  activeGame.id === g.id
+                )
+              }
+
               const sortedGames = [...installedGames.filter(g => g.installed !== false)].sort((a, b) => {
-                const aPlaying = activeGame && (normalize(activeGame.name) === normalize(a.name) || activeGame.id === String(a.steamId) || activeGame.id === a.launchUrl || activeGame.id === a.id)
-                const bPlaying = activeGame && (normalize(activeGame.name) === normalize(b.name) || activeGame.id === String(b.steamId) || activeGame.id === b.launchUrl || activeGame.id === b.id)
+                const aPlaying = isGamePlaying(a)
+                const bPlaying = isGamePlaying(b)
                 
                 if (aPlaying && !bPlaying) return -1
                 if (!aPlaying && bPlaying) return 1
@@ -355,8 +367,9 @@ export function Sidebar() {
               })
 
               return sortedGames.slice(0, 50).map((game, i) => {
-                const steamId = game.steamId ?? (game.platform === 'steam' && game.appId ? Number(game.appId) : undefined)
-                const isPlaying = !!(activeGame && (normalize(activeGame.name) === normalize(game.name) || activeGame.id === String(game.steamId) || activeGame.id === game.launchUrl || activeGame.id === game.id))
+                const isRoblox = game.name?.toLowerCase() === 'roblox' || game.id === 'roblox' || game.steamId === 999001
+                const steamId = game.steamId ?? (game.platform === 'steam' && game.appId ? Number(game.appId) : (isRoblox ? 999001 : undefined))
+                const isPlaying = isGamePlaying(game)
                 const isMenuOpen = contextMenu?.game.id === game.id
 
                 return (
@@ -368,8 +381,8 @@ export function Sidebar() {
                     transition={{ delay: i * 0.02, ease: [0.16, 1, 0.3, 1] }}
                     onContextMenu={(e) => handleContextMenu(e, game)}
                     onClick={() => {
-                      if (steamId) {
-                        openGameDetails(steamId)
+                      if (steamId || isRoblox) {
+                        openGameDetails(steamId || (isRoblox ? 999001 : 0), game.name)
                       } else {
                         setActiveView('library')
                       }

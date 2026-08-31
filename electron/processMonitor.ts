@@ -10,8 +10,8 @@ import { addPlaytimeRecord } from './playtimeService'
 import { setActiveGameMetrics } from './metricsService'
 import { startGameFpsMonitor, stopGameFpsMonitor } from './gameFpsService'
 import { startRobloxTracker, stopRobloxTracker } from './robloxService'
-import { enableTrueBoostForGame, disableTrueBoost } from './boostService'
 import { onGameStartedAutoClip, onGameStoppedAutoClip } from './autoClipService'
+import { startRobloxAntiAfk, stopRobloxAntiAfk } from './robloxAntiAfkService'
 
 interface ActiveDetectedGame {
   name: string
@@ -68,6 +68,7 @@ function getAppSettings() {
         overlayController: s.overlayController ?? false,
         overlayRobloxTimer: s.overlayRobloxTimer ?? false,
         overlayRobloxCps: s.overlayRobloxCps ?? false,
+        overlayRobloxAntiAfk: s.overlayRobloxAntiAfk ?? false,
         overlayRLHud: s.overlayRLHud ?? false,
         overlayRLSteam: s.overlayRLSteam ?? false,
         overlayRLController: s.overlayRLController ?? false,
@@ -95,7 +96,7 @@ function getAppSettings() {
     autoRestoreOnGameStop: true,
     discordEnabled: true, discordActivityStyle: 'clipping', discordPrivacyMode: false, showDownloads: true, showIdle: true,
     overlayPerformance: false, overlayCrosshair: false, overlayGeneralAlwaysOn: false, 
-    overlayCps: false, overlayController: false, overlayRobloxTimer: false, overlayRobloxCps: false, 
+    overlayCps: false, overlayController: false, overlayRobloxTimer: false, overlayRobloxCps: false, overlayRobloxAntiAfk: false,
     overlayRLHud: false, overlayRLSteam: false, overlayRLController: false, rlPlaylist: '2v2' as const, trnApiKey: '',
     steamProfileUrl: '', rlScoreboardKeyKb: 'Tab', rlScoreboardKeyCtrl: 'Select', rlSteamAvatarScale: 85,
     rlControllerSkin: 'ps5_white' as const, rlControllerUrl: 'https://gamepadviewer.com/?p=1&s=ps5_white', rlControllerScale: 80,
@@ -149,6 +150,7 @@ const KNOWN_GAME_EXES: Record<string, string> = {
   // Other Popular Games
   'robloxplayerbeta.exe': 'Roblox',
   'robloxplayerlauncher.exe': 'Roblox',
+  'roblox.exe': 'Roblox',
   'fortniteclient-win64-shipping.exe': 'Fortnite',
   'valorant-win64-shipping.exe': 'VALORANT',
   'leagueclient.exe': 'League of Legends',
@@ -494,9 +496,9 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
         robloxTrackerActive = false
         stopRobloxTracker()
       }
+      stopRobloxAntiAfk()
 
-      // Deactivate True Boost and AutoClip
-      disableTrueBoost(mainWindow)
+      // Deactivate AutoClip
       onGameStoppedAutoClip()
 
       currentGame = null
@@ -583,16 +585,13 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           currentGamePid = gamePid
           setActiveGameMetrics(detectedName)
 
-          // Performance & True Boost: Flush RAM, optimize power plan, and set game priority
-          if (appSettings.gamePerformanceMode !== false) {
-            enableTrueBoostForGame(detectedName, gamePid, appSettings, mainWindow)
-            if (appSettings.autoMinimizeOnGame !== false) {
-              try {
-                if (mainWindow && !mainWindow.isMinimized() && mainWindow.isVisible()) {
-                  mainWindow.minimize()
-                }
-              } catch (_) {}
-            }
+          // Auto-minimize on game start if configured
+          if (appSettings.autoMinimizeOnGame !== false) {
+            try {
+              if (mainWindow && !mainWindow.isMinimized() && mainWindow.isVisible()) {
+                mainWindow.minimize()
+              }
+            } catch (_) {}
           }
 
           // Start Smart Auto-Clipping event watcher for detected game
@@ -659,6 +658,17 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
             stopRobloxTracker()
           }
 
+          // Roblox Anti-AFK (1-pixel micro nudge)
+          if (detectedName === 'Roblox') {
+            if (appSettings.overlayRobloxAntiAfk) {
+              startRobloxAntiAfk()
+            } else {
+              stopRobloxAntiAfk()
+            }
+          } else {
+            stopRobloxAntiAfk()
+          }
+
           // Start RL service if Rocket League AND user has enabled it
           if (isRL && appSettings.overlayRLHud && !rlServiceActive) {
             rlServiceActive = true
@@ -689,7 +699,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
 
         // Check if overlay should be visible for active game
         const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayController
-        const hasActiveGameOverlay = hasGeneralOverlay || (detectedName === 'Roblox' && (appSettings.overlayRobloxTimer || appSettings.overlayRobloxCps)) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam || appSettings.overlayRLController))
+        const hasActiveGameOverlay = hasGeneralOverlay || (detectedName === 'Roblox' && (appSettings.overlayRobloxTimer || appSettings.overlayRobloxCps || appSettings.overlayRobloxAntiAfk)) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam || appSettings.overlayRLController))
 
         if (hasActiveGameOverlay) {
           showOverlay({ 
@@ -702,6 +712,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
               cps: appSettings.overlayCps || (detectedName === 'Roblox' && appSettings.overlayRobloxCps),
               robloxCps: appSettings.overlayCps || (detectedName === 'Roblox' && appSettings.overlayRobloxCps),
               robloxTimer: appSettings.overlayRobloxTimer && detectedName === 'Roblox',
+              robloxAntiAfk: appSettings.overlayRobloxAntiAfk && detectedName === 'Roblox',
               rlHud: isRL && appSettings.overlayRLHud,
               overlayRLSteam: isRL && appSettings.overlayRLSteam,
               overlayController: appSettings.overlayController,
@@ -730,7 +741,8 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           console.log(`[ProcessMonitor] Detected game stopped: ${currentGame.name}`)
           try {
             const elapsedMins = Math.max(1, Math.round((Date.now() - (currentGame.startTime || Date.now())) / 60000))
-            addPlaytimeRecord(currentGame.name, currentGame.name, elapsedMins)
+            const isRoblox = currentGame.name.toLowerCase() === 'roblox'
+            addPlaytimeRecord(isRoblox ? 'roblox' : currentGame.name, currentGame.name, elapsedMins, isRoblox ? 999001 : undefined)
           } catch (e) {
             console.error('[ProcessMonitor] Failed to record playtime on stop:', e)
           }
@@ -746,9 +758,9 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
             robloxTrackerActive = false
             stopRobloxTracker()
           }
+          stopRobloxAntiAfk()
 
-          // Deactivate True Boost and AutoClip
-          disableTrueBoost(mainWindow)
+          // Deactivate AutoClip
           onGameStoppedAutoClip()
 
           if (appSettings.autoMinimizeOnGame !== false && appSettings.autoRestoreOnGameStop !== false) {
@@ -872,6 +884,7 @@ export function syncOverlaySettingsLive() {
     cps: appSettings.overlayCps || (currentGame?.name === 'Roblox' && appSettings.overlayRobloxCps),
     robloxCps: appSettings.overlayCps || (currentGame?.name === 'Roblox' && appSettings.overlayRobloxCps),
     robloxTimer: appSettings.overlayRobloxTimer && currentGame?.name === 'Roblox',
+    robloxAntiAfk: appSettings.overlayRobloxAntiAfk && currentGame?.name === 'Roblox',
     rlHud: isRL && appSettings.overlayRLHud,
     overlayRLSteam: isRL && appSettings.overlayRLSteam,
     overlayController: appSettings.overlayController,
@@ -885,6 +898,15 @@ export function syncOverlaySettingsLive() {
     rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
   }
 
+  // Live toggle Roblox Anti-AFK protection
+  if (currentGame?.name === 'Roblox') {
+    if (appSettings.overlayRobloxAntiAfk) {
+      startRobloxAntiAfk()
+    } else {
+      stopRobloxAntiAfk()
+    }
+  }
+
   // If overlay window is already open (e.g. edit mode or running), immediately push live settings
   if (overlayWin && !overlayWin.isDestroyed()) {
     overlayWin.webContents.send('overlay:update', {
@@ -896,7 +918,7 @@ export function syncOverlaySettingsLive() {
   }
 
   if (currentGame) {
-    const shouldShow = hasGeneralOverlay || (currentGame.name === 'Roblox' && (appSettings.overlayRobloxTimer || appSettings.overlayRobloxCps)) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam || appSettings.overlayRLController))
+    const shouldShow = hasGeneralOverlay || (currentGame.name === 'Roblox' && (appSettings.overlayRobloxTimer || appSettings.overlayRobloxCps || appSettings.overlayRobloxAntiAfk)) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam || appSettings.overlayRLController))
 
     if (shouldShow) {
       showOverlay({

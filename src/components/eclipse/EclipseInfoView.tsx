@@ -22,6 +22,24 @@ interface GitHubRelease {
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
   {
+    id: 124,
+    tag_name: 'v1.2.4',
+    name: 'v1.2.4 - HLS Adaptive Trailer Streaming, Roblox Library Integration & High-Visibility Hero Overhaul',
+    published_at: '2026-08-31T00:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.2.4',
+    body: `### 🎬 Modern Steam Trailer Streaming
+* **HLS Adaptive Video Streaming:** Full support for Steam's modern adaptive HLS master playlists in 1080p and 720p with multi-CDN fallback.
+* **Instant Loading & Resiliency:** Solved infinite loading spinners on modern Steam game trailers.
+
+### 🟥 Roblox Integration & Logo Isolation
+* **Roblox Library & Scanner:** Added native registry protocol detection, playtime tracking, and clean library integration for Roblox.
+* **Accurate Artwork & Logo Isolation:** Ensured all games display their official logos and artwork without cross-contamination.
+
+### ✨ High-Visibility Hero Artwork
+* **Cinematic Game Previews:** Enhanced brightness, contrast, and gradient overlays for high-visibility game preview backdrops.`,
+    prerelease: false
+  },
+  {
     id: 122,
     tag_name: 'v1.2.2',
     name: 'v1.2.2 - Roblox Sub-Game Live RPC & Artwork Tracker, Playing/Clipping Switcher & Wallpaper Blacklist',

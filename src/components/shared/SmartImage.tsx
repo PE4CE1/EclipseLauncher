@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { getCoverUrl, getHeaderUrl, getHeroUrl, getPlaceholderCover, getPlaceholderHero } from '../../services/assetHelper'
 
 interface SmartImageProps {
@@ -37,12 +37,13 @@ export function SmartImage({ appId, type, alt, className, fallbackScreenshotUrl 
         getHeroUrl(validId),
         `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${validId}/library_hero.jpg`,
         `https://cdn.akamai.steamstatic.com/steam/apps/${validId}/library_hero.jpg`,
+        `https://store.akamai.steamstatic.com/images/storepagebackground/app/${validId}`,
         `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${validId}/page_bg_generated_v6.jpg`,
         `https://cdn.akamai.steamstatic.com/steam/apps/${validId}/page_bg_generated_v6.jpg`,
+        ...(fallbackScreenshotUrl ? [fallbackScreenshotUrl] : []),
         `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${validId}/header.jpg`,
         getHeaderUrl(validId),
         `https://cdn.akamai.steamstatic.com/steam/apps/${validId}/capsule_617x283.jpg`,
-        ...(fallbackScreenshotUrl ? [fallbackScreenshotUrl] : []),
         getPlaceholderHero(alt || '')
       ]
     }
@@ -60,6 +61,10 @@ export function SmartImage({ appId, type, alt, className, fallbackScreenshotUrl 
 
   const [srcIndex, setSrcIndex] = useState(0)
 
+  useEffect(() => {
+    setSrcIndex(0)
+  }, [validId, type, fallbackScreenshotUrl, alt])
+
   // If even all sources fail, render safe placeholder SVG
   if (srcIndex >= sources.length) {
     const finalFallback = type === 'hero' ? getPlaceholderHero(alt || '') : getPlaceholderCover(alt || '')
@@ -68,6 +73,7 @@ export function SmartImage({ appId, type, alt, className, fallbackScreenshotUrl 
         src={finalFallback}
         alt={alt || 'Game'}
         className={className}
+        referrerPolicy="no-referrer"
       />
     )
   }
@@ -82,6 +88,7 @@ export function SmartImage({ appId, type, alt, className, fallbackScreenshotUrl 
           src={currentUrl}
           alt=""
           className="absolute inset-0 w-full h-full object-cover filter blur-xl scale-150 opacity-40 brightness-75 pointer-events-none"
+          referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/40 pointer-events-none" />
         <div className="absolute top-3 inset-x-0 flex justify-center pointer-events-none z-10">
@@ -94,6 +101,7 @@ export function SmartImage({ appId, type, alt, className, fallbackScreenshotUrl 
             src={currentUrl}
             alt={alt}
             className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
             onError={() => {
               setSrcIndex(prev => prev + 1)
             }}
@@ -109,6 +117,7 @@ export function SmartImage({ appId, type, alt, className, fallbackScreenshotUrl 
       src={sources[srcIndex]}
       alt={alt}
       className={className}
+      referrerPolicy="no-referrer"
       onError={() => {
         setSrcIndex(prev => prev + 1)
       }}

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Globe, Gamepad2, Move, Check, Activity, Crosshair as CrosshairIcon, Timer,
   ChevronDown, Cpu, MemoryStick, Clock, Layers, Edit3, MousePointerClick, Gauge,
-  Plus, Minus
+  Plus, Minus, ShieldCheck
 } from 'lucide-react'
 import type { AppSettings } from '../../types/game'
 import { CROSSHAIR_PRESETS, CrosshairSVG, DEFAULT_CROSSHAIR } from '../overlay/widgets/Crosshair'
@@ -616,16 +616,20 @@ const RobloxAccordion = memo(function RobloxAccordion({
   onToggleTimer,
   robloxCps,
   onToggleCps,
+  robloxAntiAfk,
+  onToggleAntiAfk,
   language,
 }: { 
   robloxTimer: boolean; 
   onToggleTimer: () => void;
   robloxCps: boolean;
   onToggleCps: () => void;
+  robloxAntiAfk: boolean;
+  onToggleAntiAfk: () => void;
   language: string;
 }) {
   const [open, setOpen] = useState(false)
-  const activeCount = (robloxTimer ? 1 : 0) + (robloxCps ? 1 : 0)
+  const activeCount = (robloxTimer ? 1 : 0) + (robloxCps ? 1 : 0) + (robloxAntiAfk ? 1 : 0)
 
   return (
     <div 
@@ -639,13 +643,9 @@ const RobloxAccordion = memo(function RobloxAccordion({
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-semibold text-white">Roblox</div>
           <div className="text-[11px] text-white/50">
-            {activeCount === 2 
-              ? (language === 'de' ? 'Timer & CPS-Zähler aktiv' : 'Timer & CPS Counter active')
-              : robloxTimer 
-                ? (language === 'de' ? 'Spiel-Session & AFK-Timer aktiv' : 'Game-Session & AFK Timer active')
-                : robloxCps 
-                  ? (language === 'de' ? 'CPS-Zähler aktiv' : 'CPS Counter active')
-                  : (language === 'de' ? 'Keine Overlays aktiv' : 'No overlays active')}
+            {activeCount > 0 
+              ? `${activeCount} Overlay${activeCount > 1 ? 's' : ''} & Features aktiv`
+              : (language === 'de' ? 'Keine Overlays aktiv' : 'No overlays active')}
           </div>
         </div>
         {activeCount > 0 && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_5px_#ffffff]" />}
@@ -676,7 +676,30 @@ const RobloxAccordion = memo(function RobloxAccordion({
                 <Toggle checked={robloxTimer} onChange={onToggleTimer} />
               </div>
 
-              {/* Overlay 2: Roblox CPS Counter */}
+              {/* Overlay 2: Roblox Anti-AFK (1-Pixel Nudge) */}
+              <div onClick={onToggleAntiAfk} className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.03] transition-colors">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${robloxAntiAfk ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/[0.04] text-white/40'}`}>
+                  <ShieldCheck size={14} />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className={`text-[12px] font-medium ${robloxAntiAfk ? 'text-white' : 'text-white/60'}`}>
+                      {language === 'de' ? 'Roblox Anti-AFK (Anti-Kick Schutz)' : 'Roblox Anti-AFK (Anti-Kick Protection)'}
+                    </div>
+                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
+                      1-PX NUDGE
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-white/40 mt-0.5">
+                    {language === 'de' 
+                      ? 'Sendet alle 10 Minuten einen unbemerkbaren 1-Pixel-Impuls. Verhindert den 20-Minuten-Kick ohne Charakterbewegung. 100% unbannbar.' 
+                      : 'Silently sends a 1-pixel micro-nudge every 10 mins to prevent the 20-min idle kick without moving your character. 100% safe.'}
+                  </div>
+                </div>
+                <Toggle checked={robloxAntiAfk} onChange={onToggleAntiAfk} />
+              </div>
+
+              {/* Overlay 3: Roblox CPS Counter */}
               <div onClick={onToggleCps} className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.03] transition-colors">
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${robloxCps ? 'bg-white/10 text-white' : 'bg-white/[0.04] text-white/40'}`}>
                   <MousePointerClick size={13} />
@@ -1157,6 +1180,7 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
     settings.overlayController,
     settings.overlayRobloxTimer,
     settings.overlayRobloxCps,
+    settings.overlayRobloxAntiAfk,
     settings.overlayRLHud,
     settings.overlayRLSteam,
     settings.overlayRLController,
@@ -1247,6 +1271,8 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
             onToggleTimer={() => save('overlayRobloxTimer', !settings.overlayRobloxTimer)}
             robloxCps={settings.overlayRobloxCps || false}
             onToggleCps={() => save('overlayRobloxCps', !settings.overlayRobloxCps)}
+            robloxAntiAfk={settings.overlayRobloxAntiAfk || false}
+            onToggleAntiAfk={() => save('overlayRobloxAntiAfk', !settings.overlayRobloxAntiAfk)}
             language={lang}
           />
           <RocketLeagueAccordion

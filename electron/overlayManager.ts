@@ -89,6 +89,9 @@ export function showOverlay(gameData: any) {
   }
 
   if (overlayWindow && !overlayWindow.isDestroyed()) {
+    if (s?.performance || s?.robloxTimer) {
+      startMetricsService(getOverlayWindow)
+    }
     overlayWindow.webContents.send('overlay:update', gameData)
     return
   }
@@ -97,7 +100,7 @@ export function showOverlay(gameData: any) {
 
   overlayWindow!.once('ready-to-show', () => {
     overlayWindow?.show()
-    if (s?.performance) {
+    if (s?.performance || s?.robloxTimer) {
       startMetricsService(getOverlayWindow)
     }
     if (s?.cps || s?.robloxCps || s?.rlHud) {

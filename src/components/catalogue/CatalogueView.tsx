@@ -55,12 +55,13 @@ function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }
   const appId = item.id || (item as any).appid || (item as any).app_id
 
   function handleOpenGamePreview(id: number) {
-    if (id) openGameDetails(id)
+    if (id) openGameDetails(id, item.name)
   }
 
-  const primaryUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
-  const secondaryUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`
-  const fallbackUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
+  const isRoblox = appId === 999001 || item.name?.toLowerCase() === 'roblox'
+  const primaryUrl = isRoblox ? '/roblox/hero.png' : `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
+  const secondaryUrl = isRoblox ? '/Roblox-Logo-Icon.png' : `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`
+  const fallbackUrl = isRoblox ? '/Roblox-Logo-Icon.png' : `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
 
   const [imgSrc, setImgSrc] = useState(primaryUrl)
   const [hasError, setHasError] = useState(!appId)
@@ -200,7 +201,7 @@ const DbGameCard = React.memo(function DbGameCard({ game, index }: { game: GameD
   const appId = game.id
 
   function handleOpenGamePreview(id: number) {
-    if (id) openGameDetails(id)
+    if (id) openGameDetails(id, game.name)
   }
 
   const primaryUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
