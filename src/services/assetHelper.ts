@@ -4,11 +4,14 @@
  * No API keys required — all URLs are publicly accessible static assets.
  */
 
+import robloxHeroImg from '../assets/roblox/hero.png'
+import robloxLogoImg from '../assets/Roblox-Logo-Icon.png'
+
 const STEAM_CDN = 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps'
 const STEAM_HEADER_CDN = 'https://cdn.akamai.steamstatic.com/steam/apps'
 
-const ROBLOX_POSTER = '/roblox/hero.png'
-const ROBLOX_LOGO = '/Roblox-Logo-Icon.png'
+export const ROBLOX_POSTER = robloxHeroImg
+export const ROBLOX_LOGO = robloxLogoImg
 
 /**
  * Vertical grid cover (600×900 poster) — best for GameCards

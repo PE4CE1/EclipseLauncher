@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -29,6 +29,8 @@ import { SmartImage } from './SmartImage'
 import { useTranslation } from '../../hooks/useTranslation'
 import { CustomVideoPlayer } from './CustomVideoPlayer'
 import steamLogoImg from '../../assets/steam-logo.png'
+import robloxLogoImg from '../../assets/Roblox-Logo-Icon.png'
+import robloxHeroImg from '../../assets/roblox/hero.png'
 import type { LibraryGame } from '../../types/game'
 
 export function GameDetailModal() {
@@ -49,17 +51,21 @@ export function GameDetailModal() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [reqTab, setReqTab] = useState<'minimum' | 'recommended'>('minimum')
   const [logoState, setLogoState] = useState<'loading' | 'loaded' | 'error'>('loading')
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const steamId = selectedGameId && selectedGameId > 0 ? selectedGameId : null
   const { data: detail, isLoading } = useSteamGameDetail(steamId)
 
-  // Reset state on game change
+  // Reset state and scroll position on game change or modal open
   useEffect(() => {
     setSelectedMediaIdx(0)
     setReqTab('minimum')
     setLogoState('loading')
     setLightboxIndex(null)
-  }, [steamId, selectedGameName])
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0
+    }
+  }, [steamId, selectedGameName, isGameModalOpen])
 
   // Synchronize fullscreen lightbox state with global UIStore
   useEffect(() => {
@@ -265,7 +271,7 @@ export function GameDetailModal() {
         installed: !!installed,
         installPath: installed?.installPath,
         launchUrl: installed?.launchUrl || (isRoblox ? 'roblox:' : undefined),
-        coverImage: isRoblox ? '/roblox/hero.png' : undefined,
+        coverImage: isRoblox ? robloxHeroImg : undefined,
         addedAt: Date.now(),
         isFavorite: false,
         releaseDate: game.releaseDate,
@@ -419,7 +425,7 @@ export function GameDetailModal() {
           transition={{ duration: 0.1 }}
         >
           {/* Main Full-Width Scrollable Canvas (Top Bar removed as requested) */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
             
             {/* Cinematic Hero Backdrop */}
             <div className="relative w-full h-[52vh] min-h-[360px] max-h-[520px] flex-shrink-0 overflow-hidden bg-[#07080a]">
@@ -442,7 +448,7 @@ export function GameDetailModal() {
                   {isRoblox ? (
                     <div className="relative min-h-[80px] flex items-end">
                       <img
-                        src="/Roblox-Logo-Icon.png"
+                        src={robloxLogoImg}
                         alt="Roblox"
                         className="max-h-24 md:max-h-32 object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] filter contrast-105"
                       />

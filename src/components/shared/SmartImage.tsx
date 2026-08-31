@@ -14,6 +14,15 @@ export function SmartImage({ appId, type, alt, className, fallbackScreenshotUrl 
   const validId = idNum && !isNaN(idNum) && idNum > 0 ? idNum : undefined
 
   const sources = useMemo(() => {
+    const isRoblox = validId === 999001 || alt?.toLowerCase() === 'roblox'
+    if (isRoblox) {
+      return [
+        type === 'poster' ? getCoverUrl(999001) : getHeroUrl(999001),
+        getCoverUrl(999001),
+        getHeaderUrl(999001)
+      ]
+    }
+
     if (!validId) {
       return fallbackScreenshotUrl 
         ? [fallbackScreenshotUrl, type === 'hero' ? getPlaceholderHero(alt || '') : getPlaceholderCover(alt || '')]

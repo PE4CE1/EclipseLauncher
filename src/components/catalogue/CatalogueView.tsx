@@ -8,6 +8,8 @@ import { hasGameInSource } from '../../services/downloadEngine'
 import { SmartImage } from '../shared/SmartImage'
 import { CatalogueFilters } from './CatalogueFilters'
 import type { SteamSearchItem, SteamGame } from '../../services/steamService'
+import robloxHeroImg from '../../assets/roblox/hero.png'
+import robloxLogoImg from '../../assets/Roblox-Logo-Icon.png'
 
 function useDebounce<T>(value: T, delay: number): T {
   const [deb, setDeb] = useState(value)
@@ -59,9 +61,9 @@ function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }
   }
 
   const isRoblox = appId === 999001 || item.name?.toLowerCase() === 'roblox'
-  const primaryUrl = isRoblox ? '/roblox/hero.png' : `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
-  const secondaryUrl = isRoblox ? '/Roblox-Logo-Icon.png' : `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`
-  const fallbackUrl = isRoblox ? '/Roblox-Logo-Icon.png' : `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
+  const primaryUrl = isRoblox ? robloxHeroImg : `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
+  const secondaryUrl = isRoblox ? robloxLogoImg : `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`
+  const fallbackUrl = isRoblox ? robloxLogoImg : `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
 
   const [imgSrc, setImgSrc] = useState(primaryUrl)
   const [hasError, setHasError] = useState(!appId)

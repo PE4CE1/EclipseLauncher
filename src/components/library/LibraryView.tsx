@@ -8,6 +8,8 @@ import { findSteamIdByName } from '../../services/steamService'
 import { getCoverUrl, getHeaderUrl, getPlaceholderCover } from '../../services/assetHelper'
 import type { LibraryGame, InstalledGame } from '../../types/game'
 import steamLogoImg from '../../assets/steam-logo.png'
+import robloxHeroImg from '../../assets/roblox/hero.png'
+import robloxLogoImg from '../../assets/Roblox-Logo-Icon.png'
 
 type TabId = 'all' | 'installed' | 'favorites' | 'custom'
 
@@ -34,7 +36,7 @@ export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { g
   const [imgSrc, setImgSrc] = useState<string>(() => {
     if (cached) return cached.url
     if (resolvedId === 999001 || game.name?.toLowerCase() === 'roblox' || game.id === 'roblox') {
-      return '/roblox/hero.png'
+      return robloxHeroImg
     }
     if (resolvedId) {
       return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/library_600x900.jpg`
@@ -51,7 +53,7 @@ export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { g
   const handleError = useCallback(() => {
     setIsLoaded(false)
     if (resolvedId === 999001 || game.name?.toLowerCase() === 'roblox' || game.id === 'roblox') {
-      setImgSrc('/Roblox-Logo-Icon.png')
+      setImgSrc(robloxLogoImg)
       setIsLoaded(true)
       return
     }

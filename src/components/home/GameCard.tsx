@@ -6,6 +6,8 @@ import { useGameStore } from '../../store/gameStore'
 import type { SteamGame } from '../../services/steamService'
 import type { LibraryGame } from '../../types/game'
 import { getPlaceholderCover } from '../../services/assetHelper'
+import robloxHeroImg from '../../assets/roblox/hero.png'
+import robloxLogoImg from '../../assets/Roblox-Logo-Icon.png'
 
 interface GameCardProps {
   game: SteamGame
@@ -61,9 +63,9 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
   }
 
   const isRoblox = appId === 999001 || game.name?.toLowerCase() === 'roblox'
-  const primaryUrl = isRoblox ? '/roblox/hero.png' : `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
-  const secondaryUrl = isRoblox ? '/Roblox-Logo-Icon.png' : `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`
-  const fallbackUrl = isRoblox ? '/Roblox-Logo-Icon.png' : `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
+  const primaryUrl = isRoblox ? robloxHeroImg : `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
+  const secondaryUrl = isRoblox ? robloxLogoImg : `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`
+  const fallbackUrl = isRoblox ? robloxLogoImg : `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
 
   const [imgSrc, setImgSrc] = useState(primaryUrl)
   const [hasError, setHasError] = useState(!appId)

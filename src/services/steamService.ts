@@ -4,6 +4,13 @@
  * Uses only public Steam endpoints — no API keys required.
  */
 
+import robloxHeroImg from '../assets/roblox/hero.png'
+import robloxLogoImg from '../assets/Roblox-Logo-Icon.png'
+import robloxScreen1Img from '../assets/roblox/screen1.png'
+import robloxScreen2Img from '../assets/roblox/screen2.png'
+import robloxScreen3Img from '../assets/roblox/screen3.png'
+import robloxScreen4Img from '../assets/roblox/screen4.png'
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface SteamSearchItem {
@@ -110,9 +117,9 @@ export const ROBLOX_APP_DETAILS: SteamAppDetails = {
   detailed_description: 'Roblox is the ultimate virtual universe that lets you create, share experiences with friends, and be anything you can imagine. Explore millions of community-created 3D experiences, from epic adventures and competitive battles to hangout worlds with friends across PC, console, and mobile.',
   about_the_game: 'Roblox is the ultimate virtual universe that lets you create, share experiences with friends, and be anything you can imagine. Explore millions of community-created 3D experiences, from epic adventures and competitive battles to hangout worlds with friends across PC, console, and mobile.',
   supported_languages: 'English, German, French, Spanish, Japanese, Korean, Chinese, and 20+ more',
-  header_image: '/roblox/hero.png',
-  background: '/roblox/hero.png',
-  background_raw: '/roblox/hero.png',
+  header_image: robloxHeroImg,
+  background: robloxHeroImg,
+  background_raw: robloxHeroImg,
   pc_requirements: {
     minimum: '<strong>OS:</strong> Windows 10/11 (64-bit)<br><strong>Processor:</strong> 1.6 GHz or better<br><strong>Memory:</strong> 4 GB RAM<br><strong>Graphics:</strong> DirectX 10 minimum (Shader Model 2.0)<br><strong>Network:</strong> Broadband Internet connection<br><strong>Storage:</strong> 1 GB available space',
     recommended: '<strong>OS:</strong> Windows 10/11 (64-bit)<br><strong>Processor:</strong> High-end 4-Core CPU or better<br><strong>Memory:</strong> 8 GB RAM<br><strong>Graphics:</strong> Dedicated GPU with DirectX 11+ support<br><strong>Network:</strong> Broadband Internet connection'
@@ -136,11 +143,11 @@ export const ROBLOX_APP_DETAILS: SteamAppDetails = {
     { id: '5', description: 'Sandbox' }
   ],
   screenshots: [
-    { id: 1, path_thumbnail: '/roblox/hero.png', path_full: '/roblox/hero.png' },
-    { id: 2, path_thumbnail: '/roblox/screen1.png', path_full: '/roblox/screen1.png' },
-    { id: 3, path_thumbnail: '/roblox/screen2.png', path_full: '/roblox/screen2.png' },
-    { id: 4, path_thumbnail: '/roblox/screen3.png', path_full: '/roblox/screen3.png' },
-    { id: 5, path_thumbnail: '/roblox/screen4.png', path_full: '/roblox/screen4.png' }
+    { id: 1, path_thumbnail: robloxHeroImg, path_full: robloxHeroImg },
+    { id: 2, path_thumbnail: robloxScreen1Img, path_full: robloxScreen1Img },
+    { id: 3, path_thumbnail: robloxScreen2Img, path_full: robloxScreen2Img },
+    { id: 4, path_thumbnail: robloxScreen3Img, path_full: robloxScreen3Img },
+    { id: 5, path_thumbnail: robloxScreen4Img, path_full: robloxScreen4Img }
   ],
   release_date: { coming_soon: false, date: '1 Sep 2006' }
 }
@@ -248,7 +255,7 @@ export async function searchSteamGames(
         return [{
           id: ROBLOX_APP_ID,
           name: 'Roblox',
-          tiny_image: '/Roblox-Logo-Icon.png',
+          tiny_image: robloxLogoImg,
           price: { currency: 'EUR', initial: 0, final: 0, discount_percent: 0, final_formatted: 'Free' }
         }]
       }
@@ -261,7 +268,7 @@ export async function searchSteamGames(
       items.unshift({
         id: ROBLOX_APP_ID,
         name: 'Roblox',
-        tiny_image: '/Roblox-Logo-Icon.png',
+        tiny_image: robloxLogoImg,
         price: { currency: 'EUR', initial: 0, final: 0, discount_percent: 0, final_formatted: 'Free' }
       })
     }
@@ -271,7 +278,7 @@ export async function searchSteamGames(
       return [{
         id: ROBLOX_APP_ID,
         name: 'Roblox',
-        tiny_image: '/Roblox-Logo-Icon.png',
+        tiny_image: robloxLogoImg,
         price: { currency: 'EUR', initial: 0, final: 0, discount_percent: 0, final_formatted: 'Free' }
       }]
     }
