@@ -24,13 +24,15 @@ const FALLBACK_RELEASES = [
   {
     id: 127,
     tag_name: 'v1.2.7',
-    name: 'v1.2.7 - Game Overview Polish & UI Enhancements',
+    name: 'v1.2.7 - Reduced Size, Game Overview Overhaul, OpenAsar & Roblox Code Finder',
     published_at: '2026-09-05T20:00:00Z',
     html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.2.7',
-    body: `* **Game Details Layout:** Clean two-row header with studio deduplication.
-* **Button Sizing:** Fixed hover width shift on library actions.
-* **Stats & Artwork:** Real SteamDB peak tracking & sleek placeholder covers.
-* **UI Polish:** Dropdown menu and notification background visual fixes.`,
+    body: `* **Reduced App Size:** Optimized package and assets for a significantly smaller download footprint.
+* **Game Overview Overhaul:** Two-row header layout, studio deduplication, and exact library button sizing.
+* **Roblox Enhancements:** Fixed game process detection and added live promo codes finder hub.
+* **OpenAsar Mod:** 1-Click Discord optimization plugin for snappy performance.
+* **Stats & Artwork:** Accurate SteamDB peak tracking and modern frosted glass cover placeholders.
+* **Bug Fixes:** Resolved dropdown opacity, notification scroll background, and overall UI stability.`,
     prerelease: false
   },
   {
