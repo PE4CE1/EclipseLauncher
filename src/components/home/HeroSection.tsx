@@ -41,18 +41,18 @@ export function HeroSection({ games }: HeroSectionProps) {
     }
   }, [])
 
-  // Auto-rotation timer: PAUSED when hovering, when a game is active, or when window is unfocused/minimized
+  // Auto-rotation timer: Auto-advances every 8s reliably even in performance mode
   useEffect(() => {
-    if (games.length <= 1 || isHovered || !isWindowFocused || !!activeGame) {
+    if (games.length <= 1 || !isWindowFocused) {
       return
     }
 
     const interval = setInterval(() => {
       setCurrentIndex(i => (i + 1) % games.length)
-    }, 10000)
+    }, 8000)
 
     return () => clearInterval(interval)
-  }, [games.length, isHovered, isWindowFocused, activeGame])
+  }, [games.length, isWindowFocused])
 
   // Preload next upcoming hero image & logo into browser cache for instantaneous, zero-spike slide changes
   useEffect(() => {
@@ -103,13 +103,13 @@ export function HeroSection({ games }: HeroSectionProps) {
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Background images with hardware-accelerated crossfade */}
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence>
         <motion.div
           key={currentAppId}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.45, ease: 'easeInOut' }}
+          transition={{ duration: 0.35, ease: 'easeInOut' }}
           className="absolute inset-0 will-change-[opacity] [transform:translateZ(0)]"
         >
           <SmartImage 
@@ -123,13 +123,13 @@ export function HeroSection({ games }: HeroSectionProps) {
       </AnimatePresence>
 
       {/* Logo overlay - zero-overhead radial backdrop instead of heavy Gaussian blur-2xl filter */}
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         <motion.div
           key={`logo-${currentAppId}`}
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
           className="absolute top-20 md:top-24 right-8 md:right-12 lg:right-14 max-w-[240px] md:max-w-[320px] z-10 pointer-events-none flex items-center justify-end will-change-[opacity,transform] [transform:translateZ(0)]"
         >
           <div className="relative">
@@ -151,13 +151,13 @@ export function HeroSection({ games }: HeroSectionProps) {
       <div className="absolute bottom-0 left-0 right-0 h-3/4 bg-gradient-to-t from-[#040405] via-[#040405]/60 to-transparent pointer-events-none" />
 
       {/* Content */}
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         <motion.div
           key={current.steamId}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
           className="absolute bottom-0 left-0 right-0 p-8 z-10 will-change-[opacity,transform] [transform:translateZ(0)]"
         >
           {/* Genre tags */}
@@ -246,7 +246,7 @@ export function HeroSection({ games }: HeroSectionProps) {
           <button
             id="hero-prev"
             onClick={() => setCurrentIndex(i => (i - 1 + games.length) % games.length)}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 bg-black/40 hover:bg-black/70 border border-white/10 rounded-full flex items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="absolute left-4 top-1/2 -mt-[18px] z-20 w-9 h-9 bg-black/50 hover:bg-black/80 border border-white/20 rounded-full flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
             aria-label="Previous"
           >
             <ChevronLeft size={18} />
@@ -254,7 +254,7 @@ export function HeroSection({ games }: HeroSectionProps) {
           <button
             id="hero-next"
             onClick={() => setCurrentIndex(i => (i + 1) % games.length)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 bg-black/40 hover:bg-black/70 border border-white/10 rounded-full flex items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="absolute right-4 top-1/2 -mt-[18px] z-20 w-9 h-9 bg-black/50 hover:bg-black/80 border border-white/20 rounded-full flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
             aria-label="Next"
           >
             <ChevronRight size={18} />

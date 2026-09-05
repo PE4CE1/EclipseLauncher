@@ -8,8 +8,6 @@ import { hasGameInSource } from '../../services/downloadEngine'
 import { SmartImage } from '../shared/SmartImage'
 import { CatalogueFilters } from './CatalogueFilters'
 import type { SteamSearchItem, SteamGame } from '../../services/steamService'
-import robloxHeroImg from '../../assets/roblox/hero.png'
-import robloxLogoImg from '../../assets/Roblox-Logo-Icon.png'
 
 function useDebounce<T>(value: T, delay: number): T {
   const [deb, setDeb] = useState(value)
@@ -26,6 +24,7 @@ function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }
   const cardRef2 = useRef<HTMLDivElement>(null)
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (document.documentElement.classList.contains('performance-mode')) return
     const el = cardRef2.current
     if (!el) return
     const rect = el.getBoundingClientRect()
@@ -60,10 +59,9 @@ function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }
     if (id) openGameDetails(id, item.name)
   }
 
-  const isRoblox = appId === 999001 || item.name?.toLowerCase() === 'roblox'
-  const primaryUrl = isRoblox ? robloxHeroImg : `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
-  const secondaryUrl = isRoblox ? robloxLogoImg : `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`
-  const fallbackUrl = isRoblox ? robloxLogoImg : `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
+  const primaryUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
+  const secondaryUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`
+  const fallbackUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
 
   const [imgSrc, setImgSrc] = useState(primaryUrl)
   const [hasError, setHasError] = useState(!appId)
@@ -128,7 +126,7 @@ function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }
           
           {/* Dynamic Parallax Glare */}
           <div 
-            className="absolute inset-0 z-30 pointer-events-none rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            className="dynamic-glare absolute inset-0 z-30 pointer-events-none rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
             style={{
               background: 'radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12) 0%, transparent 60%)'
             }}
@@ -155,7 +153,7 @@ function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }
         {item.price ? (
           <p className="text-[11px] text-hub-muted mt-0.5">
             {item.price.final === 0 ? (
-              <span className="text-indigo-400">Free to Play</span>
+              <span className="text-white/90 font-medium">Free to Play</span>
             ) : (
               item.price.final_formatted
             )}
@@ -172,6 +170,7 @@ const DbGameCard = React.memo(function DbGameCard({ game, index }: { game: GameD
   const cardRef3 = useRef<HTMLDivElement>(null)
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (document.documentElement.classList.contains('performance-mode')) return
     const el = cardRef3.current
     if (!el) return
     const rect = el.getBoundingClientRect()
@@ -279,7 +278,7 @@ const DbGameCard = React.memo(function DbGameCard({ game, index }: { game: GameD
           
           {/* Dynamic Parallax Glare */}
           <div 
-            className="absolute inset-0 z-30 pointer-events-none rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            className="dynamic-glare absolute inset-0 z-30 pointer-events-none rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
             style={{
               background: 'radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12) 0%, transparent 60%)'
             }}
@@ -311,7 +310,7 @@ export function CatalogueView() {
 
   // Apply filters
   const filteredDB = useMemo(() => {
-    let result = [...db]
+    let result = db.filter(g => g.id !== 999001 && !g.name?.toLowerCase().includes('roblox'))
 
     // Year Filter
     if (store.yearRange[0] > 2000 || store.yearRange[1] < 2026) {

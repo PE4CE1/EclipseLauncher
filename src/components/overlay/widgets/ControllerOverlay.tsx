@@ -592,49 +592,6 @@ ${specificCss}
         applyState(e.data.buttons, e.data.axes);
       }
     });
-
-    window.addEventListener('gamepadconnected', () => {});
-    window.addEventListener('gamepaddisconnected', () => {});
-
-    function scanGamepad() {
-      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-      let best = null;
-      for (let i = 0; i < gamepads.length; i++) {
-        const g = gamepads[i];
-        if (g && (g.connected || g.buttons)) {
-          const active = (g.buttons && g.buttons.some(b => b && (b.pressed || b.value > 0.05))) ||
-                         (g.axes && g.axes.some(a => Math.abs(a) > 0.1));
-          if (active) {
-            best = g;
-            break;
-          }
-        }
-      }
-      if (!best) {
-        for (let i = 0; i < gamepads.length; i++) {
-          const g = gamepads[i];
-          if (g && (g.connected || g.buttons)) {
-            best = g;
-            break;
-          }
-        }
-      }
-      return best;
-    }
-
-    function update() {
-      const gp = scanGamepad();
-      if (gp) {
-        applyState(gp.buttons, gp.axes);
-      }
-    }
-
-    setInterval(update, 16);
-    function loop() {
-      update();
-      requestAnimationFrame(loop);
-    }
-    requestAnimationFrame(loop);
   </script>
 </body>
 </html>`
@@ -668,24 +625,57 @@ export const ControllerOverlay = React.memo(function ControllerOverlay({
 
   const htmlContent = useMemo(() => buildControllerHtml(resolvedSkin), [resolvedSkin])
 
-  // Listen to native XInput background service via IPC and forward into iframe
+  // Dual pipeline: Listen to native XInput background service (IPC) AND HTML5 Gamepad API fallback
   React.useEffect(() => {
+    let animId: number
     const api = (window as any).electronAPI
-    if (api?.on) {
-      const cleanup = api.on('overlay:gamepad-state', (state: any) => {
-        if (state && iframeRef.current?.contentWindow) {
+    let lastNativeTime = 0
+
+    const cleanupNative = api?.onGamepadState?.((state: any) => {
+      if (state && iframeRef.current?.contentWindow) {
+        if (state.connected && state.buttons && state.buttons.length > 0) {
+          lastNativeTime = Date.now()
           try {
             iframeRef.current.contentWindow.postMessage({
               type: 'gamepad-state',
               buttons: state.buttons,
-              axes: state.axes,
+              axes: state.axes || [0, 0, 0, 0],
             }, '*')
           } catch {}
         }
-      })
-      return () => {
-        if (typeof cleanup === 'function') cleanup()
       }
+    })
+
+    const pollHtml5 = () => {
+      // If native XInput is not providing active controller state, poll HTML5 Gamepad API
+      if (Date.now() - lastNativeTime > 100 && iframeRef.current?.contentWindow && navigator.getGamepads) {
+        const gamepads = navigator.getGamepads()
+        let bestGp: Gamepad | null = null
+        for (let i = 0; i < gamepads.length; i++) {
+          const gp = gamepads[i]
+          if (gp && (gp.connected || gp.buttons?.length)) {
+            bestGp = gp
+            break
+          }
+        }
+
+        if (bestGp) {
+          try {
+            iframeRef.current.contentWindow.postMessage({
+              type: 'gamepad-state',
+              buttons: bestGp.buttons.map(b => ({ pressed: b.pressed, value: b.value })),
+              axes: bestGp.axes,
+            }, '*')
+          } catch {}
+        }
+      }
+      animId = requestAnimationFrame(pollHtml5)
+    }
+    animId = requestAnimationFrame(pollHtml5)
+
+    return () => {
+      if (typeof cleanupNative === 'function') cleanupNative()
+      cancelAnimationFrame(animId)
     }
   }, [])
 

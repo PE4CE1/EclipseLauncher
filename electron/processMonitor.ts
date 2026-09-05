@@ -24,6 +24,42 @@ let cachedSettings: any = null
 let lastSettingsRead = 0
 let robloxTrackerActive = false
 
+function updateRobloxDiscordActivity(exp: any) {
+  if (!currentGame || currentGame.name !== 'Roblox') return
+  const currentSettings = getAppSettings()
+  if (!currentSettings.discordEnabled) return
+
+  if (currentSettings.discordRpcRobloxSubGame !== false && exp && exp.name) {
+    console.log(`[RobloxTracker] Active experience: ${exp.name} (Place: ${exp.placeId}, Universe: ${exp.universeId})`)
+    setDiscordActivity(
+      exp.name,
+      currentGame.startTime,
+      currentSettings.discordPrivacyMode,
+      currentSettings.discordActivityStyle || 'clipping',
+      undefined,
+      exp.iconUrl,
+      'in Roblox',
+      'https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/public/Roblox-Logo-Icon.png',
+      'Roblox',
+      currentSettings.discordRpcAnimatedText ?? false
+    )
+  } else {
+    console.log(`[RobloxTracker] In Roblox Menu / No Experience`)
+    setDiscordActivity(
+      'Roblox',
+      currentGame.startTime,
+      currentSettings.discordPrivacyMode,
+      currentSettings.discordActivityStyle || 'clipping',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      currentSettings.discordRpcAnimatedText ?? false
+    )
+  }
+}
+
 export function invalidateSettingsCache() {
   cachedSettings = null
   lastSettingsRead = 0
@@ -52,7 +88,7 @@ function getAppSettings() {
       const s = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
       cachedSettings = {
         gamePerformanceMode: s.gamePerformanceMode ?? true,
-        autoMinimizeOnGame: s.autoMinimizeOnGame ?? true,
+        autoMinimizeOnGame: s.autoMinimizeOnGame ?? false,
         autoRestoreOnGameStop: s.autoRestoreOnGameStop ?? true,
         discordEnabled: s.discordRpc ?? true,
         discordActivityStyle: s.discordActivityStyle || s.discordRpcActivityStyle || 'clipping',
@@ -63,12 +99,17 @@ function getAppSettings() {
         showIdle: s.discordRpcIdle ?? true,
         overlayPerformance: s.overlayPerformance ?? false,
         overlayCrosshair: s.overlayCrosshair ?? false,
-        overlayGeneralAlwaysOn: s.overlayGeneralAlwaysOn ?? false,
+        overlayGeneralAlwaysOn: s.overlayGeneralAlwaysOn !== false,
         overlayCps: s.overlayCps ?? false,
         overlayController: s.overlayController ?? false,
+        overlayMedia: s.overlayMedia ?? false,
+        overlayMediaSource: s.overlayMediaSource ?? 'all',
+        overlayMediaAutoHide: s.overlayMediaAutoHide ?? false,
+        overlayMediaVisualizer: s.overlayMediaVisualizer !== false,
         overlayRobloxTimer: s.overlayRobloxTimer ?? false,
         overlayRobloxCps: s.overlayRobloxCps ?? false,
         overlayRobloxAntiAfk: s.overlayRobloxAntiAfk ?? false,
+        overlayControllerStreamOnly: s.overlayControllerStreamOnly ?? false,
         overlayRLHud: s.overlayRLHud ?? false,
         overlayRLSteam: s.overlayRLSteam ?? false,
         overlayRLController: s.overlayRLController ?? false,
@@ -92,11 +133,11 @@ function getAppSettings() {
 
   cachedSettings = {
     gamePerformanceMode: true,
-    autoMinimizeOnGame: true,
+    autoMinimizeOnGame: false,
     autoRestoreOnGameStop: true,
     discordEnabled: true, discordActivityStyle: 'clipping', discordPrivacyMode: false, showDownloads: true, showIdle: true,
-    overlayPerformance: false, overlayCrosshair: false, overlayGeneralAlwaysOn: false, 
-    overlayCps: false, overlayController: false, overlayRobloxTimer: false, overlayRobloxCps: false, overlayRobloxAntiAfk: false,
+    overlayPerformance: false, overlayCrosshair: false, overlayGeneralAlwaysOn: true, 
+    overlayCps: false, overlayController: false, overlayControllerStreamOnly: false, overlayMedia: false, overlayMediaSource: 'all' as const, overlayMediaAutoHide: false, overlayMediaVisualizer: true, overlayRobloxTimer: false, overlayRobloxCps: false, overlayRobloxAntiAfk: false,
     overlayRLHud: false, overlayRLSteam: false, overlayRLController: false, rlPlaylist: '2v2' as const, trnApiKey: '',
     steamProfileUrl: '', rlScoreboardKeyKb: 'Tab', rlScoreboardKeyCtrl: 'Select', rlSteamAvatarScale: 85,
     rlControllerSkin: 'ps5_white' as const, rlControllerUrl: 'https://gamepadviewer.com/?p=1&s=ps5_white', rlControllerScale: 80,
@@ -151,20 +192,42 @@ const KNOWN_GAME_EXES: Record<string, string> = {
   'robloxplayerbeta.exe': 'Roblox',
   'robloxplayerlauncher.exe': 'Roblox',
   'roblox.exe': 'Roblox',
+  'windows10universal.exe': 'Roblox',
   'fortniteclient-win64-shipping.exe': 'Fortnite',
   'valorant-win64-shipping.exe': 'VALORANT',
   'leagueclient.exe': 'League of Legends',
   'league of legends.exe': 'League of Legends',
   'minecraftlauncher.exe': 'Minecraft',
+  'javaw.exe': 'Minecraft',
+  'java.exe': 'Minecraft',
+  'minecraft.exe': 'Minecraft',
   'rocketleague.exe': 'Rocket League',
   'cs2.exe': 'Counter-Strike 2',
+  'csgo.exe': 'Counter-Strike: Global Offensive',
   'dota2.exe': 'Dota 2',
+  'hl2.exe': 'Garry\'s Mod',
+  'gmod.exe': 'Garry\'s Mod',
+  'left4dead2.exe': 'Left 4 Dead 2',
+  'tf.exe': 'Team Fortress 2',
+  'tf_win64.exe': 'Team Fortress 2',
+  'rainbowsix.exe': 'Tom Clancy\'s Rainbow Six Siege',
+  'rainbowsix_vulkan.exe': 'Tom Clancy\'s Rainbow Six Siege',
   'cyberpunk2077.exe': 'Cyberpunk 2077',
   'eldenring.exe': 'Elden Ring',
   'apex.exe': 'Apex Legends',
+  'r5apex.exe': 'Apex Legends',
+  'rustclient.exe': 'Rust',
+  'dayz_x64.exe': 'DayZ',
+  'cod.exe': 'Call of Duty',
+  'bootstrapper.exe': 'Call of Duty',
+  'destiny2.exe': 'Destiny 2',
+  'warframe.x64.exe': 'Warframe',
   'overwatch.exe': 'Overwatch 2',
   'genshinimpact.exe': 'Genshin Impact',
+  'yuanshen.exe': 'Genshin Impact',
   'starrail.exe': 'Honkai: Star Rail',
+  'zenlesszonezero.exe': 'Zenless Zone Zero',
+  'client-win64-shipping.exe': 'Wuthering Waves',
   'fallguys_client_game.exe': 'Fall Guys',
   'palworld-win64-shipping.exe': 'Palworld',
   'helldivers2.exe': 'Helldivers 2',
@@ -173,6 +236,26 @@ const KNOWN_GAME_EXES: Record<string, string> = {
   'witcher3.exe': 'The Witcher 3: Wild Hunt',
   'fc24.exe': 'EA SPORTS FC 24',
   'fc25.exe': 'EA SPORTS FC 25',
+  'fifa23.exe': 'FIFA 23',
+  'beamng.drive.x64.exe': 'BeamNG.drive',
+  'beamng.drive.exe': 'BeamNG.drive',
+  'acs.exe': 'Assetto Corsa',
+  'assettocorsa.exe': 'Assetto Corsa',
+  'forzahorizon5.exe': 'Forza Horizon 5',
+  'forzahorizon4.exe': 'Forza Horizon 4',
+  'eurotrucks2.exe': 'Euro Truck Simulator 2',
+  'terraria.exe': 'Terraria',
+  'lethal company.exe': 'Lethal Company',
+  'among us.exe': 'Among Us',
+  'phasmophobia.exe': 'Phasmophobia',
+  'repo.exe': 'R.E.P.O.',
+  'bodycam-win64-shipping.exe': 'Bodycam',
+  'bodycam.exe': 'Bodycam',
+  'content warning.exe': 'Content Warning',
+  'isaac-ng.exe': 'The Binding of Isaac: Rebirth',
+  'hades.exe': 'Hades',
+  'hades2.exe': 'Hades II',
+  'geometrydash.exe': 'Geometry Dash',
   // Dead by Daylight
   'deadbydaylight.exe': 'Dead by Daylight',
   'deadbydaylight-win64-shipping.exe': 'Dead by Daylight',
@@ -484,7 +567,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
         console.error('[ProcessMonitor] Failed to record playtime on stop:', e)
       }
 
-      if (appSettings.autoMinimizeOnGame !== false && appSettings.autoRestoreOnGameStop !== false) {
+      if (appSettings.autoRestoreOnGameStop !== false) {
         try {
           if (mainWindow && mainWindow.isMinimized()) {
             mainWindow.restore()
@@ -494,7 +577,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
 
       if (robloxTrackerActive) {
         robloxTrackerActive = false
-        stopRobloxTracker()
+        stopRobloxTracker(updateRobloxDiscordActivity)
       }
       stopRobloxAntiAfk()
 
@@ -585,8 +668,8 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           currentGamePid = gamePid
           setActiveGameMetrics(detectedName)
 
-          // Auto-minimize on game start if configured
-          if (appSettings.autoMinimizeOnGame !== false) {
+          // Auto-minimize on game start ONLY if explicitly configured
+          if (appSettings.autoMinimizeOnGame === true) {
             try {
               if (mainWindow && !mainWindow.isMinimized() && mainWindow.isVisible()) {
                 mainWindow.minimize()
@@ -612,50 +695,14 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           if (detectedName === 'Roblox') {
             if (allowRobloxSubGame && !robloxTrackerActive) {
               robloxTrackerActive = true
-              startRobloxTracker((exp) => {
-                if (!currentGame || currentGame.name !== 'Roblox') return
-                const currentSettings = getAppSettings()
-                if (currentSettings.discordRpcRobloxSubGame !== false && exp && exp.name) {
-                  console.log(`[RobloxTracker] Active experience: ${exp.name} (Place: ${exp.placeId}, Universe: ${exp.universeId})`)
-                  if (currentSettings.discordEnabled) {
-                    setDiscordActivity(
-                      exp.name,
-                      startTime,
-                      currentSettings.discordPrivacyMode,
-                      currentSettings.discordActivityStyle || 'clipping',
-                      undefined,
-                      exp.iconUrl,
-                      'in Roblox',
-                      'https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/public/Roblox-Logo-Icon.png',
-                      'Roblox',
-                      currentSettings.discordRpcAnimatedText ?? false
-                    )
-                  }
-                } else {
-                  console.log(`[RobloxTracker] In Roblox Menu / No Experience`)
-                  if (currentSettings.discordEnabled) {
-                    setDiscordActivity(
-                      'Roblox',
-                      startTime,
-                      currentSettings.discordPrivacyMode,
-                      currentSettings.discordActivityStyle || 'clipping',
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      undefined,
-                      currentSettings.discordRpcAnimatedText ?? false
-                    )
-                  }
-                }
-              })
+              startRobloxTracker(updateRobloxDiscordActivity)
             } else if (!allowRobloxSubGame && robloxTrackerActive) {
               robloxTrackerActive = false
-              stopRobloxTracker()
+              stopRobloxTracker(updateRobloxDiscordActivity)
             }
           } else if (detectedName !== 'Roblox' && robloxTrackerActive) {
             robloxTrackerActive = false
-            stopRobloxTracker()
+            stopRobloxTracker(updateRobloxDiscordActivity)
           }
 
           // Roblox Anti-AFK (1-pixel micro nudge)
@@ -698,8 +745,10 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
         }
 
         // Check if overlay should be visible for active game
-        const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayController
-        const hasActiveGameOverlay = hasGeneralOverlay || (detectedName === 'Roblox' && (appSettings.overlayRobloxTimer || appSettings.overlayRobloxCps || appSettings.overlayRobloxAntiAfk)) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam || appSettings.overlayRLController))
+        const isControllerStreamOnly = !!appSettings.overlayControllerStreamOnly
+        const isControllerActive = !!(appSettings.overlayController || (isRL && appSettings.overlayRLController))
+        const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || (!isControllerStreamOnly && appSettings.overlayController) || appSettings.overlayMedia
+        const hasActiveGameOverlay = hasGeneralOverlay || (detectedName === 'Roblox' && (appSettings.overlayRobloxTimer || appSettings.overlayRobloxCps || appSettings.overlayRobloxAntiAfk)) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam || (!isControllerStreamOnly && appSettings.overlayRLController))) || isControllerActive
 
         if (hasActiveGameOverlay) {
           showOverlay({ 
@@ -716,6 +765,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
               rlHud: isRL && appSettings.overlayRLHud,
               overlayRLSteam: isRL && appSettings.overlayRLSteam,
               overlayController: appSettings.overlayController,
+              overlayControllerStreamOnly: appSettings.overlayControllerStreamOnly,
               overlayRLController: (isRL && appSettings.overlayRLController) || appSettings.overlayController,
               rlControllerSkin: appSettings.rlControllerSkin,
               rlControllerUrl: appSettings.rlControllerUrl,
@@ -724,9 +774,13 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
               crosshairConfig: appSettings.crosshairConfig,
               steamProfileUrl: appSettings.steamProfileUrl,
               rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
+              overlayMedia: appSettings.overlayMedia,
+              overlayMediaSource: appSettings.overlayMediaSource,
+              overlayMediaAutoHide: appSettings.overlayMediaAutoHide,
+              overlayMediaVisualizer: appSettings.overlayMediaVisualizer !== false,
             }
           })
-        } else {
+        } else if (!isEditModeActive()) {
           hideOverlay()
         }
       } else {
@@ -756,14 +810,14 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           // Stop Roblox tracker if it was running
           if (robloxTrackerActive) {
             robloxTrackerActive = false
-            stopRobloxTracker()
+            stopRobloxTracker(updateRobloxDiscordActivity)
           }
           stopRobloxAntiAfk()
 
           // Deactivate AutoClip
           onGameStoppedAutoClip()
 
-          if (appSettings.autoMinimizeOnGame !== false && appSettings.autoRestoreOnGameStop !== false) {
+          if (appSettings.autoRestoreOnGameStop !== false) {
             try {
               if (mainWindow && mainWindow.isMinimized()) {
                 mainWindow.restore()
@@ -778,9 +832,13 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           mainWindow?.webContents.send('games:stopped')
         }
 
-        // If user enabled "Always show general overlays on desktop", show only general overlays
-        const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayController
-        if (appSettings.overlayGeneralAlwaysOn && hasGeneralOverlay) {
+        // Show overlay on desktop if Always Show is on, or if Controller overlay is enabled in normal (non-stream-only) mode
+        const isControllerStreamOnlyDesktop = !!appSettings.overlayControllerStreamOnly
+        const isControllerActiveDesktop = !!appSettings.overlayController
+        const hasGeneralOverlayDesktop = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayMedia || (!isControllerStreamOnlyDesktop && isControllerActiveDesktop)
+        const shouldShowDesktopOverlay = (appSettings.overlayGeneralAlwaysOn && hasGeneralOverlayDesktop) || (!isControllerStreamOnlyDesktop && isControllerActiveDesktop)
+
+        if (shouldShowDesktopOverlay) {
           showOverlay({
             name: 'Desktop',
             startTime: Date.now(),
@@ -789,11 +847,16 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
               performance: appSettings.overlayPerformance,
               crosshair: appSettings.overlayCrosshair,
               cps: appSettings.overlayCps,
+              overlayMedia: appSettings.overlayMedia,
+              overlayMediaSource: appSettings.overlayMediaSource,
+              overlayMediaAutoHide: appSettings.overlayMediaAutoHide,
+              overlayMediaVisualizer: appSettings.overlayMediaVisualizer !== false,
               robloxCps: false,
               robloxTimer: false,
               rlHud: false,
               overlayRLSteam: false,
               overlayController: appSettings.overlayController,
+              overlayControllerStreamOnly: appSettings.overlayControllerStreamOnly,
               overlayRLController: appSettings.overlayController,
               rlControllerSkin: appSettings.rlControllerSkin,
               rlControllerUrl: appSettings.rlControllerUrl,
@@ -804,7 +867,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
               rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
             }
           })
-        } else if (!currentGame) {
+        } else if (!currentGame && !isControllerActiveDesktop && !isEditModeActive()) {
           hideOverlay()
         }
 
@@ -876,12 +939,16 @@ export function syncOverlaySettingsLive() {
   const appSettings = getAppSettings()
   const overlayWin = getOverlayWindow()
   const isRL = currentGame?.name === 'Rocket League'
-  const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayController
+  const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayController || appSettings.overlayMedia
 
   const overlaySettings = {
     performance: appSettings.overlayPerformance,
     crosshair: appSettings.overlayCrosshair,
     cps: appSettings.overlayCps || (currentGame?.name === 'Roblox' && appSettings.overlayRobloxCps),
+    overlayMedia: appSettings.overlayMedia,
+    overlayMediaSource: appSettings.overlayMediaSource,
+    overlayMediaAutoHide: appSettings.overlayMediaAutoHide,
+    overlayMediaVisualizer: appSettings.overlayMediaVisualizer !== false,
     robloxCps: appSettings.overlayCps || (currentGame?.name === 'Roblox' && appSettings.overlayRobloxCps),
     robloxTimer: appSettings.overlayRobloxTimer && currentGame?.name === 'Roblox',
     robloxAntiAfk: appSettings.overlayRobloxAntiAfk && currentGame?.name === 'Roblox',
@@ -947,86 +1014,18 @@ export function syncOverlaySettingsLive() {
   if (currentGame) {
     if (appSettings.discordEnabled) {
       if (currentGame.name === 'Roblox') {
-        const { syncRobloxExperience, startRobloxTracker, stopRobloxTracker } = require('./robloxService')
+        const { startRobloxTracker, stopRobloxTracker } = require('./robloxService')
         const allowSubGame = appSettings.discordRpcRobloxSubGame !== false
 
         if (allowSubGame) {
           if (!robloxTrackerActive) {
             robloxTrackerActive = true
-            startRobloxTracker((exp: any) => {
-              if (!currentGame || currentGame.name !== 'Roblox') return
-              const currentSettings = getAppSettings()
-              if (currentSettings.discordRpcRobloxSubGame !== false && exp && exp.name) {
-                console.log(`[RobloxTracker] Active experience: ${exp.name} (Place: ${exp.placeId}, Universe: ${exp.universeId})`)
-                if (currentSettings.discordEnabled) {
-                  setDiscordActivity(
-                    exp.name,
-                    currentGame.startTime,
-                    currentSettings.discordPrivacyMode,
-                    currentSettings.discordActivityStyle || 'clipping',
-                    undefined,
-                    exp.iconUrl,
-                    'in Roblox',
-                    'https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/public/Roblox-Logo-Icon.png',
-                    'Roblox',
-                    currentSettings.discordRpcAnimatedText ?? false
-                  )
-                }
-              } else {
-                console.log(`[RobloxTracker] In Roblox Menu / No Experience`)
-                if (currentSettings.discordEnabled) {
-                  setDiscordActivity(
-                    'Roblox',
-                    currentGame.startTime,
-                    currentSettings.discordPrivacyMode,
-                    currentSettings.discordActivityStyle || 'clipping',
-                    undefined,
-                    undefined,
-                    undefined,
-                    undefined,
-                    undefined,
-                    currentSettings.discordRpcAnimatedText ?? false
-                  )
-                }
-              }
-            })
+            startRobloxTracker(updateRobloxDiscordActivity)
           }
-
-          // Immediately sync and apply active experience
-          syncRobloxExperience().then((exp: any) => {
-            if (!currentGame || currentGame.name !== 'Roblox') return
-            if (exp && exp.name) {
-              setDiscordActivity(
-                exp.name,
-                currentGame.startTime,
-                appSettings.discordPrivacyMode,
-                appSettings.discordActivityStyle || 'clipping',
-                undefined,
-                exp.iconUrl,
-                'in Roblox',
-                'https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/public/Roblox-Logo-Icon.png',
-                'Roblox',
-                appSettings.discordRpcAnimatedText ?? false
-              )
-            } else {
-              setDiscordActivity(
-                'Roblox',
-                currentGame.startTime,
-                appSettings.discordPrivacyMode,
-                appSettings.discordActivityStyle || 'clipping',
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                appSettings.discordRpcAnimatedText ?? false
-              )
-            }
-          }).catch(() => {})
         } else {
           if (robloxTrackerActive) {
             robloxTrackerActive = false
-            stopRobloxTracker()
+            stopRobloxTracker(updateRobloxDiscordActivity)
           }
           setDiscordActivity(
             'Roblox',

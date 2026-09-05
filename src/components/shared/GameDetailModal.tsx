@@ -31,11 +31,12 @@ import { CustomVideoPlayer } from './CustomVideoPlayer'
 import steamLogoImg from '../../assets/steam-logo.png'
 import robloxLogoImg from '../../assets/Roblox-Logo-Icon.png'
 import robloxHeroImg from '../../assets/roblox/hero.png'
+import { RobloxCodesHub } from '../roblox/RobloxCodesHub'
 import type { LibraryGame } from '../../types/game'
 
 export function GameDetailModal() {
   const { selectedGameId, selectedGameName, isGameModalOpen, setIsGameModalOpen, showNotification, currency, toggleCurrency, setIsLightboxOpen } = useUIStore()
-  const { library, addToLibrary, removeFromLibrary, installedGames, activeGame, stopPlaySession } = useGameStore()
+  const { library, addToLibrary, removeFromLibrary, installedGames, activeGame, stopPlaySession, settings } = useGameStore()
   const { sources } = useSourceStore()
   const { launchGame } = useScanner()
 
@@ -54,6 +55,7 @@ export function GameDetailModal() {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const steamId = selectedGameId && selectedGameId > 0 ? selectedGameId : null
+  const isRoblox = steamId === 999001 || (steamId === 0 && selectedGameName?.toLowerCase() === 'roblox') || (selectedGameName?.toLowerCase() === 'roblox') || (selectedGameId === 999001)
   const { data: detail, isLoading } = useSteamGameDetail(steamId)
 
   // Reset state and scroll position on game change or modal open
@@ -110,17 +112,28 @@ export function GameDetailModal() {
     } : null
   } : selectedGameName ? {
     name: selectedGameName,
-    shortDescription: 'Local game in library.',
-    aboutTheGame: '',
-    pcRequirements: null,
-    releaseDate: undefined,
-    developers: [],
-    publishers: [],
-    genres: [],
+    shortDescription: isRoblox
+      ? (language === 'de'
+          ? 'Roblox ist die ultimative virtuelle Welt, in der du Millionen von Community-Erlebnissen spielen, kreieren und mit Freunden teilen kannst.'
+          : 'Roblox is the ultimate virtual universe where you can play, create, and share experiences with friends.')
+      : 'Local game in library.',
+    aboutTheGame: isRoblox
+      ? (language === 'de'
+          ? '<p>Roblox ist die weltweite virtuelle Gaming- & Metaverse-Plattform mit Millionen von Community-Erlebnissen – von RP und Simulatoren bis hin zu actiongeladenen Abenteuern.</p><p>Mit <strong>Eclipse Launcher</strong> profitierst du von automatischer Sub-Game-Erkennung, Live-Promo-Codes für beliebte Erlebnisse und nützlichen Gaming-Tools!</p>'
+          : '<p>Roblox is the ultimate virtual universe that lets you create, share experiences with friends, and be anything you can imagine. Join millions of players across endless immersive worlds!</p><p>With <strong>Eclipse Launcher</strong>, enjoy automatic sub-game tracking, instant promo codes for top experiences, and enhanced gaming tools!</p>')
+      : '',
+    pcRequirements: isRoblox ? {
+      minimum: 'OS: Windows 10/11 (64-bit)\nProcessor: Intel Core i3 2.0 GHz or AMD equivalent\nMemory: 4 GB RAM\nGraphics: DirectX 11 compatible GPU\nNetwork: Broadband Internet connection\nStorage: 1 GB available space',
+      recommended: 'OS: Windows 10/11 (64-bit)\nProcessor: Intel Core i5 or AMD Ryzen equivalent\nMemory: 8 GB RAM\nGraphics: NVIDIA GeForce GTX 1060 or AMD Radeon RX 580\nNetwork: Broadband Internet connection\nStorage: 2 GB available space'
+    } : null,
+    releaseDate: isRoblox ? 'Sep 1, 2006' : undefined,
+    developers: isRoblox ? ['Roblox Corporation'] : [],
+    publishers: isRoblox ? ['Roblox Corporation'] : [],
+    genres: isRoblox ? [{ id: 'sandbox', description: 'Sandbox' }, { id: 'mmo', description: 'MMO' }, { id: 'multiplayer', description: 'Multiplayer' }] : [],
     categories: [],
     supportedLanguages: '',
     priceOverview: undefined,
-    isFree: false,
+    isFree: isRoblox ? true : false,
     metacritic: undefined,
     platforms: { windows: true, mac: false, linux: false },
     achievements: null
@@ -183,8 +196,6 @@ export function GameDetailModal() {
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
   }, [lightboxIndex, mediaItems.length])
 
-  const isRoblox = steamId === 999001 || (steamId === 0 && selectedGameName?.toLowerCase() === 'roblox') || (game?.name?.toLowerCase() === 'roblox' && (!steamId || steamId === 999001))
-
   const isInLibrary = library.some(g =>
     (steamId && g.steamId === steamId) ||
     (isRoblox && (g.id === 'roblox' || g.name.toLowerCase() === 'roblox' || g.steamId === 999001)) ||
@@ -203,6 +214,7 @@ export function GameDetailModal() {
     (game && g.name.toLowerCase() === game.name.toLowerCase()) ||
     (selectedGameName && g.name.toLowerCase() === selectedGameName.toLowerCase())
   )
+  const gameInstallPath = installed?.installPath || libraryItem?.installPath
 
   const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
 
@@ -237,10 +249,10 @@ export function GameDetailModal() {
   const gamePlaytimeMins = Math.round(Math.max(installed?.playTimeMinutes || 0, libraryItem?.playTimeMinutes || 0))
   const totalPlaytimeMins = gamePlaytimeMins + (isCurrentlyPlaying ? liveSessionMins : 0)
   const playtimeFormatted = totalPlaytimeMins >= 60 
-    ? `${(totalPlaytimeMins / 60).toFixed(1)} hrs played` 
+    ? (language === 'de' ? `${(totalPlaytimeMins / 60).toFixed(1)} Std. gespielt` : `${(totalPlaytimeMins / 60).toFixed(1)} hrs played`) 
     : totalPlaytimeMins > 0 
-      ? `${totalPlaytimeMins} mins played` 
-      : '0 mins played'
+      ? (language === 'de' ? `${totalPlaytimeMins} Min. gespielt` : `${totalPlaytimeMins} mins played`) 
+      : (language === 'de' ? '0 Min. gespielt' : '0 mins played')
 
   useEffect(() => {
     if (!isCurrentlyPlaying && isKilling) {
@@ -383,14 +395,19 @@ export function GameDetailModal() {
     return `${low} ${game.priceOverview.currency} (-75%)`
   }, [game?.isFree, game?.priceOverview, discountPercent, t])
 
-  // Player peak calculations
-  const liveCount = playerCount !== null ? playerCount : (steamDBSummary?.ccu || null)
-  const peak24h = liveCount ? Math.round(liveCount * 1.32) : null
-  const allTimePeak = steamDBSummary?.positive ? Math.round(steamDBSummary.positive * 0.38) : (liveCount ? liveCount * 4 : null)
+  // Player peak calculations - Exact SteamDB / SteamCharts records
+  const liveCount = playerCount !== null ? playerCount : (steamDBSummary?.livePlaying ?? (steamDBSummary?.ccu || null))
+  const peak24h = steamDBSummary?.peak24h !== undefined && steamDBSummary.peak24h !== null
+    ? Math.max(steamDBSummary.peak24h, liveCount || 0)
+    : (liveCount || null)
+  const allTimePeak = steamDBSummary?.allTimePeak !== undefined && steamDBSummary.allTimePeak !== null
+    ? Math.max(steamDBSummary.allTimePeak, peak24h || 0)
+    : null
+  const isStatsLoading = steamDBSummary === null && playerCount === null
 
   const reviewScoreText = reviewsSummary?.reviewScoreDesc || (language === 'de' ? 'Sehr positiv' : 'Very Positive')
-  const positivePercent = reviewsSummary?.positivePercent || (steamDBSummary ? Math.round((steamDBSummary.positive / ((steamDBSummary.positive + steamDBSummary.negative) || 1)) * 100) : 92)
-  const totalReviewsCount = reviewsSummary?.totalReviews || (steamDBSummary ? steamDBSummary.positive + steamDBSummary.negative : null)
+  const positivePercent = reviewsSummary?.positivePercent || (steamDBSummary && (steamDBSummary.positive + steamDBSummary.negative > 0) ? Math.round((steamDBSummary.positive / (steamDBSummary.positive + steamDBSummary.negative)) * 100) : 92)
+  const totalReviewsCount = reviewsSummary?.totalReviews || (steamDBSummary && (steamDBSummary.positive + steamDBSummary.negative > 0) ? steamDBSummary.positive + steamDBSummary.negative : null)
 
   // Clean PC Requirements string without double colons
   const cleanReqString = (htmlStr?: string) => {
@@ -414,11 +431,15 @@ export function GameDetailModal() {
     ? (game?.pcRequirements?.minimum || game?.pcRequirements?.recommended)
     : (game?.pcRequirements?.recommended || game?.pcRequirements?.minimum)
 
+  const dev = game?.developers?.[0]
+  const pub = game?.publishers?.[0]
+  const sameDevPub = !!(dev && pub && dev.trim().toLowerCase() === pub.trim().toLowerCase())
+
   return (
     <AnimatePresence>
       {isGameModalOpen && (steamId || selectedGameName) && (
         <motion.div 
-          className="absolute inset-0 z-20 flex flex-col bg-[#07080a] game-detail-modal-overlay text-white select-none overflow-hidden"
+          className="absolute inset-0 z-40 flex flex-col bg-[#07080a] game-detail-modal-overlay text-white select-none overflow-hidden"
           initial={{ opacity: 1 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -478,29 +499,91 @@ export function GameDetailModal() {
                     </h1>
                   )}
 
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-white/50 pt-1">
-                    {game?.releaseDate && (
-                      <span className="flex items-center gap-1.5">
-                        <span className="text-white/30">{t('releasedOn')}:</span>
-                        <span className="text-white/80 font-medium">{game.releaseDate}</span>
-                      </span>
-                    )}
-                    {game?.developers?.[0] && (
-                      <>
-                        <span className="w-1 h-1 rounded-full bg-white/20" />
+                  {/* Game Metadata Facts Row */}
+                  {(game?.releaseDate || dev || pub) && (
+                    <div className="flex flex-wrap items-center gap-2.5 text-xs text-white/50 pt-0.5">
+                      {game?.releaseDate && (
                         <span className="flex items-center gap-1.5">
-                          <span className="text-white/30">{t('developer')}:</span>
-                          <span className="text-white/80 font-medium">{game.developers[0]}</span>
+                          <span className="text-white/30">{t('releasedOn')}:</span>
+                          <span className="text-white/80 font-medium">{game.releaseDate}</span>
                         </span>
-                      </>
-                    )}
-                    {game?.publishers?.[0] && (
+                      )}
+
+                      {dev && sameDevPub && (
+                        <>
+                          {game?.releaseDate && <span className="w-1 h-1 rounded-full bg-white/20" />}
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-white/30">{language === 'de' ? 'Entwickler & Publisher' : 'Developer & Publisher'}:</span>
+                            <span className="text-white/80 font-medium">{dev}</span>
+                          </span>
+                        </>
+                      )}
+
+                      {dev && !sameDevPub && (
+                        <>
+                          {game?.releaseDate && <span className="w-1 h-1 rounded-full bg-white/20" />}
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-white/30">{t('developer')}:</span>
+                            <span className="text-white/80 font-medium">{dev}</span>
+                          </span>
+                        </>
+                      )}
+
+                      {pub && !sameDevPub && (
+                        <>
+                          {(game?.releaseDate || dev) && <span className="w-1 h-1 rounded-full bg-white/20" />}
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-white/30">{t('publisher')}:</span>
+                            <span className="text-white/80 font-medium">{pub}</span>
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Badges & Quick Action Chips Row */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {/* Playtime Badge */}
+                    <div 
+                      className="h-7 px-3 rounded-lg bg-white/[0.05] border border-white/10 flex items-center gap-1.5 text-xs font-semibold text-white/90 shadow-sm flex-shrink-0"
+                      title={language === 'de' ? 'Gesamte Spielzeit' : 'Total Playtime'}
+                    >
+                      <Clock size={12} className={totalPlaytimeMins > 0 ? "text-emerald-400" : "text-white/40"} />
+                      <span>{playtimeFormatted}</span>
+                    </div>
+
+                    {steamId && (
                       <>
-                        <span className="w-1 h-1 rounded-full bg-white/20" />
-                        <span className="flex items-center gap-1.5">
-                          <span className="text-white/30">{t('publisher')}:</span>
-                          <span className="text-white/80 font-medium">{game.publishers[0]}</span>
-                        </span>
+                        <button
+                          onClick={() => {
+                            if (window.electronAPI?.openUrl) {
+                              window.electronAPI.openUrl(`steam://store/${steamId}`)
+                            } else {
+                              window.location.href = `steam://store/${steamId}`
+                            }
+                          }}
+                          className="h-7 px-3 rounded-lg bg-white/[0.04] hover:bg-[#1b2838] border border-white/10 hover:border-[#66c0f4]/50 text-white/70 hover:text-[#66c0f4] text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm group hover:scale-[1.02] active:scale-95"
+                          title={language === 'de' ? 'In Steam Desktop App öffnen' : 'Open in Steam Desktop App'}
+                        >
+                          <img src={steamLogoImg} alt="Steam" className="w-3.5 h-3.5 object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
+                          <span>Steam</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            if (window.electronAPI?.openUrl) {
+                              window.electronAPI.openUrl(`https://steamdb.info/app/${steamId}/`)
+                            } else {
+                              window.open(`https://steamdb.info/app/${steamId}/`, '_blank')
+                            }
+                          }}
+                          className="h-7 px-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-blue-400/40 text-white/70 hover:text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm group hover:scale-[1.02] active:scale-95"
+                          title={language === 'de' ? 'Auf SteamDB im Browser ansehen' : 'Open SteamDB in Browser'}
+                        >
+                          <span className="text-[10px] font-black text-blue-400 leading-none">DB</span>
+                          <span>SteamDB</span>
+                          <ExternalLink size={10} className="text-white/40 group-hover:text-white/80 transition-colors" />
+                        </button>
                       </>
                     )}
                   </div>
@@ -508,12 +591,6 @@ export function GameDetailModal() {
 
                 {/* Main Action Buttons Bar */}
                 <div className="flex items-center gap-2.5 sm:gap-3 flex-nowrap flex-shrink-0 max-w-full">
-                  {/* Playtime Badge */}
-                  <div className="px-3.5 py-2 rounded-xl bg-white/[0.04] backdrop-blur-md border border-white/[0.07] flex items-center gap-2 text-xs font-semibold text-white/90 shadow-sm flex-shrink-0 whitespace-nowrap">
-                    <Clock size={13} className="text-white/40" />
-                    <span>{playtimeFormatted}</span>
-                  </div>
-
                   {/* Play / Install / Cancel Button */}
                   {installed ? (
                     <>
@@ -544,11 +621,16 @@ export function GameDetailModal() {
                             if (installed.installed !== false) setShowDeleteConfirm(true)
                           }}
                           disabled={installed.installed === false}
-                          className="h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-red-500/10 hover:border-red-500/30 text-white/50 hover:text-red-400 text-xs font-semibold transition-all flex items-center gap-2 group flex-shrink-0 whitespace-nowrap"
+                          className="h-10 min-w-[116px] px-4 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-red-500/10 hover:border-red-500/30 text-white/50 hover:text-red-400 text-xs font-semibold transition-all group flex-shrink-0 whitespace-nowrap grid grid-cols-1 grid-rows-1 place-items-center cursor-pointer"
                         >
-                          <Check size={14} className="group-hover:hidden text-white/40" />
-                          <span className="group-hover:hidden">{t('inLibrary')}</span>
-                          <span className="hidden group-hover:inline-flex items-center gap-1.5"><Trash2 size={13} /> Remove</span>
+                          <span className="col-start-1 row-start-1 flex items-center justify-center gap-1.5 transition-opacity duration-150 group-hover:opacity-0">
+                            <Check size={14} className="text-white/40" />
+                            <span>{t('inLibrary')}</span>
+                          </span>
+                          <span className="col-start-1 row-start-1 flex items-center justify-center gap-1.5 transition-opacity duration-150 opacity-0 group-hover:opacity-100 text-red-400">
+                            <Trash2 size={13} />
+                            <span>{language === 'de' ? 'Entfernen' : 'Remove'}</span>
+                          </span>
                         </button>
                       )}
 
@@ -631,16 +713,22 @@ export function GameDetailModal() {
                     <>
                       <button
                         onClick={handleLibraryToggle}
-                        className={`h-10 px-4 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2 flex-shrink-0 whitespace-nowrap ${
+                        className={`h-10 px-4 rounded-xl border text-xs font-semibold transition-all flex-shrink-0 whitespace-nowrap cursor-pointer group ${
                           isInLibrary
-                            ? 'bg-white/[0.03] border-white/[0.07] text-white/50 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30'
-                            : 'bg-white/[0.03] border-white/[0.12] text-white hover:bg-white/[0.08]'
+                            ? 'min-w-[116px] bg-white/[0.03] border-white/[0.07] text-white/50 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 grid grid-cols-1 grid-rows-1 place-items-center'
+                            : 'bg-white/[0.03] border-white/[0.12] text-white hover:bg-white/[0.08] flex items-center gap-2'
                         }`}
                       >
                         {isInLibrary ? (
                           <>
-                            <Check size={14} className="text-white/40" />
-                            <span>{t('inLibrary')}</span>
+                            <span className="col-start-1 row-start-1 flex items-center justify-center gap-1.5 transition-opacity duration-150 group-hover:opacity-0">
+                              <Check size={14} className="text-white/40" />
+                              <span>{t('inLibrary')}</span>
+                            </span>
+                            <span className="col-start-1 row-start-1 flex items-center justify-center gap-1.5 transition-opacity duration-150 opacity-0 group-hover:opacity-100 text-red-400">
+                              <Trash2 size={13} />
+                              <span>{language === 'de' ? 'Entfernen' : 'Remove'}</span>
+                            </span>
                           </>
                         ) : (
                           <>
@@ -690,123 +778,129 @@ export function GameDetailModal() {
               </div>
             </div>
 
-            {/* Unified Sleek Stats Strip (Human-crafted layout) */}
-            <div className="w-full px-6 md:px-10 xl:px-14 py-4">
-              <div className="bg-[#0b0c10]/80 backdrop-blur-md border border-white/[0.06] rounded-2xl p-4 md:p-5 grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.06]">
-                
-                {/* 1. Players Now */}
-                <div className="pt-3 lg:pt-0 lg:px-4 first:pt-0 first:px-0">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t('playerActivity')}</span>
-                    {liveCount !== null && (
-                      <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-400">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        {t('live')}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xl font-black text-white tracking-tight">
-                    {liveCount !== null ? liveCount.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : t('inGame')}
-                  </div>
-                  <div className="text-[11px] text-white/40 mt-0.5 truncate">
-                    24h: <span className="text-white/70 font-semibold">{peak24h ? peak24h.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : 'N/A'}</span> • Peak: <span className="text-white/70 font-semibold">{allTimePeak ? allTimePeak.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : 'N/A'}</span>
-                  </div>
-                </div>
-
-                {/* 2. Reviews */}
-                <div className="pt-3 lg:pt-0 lg:px-4">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t('steamReviews')}</span>
-                    <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded">
-                      ★ {positivePercent}%
-                    </span>
-                  </div>
-                  <div className="text-xl font-black text-white tracking-tight truncate">
-                    {reviewScoreText}
-                  </div>
-                  <div className="text-[11px] text-white/40 mt-0.5 truncate">
-                    {totalReviewsCount ? `${totalReviewsCount.toLocaleString(language === 'de' ? 'de-DE' : 'en-US')} ${t('userReviews')}` : t('communityVerified')}
-                  </div>
-                </div>
-
-                {/* 3. Pricing & Real Deals */}
-                <div className="pt-3 lg:pt-0 lg:px-4">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t('priceAndDeals')}</span>
-                    
-                    {/* Active Discount Pill & Interactive Currency Switcher */}
-                    <div className="flex items-center gap-1.5">
-                      {(priceInfo?.hasDiscount || hasDiscount) && (
-                        <span className="text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded">
-                          -{priceInfo?.discountPercent || discountPercent}%
+            {/* Unified Sleek Stats Strip or Roblox Codes Hub */}
+            {isRoblox ? (
+              <div className="w-full px-6 md:px-10 xl:px-14 py-4">
+                <RobloxCodesHub />
+              </div>
+            ) : (
+              <div className="w-full px-6 md:px-10 xl:px-14 py-4">
+                <div className="bg-[#0b0c10]/80 backdrop-blur-md border border-white/[0.06] rounded-2xl p-4 md:p-5 grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.06]">
+                  
+                  {/* 1. Players Now */}
+                  <div className="pt-3 lg:pt-0 lg:px-4 first:pt-0 first:px-0">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t('playerActivity')}</span>
+                      {liveCount !== null && (
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          {t('live')}
                         </span>
                       )}
-
-                      {/* Currency Switcher */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleCurrency()
-                        }}
-                        className="px-1.5 py-0.5 rounded bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-[10px] font-bold text-white/80 hover:text-white transition-all cursor-pointer flex items-center gap-1 shadow-sm"
-                        title={currency === 'EUR' ? 'Auf USD ($) umschalten' : 'Auf Euro (€) umschalten'}
-                      >
-                        <span className={currency === 'EUR' ? 'text-emerald-400 font-black' : 'text-white/40'}>€</span>
-                        <span className="text-white/20">/</span>
-                        <span className={currency === 'USD' ? 'text-emerald-400 font-black' : 'text-white/40'}>$</span>
-                      </button>
+                    </div>
+                    <div className="text-xl font-black text-white tracking-tight">
+                      {liveCount !== null ? liveCount.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : t('inGame')}
+                    </div>
+                    <div className="text-[11px] text-white/40 mt-0.5 truncate">
+                      24h: <span className="text-white/70 font-semibold">{peak24h ? peak24h.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : (isStatsLoading ? '...' : 'N/A')}</span> • Peak: <span className="text-white/70 font-semibold">{allTimePeak ? allTimePeak.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : (isStatsLoading ? '...' : 'N/A')}</span>
                     </div>
                   </div>
 
-                  {/* Current Price & Strikethrough if on sale */}
-                  <div className="flex items-baseline gap-2">
-                    <div className="text-xl font-black text-white tracking-tight truncate">
-                      {priceInfo?.isFree ? t('freeToPlay') : (priceInfo?.finalFormatted || currentPriceFormatted)}
-                    </div>
-                    {priceInfo?.hasDiscount && priceInfo?.initialFormatted && (
-                      <span className="text-xs text-white/40 line-through font-semibold">
-                        {priceInfo.initialFormatted}
+                  {/* 2. Reviews */}
+                  <div className="pt-3 lg:pt-0 lg:px-4">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t('steamReviews')}</span>
+                      <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                        ★ {positivePercent}%
                       </span>
-                    )}
-                  </div>
-
-                  {/* Real All-Time Low */}
-                  <div className="text-[11px] text-white/40 mt-0.5 truncate">
-                    {priceInfo?.isFree ? (
-                      <span className="text-emerald-400/80 font-medium">Free To Play</span>
-                    ) : (
-                      <>
-                        {t('allTimeLow')}: <span className="text-white/80 font-bold">{priceInfo?.allTimeLowFormatted || historicalLowFormatted || 'N/A'}</span>{' '}
-                        {priceInfo?.allTimeLowDiscountPercent ? (
-                          <span className="text-emerald-400/90 font-bold">(-{priceInfo.allTimeLowDiscountPercent}%)</span>
-                        ) : null}
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* 4. Features */}
-                <div className="pt-3 lg:pt-0 lg:px-4">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t('compatibility')}</span>
-                    <div className="flex items-center gap-1 text-[10px] font-bold text-white/40">
-                      {game?.platforms?.windows && <span>WIN</span>}
-                      {game?.platforms?.mac && <span>• MAC</span>}
-                      {game?.platforms?.linux && <span>• LIN</span>}
+                    </div>
+                    <div className="text-xl font-black text-white tracking-tight truncate">
+                      {reviewScoreText}
+                    </div>
+                    <div className="text-[11px] text-white/40 mt-0.5 truncate">
+                      {totalReviewsCount ? `${totalReviewsCount.toLocaleString(language === 'de' ? 'de-DE' : 'en-US')} ${t('userReviews')}` : t('communityVerified')}
                     </div>
                   </div>
-                  <div className="text-sm font-bold text-white tracking-tight truncate flex items-center gap-1.5">
-                    <ShieldCheck size={14} className="text-indigo-400 flex-shrink-0" />
-                    <span>{hasFullController ? t('fullControllerSupport') : hasPartialController ? t('partialControllerSupport') : t('keyboardAndMouse')}</span>
-                  </div>
-                  <div className="text-[11px] text-white/40 mt-0.5 truncate">
-                    {hasSteamCloud && <span>☁️ {t('cloudSaves')} • </span>}
-                    {hasCoop ? 'Co-Op Support' : 'Single-Player'}
-                  </div>
-                </div>
 
+                  {/* 3. Pricing & Real Deals */}
+                  <div className="pt-3 lg:pt-0 lg:px-4">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t('priceAndDeals')}</span>
+                      
+                      {/* Active Discount Pill & Interactive Currency Switcher */}
+                      <div className="flex items-center gap-1.5">
+                        {(priceInfo?.hasDiscount || hasDiscount) && (
+                          <span className="text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                            -{priceInfo?.discountPercent || discountPercent}%
+                          </span>
+                        )}
+
+                        {/* Currency Switcher */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleCurrency()
+                          }}
+                          className="px-1.5 py-0.5 rounded bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-[10px] font-bold text-white/80 hover:text-white transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                          title={currency === 'EUR' ? 'Auf USD ($) umschalten' : 'Auf Euro (€) umschalten'}
+                        >
+                          <span className={currency === 'EUR' ? 'text-emerald-400 font-black' : 'text-white/40'}>€</span>
+                          <span className="text-white/20">/</span>
+                          <span className={currency === 'USD' ? 'text-emerald-400 font-black' : 'text-white/40'}>$</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Current Price & Strikethrough if on sale */}
+                    <div className="flex items-baseline gap-2">
+                      <div className="text-xl font-black text-white tracking-tight truncate">
+                        {priceInfo?.isFree ? t('freeToPlay') : (priceInfo?.finalFormatted || currentPriceFormatted)}
+                      </div>
+                      {priceInfo?.hasDiscount && priceInfo?.initialFormatted && (
+                        <span className="text-xs text-white/40 line-through font-semibold">
+                          {priceInfo.initialFormatted}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Real All-Time Low */}
+                    <div className="text-[11px] text-white/40 mt-0.5 truncate">
+                      {priceInfo?.isFree ? (
+                        <span className="text-emerald-400/80 font-medium">Free To Play</span>
+                      ) : (
+                        <>
+                          {t('allTimeLow')}: <span className="text-white/80 font-bold">{priceInfo?.allTimeLowFormatted || historicalLowFormatted || 'N/A'}</span>{' '}
+                          {priceInfo?.allTimeLowDiscountPercent ? (
+                            <span className="text-emerald-400/90 font-bold">(-{priceInfo.allTimeLowDiscountPercent}%)</span>
+                          ) : null}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 4. Features */}
+                  <div className="pt-3 lg:pt-0 lg:px-4">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t('compatibility')}</span>
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-white/40">
+                        {game?.platforms?.windows && <span>WIN</span>}
+                        {game?.platforms?.mac && <span>• MAC</span>}
+                        {game?.platforms?.linux && <span>• LIN</span>}
+                      </div>
+                    </div>
+                    <div className="text-sm font-bold text-white tracking-tight truncate flex items-center gap-1.5">
+                      <ShieldCheck size={14} className="text-indigo-400 flex-shrink-0" />
+                      <span>{hasFullController ? t('fullControllerSupport') : hasPartialController ? t('partialControllerSupport') : t('keyboardAndMouse')}</span>
+                    </div>
+                    <div className="text-[11px] text-white/40 mt-0.5 truncate">
+                      {hasSteamCloud && <span>☁️ {t('cloudSaves')} • </span>}
+                      {hasCoop ? 'Co-Op Support' : 'Single-Player'}
+                    </div>
+                  </div>
+
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Media Gallery Showcase (Big Left Player + Ambient Blur Background + Aligned Thumbnails) */}
             {mediaItems.length > 0 && (
@@ -1030,73 +1124,37 @@ export function GameDetailModal() {
                   </div>
                   
                   {steamId && (
-                    <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
+                    <div className="flex items-center justify-between py-1 border-b border-white/[0.04] last:border-b-0">
                       <span className="text-white/40">{t('steamAppId')}</span>
                       <span className="font-mono text-white/80 font-bold">{steamId}</span>
                     </div>
                   )}
 
                   {game?.developers?.[0] && (
-                    <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
+                    <div className="flex items-center justify-between py-1 border-b border-white/[0.04] last:border-b-0">
                       <span className="text-white/40">{t('developer')}</span>
                       <span className="text-white/90 font-medium truncate max-w-[180px]">{game.developers.join(', ')}</span>
                     </div>
                   )}
 
                   {game?.publishers?.[0] && (
-                    <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
+                    <div className="flex items-center justify-between py-1 border-b border-white/[0.04] last:border-b-0">
                       <span className="text-white/40">{t('publisher')}</span>
                       <span className="text-white/90 font-medium truncate max-w-[180px]">{game.publishers.join(', ')}</span>
                     </div>
                   )}
 
                   {steamDBSummary?.owners && (
-                    <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
+                    <div className="flex items-center justify-between py-1 border-b border-white/[0.04] last:border-b-0">
                       <span className="text-white/40">{t('estOwners')}</span>
                       <span className="text-white/90 font-medium">{steamDBSummary.owners}</span>
                     </div>
                   )}
 
                   {installed?.installPath && (
-                    <div className="flex items-start justify-between py-1 border-b border-white/[0.04]">
+                    <div className="flex items-start justify-between py-1 border-b border-white/[0.04] last:border-b-0">
                       <span className="text-white/40 flex items-center gap-1"><Folder size={12} /> {t('installPath')}</span>
                       <span className="text-white/70 font-mono text-[10px] break-all max-w-[180px] text-right">{installed.installPath}</span>
-                    </div>
-                  )}
-
-                  {/* Dedicated Store & DB Action Buttons */}
-                  {steamId && (
-                    <div className="grid grid-cols-2 gap-2 pt-2">
-                      <button 
-                        onClick={() => {
-                          if (window.electronAPI?.openUrl) {
-                            window.electronAPI.openUrl(`steam://store/${steamId}`)
-                          } else {
-                            window.location.href = `steam://store/${steamId}`
-                          }
-                        }}
-                        className="h-9 px-3 rounded-xl bg-[#1b2838]/90 hover:bg-[#1b2838] text-[#66c0f4] border border-[#66c0f4]/40 hover:border-[#66c0f4]/80 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                        title="In Steam Desktop App öffnen"
-                      >
-                        <img src={steamLogoImg} alt="Steam" className="w-3.5 h-3.5 object-contain" />
-                        <span>Steam App</span>
-                      </button>
-
-                      <button 
-                        onClick={() => {
-                          if (window.electronAPI?.openUrl) {
-                            window.electronAPI.openUrl(`https://steamdb.info/app/${steamId}/`)
-                          } else {
-                            window.open(`https://steamdb.info/app/${steamId}/`, '_blank')
-                          }
-                        }}
-                        className="h-9 px-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white/90 hover:text-white border border-white/10 hover:border-white/20 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                        title="Open SteamDB in Browser"
-                      >
-                        <span className="text-blue-400 font-black text-xs">DB</span>
-                        <span>SteamDB</span>
-                        <ExternalLink size={11} className="text-white/40" />
-                      </button>
                     </div>
                   )}
                 </div>

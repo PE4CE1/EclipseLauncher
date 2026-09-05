@@ -10,32 +10,73 @@ let isBoostActive = false
 let boostedPid: number | null = null
 
 /**
- * Flushes memory across the system safely.
- * Returns the estimated RAM freed in Megabytes.
+ * Real Windows Native Working Set & Memory Optimizer.
+ * Flushes unmodified physical working set pages across user-space processes using psapi.dll!EmptyWorkingSet.
+ * Reclaims real physical RAM back to the operating system pool.
  */
 export async function flushSystemRam(): Promise<{ freedMB: number; currentFreeGB: string }> {
   const ramBefore = os.freemem()
+
   try {
-    // 1. Force V8 engine garbage collection in Node/Electron if available
+    // 1. Force V8 engine GC in current Node/Electron main process
     if (global.gc) {
       try { global.gc() } catch {}
     }
 
-    // 2. PowerShell memory cleanup: Trims working set of idle non-critical processes safely
+    // 2. Real Windows Process Working Set Flush using Win32 EmptyWorkingSet API
     if (process.platform === 'win32') {
-      const psCommand = 'powershell -NoProfile -NonInteractive -Command "[System.GC]::Collect(); [System.GC]::WaitForPendingFinalizers()"'
-      await execAsync(psCommand, { timeout: 3500, windowsHide: true })
+      const psScript = `
+$code = @'
+using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+
+public class MemoryCleaner {
+    [DllImport("psapi.dll")]
+    public static extern int EmptyWorkingSet(IntPtr hwProc);
+
+    public static long CleanAll() {
+        long freed = 0;
+        foreach (Process p in Process.GetProcesses()) {
+            try {
+                if (p.Id > 4 && p.ProcessName != "csrss" && p.ProcessName != "smss") {
+                    long b = p.WorkingSet64;
+                    EmptyWorkingSet(p.Handle);
+                    p.Refresh();
+                    long diff = b - p.WorkingSet64;
+                    if (diff > 0) freed += diff;
+                }
+            } catch {}
+        }
+        return freed;
+    }
+}
+'@
+Add-Type -TypeDefinition $code
+$trimmed = [MemoryCleaner]::CleanAll()
+Write-Output "TRIMMED:$([math]::Round($trimmed / 1MB))"
+`
+      const b64 = Buffer.from(psScript, 'utf16le').toString('base64')
+      const cmd = `powershell -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand ${b64}`
+      const { stdout } = await execAsync(cmd, { timeout: 7000, windowsHide: true })
+      
+      const match = stdout.match(/TRIMMED:(\d+)/)
+      const trimmedWorkingSetMB = match ? parseInt(match[1], 10) : 0
+      console.log(`[TrueBoost] Native memory clean completed. Trimmed working set: ${trimmedWorkingSetMB} MB`)
     }
   } catch (e) {
-    // Non-critical, continue gracefully
+    console.warn('[TrueBoost] Native memory clean exception:', e)
   }
 
+  // 3. Measure actual real physical RAM freed
   const ramAfter = os.freemem()
-  const diffMB = Math.max(0, Math.round((ramAfter - ramBefore) / (1024 * 1024)))
+  const diffMB = Math.round((ramAfter - ramBefore) / (1024 * 1024))
   const currentFreeGB = (os.freemem() / (1024 * 1024 * 1024)).toFixed(1)
 
+  console.log(`[TrueBoost] Physical free RAM before: ${(ramBefore / (1024*1024*1024)).toFixed(2)} GB, after: ${(ramAfter / (1024*1024*1024)).toFixed(2)} GB, diff: ${diffMB} MB`)
+
   return {
-    freedMB: diffMB > 0 ? diffMB : Math.floor(Math.random() * 120) + 280,
+    freedMB: Math.max(0, diffMB),
     currentFreeGB,
   }
 }

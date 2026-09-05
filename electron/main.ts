@@ -17,7 +17,8 @@ import { initDiscordRPC, setDiscordActivity, clearDiscordActivity, setDiscordIdl
 import { startProcessMonitor, registerGameExe, getCurrentDetectedGame, resetCurrentDetectedGame, invalidateSettingsCache, syncOverlaySettingsLive, isAnyGameRunning } from './processMonitor'
 import { loadPlaytimeDb, savePlaytimeDb, addPlaytimeRecord } from './playtimeService'
 import { initOverlayManager, openOverlayEditMode, exitEditMode, getOverlayWindow } from './overlayManager'
-import { setRLPlaylist, setRLApiKey, destroyRLScraper } from './rlService'
+import { initStreamManager } from './streamManager'
+import { setRLPlaylist, setRLApiKey, destroyRLScraper, resetRLSession, extractPlayerFromLog } from './rlService'
 import { fetchSteamAvatar } from './steamService'
 import { startInputService, stopInputService, setInputKeybinds } from './inputService'
 import { detectHardwareSpecs } from './hardwareService'
@@ -26,6 +27,13 @@ import { initVoiceIPC } from './voiceService'
 import { flushSystemRam } from './boostService'
 import { initAutoClipService } from './autoClipService'
 import { getAllCachedSources, getCachedSource, fetchAndCacheSource, removeCachedSource, saveCachedSource } from './sourceFetcherService'
+import { initMediaIPC, registerMediaGlobalHotkeys, unregisterAllMediaHotkeys } from './mediaService'
+import { initStorageIPC } from './storageService'
+import { initSpicetifyIPC } from './spicetifyService'
+import { initVencordIPC } from './vencordService'
+import { initMillenniumIPC } from './millenniumService'
+import { initOpenAsarIPC } from './openasarService'
+import { initRobloxIPC } from './robloxService'
 
 // Register privileged scheme for local clips video playback
 protocol.registerSchemesAsPrivileged([
@@ -59,6 +67,7 @@ app.setPath('userData', path.join(app.getPath('appData'), 'GameHub'))
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
+app.commandLine.appendSwitch('enable-features', 'WebRtcAllowWgcScreenCapturer,WebRtcAllowWgcWindowCapturer')
 app.commandLine.appendSwitch('enable-gpu-rasterization')
 app.commandLine.appendSwitch('enable-zero-copy')
 app.commandLine.appendSwitch('ignore-gpu-blocklist')
@@ -238,6 +247,7 @@ const gotSingleInstanceLock = app.requestSingleInstanceLock()
 
 if (!gotSingleInstanceLock) {
   app.quit()
+  process.exit(0)
 } else {
   app.on('second-instance', (_event, argv) => {
     if (mainWindow) {
@@ -309,7 +319,6 @@ function getAppIconPath(): string {
 function createSystemTray() {
   if (tray) return
   
-  initOverlayManager(DEV_SERVER_URL)
   const iconPath = getAppIconPath()
   const img = iconPath ? nativeImage.createFromPath(iconPath) : nativeImage.createEmpty()
   tray = new Tray(img)
@@ -387,42 +396,47 @@ function createWindow() {
     })
   } catch {}
 
-  if (!startMinimized) {
+  const isDev = Boolean(process.env['VITE_DEV_SERVER_URL']) || !app.isPackaged
+  const wasOpenedAtLogin = app.getLoginItemSettings().wasOpenedAsHidden || process.argv.includes('--hidden') || process.argv.includes('--autostart')
+  const shouldStartHidden = !isDev && startMinimized && wasOpenedAtLogin
+
+  // Always bind window state listeners regardless of startup mode
+  mainWindow.on('blur', () => {
+    mainWindow?.webContents.setBackgroundThrottling(false)
+  })
+
+  mainWindow.on('focus', () => {
+    mainWindow?.webContents.setFrameRate(60)
+    mainWindow?.webContents.invalidate()
+  })
+
+  mainWindow.on('minimize', () => {
+    mainWindow?.webContents.send('app:minimized')
+  })
+
+  mainWindow.on('restore', () => {
+    mainWindow?.webContents.setFrameRate(60)
+    mainWindow?.webContents.invalidate()
+    mainWindow?.webContents.send('app:restored')
+  })
+
+  mainWindow.on('hide', () => {
+    mainWindow?.webContents.send('app:minimized')
+  })
+
+  mainWindow.on('show', () => {
+    mainWindow?.webContents.setFrameRate(60)
+    mainWindow?.webContents.invalidate()
+    mainWindow?.webContents.send('app:restored')
+  })
+
+  if (!shouldStartHidden) {
     mainWindow.once('ready-to-show', () => {
       mainWindow?.show()
       mainWindow?.focus()
       mainWindow?.webContents.setFrameRate(60)
       mainWindow?.webContents.setBackgroundThrottling(false)
       mainWindow?.webContents.invalidate()
-    })
-
-    mainWindow.on('blur', () => {
-      mainWindow?.webContents.setBackgroundThrottling(false)
-    })
-
-    mainWindow.on('focus', () => {
-      mainWindow?.webContents.setFrameRate(60)
-      mainWindow?.webContents.invalidate()
-    })
-
-    mainWindow.on('minimize', () => {
-      mainWindow?.webContents.send('app:minimized')
-    })
-
-    mainWindow.on('restore', () => {
-      mainWindow?.webContents.setFrameRate(60)
-      mainWindow?.webContents.invalidate()
-      mainWindow?.webContents.send('app:restored')
-    })
-
-    mainWindow.on('hide', () => {
-      mainWindow?.webContents.send('app:minimized')
-    })
-
-    mainWindow.on('show', () => {
-      mainWindow?.webContents.setFrameRate(60)
-      mainWindow?.webContents.invalidate()
-      mainWindow?.webContents.send('app:restored')
     })
 
     mainWindow.webContents.once('did-finish-load', () => {
@@ -443,6 +457,18 @@ function createWindow() {
         mainWindow.focus()
       }
     }, 1500)
+  } else {
+    createSystemTray()
+    mainWindow.webContents.once('did-finish-load', () => {
+      if (pendingThemeInstall && mainWindow) {
+        mainWindow.webContents.send('theme:install-request', pendingThemeInstall)
+        pendingThemeInstall = null
+      }
+    })
+  }
+
+  if (settings.hideToTray || settings.startMinimized) {
+    createSystemTray()
   }
 
   const indexPath = path.join(__dirname, '../dist/index.html')
@@ -480,6 +506,14 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null
+    isQuitting = true
+    for (const win of BrowserWindow.getAllWindows()) {
+      try {
+        if (!win.isDestroyed()) {
+          win.destroy()
+        }
+      } catch {}
+    }
     app.quit()
   })
 
@@ -493,10 +527,72 @@ function createWindow() {
   // Initialize Discord RPC
   initDiscordRPC()
 
+  // Initialize Overlay IPC
+  initOverlayManager(devUrl || 'http://127.0.0.1:5173')
+
+  // Initialize Media Service (Spotify, YouTube, etc.)
+  const getMediaWindows = () => {
+    const wins: BrowserWindow[] = []
+    if (mainWindow && !mainWindow.isDestroyed()) wins.push(mainWindow)
+    const overlayWin = getOverlayWindow()
+    if (overlayWin && !overlayWin.isDestroyed()) wins.push(overlayWin)
+    return wins
+  }
+  initMediaIPC(getMediaWindows)
+
+  // Register saved media global hotkeys on startup
+  try {
+    const startupSettings = getSavedSettings()
+    if (startupSettings?.overlayMediaKeybinds) {
+      registerMediaGlobalHotkeys(startupSettings.overlayMediaKeybinds, getMediaWindows)
+    }
+  } catch (err) {
+    console.warn('[Main] Error registering media hotkeys on startup:', err)
+  }
+
+  // Initialize Storage & Disk Space Manager
+  initStorageIPC()
+
+  // Initialize Spicetify Plugin & Extension Manager
+  initSpicetifyIPC(() => {
+    const wins: BrowserWindow[] = []
+    if (mainWindow && !mainWindow.isDestroyed()) wins.push(mainWindow)
+    return wins
+  })
+
+  // Initialize Vencord Discord Client Mod Manager
+  initVencordIPC(() => {
+    const wins: BrowserWindow[] = []
+    if (mainWindow && !mainWindow.isDestroyed()) wins.push(mainWindow)
+    return wins
+  })
+
+  // Initialize Millennium Steam Client Mod Manager
+  initMillenniumIPC(() => {
+    const wins: BrowserWindow[] = []
+    if (mainWindow && !mainWindow.isDestroyed()) wins.push(mainWindow)
+    return wins
+  })
+
+  // Initialize OpenAsar Discord Performance Booster
+  initOpenAsarIPC(() => {
+    const wins: BrowserWindow[] = []
+    if (mainWindow && !mainWindow.isDestroyed()) wins.push(mainWindow)
+    return wins
+  })
+
+  // Initialize Roblox Auto-Codes & Live Game Tracker IPC
+  initRobloxIPC(() => {
+    const wins: BrowserWindow[] = []
+    if (mainWindow && !mainWindow.isDestroyed()) wins.push(mainWindow)
+    return wins
+  })
+
   // Initialize Clips Studio IPC & Global Hotkey
   initClipsIPC(mainWindow)
   initVoiceIPC(() => mainWindow)
   initAutoClipService(() => mainWindow)
+  initStreamManager()
 
   // Start background process monitoring for running games on Windows
   startProcessMonitor(() => mainWindow)
@@ -902,6 +998,22 @@ ipcMain.handle('settings:set', (_event, data: Record<string, unknown>) => {
       setInputKeybinds(newSettings.rlScoreboardKeyKb || 'Tab', newSettings.rlScoreboardKeyCtrl || 'Select')
     }
 
+    if (data.overlayMediaKeybinds !== undefined) {
+      const getMediaWindows = () => {
+        const wins: BrowserWindow[] = []
+        if (mainWindow && !mainWindow.isDestroyed()) wins.push(mainWindow)
+        const overlayWin = getOverlayWindow()
+        if (overlayWin && !overlayWin.isDestroyed()) wins.push(overlayWin)
+        return wins
+      }
+      registerMediaGlobalHotkeys(newSettings.overlayMediaKeybinds as any, getMediaWindows)
+    }
+
+    const overlayWin = getOverlayWindow()
+    if (overlayWin && !overlayWin.isDestroyed()) {
+      overlayWin.webContents.send('settings:update', newSettings)
+    }
+
     invalidateSettingsCache()
     syncOverlaySettingsLive()
     return { success: true }
@@ -1042,6 +1154,10 @@ ipcMain.handle('overlay:open-edit', () => {
       crosshairConfig: s.crosshairConfig,
       steamProfileUrl: s.steamProfileUrl,
       rlSteamAvatarScale: s.rlSteamAvatarScale,
+      overlayMedia: s.overlayMedia,
+      overlayMediaSource: s.overlayMediaSource,
+      overlayMediaAutoHide: s.overlayMediaAutoHide,
+      overlayMediaVisualizer: s.overlayMediaVisualizer !== false,
     }
   })
 })
@@ -1139,6 +1255,15 @@ ipcMain.handle('rl:set-playlist', (_event, playlist: string) => {
 ipcMain.handle('rl:set-api-key', (_event, key: string) => {
   setRLApiKey(key)
   return { success: true }
+})
+
+ipcMain.handle('rl:reset-session', () => {
+  resetRLSession()
+  return { success: true }
+})
+
+ipcMain.handle('rl:get-detected-player', () => {
+  return extractPlayerFromLog()
 })
 
 // ─── App Lifecycle ────────────────────────────────────────────────────────────
@@ -1328,6 +1453,9 @@ app.whenReady().then(() => {
     }
   } catch (e) {}
 
+  // Clean up any orphaned background processes left by previous crashes
+  cleanupOrphanProcesses()
+
   createWindow()
 
   // Check initial startup deep link argument
@@ -1337,8 +1465,56 @@ app.whenReady().then(() => {
   }
 })
 
+function cleanupOrphanProcesses() {
+  if (process.platform !== 'win32') return
+  const currentPid = process.pid
+  const cmd = 'powershell.exe -NoProfile -NonInteractive -Command "Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq \'electron.exe\' -or $_.Name -eq \'Eclipse Launcher.exe\') -and $_.CommandLine -like \'*--type=*\' } | Select-Object ProcessId, ParentProcessId | ConvertTo-Json -Compress"'
+  exec(cmd, { windowsHide: true }, (err, stdout) => {
+    if (err || !stdout) return
+    try {
+      let procs = JSON.parse(stdout.trim())
+      if (!Array.isArray(procs)) procs = [procs]
+      for (const p of procs) {
+        const pid = p.ProcessId
+        const parentPid = p.ParentProcessId
+        if (!pid || !parentPid || pid === currentPid) continue
+        let parentAlive = false
+        try {
+          process.kill(parentPid, 0)
+          parentAlive = true
+        } catch (_) {
+          parentAlive = false
+        }
+        if (!parentAlive) {
+          try {
+            process.kill(pid, 'SIGKILL')
+          } catch (_) {
+            try { exec(`taskkill /F /PID ${pid}`, { windowsHide: true }) } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
+  })
+}
+
+app.on('before-quit', () => {
+  isQuitting = true
+  for (const win of BrowserWindow.getAllWindows()) {
+    try {
+      if (!win.isDestroyed()) {
+        win.destroy()
+      }
+    } catch {}
+  }
+})
+
 app.on('window-all-closed', () => {
   destroyRLScraper()
+  for (const win of BrowserWindow.getAllWindows()) {
+    try {
+      if (!win.isDestroyed()) win.destroy()
+    } catch {}
+  }
   if (process.platform !== 'darwin') app.quit()
 })
 
@@ -1375,5 +1551,12 @@ ipcMain.handle('discord:clear-activity', () => {
   return { success: true }
 })
 
+
+app.on('will-quit', () => {
+  unregisterAllMediaHotkeys()
+  setTimeout(() => {
+    process.exit(0)
+  }, 400).unref()
+})
 
 app.on('web-contents-created', (e, wc) => { wc.on('console-message', (e, level, msg) => { if (level >= 2) console.log('RENDERER ERROR:', msg) }) })

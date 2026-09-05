@@ -823,6 +823,58 @@ export interface SteamDBSummary {
   owners: string
   averageForeverMinutes: number
   tags: Record<string, number>
+  peak24h?: number | null
+  allTimePeak?: number | null
+  livePlaying?: number | null
+}
+
+const playerPeakCache = new Map<number, { allTimePeak?: number; peak24h?: number; livePlaying?: number; timestamp: number }>()
+const CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutes
+
+export async function fetchSteamPlayerStats(appId: number): Promise<{ allTimePeak?: number; peak24h?: number; livePlaying?: number } | null> {
+  if (appId === ROBLOX_APP_ID) {
+    return {
+      livePlaying: 2841920,
+      peak24h: 6850000,
+      allTimePeak: 10400000,
+    }
+  }
+
+  const cached = playerPeakCache.get(appId)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 6000)
+    const res = await fetch(`https://steamcharts.com/app/${appId}`, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+      }
+    })
+    clearTimeout(timeout)
+    if (!res.ok) return null
+
+    const text = await res.text()
+    const peakAllMatch = text.match(/<span class="num">([\d,]+)<\/span>\s*<br>\s*all-time peak/i)
+    const peak24Match = text.match(/<span class="num">([\d,]+)<\/span>\s*<br>\s*24-hour peak/i)
+    const liveMatch = text.match(/<span class="num">([\d,]+)<\/span>\s*<br>\s*playing/i)
+
+    const allTimePeak = peakAllMatch ? parseInt(peakAllMatch[1].replace(/,/g, ''), 10) : undefined
+    const peak24h = peak24Match ? parseInt(peak24Match[1].replace(/,/g, ''), 10) : undefined
+    const livePlaying = liveMatch ? parseInt(liveMatch[1].replace(/,/g, ''), 10) : undefined
+
+    if (allTimePeak !== undefined || peak24h !== undefined || livePlaying !== undefined) {
+      const stats = { allTimePeak, peak24h, livePlaying, timestamp: Date.now() }
+      playerPeakCache.set(appId, stats)
+      return stats
+    }
+    return null
+  } catch {
+    return null
+  }
 }
 
 export const REVIEW_SCORE_TRANSLATIONS: Record<string, { en: string; de: string }> = {
@@ -897,6 +949,9 @@ export async function getSteamDBSummary(appId: number): Promise<SteamDBSummary |
   if (appId === ROBLOX_APP_ID) {
     return {
       ccu: 2841920,
+      livePlaying: 2841920,
+      peak24h: 6850000,
+      allTimePeak: 10400000,
       positive: 4500000,
       negative: 250000,
       owners: '100,000,000 .. 200,000,000',
@@ -905,20 +960,29 @@ export async function getSteamDBSummary(appId: number): Promise<SteamDBSummary |
     }
   }
   try {
-    const res = await fetch(`https://steamspy.com/api.php?request=appdetails&appid=${appId}`)
-    if (!res.ok) return null
-    const data = await res.json()
-    if (data && data.appid) {
-      return {
-        ccu: typeof data.ccu === 'number' ? data.ccu : 0,
-        positive: typeof data.positive === 'number' ? data.positive : 0,
-        negative: typeof data.negative === 'number' ? data.negative : 0,
-        owners: data.owners || 'Unknown',
-        averageForeverMinutes: typeof data.average_forever === 'number' ? data.average_forever : 0,
-        tags: typeof data.tags === 'object' && data.tags ? data.tags : {},
-      }
+    const [spyRes, chartStats] = await Promise.allSettled([
+      fetch(`https://steamspy.com/api.php?request=appdetails&appid=${appId}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetchSteamPlayerStats(appId)
+    ])
+
+    const spyData = spyRes.status === 'fulfilled' ? spyRes.value : null
+    const chart = chartStats.status === 'fulfilled' ? chartStats.value : null
+
+    if (!spyData && !chart) return null
+
+    return {
+      ccu: chart?.livePlaying ?? (typeof spyData?.ccu === 'number' ? spyData.ccu : 0),
+      positive: typeof spyData?.positive === 'number' ? spyData.positive : 0,
+      negative: typeof spyData?.negative === 'number' ? spyData.negative : 0,
+      owners: spyData?.owners || 'Unknown',
+      averageForeverMinutes: typeof spyData?.average_forever === 'number' ? spyData.average_forever : 0,
+      tags: typeof spyData?.tags === 'object' && spyData.tags ? spyData.tags : {},
+      peak24h: chart?.peak24h ?? null,
+      allTimePeak: chart?.allTimePeak ?? null,
+      livePlaying: chart?.livePlaying ?? null,
     }
-    return null
   } catch {
     return null
   }

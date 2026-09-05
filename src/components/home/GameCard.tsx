@@ -20,6 +20,7 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
   const cardRef = React.useRef<HTMLDivElement>(null)
   
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (document.documentElement.classList.contains('performance-mode')) return
     const el = cardRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
@@ -62,29 +63,42 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
     openGameDetails(id, game.name)
   }
 
+  // Full fallback chain — start with guaranteed-valid URLs from API, then CDN poster attempts
   const isRoblox = appId === 999001 || game.name?.toLowerCase() === 'roblox'
-  const primaryUrl = isRoblox ? robloxHeroImg : `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
-  const secondaryUrl = isRoblox ? robloxLogoImg : `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`
-  const fallbackUrl = isRoblox ? robloxLogoImg : `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
+  const fallbackChain: string[] = isRoblox
+    ? [robloxHeroImg, robloxLogoImg]
+    : [
+        // 1. Vertical poster (best quality, but many games don't have it)
+        `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`,
+        // 2. game.headerImage is the URL Steam API returned — always a real image
+        ...(game.headerImage ? [game.headerImage] : []),
+        // 3. More CDN options
+        `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`,
+        `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`,
+        `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`,
+      ]
 
+  const primaryUrl = fallbackChain[0]
   const [imgSrc, setImgSrc] = useState(primaryUrl)
   const [hasError, setHasError] = useState(!appId)
+  const fallbackIndexRef = React.useRef(0)
 
-  // Update image source when appId changes (e.g. from cache bust)
+  // Reset when appId changes
   useEffect(() => {
     if (appId) {
-      setImgSrc(primaryUrl)
+      fallbackIndexRef.current = 0
+      setImgSrc(fallbackChain[0])
       setHasError(false)
     } else {
       setHasError(true)
     }
-  }, [appId, primaryUrl])
+  }, [appId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleImageError = () => {
-    if (imgSrc === primaryUrl) {
-      setImgSrc(secondaryUrl)
-    } else if (imgSrc === secondaryUrl) {
-      setImgSrc(fallbackUrl)
+    const next = fallbackIndexRef.current + 1
+    if (next < fallbackChain.length) {
+      fallbackIndexRef.current = next
+      setImgSrc(fallbackChain[next])
     } else {
       setHasError(true)
     }
@@ -145,49 +159,21 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
       >
         <div className="absolute inset-0 overflow-hidden rounded-xl bg-hub-elevated [transform:translateZ(0)]">
           {!hasError ? (
-            imgSrc === fallbackUrl ? (
-              <div className="relative w-full h-full overflow-hidden bg-[#0a0b0f] flex items-center justify-center p-3 select-none">
-                <img
-                  src={imgSrc}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="absolute inset-0 w-full h-full object-cover filter blur-md scale-125 opacity-40 brightness-75 pointer-events-none"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/40 pointer-events-none" />
-                <div className="absolute top-3 inset-x-0 flex justify-center pointer-events-none z-10">
-                  <span className="text-[9px] font-semibold tracking-widest uppercase text-white/50 bg-black/70 px-2 py-0.5 rounded-full border border-white/10 shadow-sm">
-                    PREVIEW
-                  </span>
-                </div>
-                <div className="relative z-10 w-full aspect-[16/9] rounded-lg overflow-hidden shadow-[0_12px_28px_rgba(0,0,0,0.85)] border border-white/15">
-                  <img
-                    src={imgSrc}
-                    onError={handleImageError}
-                    alt={game.name}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-            ) : (
-              <img
-                src={imgSrc}
-                onError={handleImageError}
-                alt={game.name}
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full object-cover z-10 relative transition-transform duration-300 ease-out group-hover:scale-[1.03]"
-              />
-            )
+            <img
+              src={imgSrc}
+              onError={handleImageError}
+              alt={game.name}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover z-10 relative transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+            />
           ) : (
             <img
               src={getPlaceholderCover(game.name)}
               alt={game.name}
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover z-10 relative transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+              className="w-full h-full object-cover z-10 relative"
             />
           )}
 
@@ -196,7 +182,7 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
           
           {/* Dynamic Parallax Glare */}
           <div 
-            className="absolute inset-0 z-30 pointer-events-none rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            className="dynamic-glare absolute inset-0 z-30 pointer-events-none rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
             style={{
               background: 'radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12) 0%, transparent 60%)'
             }}
@@ -278,7 +264,7 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
               {game.priceFormatted}
             </p>
           ) : game.isFree ? (
-            <p className="text-[11px] font-semibold text-indigo-400 flex-shrink-0">Free</p>
+            <p className="text-[11px] font-semibold text-white/90 flex-shrink-0">Free</p>
           ) : null}
         </div>
       </div>

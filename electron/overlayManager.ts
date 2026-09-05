@@ -3,6 +3,7 @@ import path from 'path'
 import { startMetricsService, stopMetricsService } from './metricsService'
 import { startInputService, stopInputService } from './inputService'
 import { startGamepadService, stopGamepadService } from './gamepadService'
+import { updateStreamGameTitle, isStreamStudioOpen } from './streamManager'
 
 let overlayWindow: BrowserWindow | null = null
 let isEditMode = false
@@ -78,13 +79,31 @@ function createOverlayWindow() {
 
 export function showOverlay(gameData: any) {
   const s = gameData?.settings
-  const isAnyOverlayActive = s && (
+  const gameName = gameData?.name || gameData?.title || null
+  updateStreamGameTitle(gameName)
+
+  // Check if controller is running in "Stream Only" mode (invisible on desktop)
+  const isControllerStreamOnly = !!s?.overlayControllerStreamOnly
+  const isControllerActive = !!(s?.overlayController || s?.overlayRLController)
+
+  // If controller is active (even if stream only), keep gamepad service running
+  if (isControllerActive) {
+    startGamepadService(getOverlayWindow)
+  }
+
+  // Determine if any visible widget should appear on the desktop overlay
+  const isAnyDesktopOverlayActive = s && (
     s.performance || s.crosshair || s.cps || s.robloxCps || s.robloxTimer || 
-    s.rlHud || s.overlayRLSteam || s.overlayController || s.overlayRLController
+    s.rlHud || s.overlayRLSteam || (!isControllerStreamOnly && isControllerActive) || s.overlayMedia
   )
 
-  if (!isAnyOverlayActive) {
-    hideOverlay()
+  if (!isAnyDesktopOverlayActive && !isEditMode) {
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      try {
+        overlayWindow.destroy()
+      } catch (_) {}
+      overlayWindow = null
+    }
     return
   }
 
@@ -92,6 +111,15 @@ export function showOverlay(gameData: any) {
     if (s?.performance || s?.robloxTimer) {
       startMetricsService(getOverlayWindow)
     }
+    try {
+      const primaryDisplay = screen.getPrimaryDisplay()
+      const curBounds = overlayWindow.getBounds()
+      if (curBounds.width !== primaryDisplay.bounds.width || curBounds.height !== primaryDisplay.bounds.height || curBounds.x !== primaryDisplay.bounds.x || curBounds.y !== primaryDisplay.bounds.y) {
+        overlayWindow.setBounds(primaryDisplay.bounds)
+      }
+      overlayWindow.setAlwaysOnTop(true, 'screen-saver', 1)
+      overlayWindow.moveTop()
+    } catch (_) {}
     overlayWindow.webContents.send('overlay:update', gameData)
     return
   }
@@ -116,7 +144,10 @@ export function showOverlay(gameData: any) {
   })
 }
 
-export function hideOverlay() {
+export function hideOverlay(force: boolean = false) {
+  if (isEditMode && !force) {
+    return
+  }
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     try {
       overlayWindow.destroy()
@@ -134,6 +165,7 @@ export function hideOverlay() {
 // ─── Edit Mode (Discord-style drag) ───────────────────────────────────────────
 
 export function openOverlayEditMode(gameData?: any) {
+  isEditMode = true
   if (!overlayWindow || overlayWindow.isDestroyed()) {
     // No active overlay – open a preview window for editing
     createOverlayWindow()
@@ -142,10 +174,10 @@ export function openOverlayEditMode(gameData?: any) {
       startMetricsService(getOverlayWindow)
       startInputService(overlayWindow!)
       startGamepadService(getOverlayWindow)
-      overlayWindow?.webContents.send('overlay:edit-mode', true)
-      setTimeout(() => {
-        enterEditMode(gameData)
-      }, 1000)
+      enterEditMode(gameData)
+    })
+    overlayWindow!.webContents.once('did-finish-load', () => {
+      enterEditMode(gameData)
     })
     return
   }
@@ -168,3 +200,14 @@ export function exitEditMode() {
   overlayWindow.setFocusable(false)
   overlayWindow.webContents.send('overlay:edit-end')
 }
+
+ipcMain.on('overlay:set-ignore-mouse', (_event, ignore: boolean) => {
+  if (overlayWindow && !overlayWindow.isDestroyed() && !isEditMode) {
+    if (ignore) {
+      overlayWindow.setIgnoreMouseEvents(true, { forward: true })
+    } else {
+      overlayWindow.setIgnoreMouseEvents(false)
+    }
+  }
+})
+

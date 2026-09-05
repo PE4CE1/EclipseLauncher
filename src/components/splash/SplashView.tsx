@@ -41,6 +41,9 @@ function getInitialScanSteam(): boolean {
 export function SplashView({ onComplete }: SplashViewProps) {
   const updateSettings = useGameStore(state => state.updateSettings)
   const scanMessage = useGameStore(state => state.scanMessage)
+  const settings = useGameStore(state => state.settings)
+  const activeGame = useGameStore(state => state.activeGame)
+  const isPerformanceMode = Boolean(settings?.performanceMode || (activeGame && settings?.gamePerformanceMode !== false))
   const { scan } = useScanner()
   const { language } = useTranslation()
 
@@ -83,6 +86,13 @@ export function SplashView({ onComplete }: SplashViewProps) {
       onComplete()
     }
   }
+
+  // Pre-load storage & drives in background during splash screen (0% UI freeze)
+  useEffect(() => {
+    if (window.electronAPI?.storage?.getDrives) {
+      window.electronAPI.storage.getDrives().catch(() => {})
+    }
+  }, [])
 
   // Listen for native electron-updater events
   useEffect(() => {
@@ -239,7 +249,9 @@ export function SplashView({ onComplete }: SplashViewProps) {
     >
       {/* ─── Ambient Space Backdrop ─── */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[440px] h-[440px] bg-white/[0.03] rounded-full blur-[100px]" />
+        {!isPerformanceMode && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[440px] h-[440px] bg-white/[0.03] rounded-full blur-[100px]" />
+        )}
         
         {stars.map((star) => (
           <div
@@ -263,30 +275,36 @@ export function SplashView({ onComplete }: SplashViewProps) {
         
         {/* Floating Eclipse Logo with Corona Glow */}
         <div className="relative mb-5 flex items-center justify-center w-28 h-28">
-          <motion.div 
-            className="absolute w-24 h-24 rounded-full bg-white/10 pointer-events-none"
-            style={{ filter: 'blur(28px)' }}
-            animate={{
-              scale: [0.95, 1.12, 0.95],
-              opacity: [0.3, 0.65, 0.3]
-            }}
-            transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-          />
+          {!isPerformanceMode && (
+            <motion.div 
+              className="absolute w-24 h-24 rounded-full bg-white/10 pointer-events-none blur-[28px] splash-corona-glow"
+              style={{ filter: 'blur(28px)' }}
+              animate={{
+                scale: [0.95, 1.12, 0.95],
+                opacity: [0.3, 0.65, 0.3]
+              }}
+              transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          )}
 
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1, y: [-2, 2, -2] }}
+            animate={{ scale: 1, opacity: 1, y: isPerformanceMode ? 0 : [-2, 2, -2] }}
             transition={{ 
               scale: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
               opacity: { duration: 0.5 },
-              y: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' }
+              y: isPerformanceMode ? { duration: 0 } : { duration: 3.5, repeat: Infinity, ease: 'easeInOut' }
             }}
-            className="relative z-10 w-20 h-20 flex items-center justify-center"
+            className="relative z-10 w-20 h-20 flex items-center justify-center rounded-full overflow-hidden"
+            style={{
+              maskImage: 'radial-gradient(circle, black 70%, transparent 88%)',
+              WebkitMaskImage: 'radial-gradient(circle, black 70%, transparent 88%)',
+            }}
           >
             <img 
               src={eclipseLogo} 
               alt="Eclipse Launcher" 
-              className="w-18 h-18 object-contain drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)]" 
+              className="w-18 h-18 object-contain rounded-full" 
             />
           </motion.div>
         </div>

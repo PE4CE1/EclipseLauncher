@@ -22,6 +22,43 @@ interface GitHubRelease {
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
   {
+    id: 127,
+    tag_name: 'v1.2.7',
+    name: 'v1.2.7 - Game Overview Polish & UI Enhancements',
+    published_at: '2026-09-05T20:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.2.7',
+    body: `* **Game Details Layout:** Clean two-row header with studio deduplication.
+* **Button Sizing:** Fixed hover width shift on library actions.
+* **Stats & Artwork:** Real SteamDB peak tracking & sleek placeholder covers.
+* **UI Polish:** Dropdown menu and notification background visual fixes.`,
+    prerelease: false
+  },
+  {
+    id: 126,
+    tag_name: 'v1.2.6',
+    name: 'v1.2.6 - Plugins Hub, Millennium Steam, Vencord & Overlay Stability',
+    published_at: '2026-09-05T00:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.2.6',
+    body: `* **Plugins Hub:** 1-Click modding engine for Steam (Millennium), Discord (Vencord), and Spotify (Spicetify).
+* **Millennium Steam Modding:** Themes (OLED Black, Fluent), community skins & plugins with 1-click install & repair.
+* **Vencord Discord Mod:** Custom Discord plugins, themes, and dynamic latest version sync.
+* **Overlay Stability:** Overlays now active on desktop, edit mode fixed, and 30+ new game detections added.
+* **Storage & Stream Studio:** Live controller stream mode and disk space manager.`,
+    prerelease: false
+  },
+  {
+    id: 125,
+    tag_name: 'v1.2.5',
+    name: 'v1.2.5 - Performance & Overlay Polish',
+    published_at: '2026-09-04T00:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.2.5',
+    body: `* **0% GPU Visualizer:** Ultra-lightweight rhythmic beat-meter without FPS drops.
+* **Real RAM Cleaner:** Native Windows working set memory release.
+* **Performance Mode:** Top bar remains visible and auto-advances.
+* **Catalogue Filters:** Sorting controls isolated to catalogue view.`,
+    prerelease: false
+  },
+  {
     id: 124,
     tag_name: 'v1.2.4',
     name: 'v1.2.4 - HLS Adaptive Trailer Streaming, Roblox Library Integration & High-Visibility Hero Overhaul',

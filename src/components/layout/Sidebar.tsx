@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import {
-  Home, BookOpen, Library, Download, Settings,
+  Home, BookOpen, Library, Download, Settings, HardDrive,
   Bell, Gamepad2, Zap, Search, ChevronDown, User, Users, LogOut, Film,
   Star, Clock, Loader2, ScanLine, Github, Play, Square,
   FolderOpen, Trash2, MoreVertical,
@@ -85,6 +85,7 @@ import React from 'react'
 export function Sidebar() {
   const { activeView, setActiveView, setIsSearchOpen, updateStatus, updateProgress, updateInfo, isFriendsOpen, setIsFriendsOpen, openGameDetails, showNotification } = useUIStore()
   const { installedGames, library, isScanning, scanMessage, settings, activeGame, toggleFavorite, favoriteIds, removeFromLibrary, stopPlaySession } = useGameStore()
+  const isPerformanceMode = Boolean(settings?.performanceMode || (activeGame && settings?.gamePerformanceMode !== false))
   
   // Calculate total library size (installed + custom uninstalled games)
   const totalLibraryCount = installedGames.length + library.filter(g => !installedGames.some(ig => ig.name === g.name)).length
@@ -170,10 +171,14 @@ export function Sidebar() {
     <aside className="w-64 flex-shrink-0 bg-transparent flex flex-col h-full overflow-hidden border-r border-white/[0.02]">
 
       {/* ─── User Profile ─────────────────────────────────────────────── */}
-      <div className="p-4 relative" ref={dropdownRef}>
+      <div className="p-4 relative z-40" ref={dropdownRef}>
         <button 
-          onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-          className="w-full flex items-center gap-3 p-1.5 -m-1.5 rounded-lg hover:bg-white/5 transition-colors text-left"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsProfileDropdownOpen(prev => !prev)
+          }}
+          className="w-full flex items-center gap-3 p-1.5 -m-1.5 rounded-lg hover:bg-white/5 transition-colors text-left cursor-pointer select-none"
         >
           <div className="relative">
             <div className="w-10 h-10 rounded-full flex items-center justify-center bg-black overflow-hidden flex-shrink-0 ring-1 ring-white/10">
@@ -193,41 +198,57 @@ export function Sidebar() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-white uppercase tracking-wide truncate">{settings.username || 'User'}</p>
           </div>
-          <ChevronDown size={16} className={`text-hub-muted transition-transform ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown size={16} className={`text-hub-muted transition-transform duration-150 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
         </button>
 
         <AnimatePresence>
           {isProfileDropdownOpen && (
             <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              className="absolute top-full left-4 right-4 mt-2 bg-hub-surface/90 backdrop-blur-2xl border border-white/5 rounded-2xl shadow-card py-2 z-50 overflow-hidden"
+              initial={isPerformanceMode ? false : { opacity: 0, y: -6, scale: 0.96 }}
+              animate={isPerformanceMode ? { opacity: 1, y: 0, scale: 1 } : { opacity: 1, y: 0, scale: 1 }}
+              exit={isPerformanceMode ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.96 }}
+              transition={{ duration: isPerformanceMode ? 0 : 0.15, ease: 'easeOut' }}
+              className="absolute top-full left-4 right-4 mt-1.5 bg-[#08080b] border border-white/[0.1] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.98)] p-1.5 z-50 overflow-hidden"
+              style={{ backgroundColor: '#08080b' }}
             >
               <button 
-                onClick={() => { setActiveView('profile'); useUIStore.getState().setSelectedFriendId(null); setIsProfileDropdownOpen(false) }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-white/5 transition-colors"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setActiveView('profile')
+                  useUIStore.getState().setSelectedFriendId(null)
+                  setIsProfileDropdownOpen(false)
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/[0.06] rounded-lg transition-colors cursor-pointer text-left group"
               >
-                <User size={16} className="text-white/70" />
-                {t('viewProfile')}
+                <User size={15} className="text-white/60 group-hover:text-white transition-colors" />
+                <span>{t('viewProfile')}</span>
               </button>
               
               <button 
-                onClick={() => { setActiveView('notifications'); setIsProfileDropdownOpen(false); }}
-                className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-white hover:bg-white/5 transition-colors"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setActiveView('notifications')
+                  setIsProfileDropdownOpen(false)
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/[0.06] rounded-lg transition-colors cursor-pointer text-left group"
               >
-                <div className="flex items-center gap-3">
-                  <Bell size={16} className="text-white/70" />
-                  {t('notificationsTab')}
+                <div className="flex items-center gap-2.5">
+                  <Bell size={15} className="text-white/60 group-hover:text-white transition-colors" />
+                  <span>{t('notificationsTab')}</span>
                 </div>
                 {(updateStatus === 'available' || updateStatus === 'downloaded') && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-full">
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 bg-rose-500/15 text-rose-300 border border-rose-500/20 rounded-full">
                     UPDATE
                   </span>
                 )}
               </button>
               
               <button 
-                onClick={() => {
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
                   if ((window as any).electronAPI?.openFriendsWindow) {
                     (window as any).electronAPI.openFriendsWindow()
                   } else {
@@ -235,21 +256,26 @@ export function Sidebar() {
                   }
                   setIsProfileDropdownOpen(false)
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/[0.06] rounded-lg transition-colors text-left cursor-pointer group"
               >
-                <Users size={16} className="text-white/70" />
+                <Users size={15} className="text-white/60 group-hover:text-white transition-colors" />
                 <span className="flex-1">{t('friends')}</span>
               </button>
               
-              <div className="h-px bg-white/10 my-1 mx-4" />
+              <div className="h-px bg-white/[0.06] my-1 mx-2" />
               
               <button 
-                onClick={() => { setActiveView('clips'); setIsProfileDropdownOpen(false); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-white/5 transition-colors text-left cursor-pointer group"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setActiveView('clips')
+                  setIsProfileDropdownOpen(false)
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/[0.06] rounded-lg transition-colors text-left cursor-pointer group"
               >
-                <Film size={16} className="text-white/70 group-hover:text-white transition-colors" />
-                <span className="flex-1 font-medium">{t('clips')}</span>
-                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/10 text-white/70">
+                <Film size={15} className="text-white/60 group-hover:text-white transition-colors" />
+                <span className="flex-1">{t('clips')}</span>
+                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/[0.08] text-white/70 border border-white/[0.06]">
                   STUDIO
                 </span>
               </button>

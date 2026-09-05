@@ -143,9 +143,9 @@ export function useScanner() {
 
   const launchGame = useCallback(async (launchUrl: string, gameName: string) => {
     if (!window.electronAPI) return
-    const { hideToTray } = useGameStore.getState().settings
-    if (hideToTray && window.electronAPI.hideWindow) {
-      window.electronAPI.hideWindow()
+    const { autoMinimizeOnGame } = useGameStore.getState().settings
+    if (autoMinimizeOnGame && window.electronAPI.minimizeWindow) {
+      window.electronAPI.minimizeWindow()
     }
     const result = await window.electronAPI.launchGame(launchUrl)
     if (result.success) {

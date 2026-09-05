@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Globe, Gamepad2, Move, Check, Activity, Crosshair as CrosshairIcon, Timer,
   ChevronDown, Cpu, MemoryStick, Clock, Layers, Edit3, MousePointerClick, Gauge,
-  Plus, Minus, ShieldCheck
+  Plus, Minus, ShieldCheck, Radio, Tv, Copy, Music, RotateCcw,
+  Play, Pause, SkipForward, SkipBack, Keyboard, X
 } from 'lucide-react'
 import type { AppSettings } from '../../types/game'
 import { CROSSHAIR_PRESETS, CrosshairSVG, DEFAULT_CROSSHAIR } from '../overlay/widgets/Crosshair'
@@ -119,7 +120,7 @@ const PerformanceSection = memo(function PerformanceSection({ settings, save, la
             </div>
             <div className="text-[11px] text-white/40 truncate">
               {settings.overlayPerformance 
-                ? (language === 'de' ? `${activeCount} Metriken aktiviert · FPS, CPU, RAM, GPU` : `${activeCount} metrics enabled · FPS, CPU, RAM, GPU`)
+                ? (language === 'de' ? `Hardware-Monitor (${activeCount}/6 Werte aktiv · FPS, CPU...)` : `Hardware Monitor (${activeCount}/6 stats active · FPS, CPU...)`)
                 : (language === 'de' ? 'Deaktiviert' : 'Disabled')}
             </div>
           </div>
@@ -489,7 +490,6 @@ export const getControllerSkins = (language: string): Record<ControllerSkinId, {
   },
 })
 
-// ─── Controller HUD Dropdown (General Overlays) ────────────────────────────────
 const GeneralControllerSection = memo(function GeneralControllerSection({ settings, save, language }: {
   settings: Partial<AppSettings>
   save: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
@@ -497,9 +497,10 @@ const GeneralControllerSection = memo(function GeneralControllerSection({ settin
 }) {
   const [open, setOpen] = useState(false)
   const isEnabled = settings.overlayController ?? false
+  const isDe = (language || 'de').startsWith('de')
   const activeSkin: ControllerSkinId = (settings.rlControllerSkin as ControllerSkinId) || 'ps5_white'
   const scale = settings.rlControllerScale || 80
-  const skins = getControllerSkins(language)
+  const skins = getControllerSkins(isDe ? 'de' : 'en')
 
   return (
     <div 
@@ -515,12 +516,12 @@ const GeneralControllerSection = memo(function GeneralControllerSection({ settin
           </div>
           <div className="flex-1 min-w-0">
             <div className={`text-[13px] font-semibold ${isEnabled ? 'text-white' : 'text-white/70'}`}>
-              {language === 'de' ? 'Controller Overlay (Live-HUD)' : 'Live Controller HUD (GamepadViewer)'}
+              {isDe ? 'Controller Overlay (Live-HUD)' : 'Live Controller HUD (GamepadViewer)'}
             </div>
             <div className="text-[11px] text-white/40 truncate">
               {isEnabled 
-                ? `${skins[activeSkin]?.label || activeSkin} · ${language === 'de' ? 'Skalierung' : 'Scale'} ${scale}%` 
-                : (language === 'de' ? 'Deaktiviert' : 'Disabled')}
+                ? `${skins[activeSkin]?.label || activeSkin} · ${isDe ? 'Skalierung' : 'Scale'} ${scale}%` 
+                : (isDe ? 'Deaktiviert' : 'Disabled')}
             </div>
           </div>
         </div>
@@ -550,7 +551,7 @@ const GeneralControllerSection = memo(function GeneralControllerSection({ settin
               {/* Preset Skins */}
               <div>
                 <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">
-                  {language === 'de' ? 'Controller-Design' : 'Controller Design'}
+                  {isDe ? 'Controller-Design' : 'Controller Design'}
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
                   {(Object.keys(skins) as ControllerSkinId[]).map((key) => {
@@ -564,7 +565,7 @@ const GeneralControllerSection = memo(function GeneralControllerSection({ settin
                           save('rlControllerSkin', key)
                           save('rlControllerUrl', skin.url)
                         }}
-                        className={`px-2.5 py-2 rounded-lg text-[10px] font-medium border transition-colors ${
+                        className={`px-2.5 py-2 rounded-lg text-[10px] font-medium border transition-colors cursor-pointer ${
                           isSelected
                             ? 'bg-white text-black border-white font-semibold shadow-sm'
                             : 'bg-white/[0.04] border-white/[0.08] text-white/70 hover:text-white hover:border-white/20'
@@ -576,7 +577,7 @@ const GeneralControllerSection = memo(function GeneralControllerSection({ settin
                   })}
                 </div>
                 <div className="text-[9px] text-white/40 mt-2">
-                  {language === 'de'
+                  {isDe
                     ? '💡 Drücke im Spiel oder auf dem Desktop einmal eine beliebige Taste auf deinem Controller, um das Overlay zu aktivieren.'
                     : '💡 Press any button on your controller in-game or on desktop once to activate the overlay.'}
                 </div>
@@ -586,7 +587,7 @@ const GeneralControllerSection = memo(function GeneralControllerSection({ settin
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">
-                    {language === 'de' ? 'Skalierung' : 'Scale'}
+                    {isDe ? 'Skalierung' : 'Scale'}
                   </div>
                   <div className="text-[10px] text-white font-mono">{scale}%</div>
                 </div>
@@ -597,6 +598,451 @@ const GeneralControllerSection = memo(function GeneralControllerSection({ settin
                   onChange={e => save('rlControllerScale', Number(e.target.value))}
                   className="w-full accent-white h-1 bg-white/[0.05] rounded-full appearance-none cursor-pointer"
                 />
+              </div>
+
+              {/* Minimalist Discord Stream Studio Card */}
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 space-y-2 mt-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-6 h-6 rounded-md bg-red-500/15 text-red-400 flex items-center justify-center flex-shrink-0">
+                      <Radio size={12} className="animate-pulse" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[12px] font-medium text-white truncate">
+                        {isDe ? 'Discord Stream Modus' : 'Discord Stream Mode'}
+                      </div>
+                      <div className="text-[10px] text-white/40 truncate">
+                        {isDe
+                          ? 'Nur für Zuschauer sichtbar (dein Bildschirm bleibt frei)'
+                          : 'Visible only to viewers (your screen stays clean)'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => window.electronAPI?.stream?.open()}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-white/80 hover:text-white text-[10px] font-medium transition-colors cursor-pointer"
+                    >
+                      <Tv size={11} />
+                      <span>{isDe ? 'Studio öffnen' : 'Open Studio'}</span>
+                    </button>
+                    <Toggle 
+                      checked={!!settings.overlayControllerStreamOnly} 
+                      onChange={() => {
+                        const next = !settings.overlayControllerStreamOnly
+                        save('overlayControllerStreamOnly', next)
+                        if (next) {
+                          save('overlayController', true)
+                          window.electronAPI?.stream?.open()
+                        }
+                      }} 
+                    />
+                  </div>
+                </div>
+
+                {settings.overlayControllerStreamOnly && (
+                  <div className="text-[9px] text-emerald-400/80 flex items-center gap-1.5 pt-1.5 border-t border-white/[0.04]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <span>
+                      {isDe 
+                        ? 'In Discord übertragen: Anwendungen ➔ „Eclipse Stream“' 
+                        : 'Stream in Discord: Applications ➔ "Eclipse Stream"'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+})
+
+// ─── Media Player Section (Spotify, YouTube, etc.) ───────────────────────────
+const MediaSection = memo(function MediaSection({ settings, save, language }: {
+  settings: Partial<AppSettings>
+  save: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
+  language: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [recordingAction, setRecordingAction] = useState<'playPause' | 'next' | 'prev' | null>(null)
+  const isEnabled = !!settings.overlayMedia
+
+  const keybinds = settings.overlayMediaKeybinds || {}
+
+  useEffect(() => {
+    if (!recordingAction) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      if (e.key === 'Escape') {
+        setRecordingAction(null)
+        return
+      }
+
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        const updated = { ...keybinds, [recordingAction]: '' }
+        save('overlayMediaKeybinds', updated)
+        if (window.electronAPI?.media?.registerHotkeys) {
+          window.electronAPI.media.registerHotkeys(updated)
+        }
+        setRecordingAction(null)
+        return
+      }
+
+      if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return
+
+      const parts: string[] = []
+      if (e.ctrlKey) parts.push('Ctrl')
+      if (e.altKey) parts.push('Alt')
+      if (e.shiftKey) parts.push('Shift')
+
+      let keyName = e.key.toUpperCase()
+      if (keyName === ' ') keyName = 'Space'
+      if (keyName.startsWith('ARROW')) keyName = keyName.replace('ARROW', '')
+
+      parts.push(keyName)
+      const hotkeyStr = parts.join('+')
+
+      const updated = { ...keybinds, [recordingAction]: hotkeyStr }
+      save('overlayMediaKeybinds', updated)
+      if (window.electronAPI?.media?.registerHotkeys) {
+        window.electronAPI.media.registerHotkeys(updated)
+      }
+      setRecordingAction(null)
+    }
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
+  }, [recordingAction, keybinds, save])
+
+  return (
+    <div 
+      style={{ contain: 'paint layout style', transform: 'translateZ(0)' }}
+      className={`rounded-xl border transition-colors duration-150 ${open ? 'border-white/10 bg-[#0f1015]' : 'border-white/[0.06] hover:border-white/[0.09] bg-[#0c0d12]'}`}
+    >
+      <div className="flex items-center justify-between px-4 py-3 cursor-pointer select-none" onClick={() => setOpen(p => !p)}>
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+            isEnabled ? 'bg-white/15 text-white' : 'bg-white/[0.04] text-white/40'
+          }`}>
+            <Music size={15} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className={`text-[13px] font-semibold ${isEnabled ? 'text-white' : 'text-white/70'}`}>
+              {language === 'de' ? 'Spotify & Medien-Overlay' : 'Spotify & Media Overlay'}
+            </div>
+            <div className="text-[11px] text-white/40 truncate">
+              {isEnabled 
+                ? (language === 'de' ? 'Zeigt aktuellen Song, Equalizer und Steuerungsbuttons' : 'Shows current track, equalizer and controls')
+                : (language === 'de' ? 'Deaktiviert' : 'Disabled')}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Toggle 
+            checked={isEnabled} 
+            onChange={() => save('overlayMedia', !isEnabled)} 
+          />
+          <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.15 }} className="text-white/40">
+            <ChevronDown size={14} />
+          </motion.div>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="overflow-hidden"
+          >
+            <div className="h-px bg-white/[0.06] mx-4" />
+            <div className="p-4 space-y-4">
+              {/* Media Source Filter */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[12px] font-medium text-white">
+                    {language === 'de' ? 'Anzuzeigende Medien-Quelle' : 'Media Source to Display'}
+                  </div>
+                  <div className="text-[11px] text-white/45">
+                    {language === 'de' ? 'Wähle, ob nur Spotify oder auch Browser/YouTube erkannt werden sollen' : 'Choose whether to display only Spotify or also browsers/YouTube'}
+                  </div>
+                </div>
+
+                <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/10">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      save('overlayMediaSource', 'all')
+                      window.electronAPI?.media?.setFilter?.('all')
+                    }}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                      (settings.overlayMediaSource || 'all') === 'all'
+                        ? 'bg-white/20 text-white shadow-sm'
+                        : 'text-white/50 hover:text-white'
+                    }`}
+                  >
+                    {language === 'de' ? 'Alle Medien' : 'All Media'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      save('overlayMediaSource', 'spotify')
+                      window.electronAPI?.media?.setFilter?.('spotify')
+                    }}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                      settings.overlayMediaSource === 'spotify'
+                        ? 'bg-white/20 text-white shadow-sm'
+                        : 'text-white/50 hover:text-white'
+                    }`}
+                  >
+                    Spotify
+                  </button>
+                </div>
+              </div>
+
+              {/* Auto-Hide / Dynamic Island collapse toggle */}
+              <div className="flex items-center justify-between pt-1">
+                <div>
+                  <div className="text-[12px] font-medium text-white">
+                    {language === 'de' ? 'Automatisch minimieren' : 'Auto-Collapse'}
+                  </div>
+                  <div className="text-[11px] text-white/45">
+                    {language === 'de' 
+                      ? 'Nach 3 Sekunden einklappen (fährt bei Maus-Nähe / Hover sauber aus)' 
+                      : 'Collapse after 3 seconds (smoothly expands on mouse hover)'}
+                  </div>
+                </div>
+                <Toggle
+                  checked={settings.overlayMediaAutoHide ?? false}
+                  onChange={() => save('overlayMediaAutoHide', !settings.overlayMediaAutoHide)}
+                />
+              </div>
+
+              {/* Sound Visualizer Animation Toggle */}
+              <div className="flex items-center justify-between pt-1">
+                <div>
+                  <div className="text-[12px] font-medium text-white">
+                    {language === 'de' ? 'Sound-Visualizer Animation' : 'Sound Visualizer Animation'}
+                  </div>
+                  <div className="text-[11px] text-white/45">
+                    {language === 'de' 
+                      ? 'Equalizer-Balken auf dem Album-Cover bei laufender Musik anzeigen' 
+                      : 'Display animated equalizer bars on album cover when playing'}
+                  </div>
+                </div>
+                <Toggle
+                  checked={settings.overlayMediaVisualizer !== false}
+                  onChange={() => save('overlayMediaVisualizer', settings.overlayMediaVisualizer === false ? true : false)}
+                />
+              </div>
+
+              {/* ─── Custom Keybinds Section ─── */}
+              <div className="pt-3 border-t border-white/[0.06] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[12px] font-medium text-white flex items-center gap-1.5">
+                      <Keyboard size={13} className="text-white/70" />
+                      {language === 'de' ? 'Custom Keybinds (Tastenbelegung)' : 'Custom In-Game Keybinds'}
+                    </div>
+                    <div className="text-[11px] text-white/45">
+                      {language === 'de' 
+                        ? 'Steuere Spotify & Medien während des Spielens per Hotkey ohne raustabben' 
+                        : 'Control Spotify & media during gameplay via global hotkeys'}
+                    </div>
+                  </div>
+
+                  {(keybinds.playPause || keybinds.next || keybinds.prev) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cleared = { playPause: '', next: '', prev: '' }
+                        save('overlayMediaKeybinds', cleared)
+                        if (window.electronAPI?.media?.registerHotkeys) {
+                          window.electronAPI.media.registerHotkeys(cleared)
+                        }
+                      }}
+                      className="text-[10px] text-white/40 hover:text-white/70 transition-colors underline"
+                    >
+                      {language === 'de' ? 'Alle entfernen' : 'Clear all'}
+                    </button>
+                  )}
+                </div>
+
+                {/* 3 Hotkey Buttons */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {/* Previous Track */}
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-white/[0.08] flex flex-col justify-between gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white/80">
+                        <SkipBack size={11} className="text-white/60" />
+                        <span>{language === 'de' ? 'Zurück' : 'Previous'}</span>
+                      </div>
+                      {keybinds.prev && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const updated = { ...keybinds, prev: '' }
+                            save('overlayMediaKeybinds', updated)
+                            if (window.electronAPI?.media?.registerHotkeys) {
+                              window.electronAPI.media.registerHotkeys(updated)
+                            }
+                          }}
+                          className="text-white/30 hover:text-white transition-colors p-0.5"
+                          title={language === 'de' ? 'Löschen' : 'Clear'}
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setRecordingAction(recordingAction === 'prev' ? null : 'prev')}
+                      className={`w-full py-1.5 px-2 rounded-md text-xs font-mono font-medium transition-all flex items-center justify-center text-center ${
+                        recordingAction === 'prev'
+                          ? 'bg-white text-black ring-2 ring-white/50 animate-pulse'
+                          : keybinds.prev
+                            ? 'bg-white/15 text-white hover:bg-white/20 border border-white/20'
+                            : 'bg-white/[0.04] text-white/40 hover:text-white/70 hover:bg-white/[0.08] border border-dashed border-white/10'
+                      }`}
+                    >
+                      {recordingAction === 'prev'
+                        ? (language === 'de' ? 'Taste drücken...' : 'Press keys...')
+                        : (keybinds.prev || (language === 'de' ? '+ Taste belegen' : '+ Assign key'))}
+                    </button>
+                  </div>
+
+                  {/* Play / Pause */}
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-white/[0.08] flex flex-col justify-between gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white/80">
+                        <Play size={11} className="text-white/60" />
+                        <span>Play / Pause</span>
+                      </div>
+                      {keybinds.playPause && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const updated = { ...keybinds, playPause: '' }
+                            save('overlayMediaKeybinds', updated)
+                            if (window.electronAPI?.media?.registerHotkeys) {
+                              window.electronAPI.media.registerHotkeys(updated)
+                            }
+                          }}
+                          className="text-white/30 hover:text-white transition-colors p-0.5"
+                          title={language === 'de' ? 'Löschen' : 'Clear'}
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setRecordingAction(recordingAction === 'playPause' ? null : 'playPause')}
+                      className={`w-full py-1.5 px-2 rounded-md text-xs font-mono font-medium transition-all flex items-center justify-center text-center ${
+                        recordingAction === 'playPause'
+                          ? 'bg-white text-black ring-2 ring-white/50 animate-pulse'
+                          : keybinds.playPause
+                            ? 'bg-white/15 text-white hover:bg-white/20 border border-white/20'
+                            : 'bg-white/[0.04] text-white/40 hover:text-white/70 hover:bg-white/[0.08] border border-dashed border-white/10'
+                      }`}
+                    >
+                      {recordingAction === 'playPause'
+                        ? (language === 'de' ? 'Taste drücken...' : 'Press keys...')
+                        : (keybinds.playPause || (language === 'de' ? '+ Taste belegen' : '+ Assign key'))}
+                    </button>
+                  </div>
+
+                  {/* Next Track */}
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-white/[0.08] flex flex-col justify-between gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white/80">
+                        <SkipForward size={11} className="text-white/60" />
+                        <span>{language === 'de' ? 'Weiter' : 'Next'}</span>
+                      </div>
+                      {keybinds.next && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const updated = { ...keybinds, next: '' }
+                            save('overlayMediaKeybinds', updated)
+                            if (window.electronAPI?.media?.registerHotkeys) {
+                              window.electronAPI.media.registerHotkeys(updated)
+                            }
+                          }}
+                          className="text-white/30 hover:text-white transition-colors p-0.5"
+                          title={language === 'de' ? 'Löschen' : 'Clear'}
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setRecordingAction(recordingAction === 'next' ? null : 'next')}
+                      className={`w-full py-1.5 px-2 rounded-md text-xs font-mono font-medium transition-all flex items-center justify-center text-center ${
+                        recordingAction === 'next'
+                          ? 'bg-white text-black ring-2 ring-white/50 animate-pulse'
+                          : keybinds.next
+                            ? 'bg-white/15 text-white hover:bg-white/20 border border-white/20'
+                            : 'bg-white/[0.04] text-white/40 hover:text-white/70 hover:bg-white/[0.08] border border-dashed border-white/10'
+                      }`}
+                    >
+                      {recordingAction === 'next'
+                        ? (language === 'de' ? 'Taste drücken...' : 'Press keys...')
+                        : (keybinds.next || (language === 'de' ? '+ Taste belegen' : '+ Assign key'))}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Helper hint & Preset */}
+                <div className="text-[10px] text-white/35 flex flex-wrap items-center justify-between gap-2 pt-0.5">
+                  <span>
+                    {language === 'de' 
+                      ? 'Tipp: Drücke Esc zum Abbrechen oder Backspace zum Entfernen.'
+                      : 'Tip: Press Esc to cancel or Backspace to remove.'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const defaults = {
+                        prev: 'Ctrl+Alt+Left',
+                        playPause: 'Ctrl+Alt+Space',
+                        next: 'Ctrl+Alt+Right'
+                      }
+                      save('overlayMediaKeybinds', defaults)
+                      if (window.electronAPI?.media?.registerHotkeys) {
+                        window.electronAPI.media.registerHotkeys(defaults)
+                      }
+                    }}
+                    className="text-white/40 hover:text-white/80 transition-colors"
+                  >
+                    {language === 'de' ? 'Standard setzen (Ctrl+Alt+Pfeiltasten)' : 'Set defaults (Ctrl+Alt+Arrows)'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-white/40 leading-relaxed pt-1 border-t border-white/[0.04]">
+                {language === 'de'
+                  ? 'Erkennt automatisch Titel von Spotify, YouTube (Chrome, Edge, Firefox, Brave) und Apple Music inklusive originalem HD-Cover. Steuerung mit Play/Pause, Zurück und Weiter ohne Alt+Tab.'
+                  : 'Automatically detects Spotify, YouTube, and Apple Music tracks with original HD album cover. Play/pause and track controls without leaving your game.'}
               </div>
             </div>
           </motion.div>
@@ -773,9 +1219,24 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
   const [open, setOpen] = useState(false)
   const [openSub, setOpenSub] = useState<'mmr' | 'controller' | 'steam' | null>('mmr')
   const [showKey, setShowKey] = useState(false)
+  const [openAdvancedKey, setOpenAdvancedKey] = useState(false)
+  const [sessionResetDone, setSessionResetDone] = useState(false)
+  const [detectedPlayer, setDetectedPlayer] = useState<{ name: string; platform: string } | null>(null)
   const playlists: Array<'1v1' | '2v2' | '3v3'> = ['1v1', '2v2', '3v3']
   const hasKey = trnApiKey && trnApiKey.length > 10
   const skins = getControllerSkins(language)
+
+  useEffect(() => {
+    (window.electronAPI as any)?.getDetectedRLPlayer?.().then((p: any) => {
+      if (p && p.name) setDetectedPlayer(p)
+    })
+  }, [])
+
+  const handleResetSession = () => {
+    (window.electronAPI as any)?.resetRLSession?.()
+    setSessionResetDone(true)
+    setTimeout(() => setSessionResetDone(false), 2000)
+  }
 
   const [listenKb, setListenKb] = useState(false)
   const [listenCtrl, setListenCtrl] = useState(false)
@@ -879,7 +1340,7 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                         {language === 'de' ? 'MMR & Rang-Tracker' : 'MMR & Rank Tracker'}
                       </div>
                       <div className="text-[10px] text-white/40">
-                        {playlist} · {hasKey ? (language === 'de' ? '🔑 API-Schlüssel' : '🔑 API Key') : (language === 'de' ? '🌐 Browser' : '🌐 Browser')}
+                        {playlist} · {detectedPlayer ? `✓ ${detectedPlayer.name}` : (language === 'de' ? '⚡ Smart Auto-Sync' : '⚡ Smart Auto-Sync')}
                       </div>
                     </div>
                   </div>
@@ -896,6 +1357,34 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.15 }} className="overflow-hidden">
                       <div className="h-px bg-white/[0.04] mx-3" />
                       <div className="p-3 space-y-3">
+                        {/* Smart Player Status Card */}
+                        <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] flex-shrink-0" />
+                            <div className="min-w-0">
+                              <div className="text-[11px] font-semibold text-white truncate">
+                                {detectedPlayer 
+                                  ? `${detectedPlayer.name} (${detectedPlayer.platform === 'epic' ? 'Epic Games' : 'Steam'})` 
+                                  : (language === 'de' ? 'Rocket League Spieler erkannt' : 'Rocket League Player Active')}
+                              </div>
+                              <div className="text-[9px] text-white/45">
+                                {language === 'de' ? '⚡ Smart Tracker aktiv — kein API-Key nötig' : '⚡ Smart Tracker active — no API key needed'}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Reset Session Button */}
+                          <button
+                            type="button"
+                            onClick={handleResetSession}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-medium bg-white/[0.05] hover:bg-white/10 text-white/70 hover:text-white border border-white/[0.08] transition-all cursor-pointer flex-shrink-0"
+                            title={language === 'de' ? 'Setzt Siege, Niederlagen und MMR-Differenz für diese Sitzung auf 0' : 'Reset wins, losses and MMR delta for this session'}
+                          >
+                            <RotateCcw size={11} className={sessionResetDone ? 'text-emerald-400 animate-spin' : ''} />
+                            {sessionResetDone ? (language === 'de' ? 'Zurückgesetzt!' : 'Reset!') : (language === 'de' ? 'W/L Reset' : 'Reset W/L')}
+                          </button>
+                        </div>
+
                         {/* Playlist Selector */}
                         <div>
                           <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">
@@ -918,42 +1407,60 @@ const RocketLeagueAccordion = memo(function RocketLeagueAccordion({
                           </div>
                         </div>
 
-                        {/* TRN API Key */}
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="text-[9px] font-semibold text-white/50 uppercase tracking-wider">
-                              {language === 'de' ? 'TRN API-Schlüssel' : 'TRN API Key'}{' '}
-                              <span className={`ml-1 ${hasKey ? 'text-white font-bold' : 'text-white/40'}`}>
-                                {hasKey ? (language === 'de' ? '✓ Aktiv' : '✓ Active') : (language === 'de' ? '○ Optional' : '○ Optional')}
-                              </span>
+                        {/* Optional Advanced TRN Key Accordion (for Power-Users only) */}
+                        <div className="border border-white/[0.05] rounded-lg overflow-hidden bg-black/20">
+                          <button
+                            type="button"
+                            onClick={() => setOpenAdvancedKey(s => !s)}
+                            className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/[0.02] transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-center gap-1.5 text-[10px] text-white/50 font-medium">
+                              <span>{language === 'de' ? 'Erweiterte Einstellungen (Optional)' : 'Advanced Settings (Optional)'}</span>
+                              {hasKey && <span className="text-[9px] text-emerald-400 font-semibold">✓ Key aktiv</span>}
                             </div>
-                            <button
-                              onClick={() => (window.electronAPI as any)?.openUrl?.('https://tracker.gg/developers')}
-                              className="text-[9px] text-white/60 hover:text-white transition-colors cursor-pointer"
-                            >
-                              {language === 'de' ? 'Kostenlosen Key holen ↗' : 'Get free key ↗'}
-                            </button>
-                          </div>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKey ? 'text' : 'password'}
-                              value={trnApiKey}
-                              onChange={e => onApiKeyChange(e.target.value)}
-                              placeholder={language === 'de' ? 'Kostenlosen TRN API-Key hier einfügen...' : 'Paste your free TRN API Key here...'}
-                              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 pr-14"
-                            />
-                            <button
-                              onClick={() => setShowKey(s => !s)}
-                              className="absolute right-2 text-[9px] text-white/50 hover:text-white transition-colors cursor-pointer"
-                            >
-                              {showKey ? (language === 'de' ? 'Verstecken' : 'Hide') : (language === 'de' ? 'Anzeigen' : 'Show')}
-                            </button>
-                          </div>
-                          <div className="text-[9px] text-white/40 mt-1">
-                            {hasKey 
-                              ? (language === 'de' ? '🔑 Offizielle API aktiv — schnell & zuverlässig' : '🔑 Using official API — fastest & most reliable')
-                              : (language === 'de' ? '🌐 Kein Key: nutzt Browser-Sitzung' : '🌐 No key: using browser session')}
-                          </div>
+                            <motion.div animate={{ rotate: openAdvancedKey ? 180 : 0 }} transition={{ duration: 0.15 }} className="text-white/40">
+                              <ChevronDown size={11} />
+                            </motion.div>
+                          </button>
+
+                          <AnimatePresence>
+                            {openAdvancedKey && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.15 }}
+                                className="overflow-hidden px-3 pb-3 pt-1 border-t border-white/[0.04] space-y-2"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="text-[9px] text-white/40">
+                                    {language === 'de' ? 'Manueller TRN API-Key' : 'Manual TRN API Key'}
+                                  </div>
+                                  <button
+                                    onClick={() => (window.electronAPI as any)?.openUrl?.('https://tracker.gg/developers')}
+                                    className="text-[9px] text-white/50 hover:text-white transition-colors cursor-pointer"
+                                  >
+                                    {language === 'de' ? 'Key holen ↗' : 'Get key ↗'}
+                                  </button>
+                                </div>
+                                <div className="relative flex items-center">
+                                  <input
+                                    type={showKey ? 'text' : 'password'}
+                                    value={trnApiKey}
+                                    onChange={e => onApiKeyChange(e.target.value)}
+                                    placeholder={language === 'de' ? 'Nur falls gewünscht...' : 'Optional...'}
+                                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[10px] text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 pr-14"
+                                  />
+                                  <button
+                                    onClick={() => setShowKey(s => !s)}
+                                    className="absolute right-2 text-[9px] text-white/40 hover:text-white transition-colors cursor-pointer"
+                                  >
+                                    {showKey ? (language === 'de' ? 'Verstecken' : 'Hide') : (language === 'de' ? 'Anzeigen' : 'Show')}
+                                  </button>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </div>
                     </motion.div>
@@ -1177,6 +1684,7 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
     settings.overlayPerformance, 
     settings.overlayCrosshair, 
     settings.overlayCps,
+    settings.overlayMedia,
     settings.overlayController,
     settings.overlayRobloxTimer,
     settings.overlayRobloxCps,
@@ -1229,7 +1737,7 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
               type="button"
               onClick={() => save('overlayGeneralAlwaysOn', false)}
               className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all ${
-                !settings.overlayGeneralAlwaysOn
+                settings.overlayGeneralAlwaysOn === false
                   ? 'bg-white text-black font-semibold shadow-sm'
                   : 'text-white/60 hover:text-white'
               }`}
@@ -1240,7 +1748,7 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
               type="button"
               onClick={() => save('overlayGeneralAlwaysOn', true)}
               className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all ${
-                settings.overlayGeneralAlwaysOn
+                settings.overlayGeneralAlwaysOn !== false
                   ? 'bg-white text-black font-semibold shadow-sm'
                   : 'text-white/60 hover:text-white'
               }`}
@@ -1255,6 +1763,7 @@ export const GameplayOverlayTab = memo(function GameplayOverlayTab({ settings, u
           <CrosshairSection settings={settings} save={save} language={lang} />
           <CPSSection settings={settings} save={save} language={lang} />
           <GeneralControllerSection settings={settings} save={save} language={lang} />
+          <MediaSection settings={settings} save={save} language={lang} />
         </div>
       </section>
 

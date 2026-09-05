@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Search, Monitor, Check } from 'lucide-react'
 import { useCatalogueStore } from '../../store/catalogueStore'
 import { useSourceStore } from '../../store/sourceStore'
+import { useUIStore } from '../../store/uiStore'
 import { useGamesDB } from '../../hooks/useGamesDB'
 
 const SORT_OPTIONS = [
@@ -183,6 +184,7 @@ function FilterCheckboxList({
 
 
 export function CatalogueFilters() {
+  const isGameModalOpen = useUIStore(state => state.isGameModalOpen)
   const store = useCatalogueStore()
   const [sortOpen, setSortOpen] = useState(false)
   
@@ -193,11 +195,14 @@ export function CatalogueFilters() {
     sources.filter(s => s.data && s.data.length > 0).map(s => s.name), 
   [sources])
 
+  // Completely hide filters and sort dropdown when game preview modal is active
+  if (isGameModalOpen) return null
+
   return (
     <div className="w-[320px] flex-shrink-0 border-l border-white/5 bg-transparent overflow-y-auto flex flex-col p-6 gap-6 custom-scrollbar">
       
       {/* Sort By Header */}
-      <div className="flex items-center justify-end gap-3 relative z-50">
+      <div className="flex items-center justify-end gap-3 relative z-10">
         <span className="text-xs font-semibold text-white/50">Sort by</span>
         <div className="relative">
           <button 

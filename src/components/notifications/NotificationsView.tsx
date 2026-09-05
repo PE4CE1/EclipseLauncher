@@ -14,9 +14,9 @@ export function NotificationsView() {
   const newVersion = updateInfo?.version ? `v${updateInfo.version}` : 'New Version'
 
   return (
-    <div className="h-full flex flex-col bg-hub-base text-hub-text">
+    <div className="h-full flex flex-col bg-[#040405] text-hub-text" style={{ backgroundColor: '#040405' }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-10 py-8 border-b border-white/5 bg-gradient-to-r from-hub-surface to-hub-base">
+      <div className="flex items-center justify-between px-10 py-8 border-b border-white/5 bg-[#08080a] flex-shrink-0" style={{ backgroundColor: '#08080a' }}>
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white shadow-[0_0_20px_rgba(255,255,255,0.05)] ring-1 ring-white/10">
             <Bell size={24} />
@@ -48,10 +48,7 @@ export function NotificationsView() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-10 relative">
-        {/* Ambient background glow for empty state area */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/10 via-hub-base to-hub-base pointer-events-none" />
-
+      <div className="flex-1 overflow-y-auto p-10 relative bg-[#040405]" style={{ backgroundColor: '#040405' }}>
         <div className="max-w-4xl mx-auto space-y-6 relative z-10">
           
           {updateStatus === 'checking' && (
@@ -165,7 +162,8 @@ export function NotificationsView() {
                       key={item.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="p-4 rounded-2xl bg-hub-surface/60 border border-white/10 backdrop-blur-md flex items-center justify-between gap-4"
+                      className="p-4 rounded-2xl bg-[#0a0a0f] border border-white/[0.08] flex items-center justify-between gap-4 transition-colors hover:border-white/20 shadow-sm"
+                      style={{ backgroundColor: '#0a0a0f' }}
                     >
                       <div className="flex items-center gap-3.5 min-w-0">
                         <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 text-white">

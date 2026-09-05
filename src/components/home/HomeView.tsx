@@ -51,11 +51,11 @@ export function HomeView() {
           </div>
         )}
 
-        {/* 3. Popular Games */}
+        {/* 3. Most Played Games */}
         <div className="px-6">
           <GameCarousel
             id="carousel-popular"
-            title={language === 'de' ? '🔥 Beliebte Spiele' : '🔥 Popular Games'}
+            title={language === 'de' ? '⭐ Meistgespielte Hits' : '⭐ Most Played Games'}
             games={popular.data ?? []}
             isLoading={popular.isLoading}
           />
@@ -65,17 +65,17 @@ export function HomeView() {
         <div className="px-6">
           <GameCarousel
             id="carousel-trending"
-            title={language === 'de' ? '📈 Trends & Meistgespielt' : '📈 Trending Now'}
+            title={language === 'de' ? '📈 Trending Now' : '📈 Trending Now'}
             games={trending.data ?? []}
             isLoading={trending.isLoading}
           />
         </div>
 
-        {/* 5. New Releases */}
+        {/* 5. Hot Releases */}
         <div className="px-6 pb-8">
           <GameCarousel
             id="carousel-new"
-            title={language === 'de' ? '✨ Neuerscheinungen' : '✨ New Releases'}
+            title={language === 'de' ? '🔥 Hot Releases' : '🔥 Hot Releases'}
             games={newReleases.data ?? []}
             isLoading={newReleases.isLoading}
           />

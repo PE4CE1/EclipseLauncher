@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, MotionConfig } from 'framer-motion'
 import { Sidebar } from './components/layout/Sidebar'
 import { TitleBar } from './components/layout/TitleBar'
 import { TopBar } from './components/layout/TopBar'
@@ -12,6 +12,7 @@ import { ProfileView } from './components/profile/ProfileView'
 import { NotificationsView } from './components/notifications/NotificationsView'
 import { EclipseInfoView } from './components/eclipse/EclipseInfoView'
 import { ClipsView } from './components/clips/ClipsView'
+import { StorageManagerView } from './components/storage/StorageManagerView'
 import { EclipseCinemaModal } from './components/eclipse/EclipseCinemaModal'
 import { GameDetailModal } from './components/shared/GameDetailModal'
 import { Notification } from './components/shared/Notification'
@@ -44,9 +45,10 @@ function ViewRouter() {
     downloads:     <div className="h-full pt-16"><DownloadsView /></div>,
     settings:      <div className="h-full pt-16"><SettingsView /></div>,
     profile:       <div className="h-full pt-16"><ProfileView /></div>,
-    notifications: <div className="h-full pt-16"><NotificationsView /></div>,
+    notifications: <div className="h-full pt-16 bg-[#040405]" style={{ backgroundColor: '#040405' }}><NotificationsView /></div>,
     'eclipse-info':<div className="h-full pt-16"><EclipseInfoView /></div>,
     clips:         <div className="h-full pt-16"><ClipsView /></div>,
+    storage:       <div className="h-full pt-16"><StorageManagerView /></div>,
   }
 
   return (
@@ -381,15 +383,24 @@ export default function App() {
 
   // Process Monitor & Discord Activity
   const activeGame = useGameStore(state => state.activeGame)
+  const isPerformanceMode = Boolean(settings.performanceMode || (activeGame && settings.gamePerformanceMode !== false))
 
-  // Sync performance mode class whenever activeGame or setting changes
+  // Sync performance mode class whenever activeGame or settings change
   useEffect(() => {
+    if (isPerformanceMode) {
+      document.documentElement.classList.add('performance-mode')
+      document.body.classList.add('performance-mode')
+    } else {
+      document.documentElement.classList.remove('performance-mode')
+      document.body.classList.remove('performance-mode')
+    }
+
     if (activeGame && settings.gamePerformanceMode !== false) {
       document.body.classList.add('game-performance-mode')
     } else {
       document.body.classList.remove('game-performance-mode')
     }
-  }, [activeGame, settings.gamePerformanceMode])
+  }, [isPerformanceMode, activeGame, settings.gamePerformanceMode])
 
   const downloads = useDownloadStore(state => state.downloads)
   const discordRpcEnabled = settings.discordRpc !== false
@@ -473,44 +484,46 @@ export default function App() {
   }, [])
 
   return (
-    <div className="flex flex-col h-screen bg-hub-base select-none overflow-hidden relative">
-      {/* Custom frameless title bar */}
-      <TitleBar />
+    <MotionConfig reducedMotion={isPerformanceMode ? "always" : "never"}>
+      <div className="flex flex-col h-screen bg-hub-base select-none overflow-hidden relative">
+        {/* Custom frameless title bar */}
+        <TitleBar />
 
-      {/* Main layout */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Fixed Sidebar */}
-        <Sidebar />
+        {/* Main layout */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Fixed Sidebar */}
+          <Sidebar />
 
-        {/* Content area */}
-        <div className="flex-1 overflow-hidden relative">
-          {/* Main views and GameDetailModal (both extend from top y=0 behind TopBar) */}
-          <main className="h-full w-full overflow-hidden relative">
-            <ViewRouter />
-            <GameDetailModal />
-          </main>
+          {/* Content area */}
+          <div className="flex-1 overflow-hidden relative">
+            {/* Main views and GameDetailModal (both extend from top y=0 behind TopBar) */}
+            <main className="h-full w-full overflow-hidden relative">
+              <ViewRouter />
+              <GameDetailModal />
+            </main>
 
-          {/* Frosted Glass TopBar: Floats on Top of EVERYTHING */}
-          <TopBar />
+            {/* Frosted Glass TopBar: Floats on Top of EVERYTHING */}
+            <TopBar />
+          </div>
         </div>
+
+        {/* Toast notifications */}
+        <Notification />
+        
+        {/* Friends Overlay Windows */}
+        <FriendsWindow />
+        <AnimatePresence>
+          <AddFriendModal />
+        </AnimatePresence>
+
+        {/* Cinematic Easter Egg Eclipse Animation */}
+        <EclipseCinemaModal />
+
+        {/* Startup Splash Screen */}
+        <AnimatePresence>
+          {showSplash && <SplashView onComplete={() => setShowSplash(false)} />}
+        </AnimatePresence>
       </div>
-
-      {/* Toast notifications */}
-      <Notification />
-      
-      {/* Friends Overlay Windows */}
-      <FriendsWindow />
-      <AnimatePresence>
-        <AddFriendModal />
-      </AnimatePresence>
-
-      {/* Cinematic Easter Egg Eclipse Animation */}
-      <EclipseCinemaModal />
-
-      {/* Startup Splash Screen */}
-      <AnimatePresence>
-        {showSplash && <SplashView onComplete={() => setShowSplash(false)} />}
-      </AnimatePresence>
-    </div>
+    </MotionConfig>
   )
 }

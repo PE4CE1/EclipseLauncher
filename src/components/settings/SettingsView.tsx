@@ -4,7 +4,7 @@ import {
   User, RefreshCw, Zap, Save, Shield, ShieldCheck,
   Settings as SettingsIcon, Download, Bell, Gamepad2, 
   Link, Monitor, Check, Plus, Trash, Loader2, Folder, Volume2,
-  Paintbrush, ExternalLink, Trash2, Power, RotateCcw, Film
+  Paintbrush, ExternalLink, Trash2, Power, RotateCcw, Film, HardDrive, Puzzle
 } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
@@ -14,6 +14,8 @@ import { useSourceStore } from '../../store/sourceStore'
 import { useTranslation } from '../../hooks/useTranslation'
 import { GameplayOverlayTab } from './GameplayOverlayTab'
 import { ClipSettingsPanel } from '../clips/ClipSettingsPanel'
+import { StorageManagerView } from '../storage/StorageManagerView'
+import { PluginsSettingsTab } from './PluginsSettingsTab'
 import { fetchSteamUserProfile } from '../../services/steamService'
 import { sendAppNotification } from '../../services/notificationService'
 import { playNotificationChime, playNotificationSound, getSoundPresets } from '../../services/soundService'
@@ -29,6 +31,7 @@ export function SettingsView() {
   const TABS = [
     { id: 'general', label: t('general'), icon: SettingsIcon },
     { id: 'downloads', label: t('downloads'), icon: Download },
+    { id: 'storage', label: t('storage') || (language === 'de' ? 'Speicher' : 'Storage'), icon: HardDrive },
     { id: 'notifications', label: t('notificationsTab'), icon: Bell },
     { id: 'gameplay', label: t('gameplay'), icon: Gamepad2 },
     { id: 'integrations', label: t('integrations'), icon: Link },
@@ -41,6 +44,7 @@ export function SettingsView() {
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [newSourceUrl, setNewSourceUrl] = useState('')
   const [showAddSource, setShowAddSource] = useState(false)
+  const [isCleaningRam, setIsCleaningRam] = useState(false)
 
   // VPN State
   const [detectedVpns, setDetectedVpns] = useState<Array<{ id: string; name: string; isRunning: boolean; isConnected: boolean }>>([])
@@ -229,6 +233,26 @@ export function SettingsView() {
               </button>
             )
           })}
+
+          {/* ─── Partitioned Extensions & Plugins Category ─── */}
+          <div className="pt-3 pb-1 px-2">
+            <div className="h-px bg-white/[0.08] mb-2.5" />
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-white/35 px-1 pb-1">
+              {t('extensions') || (language === 'de' ? 'Erweiterungen' : 'Extensions')}
+            </div>
+          </div>
+
+          <button
+            onClick={() => setActiveSettingsTab('plugins')}
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
+              activeSettingsTab === 'plugins' 
+                ? 'bg-white/10 text-white font-medium shadow-sm' 
+                : 'text-hub-text-secondary hover:text-white hover:bg-white/[0.04]'
+            }`}
+          >
+            <Puzzle size={16} className={activeSettingsTab === 'plugins' ? 'text-white' : 'text-hub-muted'} />
+            <span>{t('plugins') || 'Plugins'}</span>
+          </button>
         </nav>
       </div>
 
@@ -298,7 +322,7 @@ export function SettingsView() {
                 <div className="space-y-3.5">
                   {[
                     { key: 'exitInsteadOfMinimize', label: t('exitInsteadOfMinimize'), value: settings.exitInsteadOfMinimize ?? true },
-                    { key: 'hideToTray', label: t('hideToTray'), value: settings.hideToTray ?? false },
+                    { key: 'autoMinimizeOnGame', label: t('autoMinimizeOnGame'), value: settings.autoMinimizeOnGame ?? false },
                     { key: 'startOnBoot', label: t('startOnBoot'), value: settings.startOnBoot ?? true },
                     { key: 'startMinimized', label: t('startMinimized'), value: settings.startMinimized ?? false },
                     { key: 'launchInLibrary', label: t('launchInLibrary'), value: settings.launchInLibrary ?? false },
@@ -572,6 +596,14 @@ export function SettingsView() {
                         {language === 'de' ? 'Durchsuchen...' : 'Browse...'}
                       </button>
                     </div>
+
+                    <button
+                      onClick={() => setActiveSettingsTab('storage')}
+                      className="mt-3 px-4 py-2 bg-white/[0.05] hover:bg-white/[0.09] text-white/90 hover:text-white rounded-lg text-xs font-semibold transition-all border border-white/10 flex items-center gap-2 cursor-pointer shadow-sm"
+                    >
+                      <HardDrive size={14} className="text-white/70" />
+                      <span>{language === 'de' ? 'Festplatten- & Speicherplatz-Manager öffnen' : 'Open Storage & Disk Manager'}</span>
+                    </button>
                   </div>
 
                   <div className="space-y-3.5 pt-2">
@@ -999,6 +1031,12 @@ export function SettingsView() {
             </motion.div>
           )}
 
+          {activeSettingsTab === 'storage' && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+              <StorageManagerView />
+            </motion.div>
+          )}
+
           {activeSettingsTab === 'notifications' && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-8">
               <section>
@@ -1366,6 +1404,126 @@ export function SettingsView() {
 
                 <div className="space-y-4">
 
+                  {/* ─── Performance Mode Card (Minimalist & Clean) ─── */}
+                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-5">
+                    <div className="flex items-start justify-between gap-6">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2.5">
+                          <h3 className="font-semibold text-white text-sm tracking-wide">
+                            {language === 'de' ? 'Performance-Modus' : 'Performance Mode'}
+                          </h3>
+                          <span className={`text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full border ${
+                            localSettings.performanceMode
+                              ? 'bg-white/10 text-white border-white/20'
+                              : 'bg-white/5 text-white/40 border-white/10'
+                          }`}>
+                            {localSettings.performanceMode 
+                              ? (language === 'de' ? 'Aktiv' : 'Active')
+                              : (language === 'de' ? 'Aus' : 'Off')}
+                          </span>
+                        </div>
+                        <p className="text-xs text-hub-muted leading-relaxed max-w-xl">
+                          {language === 'de'
+                            ? 'Deaktiviert GPU-Blur-Shader, rechenintensive Effekte und drosselt Hintergrund-Abfragen für maximale Gaming-Leistung und 0% FPS-Verlust.'
+                            : 'Disables GPU blur shaders, heavy effects, and throttles background polling for maximum gaming performance and 0% FPS loss.'}
+                        </p>
+                      </div>
+
+                      {/* Pure White & Black Toggle Switch */}
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={Boolean(localSettings.performanceMode)}
+                        onClick={() => {
+                          const val = !Boolean(localSettings.performanceMode)
+                          set('performanceMode', val)
+                          updateSettings({ performanceMode: val })
+                          if (window.electronAPI) {
+                            window.electronAPI.setSettings({ performanceMode: val })
+                            if (window.electronAPI.setMediaPerformanceMode) {
+                              window.electronAPI.setMediaPerformanceMode(val)
+                            }
+                            if (val && window.electronAPI.flushRam) {
+                              window.electronAPI.flushRam().catch(() => {})
+                            }
+                          }
+                          showNotification(
+                            val 
+                              ? (language === 'de' ? 'Performance-Modus aktiviert' : 'Performance Mode enabled')
+                              : (language === 'de' ? 'Performance-Modus deaktiviert' : 'Performance Mode disabled'),
+                            'info'
+                          )
+                        }}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          localSettings.performanceMode ? 'bg-white' : 'bg-white/15'
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
+                            localSettings.performanceMode
+                              ? 'translate-x-5 bg-black'
+                              : 'translate-x-0 bg-white/70'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Minimalist RAM Flush Action */}
+                    <div className="mt-4 pt-3.5 border-t border-white/[0.08] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <p className="text-xs text-white/50 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                        {language === 'de' ? 'Ungenutzten Arbeitsspeicher sofort an Windows und Spiele zurückgeben.' : 'Instantly release unused working memory back to Windows and games.'}
+                      </p>
+                      <button
+                        type="button"
+                        disabled={isCleaningRam}
+                        onClick={async () => {
+                          if (window.electronAPI?.flushRam) {
+                            setIsCleaningRam(true)
+                            try {
+                              const res = await window.electronAPI.flushRam()
+                              if (res && res.freedMB > 0) {
+                                showNotification(
+                                  language === 'de' 
+                                    ? `RAM bereinigt! ${res.freedMB} MB freigegeben (${res.currentFreeGB} GB frei)`
+                                    : `RAM cleaned! ${res.freedMB} MB freed (${res.currentFreeGB} GB free)`,
+                                  'success'
+                                )
+                              } else {
+                                showNotification(
+                                  language === 'de'
+                                    ? `System bereits optimal bereinigt (${res?.currentFreeGB || '0'} GB frei)`
+                                    : `System already optimal (${res?.currentFreeGB || '0'} GB free)`,
+                                  'info'
+                                )
+                              }
+                            } catch (e: any) {
+                              showNotification(
+                                language === 'de' ? 'Fehler beim Bereinigen: ' + (e.message || e) : 'Error cleaning RAM: ' + (e.message || e),
+                                'error'
+                              )
+                            } finally {
+                              setIsCleaningRam(false)
+                            }
+                          }
+                        }}
+                        className={`px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-all flex items-center gap-2 whitespace-nowrap border border-white/10 ${
+                          isCleaningRam ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                        }`}
+                      >
+                        {isCleaningRam ? (
+                          <Loader2 size={12} className="text-white animate-spin" />
+                        ) : (
+                          <RotateCcw size={12} className="text-white" />
+                        )}
+                        {isCleaningRam 
+                          ? (language === 'de' ? 'Wird bereinigt...' : 'Cleaning...') 
+                          : (language === 'de' ? 'RAM bereinigen' : 'Clean RAM')}
+                      </button>
+                    </div>
+                  </div>
+
                   {/* GPU Hardware Acceleration Card */}
                   <div className="bg-[#0f1015] border border-white/10 rounded-xl p-5">
                     <div className="flex items-start justify-between gap-6">
@@ -1464,13 +1622,18 @@ export function SettingsView() {
                       </div>
                     </div>
                   </div>
+
                 </div>
               </section>
             </motion.div>
           )}
 
+          {activeSettingsTab === 'plugins' && (
+            <PluginsSettingsTab />
+          )}
+
           {/* Fallback for empty tabs */}
-          {!['general', 'clips', 'downloads', 'notifications', 'integrations', 'gameplay', 'profile', 'system'].includes(activeSettingsTab) && (
+          {!['general', 'clips', 'downloads', 'notifications', 'integrations', 'gameplay', 'profile', 'system', 'storage', 'plugins'].includes(activeSettingsTab) && (
             <div className="flex flex-col items-center justify-center h-64 text-hub-muted">
               <SettingsIcon size={32} className="mb-4 opacity-50" />
               <p>{t('settingsUnderConstruction')}</p>

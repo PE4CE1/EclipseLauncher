@@ -43,16 +43,19 @@ export function SmartImage({ appId, type, alt, className, fallbackScreenshotUrl 
 
     if (type === 'hero') {
       return [
-        getHeroUrl(validId),
+        // 1-2: Try the proper hero art first
         `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${validId}/library_hero.jpg`,
-        `https://cdn.akamai.steamstatic.com/steam/apps/${validId}/library_hero.jpg`,
-        `https://store.akamai.steamstatic.com/images/storepagebackground/app/${validId}`,
+        `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${validId}/library_hero.jpg`,
+        // 3: Page background (some games have this even without library_hero)
         `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${validId}/page_bg_generated_v6.jpg`,
-        `https://cdn.akamai.steamstatic.com/steam/apps/${validId}/page_bg_generated_v6.jpg`,
+        // 4: Screenshot from the game detail API (always present for released games)
         ...(fallbackScreenshotUrl ? [fallbackScreenshotUrl] : []),
+        // 5-7: header.jpg is the GUARANTEED image — every game on Steam has it
         `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${validId}/header.jpg`,
-        getHeaderUrl(validId),
-        `https://cdn.akamai.steamstatic.com/steam/apps/${validId}/capsule_617x283.jpg`,
+        `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${validId}/header.jpg`,
+        `https://cdn.cloudflare.steamstatic.com/steam/apps/${validId}/header.jpg`,
+        // 8: Capsule as last resort before placeholder
+        `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${validId}/capsule_616x353.jpg`,
         getPlaceholderHero(alt || '')
       ]
     }

@@ -58,6 +58,7 @@ export function useGamesDB() {
           for (let i = 0; i < data.length; i++) {
             const g = data[i];
             if (seen.has(g.id)) continue;
+            if (g.id === 999001 || g.name?.toLowerCase().includes('roblox')) continue;
             seen.add(g.id);
 
             const entry: GameDBEntry = {
@@ -81,24 +82,6 @@ export function useGamesDB() {
                 if (trimmed) pubSet.add(trimmed);
               }
             }
-          }
-
-          if (!seen.has(999001)) {
-            uniqueData.unshift({
-              id: 999001,
-              name: 'Roblox',
-              developer: 'Roblox Corporation',
-              publisher: 'Roblox Corporation',
-              positive: 4500000,
-              negative: 250000,
-              price: '0',
-              initialprice: '0',
-              discount: '0',
-              ccu: 2841920,
-              year: 2006,
-            })
-            devSet.add('Roblox Corporation')
-            pubSet.add('Roblox Corporation')
           }
 
           cachedDB = uniqueData;

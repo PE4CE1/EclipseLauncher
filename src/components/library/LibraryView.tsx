@@ -33,66 +33,62 @@ export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { g
   const cacheKey = `${game.name}_${resolvedId || game.id}`
   const cached = coverCache.get(cacheKey)
 
+  const isRoblox = resolvedId === 999001 || game.name?.toLowerCase() === 'roblox' || game.id === 'roblox'
+
+  // Build a fallback chain — useRef so handleError never has a stale closure
+  const coverImage = ('coverImage' in game && game.coverImage) ? game.coverImage : undefined
+  const iconUrl = ('iconUrl' in game && game.iconUrl) ? game.iconUrl : undefined
+
+  const fallbackChain: string[] = isRoblox
+    ? [robloxHeroImg, robloxLogoImg]
+    : resolvedId
+    ? [
+        `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/library_600x900.jpg`,
+        `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/library_600x900.jpg`,
+        ...(coverImage ? [coverImage] : []),
+        `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/header.jpg`,
+        `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/header.jpg`,
+        `https://cdn.cloudflare.steamstatic.com/steam/apps/${resolvedId}/header.jpg`,
+        `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/library_hero.jpg`,
+      ]
+    : [
+        ...(coverImage ? [coverImage] : []),
+        ...(iconUrl ? [iconUrl] : []),
+        getPlaceholderCover(game.name),
+      ]
+
+  const fallbackIndexRef = useRef(0)
+
   const [imgSrc, setImgSrc] = useState<string>(() => {
     if (cached) return cached.url
-    if (resolvedId === 999001 || game.name?.toLowerCase() === 'roblox' || game.id === 'roblox') {
-      return robloxHeroImg
-    }
-    if (resolvedId) {
-      return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/library_600x900.jpg`
-    }
-    if ('coverImage' in game && game.coverImage) return game.coverImage
-    if ('iconUrl' in game && game.iconUrl) return game.iconUrl
-    return getPlaceholderCover(game.name)
+    return fallbackChain[0] ?? getPlaceholderCover(game.name)
   })
 
-  const [isWide, setIsWide] = useState<boolean>(() => cached ? cached.isWide : (resolvedId === 999001 || game.name?.toLowerCase() === 'roblox' || game.id === 'roblox'))
+  const [isWide, setIsWide] = useState<boolean>(() => cached ? cached.isWide : false)
   const [isLoaded, setIsLoaded] = useState<boolean>(() => !!cached)
-  const [fallbackStage, setFallbackStage] = useState(0)
 
   const handleError = useCallback(() => {
     setIsLoaded(false)
-    if (resolvedId === 999001 || game.name?.toLowerCase() === 'roblox' || game.id === 'roblox') {
-      setImgSrc(robloxLogoImg)
-      setIsLoaded(true)
-      return
-    }
-    if (resolvedId && fallbackStage === 0) {
-      setFallbackStage(1)
-      setImgSrc(`https://cdn.akamai.steamstatic.com/steam/apps/${resolvedId}/library_600x900.jpg`)
-    } else if (resolvedId && fallbackStage === 1) {
-      setFallbackStage(2)
-      setIsWide(true)
-      // Smart top hero banner (like in the game detail / Meccha Chameleon view)
-      setImgSrc(`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/library_hero.jpg`)
-    } else if (resolvedId && fallbackStage === 2) {
-      setFallbackStage(3)
-      setIsWide(true)
-      // Wide Header fallback
-      setImgSrc(`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/header.jpg`)
-    } else if (resolvedId && fallbackStage === 3) {
-      setFallbackStage(4)
-      setIsWide(true)
-      // Wide Capsule fallback
-      setImgSrc(`https://cdn.akamai.steamstatic.com/steam/apps/${resolvedId}/capsule_617x283.jpg`)
-    } else if (resolvedId && fallbackStage === 4) {
-      setFallbackStage(5)
-      setIsWide(true)
-      // Store page background screenshot
-      setImgSrc(`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/page_bg_generated_v6.jpg`)
+    const next = fallbackIndexRef.current + 1
+    if (next < fallbackChain.length) {
+      fallbackIndexRef.current = next
+      const nextUrl = fallbackChain[next]
+      // Wide format starts at header.jpg (index ≥ 3 for steam games)
+      const isNowWide = resolvedId ? next >= 3 : false
+      setIsWide(isNowWide)
+      setImgSrc(nextUrl)
     } else {
-      setIsWide(false)
       const placeholder = getPlaceholderCover(game.name)
       setImgSrc(placeholder)
       setIsLoaded(true)
       coverCache.set(cacheKey, { url: placeholder, isWide: false })
     }
-  }, [resolvedId, fallbackStage, game.name, cacheKey])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLoad = useCallback(() => {
     setIsLoaded(true)
-    coverCache.set(cacheKey, { url: imgSrc, isWide })
-  }, [cacheKey, imgSrc, isWide])
+    coverCache.set(cacheKey, { url: imgSrc, isWide: false })
+  }, [cacheKey, imgSrc])
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#0c0d13] select-none">
@@ -107,45 +103,16 @@ export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { g
         </div>
       )}
 
-      {isWide ? (
-        <div className="relative w-full h-full overflow-hidden bg-[#0a0b0f] flex items-center justify-center p-3">
-          {/* Ambient Blurred Aura */}
-          <img
-            src={imgSrc}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="absolute inset-0 w-full h-full object-cover filter blur-xl scale-150 opacity-40 brightness-75 pointer-events-none"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/50 pointer-events-none" />
-          <div className="absolute top-2.5 inset-x-0 flex justify-center pointer-events-none z-10">
-            <span className="text-[8px] font-bold tracking-widest uppercase text-white/70 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 shadow-sm">
-              PREVIEW
-            </span>
-          </div>
-          <div className="relative z-10 w-full aspect-[16/9] rounded-lg overflow-hidden shadow-[0_12px_28px_rgba(0,0,0,0.85)] border border-white/15">
-            <img
-              src={imgSrc}
-              alt={game.name}
-              loading="lazy"
-              decoding="async"
-              onLoad={handleLoad}
-              onError={handleError}
-              className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-            />
-          </div>
-        </div>
-      ) : (
-        <img
-          src={imgSrc}
-          alt={game.name}
-          loading="lazy"
-          decoding="async"
-          onLoad={handleLoad}
-          onError={handleError}
-          className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-        />
-      )}
+      {/* Actual Image */}
+      <img
+        src={imgSrc}
+        alt={game.name}
+        loading="lazy"
+        decoding="async"
+        onLoad={handleLoad}
+        onError={handleError}
+        className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+      />
     </div>
   )
 })
@@ -271,7 +238,7 @@ const LibraryGridCard = React.memo(function LibraryGridCard({
 
       {/* Minimalist Card Footer */}
       <div className="p-3 bg-hub-surface flex flex-col justify-between flex-1 border-t border-hub-border/30 z-10">
-        <p className="text-xs font-bold text-hub-text truncate group-hover:text-indigo-400 transition-colors">
+        <p className="text-xs font-bold text-hub-text truncate group-hover:text-white transition-colors">
           {game.name}
         </p>
         <div className="flex items-center justify-between mt-1.5">

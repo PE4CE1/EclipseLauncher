@@ -6,9 +6,10 @@ import { RobloxCPS } from './widgets/RobloxCPS'
 import { RocketLeagueHUD } from './widgets/RocketLeagueHUD'
 import { RLSteamAvatarHUD } from './widgets/RLSteamAvatarHUD'
 import { ControllerOverlay } from './widgets/ControllerOverlay'
+import { MediaOverlayWidget } from './widgets/MediaOverlayWidget'
 
 type Pos = { xPct: number; yPct: number }
-type Positions = { performance: Pos; robloxTimer: Pos; robloxCps: Pos; crosshair: Pos; rlHud: Pos; rlSteamAvatar: Pos; rlController: Pos }
+type Positions = { performance: Pos; robloxTimer: Pos; robloxCps: Pos; crosshair: Pos; rlHud: Pos; rlSteamAvatar: Pos; rlController: Pos; media: Pos }
 
 const DEFAULT_POSITIONS: Positions = {
   performance: { xPct: 0.02, yPct: 0.03 },
@@ -18,6 +19,7 @@ const DEFAULT_POSITIONS: Positions = {
   rlHud: { xPct: 0.02, yPct: 0.03 },
   rlSteamAvatar: { xPct: 0.02, yPct: 0.2 },
   rlController: { xPct: 0.78, yPct: 0.65 },
+  media: { xPct: 0.02, yPct: 0.85 },
 }
 
 const WIDGET_APPROX_SIZE: Record<string, { w: number; h: number }> = {
@@ -28,6 +30,7 @@ const WIDGET_APPROX_SIZE: Record<string, { w: number; h: number }> = {
   rlHud: { w: 210, h: 155 },
   rlSteamAvatar: { w: 120, h: 120 },
   rlController: { w: 380, h: 270 },
+  media: { w: 280, h: 56 },
 }
 
 export function OverlayApp() {
@@ -70,6 +73,21 @@ export function OverlayApp() {
     })
   }, [])
 
+  // Sync performance mode class to overlay window DOM
+  useEffect(() => {
+    const isPerf = Boolean(
+      initialSettings?.performanceMode || 
+      (activeGame && initialSettings?.gamePerformanceMode !== false)
+    )
+    if (isPerf) {
+      document.documentElement.classList.add('performance-mode')
+      document.body.classList.add('performance-mode')
+    } else {
+      document.documentElement.classList.remove('performance-mode')
+      document.body.classList.remove('performance-mode')
+    }
+  }, [initialSettings?.performanceMode, initialSettings?.gamePerformanceMode, activeGame])
+
   // Subscribe to IPC events
   useEffect(() => {
     const cleanups: (() => void)[] = []
@@ -88,6 +106,22 @@ export function OverlayApp() {
           const merged = { ...DEFAULT_POSITIONS, ...data.positions }
           positionsRef.current = merged
           setPositions(merged)
+        }
+      }))
+    }
+
+    if (window.electronAPI?.onSettingsUpdate) {
+      cleanups.push(window.electronAPI.onSettingsUpdate((newSettings: any) => {
+        if (newSettings) {
+          setInitialSettings((prev: any) => ({ ...prev, ...newSettings }))
+          setEditGameData((prev: any) => prev ? {
+            ...prev,
+            settings: { ...prev.settings, ...newSettings }
+          } : prev)
+          setActiveGame((prev: any) => prev ? {
+            ...prev,
+            settings: { ...prev.settings, ...newSettings }
+          } : prev)
         }
       }))
     }
@@ -216,6 +250,38 @@ export function OverlayApp() {
     await window.electronAPI?.exitOverlayEdit()
   }
 
+  // Allow clicking buttons on interactive widgets (e.g. Media Player)
+  useEffect(() => {
+    if (editMode) return
+
+    let wasOverInteractive = false
+    const onMouseMove = (e: MouseEvent) => {
+      const mediaEl = document.getElementById('widget-media')
+      if (!mediaEl) {
+        if (wasOverInteractive) {
+          wasOverInteractive = false
+          window.electronAPI?.setOverlayIgnoreMouse?.(true)
+        }
+        return
+      }
+
+      const rect = mediaEl.getBoundingClientRect()
+      const isOver = e.clientX >= rect.left - 8 && e.clientX <= rect.right + 8 &&
+                     e.clientY >= rect.top - 8 && e.clientY <= rect.bottom + 8
+
+      if (isOver !== wasOverInteractive) {
+        wasOverInteractive = isOver
+        window.electronAPI?.setOverlayIgnoreMouse?.(!isOver)
+      }
+    }
+
+    window.addEventListener('mousemove', onMouseMove, { passive: true })
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.electronAPI?.setOverlayIgnoreMouse?.(true)
+    }
+  }, [editMode])
+
   const displayGame = activeGame || editGameData
   const ds = displayGame?.settings || {}
   const settings = {
@@ -229,6 +295,7 @@ export function OverlayApp() {
     overlayRLHud: ds.rlHud ?? initialSettings?.overlayRLHud ?? false,
     overlayRLSteam: ds.overlayRLSteam ?? initialSettings?.overlayRLSteam ?? false,
     overlayController: ds.overlayController ?? initialSettings?.overlayController ?? false,
+    overlayControllerStreamOnly: ds.overlayControllerStreamOnly ?? initialSettings?.overlayControllerStreamOnly ?? false,
     overlayRLController: ds.overlayRLController ?? (initialSettings?.overlayRLController || initialSettings?.overlayController) ?? false,
     rlControllerSkin: ds.rlControllerSkin ?? initialSettings?.rlControllerSkin ?? 'ps5_white',
     rlControllerUrl: ds.rlControllerUrl ?? initialSettings?.rlControllerUrl ?? 'https://gamepadviewer.com/?p=1&s=ps5_white',
@@ -238,6 +305,10 @@ export function OverlayApp() {
     steamProfileUrl: ds.steamProfileUrl ?? initialSettings?.steamProfileUrl,
     rlScoreboardKeyCtrl: ds.rlScoreboardKeyCtrl ?? initialSettings?.rlScoreboardKeyCtrl ?? 'Button 8',
     rlSteamAvatarScale: ds.rlSteamAvatarScale ?? initialSettings?.rlSteamAvatarScale ?? 85,
+    overlayMedia: ds.overlayMedia ?? initialSettings?.overlayMedia ?? false,
+    overlayMediaSource: ds.overlayMediaSource ?? initialSettings?.overlayMediaSource ?? 'all',
+    overlayMediaAutoHide: ds.overlayMediaAutoHide ?? initialSettings?.overlayMediaAutoHide ?? false,
+    overlayMediaVisualizer: ds.overlayMediaVisualizer === false || initialSettings?.overlayMediaVisualizer === false ? false : true,
   }
 
   const renderWidget = (key: string, children: React.ReactNode) => {
@@ -265,7 +336,7 @@ export function OverlayApp() {
           left: `${xPct * 100}%`,
           top: `${yPct * 100}%`,
           cursor: editMode && !isCrosshair ? 'grab' : 'default',
-          pointerEvents: editMode && !isCrosshair ? 'auto' : 'none',
+          pointerEvents: (editMode && !isCrosshair) || key === 'media' ? 'auto' : 'none',
           zIndex: 10,
         }}
       >
@@ -333,7 +404,7 @@ export function OverlayApp() {
           isEditMode={editMode}
         />
       )}
-      {(settings.overlayController || (settings.overlayRLController && (editMode || displayGame?.name === 'Rocket League')) || (editMode && (settings.overlayController || settings.overlayRLController))) && renderWidget('rlController',
+      {(!settings.overlayControllerStreamOnly || editMode) && (settings.overlayController || (settings.overlayRLController && (editMode || displayGame?.name === 'Rocket League')) || (editMode && (settings.overlayController || settings.overlayRLController))) && renderWidget('rlController',
         <ControllerOverlay 
           skin={settings.rlControllerSkin}
           url={settings.rlControllerUrl} 
@@ -343,6 +414,15 @@ export function OverlayApp() {
       )}
       {settings.crosshair && renderWidget('crosshair',
         <Crosshair config={settings.crosshairConfig} />
+      )}
+      {(settings.overlayMedia || editMode) && renderWidget('media',
+        <MediaOverlayWidget 
+          editMode={editMode} 
+          autoHide={settings.overlayMediaAutoHide}
+          mediaSource={settings.overlayMediaSource}
+          showVisualizer={settings.overlayMediaVisualizer}
+          language={initialSettings?.language || 'de'}
+        />
       )}
 
       {/* Edit mode UI */}

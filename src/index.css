@@ -182,6 +182,7 @@ button[role="switch"] > span {
   border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
+
 /* ─── Buttons ─────────────────────────────────────────────────────────────── */
 .btn-primary {
   background: #ffffff;
@@ -313,31 +314,106 @@ button[role="switch"] > span {
   color: #374151;
 }
 
-/* ─── Auto Game Performance & Minimized Mode (0% FPS Loss) ─────────────────── */
+/* ─── Ultra Performance Mode & Minimized Engine (0% FPS Loss) ────────────── */
+html.performance-mode,
+body.performance-mode,
 body.app-minimized,
 body.game-performance-mode {
   will-change: auto !important;
+  scroll-behavior: auto !important;
 }
 
+html.performance-mode *,
+html.performance-mode *::before,
+html.performance-mode *::after,
+body.performance-mode *,
+body.performance-mode *::before,
+body.performance-mode *::after,
 body.app-minimized *,
 body.game-performance-mode * {
+  /* Instant 0.001ms transitions to eliminate latency without breaking JS transitionend events */
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
+
+  /* Strip GPU-heavy backdrop blur shaders & filters */
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
   text-shadow: none !important;
-  animation: none !important;
-  animation-play-state: paused !important;
-  transition: none !important;
+  filter: none !important;
 }
 
-body.app-minimized [class*="blur-"],
-body.app-minimized .blur-\[100px\],
-body.app-minimized .blur-\[120px\],
-body.app-minimized .blur-\[80px\],
-body.game-performance-mode [class*="blur-"],
-body.game-performance-mode .blur-\[100px\],
-body.game-performance-mode .blur-\[120px\],
-body.game-performance-mode .blur-\[80px\] {
+
+/* Disable dynamic parallax mouse-following glare in performance mode */
+html.performance-mode .dynamic-glare,
+body.performance-mode .dynamic-glare,
+body.game-performance-mode .dynamic-glare {
   display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Prevent hover scale and transforms on interactive cards without breaking centered elements */
+html.performance-mode .game-card:hover,
+html.performance-mode .group:hover,
+html.performance-mode .hover\:scale-105:hover,
+html.performance-mode .hover\:scale-102:hover,
+body.performance-mode .game-card:hover,
+body.performance-mode .group:hover,
+body.performance-mode .hover\:scale-105:hover,
+body.performance-mode .hover\:scale-102:hover,
+body.game-performance-mode .game-card:hover,
+body.game-performance-mode .group:hover {
+  transform: none !important;
+}
+
+/* Ensure any centered element retains its centering transform if hovered */
+html.performance-mode [class*="-translate-y-1/2"]:hover,
+body.performance-mode [class*="-translate-y-1/2"]:hover {
+  transform: translateY(-50%) !important;
+}
+html.performance-mode [class*="-translate-x-1/2"]:hover,
+body.performance-mode [class*="-translate-x-1/2"]:hover {
+  transform: translateX(-50%) !important;
+}
+html.performance-mode [class*="-translate-1/2"]:hover,
+body.performance-mode [class*="-translate-1/2"]:hover {
+  transform: translate(-50%, -50%) !important;
+}
+
+/* Hide ambient background glow orbs and splash corona glow in performance mode */
+html.performance-mode .pointer-events-none[class*="blur-3xl"],
+html.performance-mode .pointer-events-none[class*="blur-2xl"],
+html.performance-mode .pointer-events-none[class*="blur-xl"],
+html.performance-mode .blur-\[100px\],
+html.performance-mode .blur-\[120px\],
+html.performance-mode .blur-\[80px\],
+html.performance-mode .splash-corona-glow,
+body.performance-mode .pointer-events-none[class*="blur-3xl"],
+body.performance-mode .pointer-events-none[class*="blur-2xl"],
+body.performance-mode .pointer-events-none[class*="blur-xl"],
+body.performance-mode .blur-\[100px\],
+body.performance-mode .blur-\[120px\],
+body.performance-mode .blur-\[80px\],
+body.performance-mode .splash-corona-glow,
+body.app-minimized .pointer-events-none[class*="blur-3xl"],
+body.game-performance-mode .pointer-events-none[class*="blur-3xl"],
+body.game-performance-mode .splash-corona-glow {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Guarantee that TopBar and structural header UI containers are always visible in performance mode */
+html.performance-mode header,
+body.performance-mode header,
+html.performance-mode .topbar,
+body.performance-mode .topbar {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background-color: #07080a !important;
 }
 

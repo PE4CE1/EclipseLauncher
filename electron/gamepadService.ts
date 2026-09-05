@@ -10,6 +10,7 @@ import { spawn, ChildProcess, execSync } from 'child_process'
 import { BrowserWindow, app } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import { getStreamWindow } from './streamManager'
 
 let xinputProc: ChildProcess | null = null
 let overlayWinRef: (() => BrowserWindow | null) | null = null
@@ -140,16 +141,14 @@ export function startGamepadService(getOverlay: () => BrowserWindow | null) {
       if (!trimmed) continue
       try {
         const raw = JSON.parse(trimmed)
-        const overlayWin = overlayWinRef?.()
-        if (!overlayWin || overlayWin.isDestroyed()) continue
+        const state = !raw.c ? { connected: false, buttons: [], axes: [0, 0, 0, 0] } : xInputToGamepadAPI(raw)
 
-        if (!raw.c) {
-          overlayWin.webContents.send('overlay:gamepad-state', { connected: false })
-          continue
+        const allWins = BrowserWindow.getAllWindows()
+        for (const win of allWins) {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('overlay:gamepad-state', state)
+          }
         }
-
-        const state = xInputToGamepadAPI(raw)
-        overlayWin.webContents.send('overlay:gamepad-state', state)
       } catch {}
     }
   })

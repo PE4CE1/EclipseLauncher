@@ -100,6 +100,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('overlay:edit-end', handler)
     return () => ipcRenderer.removeListener('overlay:edit-end', handler)
   },
+  setOverlayIgnoreMouse: (ignore: boolean) => ipcRenderer.send('overlay:set-ignore-mouse', ignore),
 
   onMetricsUpdate: (callback: (data: { cpu: number; ram: number; ramMB: number; totalMB: number }) => void) => {
     const handler = (_: any, data: any) => callback(data)
@@ -121,11 +122,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   setRLPlaylist: (playlist: string) => ipcRenderer.invoke('rl:set-playlist', playlist),
   setRLApiKey: (key: string) => ipcRenderer.invoke('rl:set-api-key', key),
+  resetRLSession: () => ipcRenderer.invoke('rl:reset-session'),
+  getDetectedRLPlayer: () => ipcRenderer.invoke('rl:get-detected-player'),
 
   startOverlayEdit: () => ipcRenderer.invoke('overlay:open-edit'),
   exitOverlayEdit: () => ipcRenderer.invoke('overlay:exit-edit'),
   saveOverlayPositions: (positions: any) => ipcRenderer.invoke('overlay:save-positions', positions),
   triggerRobloxNudge: () => ipcRenderer.invoke('roblox:trigger-nudge'),
+  onGamepadState: (callback: (state: any) => void) => {
+    const handler = (_: any, data: any) => callback(data)
+    ipcRenderer.on('overlay:gamepad-state', handler)
+    return () => ipcRenderer.removeListener('overlay:gamepad-state', handler)
+  },
 
   onGameStarted: (callback: (data: { name: string; startTime: number }) => void) => {
     const handler = (_: any, data: { name: string; startTime: number }) => callback(data)
@@ -139,6 +147,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Settings persistence
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (data: Partial<Settings>) => ipcRenderer.invoke('settings:set', data),
+  onSettingsUpdate: (callback: (settings: any) => void) => {
+    const handler = (_: any, data: any) => callback(data)
+    ipcRenderer.on('settings:update', handler)
+    return () => ipcRenderer.removeListener('settings:update', handler)
+  },
 
   // Discord RPC
   setDiscordActivity: (gameName: string, startTime: number, isPrivacyMode?: boolean, style?: 'clipping' | 'playing', appId?: string | number, customIconUrl?: string, customState?: string, customSmallIconUrl?: string, customSmallText?: string, isAnimated?: boolean) => 
@@ -249,6 +262,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // True Boost Memory & System Optimization
   flushRam: () => ipcRenderer.invoke('boost:manual-flush'),
+  setMediaPerformanceMode: (isPerf: boolean) => ipcRenderer.invoke('media:set-performance-mode', isPerf),
   onBoostStatus: (callback: (data: { active: boolean; gameName?: string; freedMB?: number; timestamp: number }) => void) => {
     const handler = (_: any, data: any) => callback(data)
     ipcRenderer.on('boost:status', handler)
@@ -303,5 +317,138 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = () => callback()
     ipcRenderer.on('app:restored', handler)
     return () => ipcRenderer.removeListener('app:restored', handler)
+  },
+
+  // ─── Stream Studio (Discord Game + Controller Compositor) ─────────────────
+  stream: {
+    open: (gameName?: string) => ipcRenderer.invoke('stream:open', gameName),
+    close: () => ipcRenderer.invoke('stream:close'),
+    minimize: () => ipcRenderer.invoke('stream:minimize'),
+    maximize: () => ipcRenderer.invoke('stream:maximize'),
+    getStatus: () => ipcRenderer.invoke('stream:status'),
+    getSources: () => ipcRenderer.invoke('stream:get-sources'),
+    setTitle: (title: string) => ipcRenderer.invoke('stream:set-title', title),
+    setResolution: (width: number, height: number) => ipcRenderer.invoke('stream:set-resolution', { width, height }),
+    onGameUpdate: (callback: (data: { gameName: string | null; title: string }) => void) => {
+      const handler = (_: any, data: any) => callback(data)
+      ipcRenderer.on('stream:game-update', handler)
+      return () => ipcRenderer.removeListener('stream:game-update', handler)
+    }
+  },
+
+  // ─── Windows Media Integration ──────────────────────────────────────────
+  media: {
+    getStatus: (filter?: string) => ipcRenderer.invoke('media:get-status', filter),
+    setFilter: (filter: string) => ipcRenderer.invoke('media:set-filter', filter),
+    playPause: () => ipcRenderer.invoke('media:play-pause'),
+    next: () => ipcRenderer.invoke('media:next'),
+    previous: () => ipcRenderer.invoke('media:previous'),
+    registerHotkeys: (keybinds: { playPause?: string; next?: string; prev?: string }) => ipcRenderer.invoke('media:register-hotkeys', keybinds),
+    onUpdate: (callback: (state: any) => void) => {
+      const handler = (_: any, data: any) => callback(data)
+      ipcRenderer.on('media:update', handler)
+      return () => ipcRenderer.removeListener('media:update', handler)
+    }
+  },
+
+  // ─── Storage & Disk Space Manager ─────────────────────────────────────────
+  storage: {
+    getDrives: () => ipcRenderer.invoke('storage:get-drives'),
+    getGameSizes: (games: any[]) => ipcRenderer.invoke('storage:get-game-sizes', games),
+    openFolder: (folderPath: string) => ipcRenderer.invoke('storage:open-folder', folderPath)
+  },
+
+  // ─── Spicetify Spotify Extension & Mod Manager ───────────────────────────
+  spicetify: {
+    getStatus: () => ipcRenderer.invoke('spicetify:get-status'),
+    install: () => ipcRenderer.invoke('spicetify:install'),
+    apply: () => ipcRenderer.invoke('spicetify:apply'),
+    restore: () => ipcRenderer.invoke('spicetify:restore'),
+    upgrade: () => ipcRenderer.invoke('spicetify:upgrade'),
+    openFolder: () => ipcRenderer.invoke('spicetify:open-folder'),
+    onLog: (callback: (log: string) => void) => {
+      const handler = (_: any, data: string) => callback(data)
+      ipcRenderer.on('spicetify:log', handler)
+      return () => ipcRenderer.removeListener('spicetify:log', handler)
+    },
+    onStatus: (callback: (status: string) => void) => {
+      const handler = (_: any, data: string) => callback(data)
+      ipcRenderer.on('spicetify:status', handler)
+      return () => ipcRenderer.removeListener('spicetify:status', handler)
+    }
+  },
+
+  // ─── Vencord Discord Client Mod Manager ──────────────────────────────────
+  vencord: {
+    getStatus: () => ipcRenderer.invoke('vencord:get-status'),
+    install: () => ipcRenderer.invoke('vencord:install'),
+    repair: () => ipcRenderer.invoke('vencord:repair'),
+    uninstall: () => ipcRenderer.invoke('vencord:uninstall'),
+    openThemes: () => ipcRenderer.invoke('vencord:open-themes'),
+    openFolder: () => ipcRenderer.invoke('vencord:open-folder'),
+    onLog: (callback: (log: string) => void) => {
+      const handler = (_: any, data: string) => callback(data)
+      ipcRenderer.on('vencord:log', handler)
+      return () => ipcRenderer.removeListener('vencord:log', handler)
+    },
+    onStatus: (callback: (status: string) => void) => {
+      const handler = (_: any, data: string) => callback(data)
+      ipcRenderer.on('vencord:status', handler)
+      return () => ipcRenderer.removeListener('vencord:status', handler)
+    }
+  },
+
+  // ─── Millennium Steam Client Mod Manager ─────────────────────────────────
+  millennium: {
+    getStatus: () => ipcRenderer.invoke('millennium:get-status'),
+    install: (lang?: string) => ipcRenderer.invoke('millennium:install', lang),
+    repair: (lang?: string) => ipcRenderer.invoke('millennium:repair', lang),
+    uninstall: (lang?: string) => ipcRenderer.invoke('millennium:uninstall', lang),
+    openThemes: () => ipcRenderer.invoke('millennium:open-themes'),
+    openStore: () => ipcRenderer.invoke('millennium:open-store'),
+    openFolder: () => ipcRenderer.invoke('millennium:open-folder'),
+    launchInstaller: (lang?: string) => ipcRenderer.invoke('millennium:launch-installer', lang),
+    onLog: (callback: (log: string) => void) => {
+      const handler = (_: any, data: string) => callback(data)
+      ipcRenderer.on('millennium:log', handler)
+      return () => ipcRenderer.removeListener('millennium:log', handler)
+    },
+    onStatus: (callback: (status: string) => void) => {
+      const handler = (_: any, data: string) => callback(data)
+      ipcRenderer.on('millennium:status', handler)
+      return () => ipcRenderer.removeListener('millennium:status', handler)
+    }
+  },
+
+  // ─── OpenAsar Discord Speed & RAM Booster ─────────────────────────────────
+  openasar: {
+    getStatus: () => ipcRenderer.invoke('openasar:get-status'),
+    install: (lang?: string) => ipcRenderer.invoke('openasar:install', lang),
+    uninstall: (lang?: string) => ipcRenderer.invoke('openasar:uninstall', lang),
+    openFolder: () => ipcRenderer.invoke('openasar:open-folder'),
+    openGithub: () => ipcRenderer.invoke('openasar:open-github'),
+    onLog: (callback: (log: string) => void) => {
+      const handler = (_: any, data: string) => callback(data)
+      ipcRenderer.on('openasar:log', handler)
+      return () => ipcRenderer.removeListener('openasar:log', handler)
+    },
+    onStatus: (callback: (status: string) => void) => {
+      const handler = (_: any, data: string) => callback(data)
+      ipcRenderer.on('openasar:status', handler)
+      return () => ipcRenderer.removeListener('openasar:status', handler)
+    }
+  },
+
+  // ─── Roblox Codes & Live Game Tracker ─────────────────────────────────────
+  roblox: {
+    getActiveExperience: () => ipcRenderer.invoke('roblox:get-active-experience'),
+    getCodes: (gameName: string, placeId?: string, universeId?: string, forceRefresh?: boolean) =>
+      ipcRenderer.invoke('roblox:get-codes', gameName, placeId, universeId, forceRefresh),
+    refreshExperience: () => ipcRenderer.invoke('roblox:refresh-experience'),
+    onExperienceChange: (callback: (experience: any) => void) => {
+      const handler = (_: any, data: any) => callback(data)
+      ipcRenderer.on('roblox:experience-changed', handler)
+      return () => ipcRenderer.removeListener('roblox:experience-changed', handler)
+    }
   },
 })

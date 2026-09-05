@@ -20,7 +20,7 @@ export default defineConfig({
             outDir: 'dist-electron',
             sourcemap: true,
             rollupOptions: {
-              external: ['electron', 'webtorrent', 'discord-rpc', 'uiohook-napi'],
+              external: ['electron', 'webtorrent', 'discord-rpc', 'uiohook-napi', 'original-fs'],
             },
           },
         },
@@ -71,6 +71,7 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         overlay: path.resolve(__dirname, 'overlay.html'),
+        stream: path.resolve(__dirname, 'stream.html'),
       },
     },
   },
