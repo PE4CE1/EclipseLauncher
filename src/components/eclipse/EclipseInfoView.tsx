@@ -24,19 +24,24 @@ const FALLBACK_RELEASES = [
   {
     id: 128,
     tag_name: 'v1.2.8',
-    name: 'v1.2.8 - Aktive Sidebar-Spiele, Auto-Performance-Modus & Polish',
+    name: 'v1.2.8 - Permanent Account Protection, Roblox Fixes & Auto Performance',
     published_at: '2026-09-09T17:00:00Z',
     html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.2.8',
-    body: `### 🎮 Sidebar Navigation & Visual Active State
-* **Aktives Spiel visuell hervorgehoben:** Klickt man links in der Seitenleiste auf ein installiertes Spiel, wird es jetzt wie bei Home & Katalog mit dem aktiven weißen Indikator und Hintergrund hervorgehoben.
-* **Roblox Plattform Polish:** Steam- und SteamDB-Buttons für Roblox entfernt und durch direkte offizielle Webseite ersetzt.
+    body: `### 🛡️ Permanent Account & Identity Protection
+* **Unverlierbare Accounts:** Account, Freundecode und Freundesliste überstehen dank Machine-Guid- und Windows-Registry-Verankerung selbst vollständige Deinstallationen des Launchers.
 
-### ⚡ Auto-Performance Modus
-* **Automatisch für alle aktiv:** Der 0% FPS-Verlust Performance-Modus ist ab sofort standardmäßig aktiviert.
-* **Minimale Latenz:** Optimierte GPU-Shader- und Hintergrund-Drosselung für maximale Gaming-FPS.
+### 🎮 Roblox Live-Tracking & Interface Polish
+* **Kein Phantom-Tracking mehr:** Nur noch tatsächlich laufende Roblox-Instanzen werden erfasst.
+* **Saubere Aktionsleiste:** Steam- und SteamDB-Buttons bei Roblox entfernt und durch die offizielle Website ersetzt.
+* **Codes Hub & Spielzeit-Leiste:** Direkter Zugriff auf aktive Spielcodes und genaue Spielzeiterfassung.
 
-### 📜 Minimalistische Versionshinweise
-* **Clean & Authentisch:** Schlichtes, handgefertigtes Changelog-Design ohne AI-Muster direkt aus den GitHub-Releases synchronisiert.`,
+### 👥 Felsenfestes Freunde- & Präsenzsystem
+* **Präziser Online-Status:** Heartbeat-Intervalle von 15 Sekunden verhindern Geisterspiele und veraltete Ingame-Anzeigen bei Freunden.
+
+### ⚡ Auto-Performance-Modus & Sidebar
+* **Automatisch für alle aktiv:** 0% FPS-Verlust durch automatische Drosselung von Hintergrundprozessen während des Gamings.
+* **Aktive Spiele visuell hervorgehoben:** Installierte Spiele in der Seitenleiste besitzen nun den gleichen klaren Indikator wie die Haupt-Tabs.
+* **Nativer RAM-Trimmer:** Launcher-Speicherbedarf bleibt kontinuierlich unter 100 MB.`,
     prerelease: false
   },
   {

@@ -25,11 +25,12 @@ const FALLBACK_LATEST: GitHubRelease = {
   body: `# Eclipse Launcher v1.2.8
 
 ### What's Changed
-* **Sidebar Active Game Indicator:** Installed games in the sidebar now highlight with a crisp active state and indicator bar when clicked.
-* **Auto Performance Mode:** Performance mode is now enabled by default for all users for 0% FPS loss.
-* **Roblox Platform Polish:** Removed Steam and SteamDB buttons for Roblox and added official website link.
-* **Minimalist Release Notes:** Streamlined human-crafted changelog design directly synced with GitHub.
-* **Bug Fixes:** Resolved sidebar selection tracking, theme layout alignments, and memory optimizations.`
+* **Permanent Account Protection:** Accounts, unique friend codes, and friend lists can no longer be lost. Machine-anchored backups and Windows Registry persistence automatically restore your profile even after a complete launcher uninstall.
+* **Roblox Activity & Status Polish:** Eliminated phantom tracking and ghost game statuses. Removed irrelevant Steam and SteamDB buttons and replaced them with direct official links, alongside an integrated live codes hub.
+* **Rock-Solid Friends & Presence Sync:** Sub-15-second heartbeat intervals and fast decay timers prevent offline friends from showing lingering or fake game states.
+* **Auto Performance Mode:** Performance Mode is now enabled by default for all users, suspending background launcher activity during gameplay for 0% FPS loss.
+* **Sidebar Active Game Indicator:** Installed games in the sidebar now highlight with a dedicated indicator bar and crisp active styling matching top navigation items.
+* **Native Memory Trimmer:** Continuous native background trimming keeps launcher RAM footprint consistently below 100 MB.`
 }
 
 interface ChangelogItem {
