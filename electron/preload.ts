@@ -467,6 +467,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ─── Persistent Account & Machine Anchoring ──────────────────────────────
   account: {
+    initialIdentity: (() => {
+      try {
+        return ipcRenderer.sendSync('account:get-identity-sync')
+      } catch {
+        return null
+      }
+    })(),
+    getIdentitySync: () => {
+      try {
+        return ipcRenderer.sendSync('account:get-identity-sync')
+      } catch {
+        return null
+      }
+    },
     getIdentity: () => ipcRenderer.invoke('account:get-identity'),
     saveIdentity: (data: any) => ipcRenderer.invoke('account:save-identity', data),
     getDeviceAnchor: () => ipcRenderer.invoke('account:get-device-anchor'),

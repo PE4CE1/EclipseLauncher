@@ -47,10 +47,11 @@ const knownFriendIds = new Set<string>()
 let isInitialized = false
 
 // Persistent Multi-Layer Account Identity State
-let canonicalUid: string = ''
-let canonicalFriendCode: string = ''
-let canonicalAccountSecret: string = ''
-let currentDeviceAnchorId: string = ''
+const syncInitialIdentity = typeof window !== 'undefined' ? (window as any).electronAPI?.account?.initialIdentity : null
+let canonicalUid: string = syncInitialIdentity?.canonicalUid || ''
+let canonicalFriendCode: string = (syncInitialIdentity?.friendCode && syncInitialIdentity.friendCode.startsWith('ECL-')) ? syncInitialIdentity.friendCode : ''
+let canonicalAccountSecret: string = syncInitialIdentity?.accountSecret || ''
+let currentDeviceAnchorId: string = syncInitialIdentity?.deviceAnchorId || ''
 
 /**
  * Generates a clean unique Eclipse friend code (e.g. ECL-7X9K2)
@@ -90,6 +91,10 @@ export function getCanonicalUid(): string {
     canonicalUid = storeUid
     return storeUid
   }
+  if (syncInitialIdentity?.canonicalUid) {
+    canonicalUid = syncInitialIdentity.canonicalUid
+    return canonicalUid
+  }
   return auth.currentUser?.uid || ''
 }
 
@@ -104,19 +109,43 @@ export function getOrCreateUserUid(): string {
  * Returns current account recovery secret key
  */
 export function getAccountSecret(): string {
-  return canonicalAccountSecret || useGameStore.getState().settings.accountSecret || ''
+  return canonicalAccountSecret || useGameStore.getState().settings.accountSecret || syncInitialIdentity?.accountSecret || ''
 }
 
 /**
- * Returns current friend code from store or generates a fallback
+ * Returns current friend code from store or persistent identity.
+ * Strictly avoids generating random codes if a canonical identity exists in any tier.
  */
 export function getOrCreateFriendCode(): string {
   if (canonicalFriendCode && canonicalFriendCode.startsWith('ECL-')) return canonicalFriendCode
+
   const current = useGameStore.getState().settings.friendCode
   if (current && current.startsWith('ECL-')) {
     canonicalFriendCode = current
     return current
   }
+
+  // Check syncInitialIdentity from preload
+  const syncId = typeof window !== 'undefined' ? (window as any).electronAPI?.account?.initialIdentity : null
+  if (syncId?.friendCode && syncId.friendCode.startsWith('ECL-')) {
+    canonicalFriendCode = syncId.friendCode
+    useGameStore.getState().updateSettings({ friendCode: syncId.friendCode })
+    return syncId.friendCode
+  }
+
+  // Check synchronous live identity if available
+  if (typeof window !== 'undefined' && (window as any).electronAPI?.account?.getIdentitySync) {
+    try {
+      const live = (window as any).electronAPI.account.getIdentitySync()
+      if (live?.friendCode && live.friendCode.startsWith('ECL-')) {
+        canonicalFriendCode = live.friendCode
+        useGameStore.getState().updateSettings({ friendCode: live.friendCode })
+        return live.friendCode
+      }
+    } catch {}
+  }
+
+  // Fallback: ONLY generate a new code if all persistent tiers are genuinely empty
   const newCode = generateEclipseFriendCode()
   canonicalFriendCode = newCode
   useGameStore.getState().updateSettings({ friendCode: newCode })
@@ -202,14 +231,20 @@ async function resolveAndRestoreAccountIdentity(user: User): Promise<string> {
   canonicalFriendCode = resolvedFriendCode
   canonicalAccountSecret = resolvedSecret
 
-  const username = storeSettings.username || 'Eclipse Player'
+  const username = (storeSettings.username && storeSettings.username !== 'User' && storeSettings.username !== 'Eclipse Player')
+    ? storeSettings.username
+    : (savedLocal?.username && savedLocal.username !== 'User' && savedLocal.username !== 'Eclipse Player' ? savedLocal.username : (storeSettings.username || 'User'))
 
   // Update Zustand Store
-  useGameStore.getState().updateSettings({
+  const settingsPatch: any = {
     userUid: resolvedUid,
     friendCode: resolvedFriendCode,
     accountSecret: resolvedSecret,
-  })
+  }
+  if (username && username !== 'User' && storeSettings.username !== username) {
+    settingsPatch.username = username
+  }
+  useGameStore.getState().updateSettings(settingsPatch)
 
   // Persist locally in Electron Settings (userData/settings.json)
   if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
@@ -217,6 +252,7 @@ async function resolveAndRestoreAccountIdentity(user: User): Promise<string> {
       userUid: resolvedUid,
       friendCode: resolvedFriendCode,
       accountSecret: resolvedSecret,
+      ...(username && username !== 'User' ? { username } : {}),
     })
   }
 
@@ -478,6 +514,17 @@ export async function syncMyProfile() {
       })
     } else {
       await updateDoc(userRef, baseData)
+    }
+
+    // Keep local persistent identity (Registry & UserProfile) in lockstep
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.account?.saveIdentity) {
+      const activeName = (settings.username && settings.username !== 'User' && settings.username !== 'Eclipse Player') ? settings.username : undefined
+      ;(window as any).electronAPI.account.saveIdentity({
+        canonicalUid: myUid,
+        friendCode: (friendCode || canonicalFriendCode || undefined),
+        accountSecret: getAccountSecret() || undefined,
+        username: activeName,
+      }).catch(() => {})
     }
 
     // Auto-enrich Steam profile in background if needed

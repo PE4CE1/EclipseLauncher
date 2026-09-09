@@ -303,7 +303,22 @@ export const useGameStore = create<GameStore>()(
       setScanMessage: (msg) => set({ scanMessage: msg }),
 
       settings: {
-        username: 'User',
+        username: (() => {
+          const syncId = typeof window !== 'undefined' ? (window as any).electronAPI?.account?.initialIdentity : null
+          return (syncId?.username && syncId.username !== 'User' && syncId.username !== 'Eclipse Player') ? syncId.username : 'User'
+        })(),
+        friendCode: (() => {
+          const syncId = typeof window !== 'undefined' ? (window as any).electronAPI?.account?.initialIdentity : null
+          return (syncId?.friendCode && syncId.friendCode.startsWith('ECL-')) ? syncId.friendCode : undefined
+        })(),
+        userUid: (() => {
+          const syncId = typeof window !== 'undefined' ? (window as any).electronAPI?.account?.initialIdentity : null
+          return syncId?.canonicalUid || undefined
+        })(),
+        accountSecret: (() => {
+          const syncId = typeof window !== 'undefined' ? (window as any).electronAPI?.account?.initialIdentity : null
+          return syncId?.accountSecret || undefined
+        })(),
         theme: 'dark',
         language: 'en',
         autoScan: true,
@@ -379,6 +394,20 @@ export const useGameStore = create<GameStore>()(
           if (!localStorage.getItem('eclipse_perf_default_v128')) {
             state.settings.performanceMode = true
             localStorage.setItem('eclipse_perf_default_v128', 'true')
+          }
+          // Zero-Flicker Identity Auto-Sanitizer:
+          // Immediately heal friendCode from initialIdentity if localStorage has a legacy code or missing code
+          const syncIdent = (typeof window !== 'undefined' && (window as any).electronAPI?.account?.initialIdentity) || null
+          if (syncIdent?.friendCode && syncIdent.friendCode.startsWith('ECL-')) {
+            if (!state.settings.friendCode || !state.settings.friendCode.startsWith('ECL-')) {
+              state.settings.friendCode = syncIdent.friendCode
+            }
+          }
+          if (syncIdent?.canonicalUid && !state.settings.userUid) {
+            state.settings.userUid = syncIdent.canonicalUid
+          }
+          if (syncIdent?.accountSecret && !state.settings.accountSecret) {
+            state.settings.accountSecret = syncIdent.accountSecret
           }
         }
       },

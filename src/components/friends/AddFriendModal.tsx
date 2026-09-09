@@ -18,14 +18,21 @@ export const AddFriendModal: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const myFriendCode = settings.friendCode || getOrCreateFriendCode();
+  const syncInitial = typeof window !== 'undefined' ? (window as any).electronAPI?.account?.initialIdentity : null;
+  const myFriendCode = (settings.friendCode && settings.friendCode.startsWith('ECL-'))
+    ? settings.friendCode
+    : ((syncInitial?.friendCode && syncInitial.friendCode.startsWith('ECL-'))
+      ? syncInitial.friendCode
+      : getOrCreateFriendCode());
 
-  // Ensure friend code is in store and sync profile to Cloudflare D1
+  // Ensure friend code is in store and sync profile
   useEffect(() => {
     if (isAddFriendOpen) {
-      const code = getOrCreateFriendCode();
-      if (settings.friendCode !== code) {
-        updateSettings({ friendCode: code });
+      if (!settings.friendCode || !settings.friendCode.startsWith('ECL-')) {
+        const code = getOrCreateFriendCode();
+        if (code && code.startsWith('ECL-') && settings.friendCode !== code) {
+          updateSettings({ friendCode: code });
+        }
       }
       syncMyProfile();
     }

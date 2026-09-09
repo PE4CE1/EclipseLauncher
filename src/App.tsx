@@ -75,15 +75,29 @@ export default function App() {
     }
 
     // Pre-restore persistent account identity from Registry/UserProfile (Tier 1 & 2)
+    const syncId = window.electronAPI?.account?.initialIdentity
+    if (syncId?.canonicalUid && syncId?.friendCode && syncId.friendCode.startsWith('ECL-')) {
+      useGameStore.getState().updateSettings({
+        userUid: syncId.canonicalUid,
+        friendCode: syncId.friendCode,
+        accountSecret: syncId.accountSecret,
+        ...(syncId.username && syncId.username !== 'User' && syncId.username !== 'Eclipse Player' ? { username: syncId.username } : {})
+      })
+    }
+
     if (window.electronAPI?.account?.getIdentity) {
       window.electronAPI.account.getIdentity().then((identity) => {
-        if (identity?.canonicalUid && identity?.friendCode) {
-          useGameStore.getState().updateSettings({
+        if (identity?.canonicalUid && identity?.friendCode && identity.friendCode.startsWith('ECL-')) {
+          const current = useGameStore.getState().settings
+          const patch: Record<string, any> = {
             userUid: identity.canonicalUid,
             friendCode: identity.friendCode,
             accountSecret: identity.accountSecret,
-            username: identity.username || useGameStore.getState().settings.username,
-          })
+          }
+          if (identity.username && identity.username !== 'User' && identity.username !== 'Eclipse Player' && (current.username === 'User' || !current.username)) {
+            patch.username = identity.username
+          }
+          useGameStore.getState().updateSettings(patch)
         }
       }).catch(() => {})
     }
@@ -97,9 +111,17 @@ export default function App() {
         const patch: Record<string, any> = {}
         // Prefer Electron-saved userUid/friendCode over localStorage defaults
         if (saved.userUid) patch.userUid = saved.userUid
-        if (saved.friendCode && (saved.friendCode.startsWith('ECL-') || !current.friendCode)) patch.friendCode = saved.friendCode
+        if (saved.friendCode && saved.friendCode.startsWith('ECL-')) {
+          patch.friendCode = saved.friendCode
+        }
         if (saved.accountSecret) patch.accountSecret = saved.accountSecret
-        if (saved.username && (current.username === 'User' || !current.username)) patch.username = saved.username
+        // Authoritative username from settings: if saved.username is set, keep it and sync to persistent identity
+        if (saved.username && saved.username !== 'User' && saved.username !== 'Eclipse Player') {
+          patch.username = saved.username
+          if (window.electronAPI?.account?.saveIdentity) {
+            window.electronAPI.account.saveIdentity({ username: saved.username }).catch(() => {})
+          }
+        }
         if (saved.avatarUrl && !current.avatarUrl) patch.avatarUrl = saved.avatarUrl
         if (saved.steamProfileUrl && !current.steamProfileUrl) patch.steamProfileUrl = saved.steamProfileUrl
         if (saved.steamLevel && !current.steamLevel) patch.steamLevel = saved.steamLevel

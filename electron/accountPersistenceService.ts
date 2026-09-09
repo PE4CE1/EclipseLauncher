@@ -81,6 +81,45 @@ function writeToFile(identity: PersistentAccountIdentity): void {
 }
 
 /**
+ * Reads identity from Windows Registry synchronously.
+ */
+function readFromRegistrySync(): PersistentAccountIdentity | null {
+  if (process.platform !== 'win32') return null
+  try {
+    const stdout = execSync(`reg query "${REG_KEY}" /v Payload`, { encoding: 'utf-8', windowsHide: true })
+    const match = stdout.match(/Payload\s+REG_SZ\s+([A-Za-z0-9+/=]+)/)
+    if (match && match[1]) {
+      const decoded = Buffer.from(match[1], 'base64').toString('utf-8')
+      const parsed = JSON.parse(decoded)
+      if (parsed && parsed.canonicalUid && parsed.friendCode) {
+        return parsed as PersistentAccountIdentity
+      }
+    }
+  } catch {}
+  return null
+}
+
+/**
+ * Loads persistent identity synchronously for immediate preload availability (<0.5ms).
+ */
+export function loadPersistentIdentitySync(): PersistentAccountIdentity | null {
+  // 1. Try file directly
+  const fromFile = readFromFile()
+  if (fromFile) {
+    if (!fromFile.deviceAnchorId) fromFile.deviceAnchorId = getDeviceAnchorId()
+    return fromFile
+  }
+  // 2. Try registry synchronously
+  const fromReg = readFromRegistrySync()
+  if (fromReg) {
+    if (!fromReg.deviceAnchorId) fromReg.deviceAnchorId = getDeviceAnchorId()
+    writeToFile(fromReg)
+    return fromReg
+  }
+  return null
+}
+
+/**
  * Reads identity from Windows Registry (HKEY_CURRENT_USER\Software\EclipseLauncher\Identity).
  */
 function readFromRegistry(): Promise<PersistentAccountIdentity | null> {
@@ -134,12 +173,12 @@ function writeToRegistry(identity: PersistentAccountIdentity): Promise<boolean> 
  * Auto-synchronizes across both tiers if one was missing.
  */
 export async function loadPersistentIdentity(): Promise<PersistentAccountIdentity | null> {
-  // 1. Try Windows Registry
-  const fromReg = await readFromRegistry()
-  // 2. Try UserProfile file
+  // 1. Try UserProfile file first (fastest)
   const fromFile = readFromFile()
+  // 2. Try Windows Registry
+  const fromReg = await readFromRegistry()
 
-  const chosen = fromReg || fromFile
+  const chosen = fromFile || fromReg
 
   if (chosen) {
     // Ensure deviceAnchorId is always populated
@@ -159,7 +198,7 @@ export async function loadPersistentIdentity(): Promise<PersistentAccountIdentit
  * Saves persistent identity redundantly to both Registry and UserProfile file.
  */
 export async function savePersistentIdentity(data: Partial<PersistentAccountIdentity>): Promise<PersistentAccountIdentity> {
-  const existing = await loadPersistentIdentity()
+  const existing = loadPersistentIdentitySync() || await loadPersistentIdentity()
   const anchor = getDeviceAnchorId()
   const now = Date.now()
 
@@ -168,12 +207,12 @@ export async function savePersistentIdentity(data: Partial<PersistentAccountIden
     friendCode: data.friendCode || existing?.friendCode || '',
     accountSecret: data.accountSecret || existing?.accountSecret || crypto.randomBytes(24).toString('hex').toUpperCase(),
     deviceAnchorId: anchor,
-    username: data.username || existing?.username || '',
+    username: (data.username !== undefined && data.username.trim() !== '') ? data.username : (existing?.username || ''),
     createdAt: existing?.createdAt || now,
     lastUpdated: now,
   }
 
-  // Write to both tiers
+  // Write to both tiers immediately
   writeToFile(finalIdentity)
   await writeToRegistry(finalIdentity)
 
@@ -184,6 +223,11 @@ export async function savePersistentIdentity(data: Partial<PersistentAccountIden
  * Initializes IPC handlers for account persistence.
  */
 export function initAccountPersistenceIPC(): void {
+  // Synchronous identity resolution for preload initialization
+  ipcMain.on('account:get-identity-sync', (event) => {
+    event.returnValue = loadPersistentIdentitySync()
+  })
+
   ipcMain.handle('account:get-identity', async () => {
     return await loadPersistentIdentity()
   })
@@ -196,3 +240,4 @@ export function initAccountPersistenceIPC(): void {
     return getDeviceAnchorId()
   })
 }
+

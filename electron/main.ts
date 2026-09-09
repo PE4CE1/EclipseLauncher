@@ -35,7 +35,7 @@ import { initMillenniumIPC } from './millenniumService'
 import { initOpenAsarIPC } from './openasarService'
 import { initRobloxIPC } from './robloxService'
 import { startMemoryOptimizer, trimMemoryNow } from './memoryOptimizerService'
-import { initAccountPersistenceIPC } from './accountPersistenceService'
+import { initAccountPersistenceIPC, savePersistentIdentity } from './accountPersistenceService'
 
 // Register privileged scheme for local clips video playback
 protocol.registerSchemesAsPrivileged([
@@ -1016,6 +1016,16 @@ ipcMain.handle('settings:set', (_event, data: Record<string, unknown>) => {
     const newSettings = { ...existing, ...data }
     fs.writeFileSync(settingsPath, JSON.stringify(newSettings, null, 2))
     
+    // Auto-sync username and identity properties to Windows Registry and UserProfile file
+    if (data.username || data.friendCode || data.userUid || data.accountSecret) {
+      savePersistentIdentity({
+        username: typeof data.username === 'string' ? data.username : undefined,
+        friendCode: typeof data.friendCode === 'string' && data.friendCode.startsWith('ECL-') ? data.friendCode : undefined,
+        canonicalUid: typeof data.userUid === 'string' ? data.userUid : undefined,
+        accountSecret: typeof data.accountSecret === 'string' ? data.accountSecret : undefined,
+      }).catch((e) => console.warn('[Main] Failed to auto-sync persistent identity from settings:set:', e))
+    }
+
     // Live update keybinds if they were changed
     if (data.rlScoreboardKeyKb !== undefined || data.rlScoreboardKeyCtrl !== undefined) {
       const { setInputKeybinds } = require('./inputService')

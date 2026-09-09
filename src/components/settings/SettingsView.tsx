@@ -42,6 +42,14 @@ export function SettingsView() {
   ]
 
   const [localSettings, setLocalSettings] = useState(settings)
+  const syncInitial = typeof window !== 'undefined' ? (window as any).electronAPI?.account?.initialIdentity : null
+  const effectiveFriendCode = (settings.friendCode && settings.friendCode.startsWith('ECL-'))
+    ? settings.friendCode
+    : ((localSettings.friendCode && localSettings.friendCode.startsWith('ECL-'))
+      ? localSettings.friendCode
+      : ((syncInitial?.friendCode && syncInitial.friendCode.startsWith('ECL-')) ? syncInitial.friendCode : ''))
+  const effectiveSecret = settings.accountSecret || localSettings.accountSecret || syncInitial?.accountSecret || ''
+
   const [isSaving, setIsSaving] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [newSourceUrl, setNewSourceUrl] = useState('')
@@ -1342,6 +1350,10 @@ export function SettingsView() {
                             if (window.electronAPI) {
                               window.electronAPI.setSettings(newSettings)
                             }
+                            if ((window as any).electronAPI?.account?.saveIdentity) {
+                              (window as any).electronAPI.account.saveIdentity({ username: profile.username }).catch(() => {})
+                            }
+                            import('../../services/socialService').then(({ syncMyProfile }) => syncMyProfile().catch(() => {}))
                             
                             showNotification(language === 'de' ? 'Steam-Profil synchronisiert!' : 'Steam profile synced!', 'success')
                           } else {
@@ -1414,13 +1426,14 @@ export function SettingsView() {
                         </span>
                         <div className="flex items-center justify-between">
                           <span className="font-mono text-sm font-bold text-white tracking-wider">
-                            {localSettings.friendCode || 'ECL-XXXXX'}
+                            {effectiveFriendCode || 'ECL-XXXXX'}
                           </span>
                           <button
                             type="button"
                             onClick={() => {
-                              if (localSettings.friendCode) {
-                                navigator.clipboard.writeText(localSettings.friendCode)
+                              const codeToCopy = effectiveFriendCode || localSettings.friendCode
+                              if (codeToCopy) {
+                                navigator.clipboard.writeText(codeToCopy)
                                 showNotification(language === 'de' ? 'Freundes-Code kopiert!' : 'Friend Code copied!', 'success')
                               }
                             }}
@@ -1438,7 +1451,7 @@ export function SettingsView() {
                         </span>
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-mono text-xs font-semibold text-white/80 truncate">
-                            {showSecretKey ? (localSettings.accountSecret || 'ECL-SEC-...') : '••••••••••••••••••••••••'}
+                            {showSecretKey ? (effectiveSecret || 'ECL-SEC-...') : '••••••••••••••••••••••••'}
                           </span>
                           <div className="flex items-center gap-1 shrink-0">
                             <button
@@ -1452,7 +1465,7 @@ export function SettingsView() {
                             <button
                               type="button"
                               onClick={() => {
-                                const sec = localSettings.accountSecret
+                                const sec = effectiveSecret || localSettings.accountSecret
                                 if (sec) {
                                   navigator.clipboard.writeText(sec)
                                   showNotification(language === 'de' ? 'Wiederherstellungs-Schlüssel kopiert!' : 'Recovery Key copied!', 'success')

@@ -703,6 +703,24 @@ export interface ElectronAPI {
 
   // Persistent Account & Machine Anchoring
   account?: {
+    initialIdentity?: {
+      canonicalUid: string
+      friendCode: string
+      accountSecret: string
+      deviceAnchorId: string
+      username?: string
+      createdAt: number
+      lastUpdated: number
+    } | null
+    getIdentitySync?: () => {
+      canonicalUid: string
+      friendCode: string
+      accountSecret: string
+      deviceAnchorId: string
+      username?: string
+      createdAt: number
+      lastUpdated: number
+    } | null
     getIdentity: () => Promise<{
       canonicalUid: string
       friendCode: string

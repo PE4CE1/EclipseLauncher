@@ -182,6 +182,9 @@ export function ProfileView() {
 
   // Combined stats resolution
   const profileData = fetchedProfile || friend
+  const activeFriendCode = isViewingFriend 
+    ? (profileData?.friendCode || friend?.friendCode) 
+    : (settings.friendCode || (typeof window !== 'undefined' ? (window as any).electronAPI?.account?.initialIdentity?.friendCode : null))
 
   const displayName = isViewingFriend 
     ? (profileData?.username || friend?.username || 'Eclipse Player') 
@@ -389,6 +392,9 @@ export function ProfileView() {
       window.electronAPI.setSettings(patch).then(res => {
         if (res?.success !== false) {
           updateSettings(patch)
+          if (window.electronAPI?.account?.saveIdentity && patch.username) {
+            window.electronAPI.account.saveIdentity({ username: patch.username }).catch(() => {})
+          }
           syncMyProfile()
           setIsEditing(false)
           sendAppNotification({
@@ -436,6 +442,9 @@ export function ProfileView() {
         updateSettings(patch)
         if (window.electronAPI?.setSettings) {
           await window.electronAPI.setSettings(patch)
+        }
+        if (window.electronAPI?.account?.saveIdentity) {
+          await window.electronAPI.account.saveIdentity({ username: profile.username })
         }
         await syncMyProfile()
         sendAppNotification({
@@ -688,17 +697,17 @@ export function ProfileView() {
                     {displayName}
                   </h1>
                   
-                  {profileData?.friendCode && (
+                  {activeFriendCode && (
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(profileData.friendCode)
+                        navigator.clipboard.writeText(activeFriendCode)
                         setCopiedFriendCode(true)
                         setTimeout(() => setCopiedFriendCode(false), 2000)
                       }}
                       className="inline-flex items-center gap-1 text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/60 hover:text-white transition-all cursor-pointer"
                       title="Click to copy Friend Code"
                     >
-                      <span>#{profileData.friendCode}</span>
+                      <span>#{activeFriendCode}</span>
                       {copiedFriendCode ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} className="opacity-40" />}
                     </button>
                   )}
