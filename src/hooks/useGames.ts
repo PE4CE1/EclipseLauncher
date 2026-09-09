@@ -27,26 +27,95 @@ function uniqueIds(ids: number[], limit = 20): number[] {
 }
 
 // Curated Top AAA Blockbusters with guaranteed 4K/HD hero artwork
-const HERO_FEATURED_IDS = [
-  1091500, // Cyberpunk 2077
-  1245620, // Elden Ring
-  2358720, // Black Myth: Wukong
-  1086940, // Baldur's Gate 3
-  1174180, // Red Dead Redemption 2
-  553850,  // Helldivers 2
-  271590,  // Grand Theft Auto V
-  2138710, // God of War
-  1817190, // Marvel's Spider-Man Remastered
-  292030,  // The Witcher 3: Wild Hunt
-  1551360, // Forza Horizon 5
-  990080,  // Hogwarts Legacy
-  1145350, // Hades II
-  1888160, // Palworld
-  814380,  // Sekiro: Shadows Die Twice
-  2379780, // Starfield
-  730,     // Counter-Strike 2
-  252490,  // Rust
+export const CURATED_HERO_GAMES: SteamGame[] = [
+  {
+    steamId: 1091500,
+    name: 'Cyberpunk 2077',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1091500/library_hero.jpg',
+    genres: ['Action', 'RPG', 'Open World'],
+    releaseDate: '10 Dec, 2020',
+    shortDescription: 'Cyberpunk 2077 is an open-world, action-adventure RPG set in the megalopolis of Night City.',
+  },
+  {
+    steamId: 1245620,
+    name: 'ELDEN RING',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/library_hero.jpg',
+    genres: ['Action', 'RPG', 'Dark Fantasy'],
+    releaseDate: '25 Feb, 2022',
+    shortDescription: 'THE NEW FANTASY ACTION RPG. Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring.',
+  },
+  {
+    steamId: 2358720,
+    name: 'Black Myth: Wukong',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2358720/library_hero.jpg',
+    genres: ['Action', 'RPG', 'Adventure'],
+    releaseDate: '20 Aug, 2024',
+    shortDescription: 'Black Myth: Wukong is an action RPG rooted in Chinese mythology.',
+  },
+  {
+    steamId: 1086940,
+    name: "Baldur's Gate 3",
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1086940/library_hero.jpg',
+    genres: ['RPG', 'Strategy', 'Turn-Based'],
+    releaseDate: '3 Aug, 2023',
+    shortDescription: 'Gather your party and return to the Forgotten Realms in a tale of fellowship and betrayal.',
+  },
+  {
+    steamId: 1174180,
+    name: 'Red Dead Redemption 2',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1174180/library_hero.jpg',
+    genres: ['Action', 'Adventure', 'Open World'],
+    releaseDate: '5 Dec, 2019',
+    shortDescription: 'America, 1899. Arthur Morgan and the Van der Linde gang are outlaws on the run.',
+  },
+  {
+    steamId: 553850,
+    name: 'HELLDIVERS™ 2',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/553850/library_hero.jpg',
+    genres: ['Action', 'Shooter', 'Co-op'],
+    releaseDate: '8 Feb, 2024',
+    shortDescription: 'The Galaxy’s Last Line of Offence. Enlist in the Helldivers and join the fight for freedom.',
+  },
+  {
+    steamId: 271590,
+    name: 'Grand Theft Auto V',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/271590/library_hero.jpg',
+    genres: ['Action', 'Open World', 'Multiplayer'],
+    releaseDate: '14 Apr, 2015',
+    shortDescription: 'When a young street hustler, a retired bank robber and a terrifying psychopath find themselves entangled...',
+  },
+  {
+    steamId: 2138710,
+    name: 'God of War',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2138710/library_hero.jpg',
+    genres: ['Action', 'Adventure', 'Singleplayer'],
+    releaseDate: '14 Jan, 2022',
+    shortDescription: 'His vengeance against the Gods of Olympus years behind him, Kratos now lives as a man in the realm of Norse Gods.',
+  },
+  {
+    steamId: 1817190,
+    name: "Marvel's Spider-Man Remastered",
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1817190/library_hero.jpg',
+    genres: ['Action', 'Superhero', 'Open World'],
+    releaseDate: '12 Aug, 2022',
+    shortDescription: 'In Marvel’s Spider-Man Remastered, the worlds of Peter Parker and Spider-Man collide.',
+  },
+  {
+    steamId: 292030,
+    name: 'The Witcher 3: Wild Hunt',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/292030/library_hero.jpg',
+    genres: ['RPG', 'Open World', 'Fantasy'],
+    releaseDate: '18 May, 2015',
+    shortDescription: 'You are Geralt of Rivia, mercenary monster slayer. Before you stands a war-torn, monster-infested continent.',
+  },
 ]
+
+const KNOWN_GAME_MAP: Record<number, Partial<SteamGame>> = {}
+CURATED_HERO_GAMES.forEach(g => {
+  KNOWN_GAME_MAP[g.steamId] = g
+})
+
+const HERO_FEATURED_IDS = CURATED_HERO_GAMES.map(g => g.steamId)
 
 // ─── Home carousels ───────────────────────────────────────────────────────────
 
@@ -64,11 +133,17 @@ export function usePopularGames() {
       for (const id of ids) {
         const d = detailsMap.get(id)
         if (d) games.push(detailsToGame(d))
-        else {
-          games.push({ steamId: id, name: `Game ${id}` })
+        else if (KNOWN_GAME_MAP[id]) {
+          games.push({
+            steamId: id,
+            name: KNOWN_GAME_MAP[id].name || `Game ${id}`,
+            headerImage: `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${id}/header.jpg`,
+            genres: KNOWN_GAME_MAP[id].genres,
+          })
         }
       }
-      return games.filter(g => g.name && !g.name.startsWith('Game ') && !g.name.toLowerCase().includes('steam machine'))
+      const filtered = games.filter(g => g.name && !g.name.startsWith('Game ') && !g.name.toLowerCase().includes('steam machine'))
+      return filtered.length > 0 ? filtered : CURATED_HERO_GAMES
     },
     staleTime: 1000 * 60 * 30,
     gcTime:    1000 * 60 * 60,
@@ -157,17 +232,20 @@ export function useFeaturedGames() {
         const d = detailsMap.get(id)
         if (d) {
           games.push(detailsToGame(d))
-        } else {
-          // If detailed store API was throttled, construct fallback with direct Steam CDN banner
+        } else if (KNOWN_GAME_MAP[id]) {
           games.push({
             steamId: id,
-            name: `Game ${id}`,
-            headerImage: `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${id}/library_hero.jpg`
+            name: KNOWN_GAME_MAP[id].name || `Game ${id}`,
+            headerImage: `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${id}/library_hero.jpg`,
+            genres: KNOWN_GAME_MAP[id].genres,
+            releaseDate: KNOWN_GAME_MAP[id].releaseDate,
+            shortDescription: KNOWN_GAME_MAP[id].shortDescription,
           })
         }
       }
 
-      return games.filter(g => g.name && !g.name.startsWith('Game ') && !g.name.toLowerCase().includes('steam machine') && !g.name.toLowerCase().includes('steam controller'))
+      const filtered = games.filter(g => g.name && !g.name.startsWith('Game ') && !g.name.toLowerCase().includes('steam machine') && !g.name.toLowerCase().includes('steam controller'))
+      return filtered.length > 0 ? filtered : CURATED_HERO_GAMES
     },
     staleTime: 1000 * 60 * 20,
     retry: 1,

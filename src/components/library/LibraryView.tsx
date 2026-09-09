@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Library, Star, Gamepad2, Trash2, Play, Plus, Search, Heart, Download, LayoutGrid, List, X } from 'lucide-react'
+import { Library, Star, Trash2, Play, Plus, Search, Heart, Download, LayoutGrid, List, X } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useScanner } from '../../hooks/useScanner'
 import { useUIStore } from '../../store/uiStore'
@@ -92,14 +92,10 @@ export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { g
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#0c0d13] select-none">
-      {/* ─── Ultra Clean Subtle Loading Shimmer ─── */}
+      {/* ─── Ultra Clean Minimalist Loading Shimmer (Zero Controller Icon, Zero CPU Load) ─── */}
       {!isLoaded && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#0a0b0f] overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.03),transparent_70%)]" />
-          <div className="w-11 h-11 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-center shadow-inner animate-pulse mb-2">
-            <Gamepad2 size={18} className="text-white/20" />
-          </div>
-          <div className="w-14 h-1 rounded-full bg-white/[0.04] animate-pulse" />
+        <div className="cover-shimmer-container">
+          <div className="cover-shimmer-wave" />
         </div>
       )}
 
@@ -152,7 +148,7 @@ const LibraryGridCard = React.memo(function LibraryGridCard({
         containIntrinsicSize: '200px 300px',
         transform: 'translateZ(0)',
       }}
-      className="group relative flex flex-col rounded-xl bg-hub-surface border border-white/10 hover:border-white/40 hover:shadow-[0_0_20px_rgba(255,255,255,0.08)] overflow-hidden transition-all duration-300 ease-out cursor-pointer will-change-transform"
+      className="game-card group relative flex flex-col rounded-xl bg-hub-surface border border-white/10 hover:border-white/40 hover:shadow-[0_0_20px_rgba(255,255,255,0.08)] overflow-hidden transition-all duration-300 ease-out cursor-pointer will-change-transform"
       onClick={() => onOpenDetails(game)}
     >
       {/* Large Poster Cover Art (2:3 Aspect Ratio) */}

@@ -61,12 +61,11 @@ export function useGamesDB() {
             if (g.id === 999001 || g.name?.toLowerCase().includes('roblox')) continue;
             seen.add(g.id);
 
-            const entry: GameDBEntry = {
-              ...g,
-              year: appidToYear(g.id),
-              ccu: liveCCU[g.id] !== undefined ? liveCCU[g.id] : g.ccu
-            };
-            uniqueData.push(entry);
+            g.year = appidToYear(g.id);
+            if (liveCCU[g.id] !== undefined) {
+              g.ccu = liveCCU[g.id];
+            }
+            uniqueData.push(g);
 
             if (g.developer) {
               const dParts = g.developer.split(',');

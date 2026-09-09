@@ -34,6 +34,8 @@ import { initVencordIPC } from './vencordService'
 import { initMillenniumIPC } from './millenniumService'
 import { initOpenAsarIPC } from './openasarService'
 import { initRobloxIPC } from './robloxService'
+import { startMemoryOptimizer, trimMemoryNow } from './memoryOptimizerService'
+import { initAccountPersistenceIPC } from './accountPersistenceService'
 
 // Register privileged scheme for local clips video playback
 protocol.registerSchemesAsPrivileged([
@@ -63,10 +65,12 @@ if (process.platform === 'win32') {
 }
 app.setPath('userData', path.join(app.getPath('appData'), 'GameHub'))
 
-// ─── GPU & Compositor Stability Flags (Prevent Idle Blackscreen on Windows) ───
-app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
-app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
-app.commandLine.appendSwitch('disable-renderer-backgrounding')
+// ─── Memory & Engine Optimization Flags ──────────────────────────────────────
+app.commandLine.appendSwitch('js-flags', '--expose-gc --max-old-space-size=128 --max-semi-space-size=4 --optimize-for-size')
+app.commandLine.appendSwitch('renderer-process-limit', '2')
+app.commandLine.appendSwitch('disk-cache-size', '33554432')
+app.commandLine.appendSwitch('media-cache-size', '16777216')
+app.commandLine.appendSwitch('disable-features', 'SpareRendererForSitePerProcess,CalculateWindowOcclusion,IntensiveWakeUpThrottling,IsolateOrigins,site-per-process')
 app.commandLine.appendSwitch('enable-features', 'WebRtcAllowWgcScreenCapturer,WebRtcAllowWgcWindowCapturer')
 app.commandLine.appendSwitch('enable-gpu-rasterization')
 app.commandLine.appendSwitch('enable-zero-copy')
@@ -296,7 +300,6 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
 app.commandLine.appendSwitch('disable-background-timer-throttling')
-app.commandLine.appendSwitch('disable-features', 'CalculateWindowOcclusion,IntensiveWakeUpThrottling')
 
 let mainWindow: BrowserWindow | null = null
 let friendsWindow: BrowserWindow | null = null
@@ -370,7 +373,7 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: false,
       webSecurity: false,
-      backgroundThrottling: false,
+      backgroundThrottling: true,
       autoplayPolicy: 'no-user-gesture-required'
     },
     icon: fs.existsSync(getAppIconPath()) ? getAppIconPath() : undefined,
@@ -402,7 +405,11 @@ function createWindow() {
 
   // Always bind window state listeners regardless of startup mode
   mainWindow.on('blur', () => {
-    mainWindow?.webContents.setBackgroundThrottling(false)
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused()) {
+        trimMemoryNow()
+      }
+    }, 4000).unref()
   })
 
   mainWindow.on('focus', () => {
@@ -412,6 +419,7 @@ function createWindow() {
 
   mainWindow.on('minimize', () => {
     mainWindow?.webContents.send('app:minimized')
+    trimMemoryNow()
   })
 
   mainWindow.on('restore', () => {
@@ -422,6 +430,7 @@ function createWindow() {
 
   mainWindow.on('hide', () => {
     mainWindow?.webContents.send('app:minimized')
+    trimMemoryNow()
   })
 
   mainWindow.on('show', () => {
@@ -430,12 +439,20 @@ function createWindow() {
     mainWindow?.webContents.send('app:restored')
   })
 
+  // Prevent permanent black screen if renderer process ever encounters an unexpected error
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    console.error('[MainWindow] Render process gone:', details.reason, 'exitCode:', details.exitCode)
+    if (details.reason !== 'clean-exit') {
+      console.log('[MainWindow] Automatically reloading to recover from renderer crash...')
+      mainWindow?.reload()
+    }
+  })
+
   if (!shouldStartHidden) {
     mainWindow.once('ready-to-show', () => {
       mainWindow?.show()
       mainWindow?.focus()
       mainWindow?.webContents.setFrameRate(60)
-      mainWindow?.webContents.setBackgroundThrottling(false)
       mainWindow?.webContents.invalidate()
     })
 
@@ -518,6 +535,7 @@ function createWindow() {
   })
 
   // Initialize IPC services
+  initAccountPersistenceIPC()
   initTorrentIPC(ipcMain, mainWindow)
   initHttpDownloadIPC(ipcMain, mainWindow)
   
@@ -596,6 +614,12 @@ function createWindow() {
 
   // Start background process monitoring for running games on Windows
   startProcessMonitor(() => mainWindow)
+
+  // Start automated background RAM optimizer
+  startMemoryOptimizer(() => mainWindow)
+
+  // Initialize Account Persistence & Machine Anchoring IPC
+  initAccountPersistenceIPC()
 }
 
 function createFriendsWindow() {

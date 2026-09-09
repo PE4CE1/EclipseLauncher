@@ -32,10 +32,19 @@ import steamLogoImg from '../../assets/steam-logo.png'
 import robloxLogoImg from '../../assets/Roblox-Logo-Icon.png'
 import robloxHeroImg from '../../assets/roblox/hero.png'
 import { RobloxCodesHub } from '../roblox/RobloxCodesHub'
+import { RobloxPopularGames } from '../roblox/RobloxPopularGames'
+import { RobloxPlaytimeStrip } from '../roblox/RobloxPlaytimeStrip'
 import type { LibraryGame } from '../../types/game'
 
 export function GameDetailModal() {
-  const { selectedGameId, selectedGameName, isGameModalOpen, setIsGameModalOpen, showNotification, currency, toggleCurrency, setIsLightboxOpen } = useUIStore()
+  const selectedGameId = useUIStore(state => state.selectedGameId)
+  const selectedGameName = useUIStore(state => state.selectedGameName)
+  const isGameModalOpen = useUIStore(state => state.isGameModalOpen)
+  const setIsGameModalOpen = useUIStore(state => state.setIsGameModalOpen)
+  const showNotification = useUIStore(state => state.showNotification)
+  const currency = useUIStore(state => state.currency)
+  const toggleCurrency = useUIStore(state => state.toggleCurrency)
+  const setIsLightboxOpen = useUIStore(state => state.setIsLightboxOpen)
   const { library, addToLibrary, removeFromLibrary, installedGames, activeGame, stopPlaySession, settings } = useGameStore()
   const { sources } = useSourceStore()
   const { launchGame } = useScanner()
@@ -552,7 +561,7 @@ export function GameDetailModal() {
                       <span>{playtimeFormatted}</span>
                     </div>
 
-                    {steamId && (
+                    {steamId && !isRoblox && (
                       <>
                         <button
                           onClick={() => {
@@ -585,6 +594,24 @@ export function GameDetailModal() {
                           <ExternalLink size={10} className="text-white/40 group-hover:text-white/80 transition-colors" />
                         </button>
                       </>
+                    )}
+
+                    {isRoblox && (
+                      <button
+                        onClick={() => {
+                          if (window.electronAPI?.openUrl) {
+                            window.electronAPI.openUrl('https://www.roblox.com')
+                          } else {
+                            window.open('https://www.roblox.com', '_blank')
+                          }
+                        }}
+                        className="h-7 px-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-white/70 hover:text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm group hover:scale-[1.02] active:scale-95"
+                        title={language === 'de' ? 'Offizielle Roblox Webseite im Browser öffnen' : 'Open official Roblox website in browser'}
+                      >
+                        <Globe size={11} className="text-white/60 group-hover:text-white transition-colors" />
+                        <span>Roblox.com</span>
+                        <ExternalLink size={10} className="text-white/40 group-hover:text-white/80 transition-colors" />
+                      </button>
                     )}
                   </div>
                 </div>
@@ -778,11 +805,14 @@ export function GameDetailModal() {
               </div>
             </div>
 
-            {/* Unified Sleek Stats Strip or Roblox Codes Hub */}
+            {/* Unified Sleek Stats Strip or Roblox Codes Hub & Minimalist Playtime Strip */}
             {isRoblox ? (
-              <div className="w-full px-6 md:px-10 xl:px-14 py-4">
-                <RobloxCodesHub />
-              </div>
+              <>
+                <div className="w-full px-6 md:px-10 xl:px-14 pt-4 pb-1">
+                  <RobloxCodesHub />
+                </div>
+                <RobloxPlaytimeStrip />
+              </>
             ) : (
               <div className="w-full px-6 md:px-10 xl:px-14 py-4">
                 <div className="bg-[#0b0c10]/80 backdrop-blur-md border border-white/[0.06] rounded-2xl p-4 md:p-5 grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.06]">
@@ -902,95 +932,99 @@ export function GameDetailModal() {
               </div>
             )}
 
-            {/* Media Gallery Showcase (Big Left Player + Ambient Blur Background + Aligned Thumbnails) */}
-            {mediaItems.length > 0 && (
-              <div className="w-full px-6 md:px-10 xl:px-14 py-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-white/40 flex items-center gap-2">
-                    <Layers size={13} />
-                    <span>{t('mediaAndTrailers')} ({mediaItems.length})</span>
-                  </h3>
-                  <span className="text-xs text-white/30">{t('clickToExpand')}</span>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-                  
-                  {/* Left (Col 8/9): 16:9 Cinema Viewport with Ambient Glow Blur */}
-                  <div 
-                    onClick={() => setLightboxIndex(selectedMediaIdx)}
-                    className="lg:col-span-8 xl:col-span-9 aspect-video w-full rounded-2xl overflow-hidden border border-white/[0.08] bg-black relative group cursor-pointer shadow-2xl flex items-center justify-center"
-                  >
-                    {/* Ambient Glow Blur Backdrop of current media */}
-                    {mediaItems[selectedMediaIdx] && (
-                      <div 
-                        className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-35 scale-125 pointer-events-none transform-gpu"
-                        style={{ backgroundImage: `url(${mediaItems[selectedMediaIdx].thumb})` }}
-                      />
-                    )}
-                    <div className="absolute inset-0 bg-black/40 pointer-events-none" />
-
-                    {/* Foreground Video or Image */}
-                    <div className="relative z-10 w-full h-full flex items-center justify-center">
-                      {mediaItems[selectedMediaIdx]?.type === 'video' ? (
-                        <CustomVideoPlayer 
-                          src={mediaItems[selectedMediaIdx].url} 
-                          poster={mediaItems[selectedMediaIdx].thumb}
-                        />
-                      ) : (
-                        <img 
-                          src={Array.isArray(mediaItems[selectedMediaIdx]?.url) ? (mediaItems[selectedMediaIdx]?.url as string[])[0] : (mediaItems[selectedMediaIdx]?.url || mediaItems[selectedMediaIdx]?.thumb)} 
-                          alt="Featured screenshot"
-                          className="w-full h-full object-contain"
-                          referrerPolicy="no-referrer"
-                          loading="lazy"
-                        />
-                      )}
-                    </div>
-
-                    <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white/80 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                      {t('clickToExpand')}
-                    </div>
+            {/* Popular Roblox Games Showcase (Replaces Media & Trailers for Roblox) */}
+            {isRoblox ? (
+              <RobloxPopularGames />
+            ) : (
+              mediaItems.length > 0 && (
+                <div className="w-full px-6 md:px-10 xl:px-14 py-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-white/40 flex items-center gap-2">
+                      <Layers size={13} />
+                      <span>{t('mediaAndTrailers')} ({mediaItems.length})</span>
+                    </h3>
+                    <span className="text-xs text-white/30">{t('clickToExpand')}</span>
                   </div>
 
-                  {/* Right (Col 4/3): Thumbnails List (Bounded to exact height of left video, never overflows) */}
-                  <div className="lg:col-span-4 xl:col-span-3 relative min-h-[160px]">
-                    <div className="lg:absolute lg:inset-0 overflow-x-auto lg:overflow-y-auto flex lg:flex-col gap-2.5 pr-1 hide-scrollbar">
-                      {mediaItems.map((item, idx) => (
-                        <button
-                          key={item.id}
-                          onClick={() => setSelectedMediaIdx(idx)}
-                          className={`relative flex-shrink-0 w-36 lg:w-full aspect-video rounded-xl overflow-hidden border transition-all text-left bg-black group ${
-                            selectedMediaIdx === idx 
-                              ? 'border-white ring-2 ring-white/30 scale-[0.99]' 
-                              : 'border-white/[0.06] opacity-50 hover:opacity-100'
-                          }`}
-                        >
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+                    
+                    {/* Left (Col 8/9): 16:9 Cinema Viewport with Ambient Glow Blur */}
+                    <div 
+                      onClick={() => setLightboxIndex(selectedMediaIdx)}
+                      className="lg:col-span-8 xl:col-span-9 aspect-video w-full rounded-2xl overflow-hidden border border-white/[0.08] bg-black relative group cursor-pointer shadow-2xl flex items-center justify-center"
+                    >
+                      {/* Ambient Glow Blur Backdrop of current media */}
+                      {mediaItems[selectedMediaIdx] && (
+                        <div 
+                          className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-35 scale-125 pointer-events-none transform-gpu"
+                          style={{ backgroundImage: `url(${mediaItems[selectedMediaIdx].thumb})` }}
+                        />
+                      )}
+                      <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+
+                      {/* Foreground Video or Image */}
+                      <div className="relative z-10 w-full h-full flex items-center justify-center">
+                        {mediaItems[selectedMediaIdx]?.type === 'video' ? (
+                          <CustomVideoPlayer 
+                            src={mediaItems[selectedMediaIdx].url} 
+                            poster={mediaItems[selectedMediaIdx].thumb}
+                          />
+                        ) : (
                           <img 
-                            src={item.thumb} 
-                            alt={`Media ${idx}`} 
-                            className="w-full h-full object-cover" 
+                            src={Array.isArray(mediaItems[selectedMediaIdx]?.url) ? (mediaItems[selectedMediaIdx]?.url as string[])[0] : (mediaItems[selectedMediaIdx]?.url || mediaItems[selectedMediaIdx]?.thumb)} 
+                            alt="Featured screenshot"
+                            className="w-full h-full object-contain"
                             referrerPolicy="no-referrer"
                             loading="lazy"
                           />
-                          {item.type === 'video' && (
-                            <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
-                              <div className="w-7 h-7 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white">
-                                <Play size={10} className="fill-white ml-0.5" />
-                              </div>
-                            </div>
-                          )}
-                          {item.name && (
-                            <span className="absolute bottom-1 left-1.5 right-1.5 text-[9px] font-bold text-white truncate drop-shadow">
-                              {item.name}
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                        )}
+                      </div>
 
+                      <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white/80 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                        {t('clickToExpand')}
+                      </div>
+                    </div>
+
+                    {/* Right (Col 4/3): Thumbnails List (Bounded to exact height of left video, never overflows) */}
+                    <div className="lg:col-span-4 xl:col-span-3 relative min-h-[160px]">
+                      <div className="lg:absolute lg:inset-0 overflow-x-auto lg:overflow-y-auto flex lg:flex-col gap-2.5 pr-1 hide-scrollbar">
+                        {mediaItems.map((item, idx) => (
+                          <button
+                            key={item.id}
+                            onClick={() => setSelectedMediaIdx(idx)}
+                            className={`relative flex-shrink-0 w-36 lg:w-full aspect-video rounded-xl overflow-hidden border transition-all text-left bg-black group ${
+                              selectedMediaIdx === idx 
+                                ? 'border-white ring-2 ring-white/30 scale-[0.99]' 
+                                : 'border-white/[0.06] opacity-50 hover:opacity-100'
+                            }`}
+                          >
+                            <img 
+                              src={item.thumb} 
+                              alt={`Media ${idx}`} 
+                              className="w-full h-full object-cover" 
+                              referrerPolicy="no-referrer"
+                              loading="lazy"
+                            />
+                            {item.type === 'video' && (
+                              <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+                                <div className="w-7 h-7 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white">
+                                  <Play size={10} className="fill-white ml-0.5" />
+                                </div>
+                              </div>
+                            )}
+                            {item.name && (
+                              <span className="absolute bottom-1 left-1.5 right-1.5 text-[9px] font-bold text-white truncate drop-shadow">
+                                {item.name}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
                 </div>
-              </div>
+              )
             )}
 
             {/* Symmetrical Two-Column Layout (Matching Top Line on Left & Right) */}

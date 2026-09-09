@@ -70,7 +70,14 @@ export function HeroSection({ games }: HeroSectionProps) {
     }
   }, [currentIndex, games])
 
-  const current = games[currentIndex]
+  // Auto-reset index if games array shrinks
+  useEffect(() => {
+    if (currentIndex >= games.length && games.length > 0) {
+      setCurrentIndex(0)
+    }
+  }, [currentIndex, games.length])
+
+  const current = games[currentIndex] || games[0]
   if (!current) return null
 
   const currentAppId = current.steamId || (current as any).id || (current as any).appid || (current as any).app_id
@@ -153,7 +160,7 @@ export function HeroSection({ games }: HeroSectionProps) {
       {/* Content */}
       <AnimatePresence>
         <motion.div
-          key={current.steamId}
+          key={`content-${currentAppId}`}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}

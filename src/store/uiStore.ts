@@ -85,6 +85,9 @@ interface UIStore {
 
   isLightboxOpen: boolean
   setIsLightboxOpen: (v: boolean) => void
+
+  isChangelogOpen: boolean
+  setIsChangelogOpen: (v: boolean) => void
 }
 
 let notificationTimer: any = null
@@ -103,6 +106,8 @@ export const useUIStore = create<UIStore>((set) => ({
     return { currency: next }
   }),
   setActiveSettingsTab: (tab) => set({ activeSettingsTab: tab }),
+  isChangelogOpen: false,
+  setIsChangelogOpen: (v) => set({ isChangelogOpen: v }),
   history: ['home'],
   historyIndex: 0,
   canGoBack: false,

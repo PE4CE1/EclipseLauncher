@@ -125,6 +125,61 @@ button[role="switch"] > span {
   border-radius: 8px;
 }
 
+/* ─── Ultra Clean Minimalist Cover Loading Shimmer ─── */
+@keyframes cover-shimmer-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.cover-shimmer-container {
+  position: absolute;
+  inset: 0;
+  background-color: #08090d;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.cover-shimmer-wave {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 15%,
+    rgba(255, 255, 255, 0.06) 45%,
+    rgba(255, 255, 255, 0.13) 50%,
+    rgba(255, 255, 255, 0.06) 55%,
+    transparent 85%
+  );
+  transform: translateX(-100%);
+  animation: cover-shimmer-sweep 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
+}
+
+/* In performance mode: softer, subtle sweep with 0% CPU loss */
+html.performance-mode .cover-shimmer-wave,
+body.performance-mode .cover-shimmer-wave,
+body.game-performance-mode .cover-shimmer-wave {
+  animation-duration: 2.2s !important;
+  animation-iteration-count: infinite !important;
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.035) 45%,
+    rgba(255, 255, 255, 0.055) 50%,
+    rgba(255, 255, 255, 0.035) 55%,
+    transparent 80%
+  ) !important;
+}
+
 /* ─── Sidebar ─────────────────────────────────────────────────────────────── */
 .sidebar-item {
   display: flex;
@@ -156,6 +211,26 @@ button[role="switch"] > span {
   transform: translateY(-50%);
   width: 2px;
   height: 40%;
+  background: #ffffff;
+  border-radius: 0 4px 4px 0;
+}
+
+.sidebar-game-item {
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.sidebar-game-item.active {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+}
+.sidebar-game-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.5px;
+  height: 48%;
   background: #ffffff;
   border-radius: 0 4px 4px 0;
 }
@@ -416,4 +491,24 @@ body.performance-mode .topbar {
   opacity: 1 !important;
   background-color: #07080a !important;
 }
+
+/* Ensure cover loading shimmer remains active and smooth in performance mode (compositor-only, 0% CPU loss) */
+html.performance-mode .cover-shimmer-wave,
+body.performance-mode .cover-shimmer-wave,
+body.game-performance-mode .cover-shimmer-wave {
+  animation-duration: 2.2s !important;
+  animation-iteration-count: infinite !important;
+  animation-play-state: running !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.035) 45%,
+    rgba(255, 255, 255, 0.065) 50%,
+    rgba(255, 255, 255, 0.035) 55%,
+    transparent 80%
+  ) !important;
+}
+
 

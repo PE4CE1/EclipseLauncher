@@ -94,6 +94,9 @@ export async function scanGames(onProgress?: ProgressCallback): Promise<Installe
   }
 
   onProgress?.({ stage: 'done', message: `Scan complete. ${results.length} games found.`, count: results.length })
+  if (global.gc) {
+    try { global.gc() } catch {}
+  }
   return results
 }
 
@@ -144,10 +147,8 @@ async function scanSteam(): Promise<InstalledGame[]> {
   return games
 }
 
-let cachedSteamAppList: Record<string, string> | null = null
-
-async function getSteamAppList(): Promise<Record<string, string>> {
-  if (cachedSteamAppList) return cachedSteamAppList
+async function getSteamAppNames(targetIds: Set<string>): Promise<Record<string, string>> {
+  if (targetIds.size === 0) return {}
   try {
     const res = await fetch('https://api.steampowered.com/ISteamApps/GetAppList/v2/', {
       headers: {
@@ -170,10 +171,15 @@ async function getSteamAppList(): Promise<Record<string, string>> {
     const map: Record<string, string> = {}
     if (data?.applist?.apps) {
       for (const app of data.applist.apps) {
-        map[app.appid.toString()] = app.name
+        const idStr = app.appid.toString()
+        if (targetIds.has(idStr)) {
+          map[idStr] = app.name
+          if (Object.keys(map).length === targetIds.size) {
+            break
+          }
+        }
       }
     }
-    cachedSteamAppList = map
     return map
   } catch (e) {
     console.error('[Scanner] Failed to fetch Steam App List', e)
@@ -221,20 +227,20 @@ async function scanUninstalledSteamGames(installedIds: Set<string>): Promise<Ins
     }
   }
 
-  if (ownedAppIds.size === 0) return []
+  const uninstalledIds = new Set<string>()
+  for (const appId of ownedAppIds) {
+    if (!installedIds.has(appId) && !['228980', '1070560', '1391110'].includes(appId)) {
+      uninstalledIds.add(appId)
+    }
+  }
 
-  const appMap = await getSteamAppList()
+  if (uninstalledIds.size === 0) return []
+
+  const appMap = await getSteamAppNames(uninstalledIds)
   const games: InstalledGame[] = []
 
-  for (const appId of ownedAppIds) {
-    if (installedIds.has(appId)) continue
-
-    // Use a fallback name if the API failed or didn't have the ID
+  for (const appId of uninstalledIds) {
     const name = appMap[appId] || `Steam App ${appId}`
-    
-    // Skip common utility/tool IDs that are often owned but not games
-    if (['228980', '1070560', '1391110', '228980'].includes(appId)) continue
-
     games.push({
       id: `steam-${appId}`,
       name,

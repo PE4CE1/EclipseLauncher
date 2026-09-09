@@ -1,12 +1,13 @@
+import { useCallback } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { translations, Language } from '../i18n/translations'
 
 export function useTranslation() {
-  const { settings } = useGameStore()
+  const language = useGameStore(state => state.settings.language)
   // Default to English if language is not set or invalid
-  const lang = (settings.language === 'de' ? 'de' : 'en') as Language
+  const lang = (language === 'de' ? 'de' : 'en') as Language
 
-  const t = (key: keyof typeof translations.en, params?: Record<string, string | number>) => {
+  const t = useCallback((key: keyof typeof translations.en, params?: Record<string, string | number>) => {
     let str = translations[lang][key] || translations.en[key] || key
     
     if (params) {
@@ -16,7 +17,7 @@ export function useTranslation() {
     }
     
     return str
-  }
+  }, [lang])
 
   return { t, language: lang }
 }

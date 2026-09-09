@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { getCoverUrl, getHeaderUrl, getHeroUrl, getPlaceholderCover, getPlaceholderHero } from '../../services/assetHelper'
 
 interface SmartImageProps {
@@ -43,18 +43,13 @@ export function SmartImage({ appId, type, alt, className, fallbackScreenshotUrl 
 
     if (type === 'hero') {
       return [
-        // 1-2: Try the proper hero art first
         `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${validId}/library_hero.jpg`,
         `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${validId}/library_hero.jpg`,
-        // 3: Page background (some games have this even without library_hero)
         `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${validId}/page_bg_generated_v6.jpg`,
-        // 4: Screenshot from the game detail API (always present for released games)
         ...(fallbackScreenshotUrl ? [fallbackScreenshotUrl] : []),
-        // 5-7: header.jpg is the GUARANTEED image — every game on Steam has it
         `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${validId}/header.jpg`,
         `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${validId}/header.jpg`,
         `https://cdn.cloudflare.steamstatic.com/steam/apps/${validId}/header.jpg`,
-        // 8: Capsule as last resort before placeholder
         `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${validId}/capsule_616x353.jpg`,
         getPlaceholderHero(alt || '')
       ]
@@ -72,21 +67,39 @@ export function SmartImage({ appId, type, alt, className, fallbackScreenshotUrl 
   }, [validId, type, alt, fallbackScreenshotUrl])
 
   const [srcIndex, setSrcIndex] = useState(0)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
+  const fallbackImgRef = useRef<HTMLImageElement>(null)
+
+  // Only reset loading state and index if the primary source URL actually changes
+  const primarySrc = sources[0]
+  const prevPrimarySrcRef = useRef(primarySrc)
 
   useEffect(() => {
-    setSrcIndex(0)
-  }, [validId, type, fallbackScreenshotUrl, alt])
+    if (prevPrimarySrcRef.current !== primarySrc) {
+      prevPrimarySrcRef.current = primarySrc
+      setSrcIndex(0)
+      setIsLoaded(false)
+    }
+  }, [primarySrc])
 
-  // If even all sources fail, render safe placeholder SVG
+  // Instant DOM check: if browser already completed loading the image (from cache or fast decode), set isLoaded immediately
+  useEffect(() => {
+    const el = imgRef.current || fallbackImgRef.current
+    if (el && el.complete && el.naturalWidth > 0) {
+      setIsLoaded(true)
+    }
+  })
+
+  // If all sources fail, render safe, clean minimalist placeholder card without any controller icon
   if (srcIndex >= sources.length) {
-    const finalFallback = type === 'hero' ? getPlaceholderHero(alt || '') : getPlaceholderCover(alt || '')
     return (
-      <img
-        src={finalFallback}
-        alt={alt || 'Game'}
-        className={className}
-        referrerPolicy="no-referrer"
-      />
+      <div className={`relative w-full h-full flex flex-col items-center justify-center bg-[#08090d] border border-white/[0.06] p-4 text-center select-none overflow-hidden ${className || ''}`}>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.02),transparent_70%)]" />
+        <span className="text-[11px] font-medium text-white/40 line-clamp-2 px-2 max-w-full z-10">
+          {alt || 'Game'}
+        </span>
+      </div>
     )
   }
 
@@ -95,7 +108,12 @@ export function SmartImage({ appId, type, alt, className, fallbackScreenshotUrl 
 
   if (isHorizontalFallback) {
     return (
-      <div className={`relative w-full h-full overflow-hidden bg-[#0a0b0f] flex items-center justify-center p-3 select-none ${className || ''}`}>
+      <div className={`relative w-full h-full overflow-hidden bg-[#08090d] flex items-center justify-center p-3 select-none ${className || ''}`}>
+        {!isLoaded && (
+          <div className="cover-shimmer-container">
+            <div className="cover-shimmer-wave" />
+          </div>
+        )}
         <img
           src={currentUrl}
           alt=""
@@ -110,11 +128,16 @@ export function SmartImage({ appId, type, alt, className, fallbackScreenshotUrl 
         </div>
         <div className="relative z-10 w-full aspect-[16/9] rounded-lg overflow-hidden shadow-[0_12px_28px_rgba(0,0,0,0.85)] border border-white/15">
           <img
+            ref={fallbackImgRef}
             src={currentUrl}
             alt={alt}
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover transition-opacity duration-300 ease-out ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
             referrerPolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
+            onLoad={() => setIsLoaded(true)}
             onError={() => {
+              setIsLoaded(false)
               setSrcIndex(prev => prev + 1)
             }}
           />
@@ -124,16 +147,30 @@ export function SmartImage({ appId, type, alt, className, fallbackScreenshotUrl 
   }
 
   return (
-    <img
-      key={sources[srcIndex]}
-      src={sources[srcIndex]}
-      alt={alt}
-      className={className}
-      referrerPolicy="no-referrer"
-      onError={() => {
-        setSrcIndex(prev => prev + 1)
-      }}
-      loading="lazy"
-    />
+    <div className="relative w-full h-full overflow-hidden bg-[#08090d]">
+      {/* ─── Ultra Clean, Pure Minimalist Loading Shimmer (Zero Controller Icon, Zero CPU Load) ─── */}
+      {!isLoaded && (
+        <div className="cover-shimmer-container">
+          <div className="cover-shimmer-wave" />
+        </div>
+      )}
+
+      {/* Actual Cover / Image */}
+      <img
+        ref={imgRef}
+        key={sources[srcIndex]}
+        src={sources[srcIndex]}
+        alt={alt}
+        className={`w-full h-full object-cover transition-opacity duration-300 ease-out ${isLoaded ? 'opacity-100' : 'opacity-0'} ${className || ''}`}
+        referrerPolicy="no-referrer"
+        onLoad={() => setIsLoaded(true)}
+        onError={() => {
+          setIsLoaded(false)
+          setSrcIndex(prev => prev + 1)
+        }}
+        loading={type === 'hero' ? 'eager' : 'lazy'}
+        decoding={type === 'hero' ? 'sync' : 'async'}
+      />
+    </div>
   )
 }

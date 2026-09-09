@@ -56,6 +56,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
 
+  onMemoryTrim: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('memory:trim', handler)
+    return () => ipcRenderer.removeListener('memory:trim', handler)
+  },
+
   // Game scanning
   scanGames: () => ipcRenderer.invoke('games:scan'),
   onScanProgress: (callback: (progress: ScanProgress) => void) => {
@@ -445,10 +451,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCodes: (gameName: string, placeId?: string, universeId?: string, forceRefresh?: boolean) =>
       ipcRenderer.invoke('roblox:get-codes', gameName, placeId, universeId, forceRefresh),
     refreshExperience: () => ipcRenderer.invoke('roblox:refresh-experience'),
+    getExperiencePlaytime: () => ipcRenderer.invoke('roblox:get-experience-playtime'),
+    syncPlaytime: () => ipcRenderer.invoke('roblox:sync-playtime'),
     onExperienceChange: (callback: (experience: any) => void) => {
       const handler = (_: any, data: any) => callback(data)
       ipcRenderer.on('roblox:experience-changed', handler)
       return () => ipcRenderer.removeListener('roblox:experience-changed', handler)
+    },
+    onPlaytimeUpdated: (callback: () => void) => {
+      const handler = () => callback()
+      ipcRenderer.on('roblox:playtime-updated', handler)
+      return () => ipcRenderer.removeListener('roblox:playtime-updated', handler)
     }
+  },
+
+  // ─── Persistent Account & Machine Anchoring ──────────────────────────────
+  account: {
+    getIdentity: () => ipcRenderer.invoke('account:get-identity'),
+    saveIdentity: (data: any) => ipcRenderer.invoke('account:save-identity', data),
+    getDeviceAnchor: () => ipcRenderer.invoke('account:get-device-anchor'),
   },
 })

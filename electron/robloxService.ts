@@ -2,6 +2,8 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as https from 'https'
 import { ipcMain, BrowserWindow } from 'electron'
+import { addPlaytimeRecord, setPlaytimeRecord, loadPlaytimeDb } from './playtimeService'
+import { isRobloxRunning } from './processMonitor'
 
 export interface RobloxExperience {
   placeId: string
@@ -9,6 +11,15 @@ export interface RobloxExperience {
   name: string
   iconUrl?: string
   creatorName?: string
+}
+
+export interface RobloxTrackedExperience {
+  placeId: string
+  universeId?: string
+  name: string
+  minutes: number
+  lastPlayed: number
+  iconUrl?: string
 }
 
 export interface RobloxCodeItem {
@@ -32,6 +43,15 @@ let isTracking = false
 let pollInterval: NodeJS.Timeout | null = null
 let currentExperience: RobloxExperience | null = null
 const changeListeners: Array<(info: RobloxExperience | null) => void> = []
+let registeredWindowsGetter: (() => BrowserWindow[]) | null = null
+
+let activeExperienceSession: {
+  placeId: string
+  universeId?: string
+  name: string
+  startTime: number
+  lastMinuteTick: number
+} | null = null
 
 // Caches for API results
 const experienceCache = new Map<string, RobloxExperience>()
@@ -75,6 +95,28 @@ const CURATED_CODES: Record<string, { active: RobloxCodeItem[]; expired: RobloxC
       { code: 'DRAGONABUSE', reward: '20 Min 2x EXP', isExpired: true },
       { code: 'JULYUPDATE_RESET', reward: 'Stat Reset', isExpired: true },
       { code: 'NOOB2PRO', reward: '20 Min 2x EXP', isExpired: true },
+    ]
+  },
+  'murder mystery 2': {
+    active: [
+      { code: 'MM2Winter', reward: 'Free Holiday Knife Skin' },
+      { code: '2026', reward: 'Free Coins & Pet' },
+    ],
+    expired: [
+      { code: 'COMB4T2', reward: 'Combat II Knife', isExpired: true },
+      { code: 'PR1SM', reward: 'Prism Knife', isExpired: true },
+      { code: 'AL3X', reward: 'Alex Knife', isExpired: true },
+      { code: 'CORL', reward: 'Corl Knife', isExpired: true },
+    ]
+  },
+  'adopt me': {
+    active: [
+      { code: 'SEA_CREATURES', reward: 'Free Sea Egg' },
+      { code: 'SUMMER_SALE', reward: '100 Free Bucks' },
+    ],
+    expired: [
+      { code: '1B1LL1ONV1S1TS', reward: '200 Bucks', isExpired: true },
+      { code: 'M4NH4TT4N', reward: 'New Pet Box', isExpired: true },
     ]
   },
   'blade ball': {
@@ -352,9 +394,74 @@ function notifyListeners(exp: RobloxExperience | null) {
   }
 }
 
+export function notifyPlaytimeUpdated() {
+  if (registeredWindowsGetter) {
+    const wins = registeredWindowsGetter()
+    for (const win of wins) {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('roblox:playtime-updated')
+      }
+    }
+  }
+}
+
+/**
+ * Verifies whether Roblox is genuinely running on the system right now.
+ * Double-checks via ProcessMonitor AND checks log file write freshness (< 20s old).
+ */
+export function isRobloxActive(): boolean {
+  try {
+    if (isRobloxRunning()) return true
+  } catch {}
+
+  const latestLog = findLatestPlayerLogFile()
+  if (!latestLog) return false
+
+  try {
+    const stat = fs.statSync(latestLog)
+    const ageMs = Date.now() - stat.mtimeMs
+    // Active Roblox player process continuously writes logs every 2-5 seconds.
+    // If the file has not been modified in the last 20 seconds, Roblox is NOT active.
+    if (ageMs > 20000) {
+      return false
+    }
+  } catch {
+    return false
+  }
+
+  return true
+}
+
 export async function syncRobloxExperience(): Promise<RobloxExperience | null> {
+  // If Roblox is not actively running, terminate any active session and return null immediately
+  if (!isRobloxActive()) {
+    if (activeExperienceSession) {
+      const dur = Math.max(0, Math.floor((Date.now() - activeExperienceSession.lastMinuteTick) / 60000))
+      if (dur > 0) {
+        addPlaytimeRecord(`roblox_exp_${activeExperienceSession.placeId}`, activeExperienceSession.name, dur)
+        addPlaytimeRecord('roblox', 'Roblox', dur, 999001)
+        notifyPlaytimeUpdated()
+      }
+      activeExperienceSession = null
+    }
+    if (currentExperience !== null) {
+      currentExperience = null
+      notifyListeners(null)
+    }
+    return null
+  }
+
   const latestLog = findLatestPlayerLogFile()
   if (!latestLog) {
+    if (activeExperienceSession) {
+      const dur = Math.max(0, Math.floor((Date.now() - activeExperienceSession.lastMinuteTick) / 60000))
+      if (dur > 0) {
+        addPlaytimeRecord(`roblox_exp_${activeExperienceSession.placeId}`, activeExperienceSession.name, dur)
+        addPlaytimeRecord('roblox', 'Roblox', dur, 999001)
+        notifyPlaytimeUpdated()
+      }
+      activeExperienceSession = null
+    }
     if (currentExperience !== null) {
       currentExperience = null
       notifyListeners(null)
@@ -367,14 +474,55 @@ export async function syncRobloxExperience(): Promise<RobloxExperience | null> {
     const active = parseActiveGameFromContent(content)
 
     if (active && active.placeId) {
-      if (!currentExperience || currentExperience.placeId !== active.placeId) {
+      const isNewGame = !currentExperience || currentExperience.placeId !== active.placeId
+
+      if (isNewGame) {
+        // Flush previous session if switching games
+        if (activeExperienceSession && activeExperienceSession.placeId !== active.placeId) {
+          const delta = Math.max(0, Math.floor((Date.now() - activeExperienceSession.lastMinuteTick) / 60000))
+          if (delta > 0) {
+            addPlaytimeRecord(`roblox_exp_${activeExperienceSession.placeId}`, activeExperienceSession.name, delta)
+            addPlaytimeRecord('roblox', 'Roblox', delta, 999001)
+            notifyPlaytimeUpdated()
+          }
+        }
+
         const exp = await fetchRobloxExperienceDetails(active.placeId, active.universeId)
         currentExperience = exp
+        activeExperienceSession = {
+          placeId: active.placeId,
+          universeId: active.universeId || exp?.universeId,
+          name: exp?.name || 'Roblox Experience',
+          startTime: Date.now(),
+          lastMinuteTick: Date.now()
+        }
         notifyListeners(exp)
         return exp
+      } else {
+        // Already active in current game: periodic minute tick
+        if (activeExperienceSession) {
+          const now = Date.now()
+          const deltaMins = Math.floor((now - activeExperienceSession.lastMinuteTick) / 60000)
+          if (deltaMins >= 1) {
+            addPlaytimeRecord(`roblox_exp_${activeExperienceSession.placeId}`, activeExperienceSession.name, deltaMins)
+            addPlaytimeRecord('roblox', 'Roblox', deltaMins, 999001)
+            activeExperienceSession.lastMinuteTick = now
+            notifyPlaytimeUpdated()
+          }
+        }
       }
       return currentExperience
     } else {
+      // Left game or returned to Roblox menu
+      if (activeExperienceSession) {
+        const delta = Math.max(0, Math.floor((Date.now() - activeExperienceSession.lastMinuteTick) / 60000))
+        if (delta > 0) {
+          addPlaytimeRecord(`roblox_exp_${activeExperienceSession.placeId}`, activeExperienceSession.name, delta)
+          addPlaytimeRecord('roblox', 'Roblox', delta, 999001)
+          notifyPlaytimeUpdated()
+        }
+        activeExperienceSession = null
+      }
       if (currentExperience !== null) {
         currentExperience = null
         notifyListeners(null)
@@ -383,6 +531,16 @@ export async function syncRobloxExperience(): Promise<RobloxExperience | null> {
     }
   } catch {
     return currentExperience
+  }
+}
+
+export function flushRobloxExperiencePlaytime(): void {
+  if (activeExperienceSession) {
+    const delta = Math.max(1, Math.round((Date.now() - activeExperienceSession.startTime) / 60000))
+    addPlaytimeRecord(`roblox_exp_${activeExperienceSession.placeId}`, activeExperienceSession.name, delta)
+    addPlaytimeRecord('roblox', 'Roblox', delta, 999001)
+    notifyPlaytimeUpdated()
+    activeExperienceSession = null
   }
 }
 
@@ -426,23 +584,223 @@ export function stopRobloxTracker(onChange?: (info: RobloxExperience | null) => 
     const idx = changeListeners.indexOf(onChange)
     if (idx !== -1) changeListeners.splice(idx, 1)
   } else {
-    // If called without arguments, clear all listeners
     changeListeners.length = 0
   }
 
-  if (changeListeners.length === 0) {
-    if (pollInterval) {
-      clearInterval(pollInterval)
-      pollInterval = null
-    }
-    isTracking = false
-    currentExperience = null
-    notifyListeners(null)
+  // Unconditionally stop polling and reset experience when tracker stops
+  if (pollInterval) {
+    clearInterval(pollInterval)
+    pollInterval = null
   }
+  isTracking = false
+  flushRobloxExperiencePlaytime()
+  currentExperience = null
+  notifyListeners(null)
 }
 
 export function getCurrentRobloxExperience(): RobloxExperience | null {
   return currentExperience
+}
+
+/**
+ * Parses historical Roblox player log files on user's disk and backfills playtime
+ */
+export async function backfillRobloxExperiencesFromLogs(): Promise<RobloxTrackedExperience[]> {
+  const dir = getRobloxLogsDir()
+  if (!dir || !fs.existsSync(dir)) return []
+
+  try {
+    const files = fs.readdirSync(dir)
+      .filter(f => f.includes('Player') && f.endsWith('.log'))
+      .map(f => {
+        const fullPath = path.join(dir, f)
+        try {
+          return { fullPath, mtime: fs.statSync(fullPath).mtimeMs }
+        } catch {
+          return { fullPath, mtime: 0 }
+        }
+      })
+      .sort((a, b) => b.mtime - a.mtime)
+
+    const expMap: Record<string, { placeId: string; universeId?: string; minutes: number; lastPlayed: number }> = {}
+
+    for (const file of files.slice(0, 40)) {
+      try {
+        const content = fs.readFileSync(file.fullPath, 'utf-8')
+        const lines = content.split(/\r?\n/)
+        let curSession: { placeId: string; universeId?: string; startTime: number; lastTime: number } | null = null
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          const matchJoin = line.match(/placeid:([0-9]+).*?universeid:([0-9]+)/i) || 
+                            line.match(/universeid:([0-9]+).*?placeid:([0-9]+)/i)
+          if (matchJoin) {
+            const placeId = line.match(/placeid:([0-9]+)/i)?.[1]
+            const universeId = line.match(/universeid:([0-9]+)/i)?.[1]
+            const timeMatch = line.match(/^(\d{4}-\d{2}-\d{2}T[0-9:.]+Z)/)
+            const startTime = timeMatch ? new Date(timeMatch[1]).getTime() : file.mtime
+            if (placeId) {
+              curSession = { placeId, universeId, startTime, lastTime: startTime }
+            }
+          }
+
+          if (curSession) {
+            const timeMatch = line.match(/^(\d{4}-\d{2}-\d{2}T[0-9:.]+Z)/)
+            if (timeMatch) {
+              curSession.lastTime = new Date(timeMatch[1]).getTime()
+            }
+            if (
+              line.includes('destroyLuaApp: (stage:UGCGame)') ||
+              line.includes('sendAnalyticsBeforeLeave') ||
+              line.includes('Disconnected - stop() called') ||
+              line.includes('Disconnected from game')
+            ) {
+              const durMins = Math.max(1, Math.round((curSession.lastTime - curSession.startTime) / 60000))
+              if (!expMap[curSession.placeId]) {
+                expMap[curSession.placeId] = { placeId: curSession.placeId, universeId: curSession.universeId, minutes: 0, lastPlayed: curSession.lastTime }
+              }
+              expMap[curSession.placeId].minutes += durMins
+              expMap[curSession.placeId].lastPlayed = Math.max(expMap[curSession.placeId].lastPlayed, curSession.lastTime)
+              if (curSession.universeId) expMap[curSession.placeId].universeId = curSession.universeId
+              curSession = null
+            }
+          }
+        }
+
+        if (curSession) {
+          const durMins = Math.max(1, Math.round((curSession.lastTime - curSession.startTime) / 60000))
+          if (!expMap[curSession.placeId]) {
+            expMap[curSession.placeId] = { placeId: curSession.placeId, universeId: curSession.universeId, minutes: 0, lastPlayed: curSession.lastTime }
+          }
+          expMap[curSession.placeId].minutes += durMins
+          expMap[curSession.placeId].lastPlayed = Math.max(expMap[curSession.placeId].lastPlayed, curSession.lastTime)
+          if (curSession.universeId) expMap[curSession.placeId].universeId = curSession.universeId
+        }
+      } catch (_) {}
+    }
+
+    // Resolve titles and thumbnails in batches of 20
+    const uniqueUniverses = Array.from(new Set(Object.values(expMap).map(e => e.universeId).filter(Boolean))) as string[]
+    const nameMap: Record<string, string> = {}
+    const iconMap: Record<string, string> = {}
+
+    for (let i = 0; i < uniqueUniverses.length; i += 20) {
+      const batch = uniqueUniverses.slice(i, i + 20)
+      const [gamesRes, iconsRes] = await Promise.all([
+        fetchJson<{ data?: Array<{ id: number; name: string; rootPlaceId?: number }> }>(`https://games.roblox.com/v1/games?universeIds=${batch.join(',')}`),
+        fetchJson<{ data?: Array<{ targetId: number; imageUrl?: string }> }>(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${batch.join(',')}&size=150x150&format=Png&isCircular=false`)
+      ])
+      if (gamesRes?.data) {
+        for (const g of gamesRes.data) {
+          nameMap[String(g.id)] = g.name
+          if (g.rootPlaceId) {
+            nameMap[String(g.rootPlaceId)] = g.name
+          }
+        }
+      }
+      if (iconsRes?.data) {
+        for (const ic of iconsRes.data) {
+          if (ic.targetId && ic.imageUrl) {
+            iconMap[String(ic.targetId)] = ic.imageUrl
+          }
+        }
+      }
+    }
+
+    const results: RobloxTrackedExperience[] = []
+    for (const [placeId, info] of Object.entries(expMap)) {
+      const resolvedName = (info.universeId && nameMap[info.universeId]) || nameMap[placeId] || `Roblox Experience`
+      const resolvedIcon = (info.universeId && iconMap[info.universeId]) || iconMap[placeId] || ''
+      
+      // Explicitly SET the calculated baseline minutes (never additively multiply)
+      setPlaytimeRecord(`roblox_exp_${placeId}`, resolvedName, info.minutes, undefined, info.lastPlayed)
+
+      results.push({
+        placeId,
+        universeId: info.universeId,
+        name: resolvedName,
+        minutes: info.minutes,
+        lastPlayed: info.lastPlayed,
+        iconUrl: resolvedIcon
+      })
+    }
+
+    return results.sort((a, b) => b.minutes - a.minutes)
+  } catch (err) {
+    console.error('[RobloxTracker] Error during log backfill:', err)
+    return []
+  }
+}
+
+/**
+ * Returns all tracked Roblox experiences combining disk playtime and live sessions
+ */
+export async function getRobloxExperiencePlaytime(): Promise<RobloxTrackedExperience[]> {
+  const diskDb = loadPlaytimeDb()
+  const expItems: Record<string, { placeId: string; name: string; minutes: number; lastPlayed: number }> = {}
+
+  for (const [key, val] of Object.entries(diskDb)) {
+    if (key.startsWith('roblox_exp_') || key.startsWith('roblox_')) {
+      const placeId = key.replace(/^roblox_exp_|^roblox_/, '')
+      if (placeId && !isNaN(Number(placeId)) && Number(placeId) > 1000) {
+        if (!expItems[placeId] || (val.playTimeMinutes || 0) > expItems[placeId].minutes) {
+          expItems[placeId] = {
+            placeId,
+            name: val.name || 'Roblox Experience',
+            minutes: val.playTimeMinutes || 0,
+            lastPlayed: val.lastPlayed || 0
+          }
+        }
+      }
+    }
+  }
+
+  // Only add unpersisted live delta (minutes elapsed since last disk tick) if a game is actively playing
+  if (activeExperienceSession && activeExperienceSession.placeId) {
+    const pId = activeExperienceSession.placeId
+    const unpersistedDelta = Math.max(0, Math.floor((Date.now() - activeExperienceSession.lastMinuteTick) / 60000))
+    if (!expItems[pId]) {
+      const liveElapsed = Math.max(1, Math.round((Date.now() - activeExperienceSession.startTime) / 60000))
+      expItems[pId] = {
+        placeId: pId,
+        name: activeExperienceSession.name || 'Roblox Experience',
+        minutes: liveElapsed,
+        lastPlayed: Date.now()
+      }
+    } else if (unpersistedDelta > 0) {
+      expItems[pId].minutes = expItems[pId].minutes + unpersistedDelta
+      expItems[pId].lastPlayed = Date.now()
+    }
+  }
+
+  let list = Object.values(expItems).filter(item => item.minutes > 0)
+  if (list.length === 0) {
+    list = await backfillRobloxExperiencesFromLogs()
+    return list
+  }
+
+  // Fetch icons for placeIds in batch
+  const placeIds = list.map(x => x.placeId)
+  if (placeIds.length > 0) {
+    try {
+      const url = `https://thumbnails.roblox.com/v1/places/gameicons?placeIds=${placeIds.slice(0, 50).join(',')}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false`
+      const thumbRes = await fetchJson<{ data?: Array<{ targetId: number; imageUrl?: string }> }>(url)
+      const iconMap: Record<string, string> = {}
+      if (thumbRes?.data) {
+        for (const t of thumbRes.data) {
+          if (t.targetId && t.imageUrl) {
+            iconMap[String(t.targetId)] = t.imageUrl
+          }
+        }
+      }
+      return list.map(item => ({
+        ...item,
+        iconUrl: iconMap[item.placeId] || ''
+      })).sort((a, b) => b.minutes - a.minutes)
+    } catch (_) {}
+  }
+
+  return list.sort((a, b) => b.minutes - a.minutes)
 }
 
 // ─── Roblox Codes Scraper & Intelligent Resolver ────────────────────────────
@@ -976,6 +1334,8 @@ export async function getRobloxGameCodes(
  * Initializes IPC handlers and log-tracking for Roblox
  */
 export function initRobloxIPC(getWindows: () => BrowserWindow[]) {
+  registeredWindowsGetter = getWindows
+
   // Start tracker in background so renderer can get instant live updates
   startRobloxTracker((exp) => {
     const wins = getWindows()
@@ -988,6 +1348,10 @@ export function initRobloxIPC(getWindows: () => BrowserWindow[]) {
 
   // 1. Get active experience
   ipcMain.handle('roblox:get-active-experience', async () => {
+    if (!isRobloxActive()) {
+      currentExperience = null
+      return null
+    }
     let exp = getCurrentRobloxExperience()
     if (!exp) {
       exp = await syncRobloxExperience()
@@ -1002,9 +1366,33 @@ export function initRobloxIPC(getWindows: () => BrowserWindow[]) {
 
   // 3. Force refresh of active experience
   ipcMain.handle('roblox:refresh-experience', async () => {
+    if (!isRobloxActive()) {
+      currentExperience = null
+      notifyListeners(null)
+      return null
+    }
     const exp = await syncRobloxExperience()
     return exp
   })
+
+  // 4. Get all tracked Roblox experiences with playtime, icons and stats
+  ipcMain.handle('roblox:get-experience-playtime', async () => {
+    return await getRobloxExperiencePlaytime()
+  })
+
+  // 5. Force sync / backfill from Roblox player logs
+  ipcMain.handle('roblox:sync-playtime', async () => {
+    const results = await backfillRobloxExperiencesFromLogs()
+    notifyPlaytimeUpdated()
+    return results
+  })
+
+  // 6. Background historical backfill from player logs
+  setTimeout(() => {
+    backfillRobloxExperiencesFromLogs()
+      .then(() => notifyPlaytimeUpdated())
+      .catch(() => {})
+  }, 1000)
 }
 
 

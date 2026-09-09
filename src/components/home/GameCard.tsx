@@ -81,6 +81,7 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
   const primaryUrl = fallbackChain[0]
   const [imgSrc, setImgSrc] = useState(primaryUrl)
   const [hasError, setHasError] = useState(!appId)
+  const [isLoaded, setIsLoaded] = useState(false)
   const fallbackIndexRef = React.useRef(0)
 
   // Reset when appId changes
@@ -89,12 +90,14 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
       fallbackIndexRef.current = 0
       setImgSrc(fallbackChain[0])
       setHasError(false)
+      setIsLoaded(false)
     } else {
       setHasError(true)
     }
   }, [appId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleImageError = () => {
+    setIsLoaded(false)
     const next = fallbackIndexRef.current + 1
     if (next < fallbackChain.length) {
       fallbackIndexRef.current = next
@@ -139,7 +142,7 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
   return (
     <motion.div
       id={`game-card-${appId}`}
-      className="group w-44 flex-shrink-0 cursor-pointer"
+      className="game-card group w-44 flex-shrink-0 cursor-pointer"
       initial={{ opacity: 0, y: 22, scale: 0.94 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ delay: Math.min(index * 0.045, 0.4), duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
@@ -157,24 +160,31 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
           transformStyle: 'preserve-3d',
         }}
       >
-        <div className="absolute inset-0 overflow-hidden rounded-xl bg-hub-elevated [transform:translateZ(0)]">
+        <div className="absolute inset-0 overflow-hidden rounded-xl bg-[#08090d] [transform:translateZ(0)] select-none">
+          {/* ─── Ultra Clean, Pure Minimalist Loading Shimmer (Zero Controller Icon, Zero CPU Load) ─── */}
+          {!isLoaded && !hasError && (
+            <div className="cover-shimmer-container">
+              <div className="cover-shimmer-wave" />
+            </div>
+          )}
+
           {!hasError ? (
             <img
               src={imgSrc}
+              onLoad={() => setIsLoaded(true)}
               onError={handleImageError}
               alt={game.name}
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover z-10 relative transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+              className={`w-full h-full object-cover z-10 relative transition-all duration-300 ease-out group-hover:scale-[1.03] ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
-            <img
-              src={getPlaceholderCover(game.name)}
-              alt={game.name}
-              loading="lazy"
-              decoding="async"
-              className="w-full h-full object-cover z-10 relative"
-            />
+            <div className="w-full h-full flex flex-col items-center justify-center bg-[#08090d] border border-white/[0.06] p-4 text-center select-none overflow-hidden z-10 relative">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.02),transparent_70%)]" />
+              <span className="text-[11px] font-medium text-white/40 line-clamp-2 px-2 max-w-full z-10">
+                {game.name}
+              </span>
+            </div>
           )}
 
           {/* Subtle glass overlay */}

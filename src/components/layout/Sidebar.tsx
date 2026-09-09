@@ -83,7 +83,21 @@ function SidebarIcon({ sources, name, initial }: { sources: string[]; name: stri
 import React from 'react'
 
 export function Sidebar() {
-  const { activeView, setActiveView, setIsSearchOpen, updateStatus, updateProgress, updateInfo, isFriendsOpen, setIsFriendsOpen, openGameDetails, showNotification } = useUIStore()
+  const { 
+    activeView, 
+    setActiveView, 
+    setIsSearchOpen, 
+    updateStatus, 
+    updateProgress, 
+    updateInfo, 
+    isFriendsOpen, 
+    setIsFriendsOpen, 
+    openGameDetails, 
+    showNotification,
+    isGameModalOpen,
+    selectedGameId,
+    selectedGameName
+  } = useUIStore()
   const { installedGames, library, isScanning, scanMessage, settings, activeGame, toggleFavorite, favoriteIds, removeFromLibrary, stopPlaySession } = useGameStore()
   const isPerformanceMode = Boolean(settings?.performanceMode || (activeGame && settings?.gamePerformanceMode !== false))
   
@@ -389,7 +403,19 @@ export function Sidebar() {
                 
                 if (aPlaying && !bPlaying) return -1
                 if (!aPlaying && bPlaying) return 1
-                return 0
+
+                // 1. Most recently played games first
+                const aLast = a.lastPlayed || 0
+                const bLast = b.lastPlayed || 0
+                if (aLast !== bLast) return bLast - aLast
+
+                // 2. Highest playtime descending
+                const aTime = a.playTimeMinutes || 0
+                const bTime = b.playTimeMinutes || 0
+                if (aTime !== bTime) return bTime - aTime
+
+                // 3. Alphabetical fallback
+                return (a.name || '').localeCompare(b.name || '')
               })
 
               return sortedGames.slice(0, 50).map((game, i) => {
@@ -397,6 +423,14 @@ export function Sidebar() {
                 const steamId = game.steamId ?? (game.platform === 'steam' && game.appId ? Number(game.appId) : (isRoblox ? 999001 : undefined))
                 const isPlaying = isGamePlaying(game)
                 const isMenuOpen = contextMenu?.game.id === game.id
+
+                const isSelected = Boolean(
+                  isGameModalOpen && (
+                    (steamId && selectedGameId === steamId) ||
+                    (selectedGameName && normalize(selectedGameName) === normalize(game.name)) ||
+                    (selectedGameId && (selectedGameId === game.steamId || String(selectedGameId) === String(game.id)))
+                  )
+                )
 
                 return (
                   <motion.div
@@ -407,18 +441,26 @@ export function Sidebar() {
                     transition={{ delay: i * 0.02, ease: [0.16, 1, 0.3, 1] }}
                     onContextMenu={(e) => handleContextMenu(e, game)}
                     onClick={() => {
-                      if (steamId || isRoblox) {
-                        openGameDetails(steamId || (isRoblox ? 999001 : 0), game.name)
-                      } else {
-                        setActiveView('library')
-                      }
+                      openGameDetails(steamId || (isRoblox ? 999001 : 0), game.name)
                     }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all group text-left cursor-pointer relative ${
-                      isPlaying ? 'bg-white/10 shadow-lg border border-white/10' : 'hover:bg-white/[0.04]'
+                    className={`sidebar-game-item w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all group text-left cursor-pointer relative ${
+                      isSelected ? 'active' : ''
+                    } ${
+                      isPlaying 
+                        ? 'bg-white/10 shadow-lg border border-white/10' 
+                        : isSelected 
+                          ? 'bg-white/[0.06]' 
+                          : 'hover:bg-white/[0.04]'
                     } ${isMenuOpen ? 'bg-white/[0.08] ring-1 ring-white/10' : ''}`}
                   >
                     <GameIcon name={game.name} steamId={steamId} iconUrl={game.iconUrl} />
-                    <span className={`text-xs transition-colors truncate flex-1 ${isPlaying ? 'text-white font-bold' : 'text-hub-text-secondary group-hover:text-hub-text'}`}>
+                    <span className={`text-xs transition-colors truncate flex-1 ${
+                      isPlaying 
+                        ? 'text-white font-bold' 
+                        : isSelected 
+                          ? 'text-white font-semibold' 
+                          : 'text-hub-text-secondary group-hover:text-hub-text'
+                    }`}>
                       {game.name}
                     </span>
                     

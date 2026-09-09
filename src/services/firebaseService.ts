@@ -46,6 +46,12 @@ let friendsQueryUnsub: Unsubscribe | null = null
 const knownFriendIds = new Set<string>()
 let isInitialized = false
 
+// Persistent Multi-Layer Account Identity State
+let canonicalUid: string = ''
+let canonicalFriendCode: string = ''
+let canonicalAccountSecret: string = ''
+let currentDeviceAnchorId: string = ''
+
 /**
  * Generates a clean unique Eclipse friend code (e.g. ECL-7X9K2)
  */
@@ -59,54 +65,226 @@ export function generateEclipseFriendCode(): string {
 }
 
 /**
- * Returns current authenticated Firebase user UID or null
+ * Generates an encrypted/secure account recovery secret key
+ * Format: ECL-SEC-XXXX-XXXX-XXXX-XXXX
+ */
+export function generateSecureAccountSecret(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let secret = 'ECL-SEC'
+  for (let i = 0; i < 4; i++) {
+    secret += '-'
+    for (let j = 0; j < 4; j++) {
+      secret += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+  }
+  return secret
+}
+
+/**
+ * Returns canonical user UID that survives full application uninstallation
+ */
+export function getCanonicalUid(): string {
+  if (canonicalUid) return canonicalUid
+  const storeUid = useGameStore.getState().settings.userUid
+  if (storeUid) {
+    canonicalUid = storeUid
+    return storeUid
+  }
+  return auth.currentUser?.uid || ''
+}
+
+/**
+ * Returns current authenticated Firebase user UID or canonical UID
  */
 export function getOrCreateUserUid(): string {
-  return auth.currentUser?.uid || useGameStore.getState().settings.userUid || ''
+  return getCanonicalUid()
+}
+
+/**
+ * Returns current account recovery secret key
+ */
+export function getAccountSecret(): string {
+  return canonicalAccountSecret || useGameStore.getState().settings.accountSecret || ''
 }
 
 /**
  * Returns current friend code from store or generates a fallback
  */
 export function getOrCreateFriendCode(): string {
+  if (canonicalFriendCode && canonicalFriendCode.startsWith('ECL-')) return canonicalFriendCode
   const current = useGameStore.getState().settings.friendCode
-  if (current && current.startsWith('ECL-')) return current
+  if (current && current.startsWith('ECL-')) {
+    canonicalFriendCode = current
+    return current
+  }
   const newCode = generateEclipseFriendCode()
+  canonicalFriendCode = newCode
   useGameStore.getState().updateSettings({ friendCode: newCode })
   return newCode
 }
 
 /**
- * Initialize Firebase Social Network:
- * 1. Signs in anonymously (session token persists automatically in browser/IndexedDB)
- * 2. Syncs user profile to Firestore
- * 3. Sets up real-time listener for incoming friend additions
+ * Resolves user identity across the 3 persistence tiers:
+ * Tier 1: %USERPROFILE%\.eclipse_launcher_identity.json (survives app wipe)
+ * Tier 2: Windows Registry HKCU\Software\EclipseLauncher\Identity (survives uninstalls)
+ * Tier 3: Cloud Hardware Anchor in Firestore device_identities/{deviceAnchorId} (survives disk format/cleaner)
  */
+async function resolveAndRestoreAccountIdentity(user: User): Promise<string> {
+  // Step 1: Get Hardware Device Anchor (Windows MachineGuid hash)
+  let deviceAnchor = currentDeviceAnchorId
+  if (!deviceAnchor && typeof window !== 'undefined' && window.electronAPI?.account?.getDeviceAnchor) {
+    try {
+      deviceAnchor = await window.electronAPI.account.getDeviceAnchor()
+      currentDeviceAnchorId = deviceAnchor
+    } catch (_) {}
+  }
+
+  // Step 2: Try Tier 1 & Tier 2 from local OS
+  let savedLocal: any = null
+  if (typeof window !== 'undefined' && window.electronAPI?.account?.getIdentity) {
+    try {
+      savedLocal = await window.electronAPI.account.getIdentity()
+    } catch (_) {}
+  }
+
+  let resolvedUid = ''
+  let resolvedFriendCode = ''
+  let resolvedSecret = ''
+
+  if (savedLocal?.canonicalUid && savedLocal?.friendCode) {
+    // Found in local Tier 1 (UserProfile) or Tier 2 (Registry)
+    resolvedUid = savedLocal.canonicalUid
+    resolvedFriendCode = savedLocal.friendCode
+    resolvedSecret = savedLocal.accountSecret || ''
+  } else if (deviceAnchor) {
+    // Tier 3: Query Cloud Hardware Anchor in Firestore
+    // This happens if the user completely uninstalled Eclipse (and wiped temp/profile files)
+    try {
+      const anchorDoc = await getDoc(doc(db, 'device_identities', deviceAnchor))
+      if (anchorDoc.exists()) {
+        const d = anchorDoc.data()
+        if (d?.canonicalUid && d?.friendCode) {
+          resolvedUid = d.canonicalUid
+          resolvedFriendCode = d.friendCode
+          resolvedSecret = d.accountSecret || ''
+          console.log('[AccountPersistence] Restored account from Cloud Hardware Anchor:', resolvedUid, resolvedFriendCode)
+        }
+      }
+    } catch (e) {
+      console.warn('[AccountPersistence] Cloud Hardware Anchor lookup failed:', e)
+    }
+  }
+
+  // If still not resolved, check local store
+  const storeSettings = useGameStore.getState().settings
+  if (!resolvedUid && storeSettings.userUid) {
+    resolvedUid = storeSettings.userUid
+  }
+  if (!resolvedFriendCode && storeSettings.friendCode && storeSettings.friendCode.startsWith('ECL-')) {
+    resolvedFriendCode = storeSettings.friendCode
+  }
+  if (!resolvedSecret && storeSettings.accountSecret) {
+    resolvedSecret = storeSettings.accountSecret
+  }
+
+  // If brand new account on this PC
+  if (!resolvedUid) {
+    resolvedUid = user.uid
+  }
+  if (!resolvedFriendCode || !resolvedFriendCode.startsWith('ECL-')) {
+    resolvedFriendCode = generateEclipseFriendCode()
+  }
+  if (!resolvedSecret) {
+    resolvedSecret = generateSecureAccountSecret()
+  }
+
+  canonicalUid = resolvedUid
+  canonicalFriendCode = resolvedFriendCode
+  canonicalAccountSecret = resolvedSecret
+
+  const username = storeSettings.username || 'Eclipse Player'
+
+  // Update Zustand Store
+  useGameStore.getState().updateSettings({
+    userUid: resolvedUid,
+    friendCode: resolvedFriendCode,
+    accountSecret: resolvedSecret,
+  })
+
+  // Persist locally in Electron Settings (userData/settings.json)
+  if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
+    window.electronAPI.setSettings({
+      userUid: resolvedUid,
+      friendCode: resolvedFriendCode,
+      accountSecret: resolvedSecret,
+    })
+  }
+
+  // Persist redundantly across Tier 1 (UserProfile file) and Tier 2 (Windows Registry)
+  if (typeof window !== 'undefined' && window.electronAPI?.account?.saveIdentity) {
+    try {
+      await window.electronAPI.account.saveIdentity({
+        canonicalUid: resolvedUid,
+        friendCode: resolvedFriendCode,
+        accountSecret: resolvedSecret,
+        deviceAnchorId: deviceAnchor,
+        username,
+      })
+    } catch (_) {}
+  }
+
+  // Persist to Tier 3 (Cloud Hardware Anchor in Firestore)
+  if (deviceAnchor) {
+    try {
+      await setDoc(doc(db, 'device_identities', deviceAnchor), {
+        deviceAnchorId: deviceAnchor,
+        canonicalUid: resolvedUid,
+        friendCode: resolvedFriendCode,
+        accountSecret: resolvedSecret,
+        username,
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+    } catch (_) {}
+  }
+
+  await setupUserInFirestore(resolvedUid)
+  return resolvedUid
+}
+
+/**
+ * Initialize Firebase Social Network:
+ * 1. Signs in anonymously (session token persists automatically)
+ * 2. Recovers or registers permanent account identity across the 3 persistence tiers
+ * 3. Syncs user profile to Firestore using canonicalUid
+ * 4. Sets up real-time listener for incoming friend additions
+ */
+// Maximum duration (in ms) without a heartbeat after which a friend is guaranteed offline
+const PRESENCE_TTL_MS = 60000 // 60 seconds (1 minute)
+
 export async function initFirebaseSocial() {
   if (isInitialized) return
   isInitialized = true
 
-  // Clean any invalid ghost friends from local store
+  // Clean any invalid ghost friends and remove stale games on offline friends from local store
   const currentFriends = useGameStore.getState().settings.eclipseFriends || []
   const cleanedFriends = currentFriends.filter(f => 
     f && f.username && 
     !f.username.toLowerCase().includes('error') && 
     !f.username.toLowerCase().includes('steam community') &&
     !f.id.startsWith('ecl_')
-  )
-  if (cleanedFriends.length !== currentFriends.length) {
-    useGameStore.getState().updateSettings({ eclipseFriends: cleanedFriends })
-  }
+  ).map(f => {
+    if (f.status === 'offline' && f.currentGame) {
+      return { ...f, currentGame: undefined }
+    }
+    return f
+  })
+  useGameStore.getState().updateSettings({ eclipseFriends: cleanedFriends })
 
   return new Promise<void>((resolve) => {
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        useGameStore.getState().updateSettings({ userUid: user.uid })
-        if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
-          window.electronAPI.setSettings({ userUid: user.uid })
-        }
-        await setupUserInFirestore(user)
-        listenToMyUserDoc(user.uid)
+        const activeUid = await resolveAndRestoreAccountIdentity(user)
+        listenToMyUserDoc(activeUid)
         resolve()
       } else {
         try {
@@ -126,20 +304,47 @@ export const initSocialNetwork = initFirebaseSocial
 /**
  * Sets up or syncs the current user document in Firestore on login
  */
-async function setupUserInFirestore(user: User) {
+async function setupUserInFirestore(uid: string) {
   try {
-    const userRef = doc(db, 'users', user.uid)
+    const userRef = doc(db, 'users', uid)
     const snap = await getDoc(userRef)
     const currentSettings = useGameStore.getState().settings
 
-    let friendCode = currentSettings.friendCode
-    if (!friendCode || !friendCode.startsWith('ECL-')) {
-      friendCode = snap.exists() && snap.data()?.friendCode ? snap.data().friendCode : generateEclipseFriendCode()
+    let friendCode: string = canonicalFriendCode || currentSettings.friendCode || ''
+    if (snap.exists() && snap.data()?.friendCode) {
+      friendCode = snap.data().friendCode || ''
+      canonicalFriendCode = friendCode
+    } else if (!friendCode || !friendCode.startsWith('ECL-')) {
+      friendCode = generateEclipseFriendCode()
+      canonicalFriendCode = friendCode
     }
 
-    useGameStore.getState().updateSettings({ friendCode, userUid: user.uid })
-    if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
-      window.electronAPI.setSettings({ friendCode, userUid: user.uid })
+    // Restore profile details from cloud if local was wiped by uninstall
+    if (snap.exists()) {
+      const remote = snap.data()
+      const patch: Record<string, any> = { friendCode, userUid: uid }
+      if (remote.username && (!currentSettings.username || currentSettings.username === 'User' || currentSettings.username === 'Eclipse Player')) {
+        patch.username = remote.username
+      }
+      if (remote.avatarUrl && !currentSettings.avatarUrl) {
+        patch.avatarUrl = remote.avatarUrl
+      }
+      if (remote.bio && !currentSettings.bio) {
+        patch.bio = remote.bio
+      }
+      if (remote.accountSecret && !canonicalAccountSecret) {
+        canonicalAccountSecret = remote.accountSecret
+        patch.accountSecret = remote.accountSecret
+      }
+      useGameStore.getState().updateSettings(patch)
+      if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
+        window.electronAPI.setSettings(patch)
+      }
+    } else {
+      useGameStore.getState().updateSettings({ friendCode, userUid: uid })
+      if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
+        window.electronAPI.setSettings({ friendCode, userUid: uid })
+      }
     }
 
     // Auto-detect Hardware Specs from Windows in background
@@ -162,19 +367,21 @@ async function setupUserInFirestore(user: User) {
  * Syncs the local user's full profile to Firestore
  */
 export async function syncMyProfile() {
-  const user = auth.currentUser
-  if (!user) return
+  const myUid = getCanonicalUid()
+  if (!myUid || !auth.currentUser) return
 
   try {
     const { settings, library, installedGames, activeGame } = useGameStore.getState()
-    const userRef = doc(db, 'users', user.uid)
+    const userRef = doc(db, 'users', myUid)
     const snap = await getDoc(userRef)
 
-    let friendCode = settings.friendCode
+    let friendCode: string = canonicalFriendCode || settings.friendCode || ''
     if (snap.exists() && snap.data()?.friendCode) {
-      friendCode = snap.data().friendCode
+      friendCode = snap.data().friendCode || ''
+      canonicalFriendCode = friendCode
     } else if (!friendCode || !friendCode.startsWith('ECL-')) {
       friendCode = generateEclipseFriendCode()
+      canonicalFriendCode = friendCode
       useGameStore.getState().updateSettings({ friendCode })
     }
 
@@ -227,8 +434,10 @@ export async function syncMyProfile() {
     const totalInstalledCount = inst.filter(g => g.installed !== false).length
 
     const baseData = {
-      uid: user.uid,
+      uid: myUid,
       friendCode: (friendCode || getOrCreateFriendCode()).toUpperCase().trim(),
+      accountSecret: getAccountSecret(),
+      deviceAnchorId: currentDeviceAnchorId || null,
       username: settings.username || 'Eclipse Player',
       avatarUrl: settings.avatarUrl || '',
       bannerUrl: settings.bannerUrl || null,
@@ -336,15 +545,22 @@ function ensurePresenceDecayTimer() {
     let changed = false
 
     const updated = currentFriends.map((friend) => {
-      // Only decay cloud friends with lastSeen timestamp (after 5 minutes of no heartbeat)
-      if (friend.lastSeen && friend.status !== 'offline') {
-        if (now - friend.lastSeen >= 300000) {
-          changed = true
-          return {
-            ...friend,
-            status: 'offline' as const,
-            currentGame: undefined,
-          }
+      // If a friend has no lastSeen or lastSeen is older than 60 seconds, they are OFFLINE
+      const isStale = !friend.lastSeen || (now - friend.lastSeen >= PRESENCE_TTL_MS)
+      if (isStale && friend.status !== 'offline') {
+        changed = true
+        return {
+          ...friend,
+          status: 'offline' as const,
+          currentGame: undefined,
+        }
+      }
+      // Invariant: An offline friend must NEVER show a currentGame
+      if (friend.status === 'offline' && friend.currentGame) {
+        changed = true
+        return {
+          ...friend,
+          currentGame: undefined,
         }
       }
       return friend
@@ -353,7 +569,7 @@ function ensurePresenceDecayTimer() {
     if (changed) {
       useGameStore.getState().updateSettings({ eclipseFriends: updated })
     }
-  }, 15000)
+  }, 5000)
 }
 
 /**
@@ -388,21 +604,27 @@ function listenToFriendsPresence(friendUids: string[]) {
       if (u.lastSeen) {
         if (typeof u.lastSeen === 'number') lastSeenMs = u.lastSeen
         else if (typeof u.lastSeen?.toMillis === 'function') lastSeenMs = u.lastSeen.toMillis()
+        else if (typeof u.lastSeen?.toDate === 'function') lastSeenMs = u.lastSeen.toDate().getTime()
         else if (typeof u.lastSeen?.seconds === 'number') lastSeenMs = u.lastSeen.seconds * 1000
       }
 
-      // Active if last seen within 5 minutes or explicitly in-game / online
-      const isRecentlyActive = lastSeenMs ? (now - lastSeenMs < 300000) : (u.status && u.status !== 'offline')
+      // Active IF AND ONLY IF lastSeen timestamp exists and is younger than 60 seconds
+      const isRecentlyActive = Boolean(lastSeenMs && (now - lastSeenMs < PRESENCE_TTL_MS))
       let status: 'online' | 'offline' | 'ingame' = 'offline'
       let currentGame: string | undefined = undefined
 
       if (isRecentlyActive && u.status && u.status !== 'offline') {
-        if (u.status === 'ingame' && u.currentGame) {
+        if (u.status === 'ingame' && u.currentGame && typeof u.currentGame === 'string' && u.currentGame.trim().length > 0) {
           status = 'ingame'
-          currentGame = u.currentGame
+          currentGame = u.currentGame.trim()
         } else {
           status = 'online'
+          currentGame = undefined
         }
+      } else {
+        // Guaranteed offline: explicitly purge any game string
+        status = 'offline'
+        currentGame = undefined
       }
 
       const friendObj: EclipseFriend = {
@@ -481,7 +703,7 @@ function listenToFriendsPresence(friendUids: string[]) {
  * Performs an instant bilateral mutual connection in Firestore!
  */
 export async function addFriendByCode(code: string): Promise<{ success: boolean; friend?: EclipseFriend; message?: string; error?: string }> {
-  const currentUid = auth.currentUser?.uid
+  const currentUid = getCanonicalUid()
   if (!currentUid) {
     return { success: false, error: 'Firebase ist noch nicht verbunden. Bitte kurz warten.' }
   }
@@ -594,7 +816,7 @@ async function performBilateralAdd(myUid: string, targetUid: string, targetData:
  */
 export async function removeFirebaseFriend(friendId: string) {
   knownFriendIds.delete(friendId)
-  const currentUid = auth.currentUser?.uid
+  const currentUid = getCanonicalUid()
   if (currentUid) {
     try {
       const myRef = doc(db, 'users', currentUid)
@@ -622,7 +844,7 @@ export async function removeFirebaseFriend(friendId: string) {
  * Updates current user's live presence (online, ingame, or offline)
  */
 export async function updateFirebasePresence(status: 'online' | 'ingame' | 'offline', gameName?: string | null) {
-  const currentUid = auth.currentUser?.uid
+  const currentUid = getCanonicalUid()
   if (!currentUid) return
 
   try {
@@ -693,7 +915,7 @@ export async function sendFriendRequest(codeOrUid: string): Promise<{ success: b
  * Restores a removed friend bilaterally (for Undo actions)
  */
 export async function restoreFirebaseFriend(friend: EclipseFriend) {
-  const currentUid = auth.currentUser?.uid
+  const currentUid = getCanonicalUid()
   if (currentUid && friend?.id) {
     try {
       const myRef = doc(db, 'users', currentUid)
@@ -733,6 +955,152 @@ export async function acceptFriendRequest(fromUid: string): Promise<{ success: b
  */
 export async function declineFriendRequest(fromUid: string): Promise<{ success: boolean; error?: string }> {
   return { success: true }
+}
+
+/**
+ * Restores an account on any machine using its Recovery Key / Secret or Friend Code.
+ */
+export async function restoreAccountBySecret(secretOrCode: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  const cleanInput = secretOrCode.trim()
+  if (!cleanInput) {
+    return { success: false, error: 'Bitte gib einen Wiederherstellungs-Schlüssel oder Freundes-Code ein.' }
+  }
+
+  try {
+    let targetDoc: any = null
+
+    // 1. Search by accountSecret in users collection
+    let q = query(collection(db, 'users'), where('accountSecret', '==', cleanInput))
+    let snap = await getDocs(q)
+    if (!snap.empty) {
+      targetDoc = snap.docs[0]
+    }
+
+    // 2. Search by friendCode if not found
+    if (!targetDoc) {
+      const codeUpper = cleanInput.toUpperCase()
+      const searchCode = codeUpper.startsWith('ECL-') ? codeUpper : `ECL-${codeUpper}`
+      q = query(collection(db, 'users'), where('friendCode', '==', searchCode))
+      snap = await getDocs(q)
+      if (!snap.empty) {
+        targetDoc = snap.docs[0]
+      }
+    }
+
+    // 3. Search device_identities by accountSecret
+    if (!targetDoc) {
+      q = query(collection(db, 'device_identities'), where('accountSecret', '==', cleanInput))
+      snap = await getDocs(q)
+      if (!snap.empty) {
+        const idData = snap.docs[0].data()
+        if (idData.canonicalUid) {
+          const uDoc = await getDoc(doc(db, 'users', idData.canonicalUid))
+          if (uDoc.exists()) {
+            targetDoc = uDoc
+          }
+        }
+      }
+    }
+
+    if (!targetDoc) {
+      return { success: false, error: 'Kein Account mit diesem Wiederherstellungs-Schlüssel oder Code gefunden.' }
+    }
+
+    const data = targetDoc.data()
+    const recoveredUid = data.uid || targetDoc.id
+    const recoveredFriendCode = data.friendCode
+    const recoveredSecret = data.accountSecret || cleanInput
+
+    canonicalUid = recoveredUid
+    canonicalFriendCode = recoveredFriendCode
+    canonicalAccountSecret = recoveredSecret
+
+    // Update Zustand Store
+    useGameStore.getState().updateSettings({
+      userUid: recoveredUid,
+      friendCode: recoveredFriendCode,
+      accountSecret: recoveredSecret,
+      username: data.username || useGameStore.getState().settings.username,
+      avatarUrl: data.avatarUrl || useGameStore.getState().settings.avatarUrl,
+      bio: data.bio || useGameStore.getState().settings.bio,
+    })
+
+    // Save to Electron settings
+    if (typeof window !== 'undefined' && window.electronAPI?.setSettings) {
+      window.electronAPI.setSettings({
+        userUid: recoveredUid,
+        friendCode: recoveredFriendCode,
+        accountSecret: recoveredSecret,
+        username: data.username,
+        avatarUrl: data.avatarUrl,
+      })
+    }
+
+    // Save to Tier 1 and Tier 2
+    if (typeof window !== 'undefined' && window.electronAPI?.account?.saveIdentity) {
+      await window.electronAPI.account.saveIdentity({
+        canonicalUid: recoveredUid,
+        friendCode: recoveredFriendCode,
+        accountSecret: recoveredSecret,
+        deviceAnchorId: currentDeviceAnchorId,
+        username: data.username,
+      })
+    }
+
+    // Update Tier 3
+    if (currentDeviceAnchorId) {
+      await setDoc(doc(db, 'device_identities', currentDeviceAnchorId), {
+        deviceAnchorId: currentDeviceAnchorId,
+        canonicalUid: recoveredUid,
+        friendCode: recoveredFriendCode,
+        accountSecret: recoveredSecret,
+        username: data.username,
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+    }
+
+    // Reconnect listener to the restored account
+    listenToMyUserDoc(recoveredUid)
+    await syncMyProfile()
+
+    return {
+      success: true,
+      message: `Account "${data.username || 'Eclipse Player'}" (${recoveredFriendCode}) erfolgreich wiederhergestellt!`
+    }
+  } catch (err: any) {
+    console.error('[AccountPersistence] restoreAccountBySecret error:', err)
+    return { success: false, error: err.message || 'Fehler bei der Account-Wiederherstellung.' }
+  }
+}
+
+/**
+ * Returns account recovery and backup metadata
+ */
+export async function getAccountBackupInfo(): Promise<{
+  canonicalUid: string
+  friendCode: string
+  accountSecret: string
+  deviceAnchorId: string
+  isProtected: boolean
+}> {
+  const uid = getCanonicalUid()
+  const code = canonicalFriendCode || useGameStore.getState().settings.friendCode || ''
+  const secret = getAccountSecret()
+  let anchor = currentDeviceAnchorId
+  if (!anchor && typeof window !== 'undefined' && window.electronAPI?.account?.getDeviceAnchor) {
+    try {
+      anchor = await window.electronAPI.account.getDeviceAnchor()
+      currentDeviceAnchorId = anchor
+    } catch (_) {}
+  }
+
+  return {
+    canonicalUid: uid,
+    friendCode: code,
+    accountSecret: secret,
+    deviceAnchorId: anchor,
+    isProtected: Boolean(uid && code),
+  }
 }
 
 

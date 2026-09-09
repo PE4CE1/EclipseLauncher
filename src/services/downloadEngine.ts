@@ -15,22 +15,21 @@ function normalizeString(str: string): string {
 
 // Caching structure
 let lastSourcesRef: any = null;
-let downloadGiantStringBySource: Record<string, string> = {};
+let sourceTitlesByName: Record<string, string[]> = {};
 let gameSourceCache = new Map<string, Record<string, boolean>>();
 
 function ensureIndex() {
   const sources = useSourceStore.getState().sources;
   if (lastSourcesRef === sources) return;
   
-  downloadGiantStringBySource = {};
+  sourceTitlesByName = {};
   gameSourceCache.clear();
   
   for (const source of sources) {
     if (!source.data || source.data.length === 0) continue;
-    downloadGiantStringBySource[source.name] = source.data
+    sourceTitlesByName[source.name] = source.data
       .map(dl => dl.title ? normalizeString(dl.title) : '')
-      .filter(Boolean)
-      .join('|||');
+      .filter(Boolean);
   }
   lastSourcesRef = sources;
 }
@@ -54,13 +53,13 @@ export function hasGameInSource(gameName: string, sourceName: string): boolean {
     return gameCache[sourceName];
   }
   
-  const giantString = downloadGiantStringBySource[sourceName];
-  if (!giantString) {
+  const titles = sourceTitlesByName[sourceName];
+  if (!titles || titles.length === 0) {
     gameCache[sourceName] = false;
     return false;
   }
   
-  const isMatch = giantString.includes(normalizedGameName);
+  const isMatch = titles.some(t => t.includes(normalizedGameName));
   gameCache[sourceName] = isMatch;
   return isMatch;
 }

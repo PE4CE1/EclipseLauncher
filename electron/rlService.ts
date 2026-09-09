@@ -561,6 +561,7 @@ export function stopRLService() {
     try { logWatcher.close() } catch { /* skip */ }
     logWatcher = null
   }
+  destroyRLScraper()
 }
 
 export function setRLPlaylist(playlist: RLPlaylist) {

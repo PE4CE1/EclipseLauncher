@@ -73,6 +73,56 @@ export function addPlaytimeRecord(gameIdOrName: string, name: string, minutes: n
     db[`steam_${steamId}`] = existing
   }
 
+  // Preserve explicit Roblox experience place keys for fast lookup
+  if (gameIdOrName && (gameIdOrName.startsWith('roblox_exp_') || gameIdOrName.startsWith('roblox_'))) {
+    db[gameIdOrName] = existing
+    const cleanId = gameIdOrName.replace(/^roblox_exp_|^roblox_/, '')
+    if (cleanId) {
+      db[`roblox_exp_${cleanId}`] = existing
+    }
+  }
+
+  savePlaytimeDb(db)
+  return db
+}
+
+export function setPlaytimeRecord(gameIdOrName: string, name: string, minutes: number, steamId?: number, lastPlayed?: number): PlaytimeDatabase {
+  const db = loadPlaytimeDb()
+  const cleanName = name || gameIdOrName
+  const normKey = normalize(cleanName)
+  
+  if (!normKey) return db
+
+  const existing = db[normKey] || {
+    name: cleanName,
+    playTimeMinutes: 0,
+    lastPlayed: lastPlayed || Date.now(),
+    steamId
+  }
+
+  existing.playTimeMinutes = Math.max(0, Math.round(minutes))
+  if (lastPlayed) {
+    existing.lastPlayed = lastPlayed
+  } else {
+    existing.lastPlayed = Date.now()
+  }
+  if (cleanName) existing.name = cleanName
+  if (steamId) existing.steamId = steamId
+
+  db[normKey] = existing
+  if (steamId) {
+    db[`steam_${steamId}`] = existing
+  }
+
+  // Preserve explicit Roblox experience place keys for fast lookup
+  if (gameIdOrName && (gameIdOrName.startsWith('roblox_exp_') || gameIdOrName.startsWith('roblox_'))) {
+    db[gameIdOrName] = existing
+    const cleanId = gameIdOrName.replace(/^roblox_exp_|^roblox_/, '')
+    if (cleanId) {
+      db[`roblox_exp_${cleanId}`] = existing
+    }
+  }
+
   savePlaytimeDb(db)
   return db
 }

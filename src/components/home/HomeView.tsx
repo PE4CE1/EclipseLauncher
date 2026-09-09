@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { HeroSection } from './HeroSection'
 import { GameCarousel } from './GameCarousel'
 import {
@@ -7,6 +7,7 @@ import {
   useNewReleases,
   useFeaturedGames,
   useSpecialOffers,
+  CURATED_HERO_GAMES,
 } from '../../hooks/useGames'
 import { useUIStore } from '../../store/uiStore'
 import { useTranslation } from '../../hooks/useTranslation'
@@ -21,13 +22,15 @@ export function HomeView() {
   const newReleases = useNewReleases()
   const specials = useSpecialOffers()
 
-  const heroGames = (featured.data && featured.data.length > 0)
-    ? featured.data
-    : (popular.data ?? []).slice(0, 15)
+  const heroGames = useMemo(() => {
+    if (featured.data && featured.data.length > 0) return featured.data
+    if (popular.data && popular.data.length > 0) return popular.data.slice(0, 15)
+    return CURATED_HERO_GAMES
+  }, [featured.data, popular.data])
 
   useEffect(() => {
     if (heroGames.length > 0) setFeaturedGame(heroGames[0])
-  }, [featured.data, popular.data])
+  }, [heroGames])
 
   return (
     <div className="h-full overflow-y-auto overflow-x-hidden bg-[#040405]">

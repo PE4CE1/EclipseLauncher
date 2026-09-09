@@ -9,9 +9,10 @@ import { startRLService, stopRLService } from './rlService'
 import { addPlaytimeRecord } from './playtimeService'
 import { setActiveGameMetrics } from './metricsService'
 import { startGameFpsMonitor, stopGameFpsMonitor } from './gameFpsService'
-import { startRobloxTracker, stopRobloxTracker } from './robloxService'
+import { startRobloxTracker, stopRobloxTracker, flushRobloxExperiencePlaytime } from './robloxService'
 import { onGameStartedAutoClip, onGameStoppedAutoClip } from './autoClipService'
 import { startRobloxAntiAfk, stopRobloxAntiAfk } from './robloxAntiAfkService'
+import { trimMemoryNow } from './memoryOptimizerService'
 
 interface ActiveDetectedGame {
   name: string
@@ -23,8 +24,12 @@ interface ActiveDetectedGame {
 let cachedSettings: any = null
 let lastSettingsRead = 0
 let robloxTrackerActive = false
+let lastActiveRobloxExperience: any = null
 
 function updateRobloxDiscordActivity(exp: any) {
+  if (exp && exp.placeId) {
+    lastActiveRobloxExperience = exp
+  }
   if (!currentGame || currentGame.name !== 'Roblox') return
   const currentSettings = getAppSettings()
   if (!currentSettings.discordEnabled) return
@@ -525,6 +530,13 @@ export function isAnyGameRunning(): boolean {
   return currentGame !== null
 }
 
+export function isRobloxRunning(): boolean {
+  if (currentGame && (currentGame.name.toLowerCase() === 'roblox' || currentGame.exeName.toLowerCase().includes('roblox'))) {
+    return true
+  }
+  return false
+}
+
 export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
   if (monitorInterval) return
 
@@ -677,6 +689,9 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
             } catch (_) {}
           }
 
+          // Trim launcher RAM immediately so max system memory is free for the game
+          trimMemoryNow()
+
           // Start Smart Auto-Clipping event watcher for detected game
           onGameStartedAutoClip(detectedName, appSettings)
 
@@ -797,6 +812,19 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
             const elapsedMins = Math.max(1, Math.round((Date.now() - (currentGame.startTime || Date.now())) / 60000))
             const isRoblox = currentGame.name.toLowerCase() === 'roblox'
             addPlaytimeRecord(isRoblox ? 'roblox' : currentGame.name, currentGame.name, elapsedMins, isRoblox ? 999001 : undefined)
+            if (isRoblox) {
+              try {
+                flushRobloxExperiencePlaytime()
+              } catch (_) {}
+              if (lastActiveRobloxExperience?.placeId) {
+                addPlaytimeRecord(
+                  `roblox_exp_${lastActiveRobloxExperience.placeId}`,
+                  lastActiveRobloxExperience.name || 'Roblox Experience',
+                  elapsedMins
+                )
+              }
+              mainWindow?.webContents.send('roblox:playtime-updated')
+            }
           } catch (e) {
             console.error('[ProcessMonitor] Failed to record playtime on stop:', e)
           }
@@ -812,6 +840,7 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
             robloxTrackerActive = false
             stopRobloxTracker(updateRobloxDiscordActivity)
           }
+          lastActiveRobloxExperience = null
           stopRobloxAntiAfk()
 
           // Deactivate AutoClip
@@ -830,6 +859,9 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
           setActiveGameMetrics(null)
           stopGameFpsMonitor()
           mainWindow?.webContents.send('games:stopped')
+
+          // Trim memory after game stops and overlay/trackers are cleared
+          trimMemoryNow()
         }
 
         // Show overlay on desktop if Always Show is on, or if Controller overlay is enabled in normal (non-stream-only) mode

@@ -344,7 +344,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = fal
 
 const FriendCard = ({ friend, onClick, onRemove, t, language }: { friend: any, onClick: () => void, onRemove: () => void, t: any, language: string }) => {
   const isOnline = friend.status !== 'offline';
-  const isIngame = friend.status === 'ingame';
+  const isIngame = isOnline && friend.status === 'ingame' && Boolean(friend.currentGame);
   const dotClass = isIngame 
     ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]' 
     : isOnline 

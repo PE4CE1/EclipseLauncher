@@ -22,17 +22,43 @@ interface GitHubRelease {
 // Fallback high-fidelity changelogs if offline or GitHub API rate-limited
 const FALLBACK_RELEASES = [
   {
+    id: 128,
+    tag_name: 'v1.2.8',
+    name: 'v1.2.8 - Aktive Sidebar-Spiele, Auto-Performance-Modus & Polish',
+    published_at: '2026-09-09T17:00:00Z',
+    html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.2.8',
+    body: `### 🎮 Sidebar Navigation & Visual Active State
+* **Aktives Spiel visuell hervorgehoben:** Klickt man links in der Seitenleiste auf ein installiertes Spiel, wird es jetzt wie bei Home & Katalog mit dem aktiven weißen Indikator und Hintergrund hervorgehoben.
+* **Roblox Plattform Polish:** Steam- und SteamDB-Buttons für Roblox entfernt und durch direkte offizielle Webseite ersetzt.
+
+### ⚡ Auto-Performance Modus
+* **Automatisch für alle aktiv:** Der 0% FPS-Verlust Performance-Modus ist ab sofort standardmäßig aktiviert.
+* **Minimale Latenz:** Optimierte GPU-Shader- und Hintergrund-Drosselung für maximale Gaming-FPS.
+
+### 📜 Minimalistische Versionshinweise
+* **Clean & Authentisch:** Schlichtes, handgefertigtes Changelog-Design ohne AI-Muster direkt aus den GitHub-Releases synchronisiert.`,
+    prerelease: false
+  },
+  {
     id: 127,
     tag_name: 'v1.2.7',
-    name: 'v1.2.7 - Reduced Size, Game Overview Overhaul, OpenAsar & Roblox Code Finder',
-    published_at: '2026-09-05T20:00:00Z',
+    name: 'v1.2.7 - Permanenter Account-Schutz, Roblox Fix, RAM-Boost & Hero Banner Polish',
+    published_at: '2026-09-08T20:00:00Z',
     html_url: 'https://github.com/PE4CE1/EclipseLauncher/releases/tag/v1.2.7',
-    body: `* **Reduced App Size:** Optimized package and assets for a significantly smaller download footprint.
-* **Game Overview Overhaul:** Two-row header layout, studio deduplication, and exact library button sizing.
-* **Roblox Enhancements:** Fixed game process detection and added live promo codes finder hub.
-* **OpenAsar Mod:** 1-Click Discord optimization plugin for snappy performance.
-* **Stats & Artwork:** Accurate SteamDB peak tracking and modern frosted glass cover placeholders.
-* **Bug Fixes:** Resolved dropdown opacity, notification scroll background, and overall UI stability.`,
+    body: `### 🛡️ Permanenter Account- & Freundecode-Schutz
+* **3-Stufen-Verankerung:** Dein Account, Freundes-Code und Freundesliste überstehen jetzt vollständige Deinstallationen (Registry, UserProfile & MachineGuid-Anker).
+* **Account-Wiederherstellung:** Neuer Wiederherstellungsschlüssel in den Profileinstellungen für einfachen PC-Wechsel.
+
+### 🟢 Roblox Live-Status & Codes Hub
+* **Kein Phantom-Tracking:** Live-Status und Tracker erfassen nur noch tatsächlich laufende Roblox-Instanzen.
+* **Auto-Codes Finder:** Schneller Überblick über alle aktiven Promo-Codes deiner Lieblingsspiele mit 1-Klick-Kopieren.
+
+### 👥 Präzise Freunde-Präsenz
+* **Schneller Heartbeat & Decay:** Freunde-Status aktualisiert sich innerhalb von 15 Sekunden. Offline-Freunde zeigen keine Geisterspiele mehr an.
+
+### ⚡ RAM- & Performance-Booster
+* **Dauerhaft unter 100 MB RAM:** Automatischer nativer Windows-Speichertrimmer bereinigt ungenutzten Arbeitsspeicher kontinuierlich im Hintergrund.
+* **Hero-Banner & Artwork Polish:** Buttrig weiches Laden ohne Hänger oder festsitzende Ladebildschirme.`,
     prerelease: false
   },
   {

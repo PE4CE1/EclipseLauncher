@@ -4,7 +4,8 @@ import {
   User, RefreshCw, Zap, Save, Shield, ShieldCheck,
   Settings as SettingsIcon, Download, Bell, Gamepad2, 
   Link, Monitor, Check, Plus, Trash, Loader2, Folder, Volume2,
-  Paintbrush, ExternalLink, Trash2, Power, RotateCcw, Film, HardDrive, Puzzle
+  Paintbrush, ExternalLink, Trash2, Power, RotateCcw, Film, HardDrive, Puzzle,
+  Key, Copy, Eye, EyeOff
 } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
@@ -17,6 +18,7 @@ import { ClipSettingsPanel } from '../clips/ClipSettingsPanel'
 import { StorageManagerView } from '../storage/StorageManagerView'
 import { PluginsSettingsTab } from './PluginsSettingsTab'
 import { fetchSteamUserProfile } from '../../services/steamService'
+import { restoreAccountBySecret } from '../../services/firebaseService'
 import { sendAppNotification } from '../../services/notificationService'
 import { playNotificationChime, playNotificationSound, getSoundPresets } from '../../services/soundService'
 
@@ -45,6 +47,9 @@ export function SettingsView() {
   const [newSourceUrl, setNewSourceUrl] = useState('')
   const [showAddSource, setShowAddSource] = useState(false)
   const [isCleaningRam, setIsCleaningRam] = useState(false)
+  const [showSecretKey, setShowSecretKey] = useState(false)
+  const [restoreInput, setRestoreInput] = useState('')
+  const [isRestoring, setIsRestoring] = useState(false)
 
   // VPN State
   const [detectedVpns, setDetectedVpns] = useState<Array<{ id: string; name: string; isRunning: boolean; isConnected: boolean }>>([])
@@ -1377,6 +1382,136 @@ export function SettingsView() {
                         if (window.electronAPI) window.electronAPI.setSettings({ profileShowSteamStats: val })
                       }}
                     />
+                  </div>
+
+                  {/* Account Protection & Permanent Retention Card */}
+                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-5 space-y-4 relative overflow-hidden">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <ShieldCheck size={18} className="text-emerald-400" />
+                          <h3 className="font-semibold text-white text-sm">
+                            {language === 'de' ? 'Account-Schutz & Permanente Identität' : 'Account Protection & Permanent Identity'}
+                          </h3>
+                          <span className="text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/20 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            {language === 'de' ? 'Deinstallations-geschützt' : 'Uninstall-Protected'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-hub-muted leading-relaxed max-w-xl">
+                          {language === 'de' 
+                            ? 'Dein Account, Freundes-Code und deine Freundesliste sind hardware-gebunden und 3-fach gesichert (Windows Registry, UserProfile & Cloud-Hardware-Anker). Selbst wenn du Eclipse Launcher komplett deinstallierst und neu installierst, wird dein Profil auf diesem PC automatisch wiederhergestellt!'
+                            : 'Your account, friend code, and friends list are hardware-anchored and 3-tier backed up (Windows Registry, UserProfile & Cloud Hardware Anchor). Even if you completely uninstall and reinstall Eclipse Launcher, your profile is automatically restored on this PC!'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Display Friend Code & Secret Key */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                      <div className="bg-[#16181c] border border-white/[0.08] rounded-lg p-3">
+                        <span className="text-[10px] uppercase font-semibold text-white/40 tracking-wider block mb-1">
+                          {language === 'de' ? 'Dein Freundes-Code' : 'Your Friend Code'}
+                        </span>
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-sm font-bold text-white tracking-wider">
+                            {localSettings.friendCode || 'ECL-XXXXX'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (localSettings.friendCode) {
+                                navigator.clipboard.writeText(localSettings.friendCode)
+                                showNotification(language === 'de' ? 'Freundes-Code kopiert!' : 'Friend Code copied!', 'success')
+                              }
+                            }}
+                            className="p-1.5 hover:bg-white/10 text-white/60 hover:text-white rounded transition-colors"
+                            title="Kopieren"
+                          >
+                            <Copy size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="bg-[#16181c] border border-white/[0.08] rounded-lg p-3">
+                        <span className="text-[10px] uppercase font-semibold text-white/40 tracking-wider block mb-1">
+                          {language === 'de' ? 'Wiederherstellungs-Schlüssel (PC-Wechsel)' : 'Recovery Key (PC Switch)'}
+                        </span>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-xs font-semibold text-white/80 truncate">
+                            {showSecretKey ? (localSettings.accountSecret || 'ECL-SEC-...') : '••••••••••••••••••••••••'}
+                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setShowSecretKey(!showSecretKey)}
+                              className="p-1.5 hover:bg-white/10 text-white/60 hover:text-white rounded transition-colors"
+                              title={showSecretKey ? 'Verstecken' : 'Anzeigen'}
+                            >
+                              {showSecretKey ? <EyeOff size={13} /> : <Eye size={13} />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const sec = localSettings.accountSecret
+                                if (sec) {
+                                  navigator.clipboard.writeText(sec)
+                                  showNotification(language === 'de' ? 'Wiederherstellungs-Schlüssel kopiert!' : 'Recovery Key copied!', 'success')
+                                }
+                              }}
+                              className="p-1.5 hover:bg-white/10 text-white/60 hover:text-white rounded transition-colors"
+                              title="Kopieren"
+                            >
+                              <Copy size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Manual Restore Option */}
+                    <div className="pt-3 border-t border-white/[0.06]">
+                      <label className="block text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-2">
+                        {language === 'de' ? 'Account von anderem PC wiederherstellen' : 'Restore Account from another PC'}
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder={language === 'de' ? 'Wiederherstellungs-Schlüssel (z. B. ECL-SEC-...) oder Freundes-Code' : 'Recovery Key (e.g. ECL-SEC-...) or Friend Code'}
+                          value={restoreInput}
+                          onChange={e => setRestoreInput(e.target.value)}
+                          className="flex-1 bg-[#16181c] border border-white/10 rounded-lg py-2 px-4 text-xs text-white focus:outline-none focus:border-white/30 font-mono"
+                        />
+                        <button
+                          type="button"
+                          disabled={isRestoring || !restoreInput.trim()}
+                          onClick={async () => {
+                            if (!restoreInput.trim()) return
+                            setIsRestoring(true)
+                            try {
+                              const res = await restoreAccountBySecret(restoreInput.trim())
+                              if (res.success) {
+                                showNotification(res.message || 'Account erfolgreich wiederhergestellt!', 'success')
+                                setRestoreInput('')
+                              } else {
+                                showNotification(res.error || 'Wiederherstellung fehlgeschlagen.', 'error')
+                              }
+                            } catch (e: any) {
+                              showNotification(e.message || 'Fehler bei der Wiederherstellung', 'error')
+                            } finally {
+                              setIsRestoring(false)
+                            }
+                          }}
+                          className={`px-4 py-2 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 whitespace-nowrap shadow-sm hover:scale-[1.01] ${
+                            isRestoring || !restoreInput.trim() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                          }`}
+                        >
+                          {isRestoring ? <Loader2 size={13} className="animate-spin text-black" /> : <Key size={13} className="text-black" />}
+                          {isRestoring 
+                            ? (language === 'de' ? 'Stelle wieder her...' : 'Restoring...') 
+                            : (language === 'de' ? 'Account wiederherstellen' : 'Restore Account')}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </section>

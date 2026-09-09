@@ -98,6 +98,15 @@ export interface RobloxExperience {
   creatorName?: string
 }
 
+export interface RobloxTrackedExperience {
+  placeId: string
+  universeId?: string
+  name: string
+  minutes: number
+  lastPlayed: number
+  iconUrl?: string
+}
+
 export interface RobloxCodeItem {
   code: string
   reward: string
@@ -445,6 +454,7 @@ export interface AppSettings {
   }>
   friendCode?: string
   userUid?: string
+  accountSecret?: string
   socialApiUrl?: string
   profileShowPlaytime?: boolean
   profileShowSteamStats?: boolean
@@ -678,7 +688,10 @@ export interface ElectronAPI {
     getActiveExperience: () => Promise<RobloxExperience | null>
     getCodes: (gameName: string, placeId?: string, universeId?: string, forceRefresh?: boolean) => Promise<RobloxGameCodesResult>
     refreshExperience: () => Promise<RobloxExperience | null>
+    getExperiencePlaytime?: () => Promise<RobloxTrackedExperience[]>
+    syncPlaytime?: () => Promise<RobloxTrackedExperience[]>
     onExperienceChange: (callback: (exp: RobloxExperience | null) => void) => () => void
+    onPlaytimeUpdated?: (callback: () => void) => () => void
   }
 
   // Controller battery status
@@ -686,6 +699,22 @@ export interface ElectronAPI {
 
   // Performance & System Boost
   setMediaPerformanceMode?: (isPerf: boolean) => Promise<{ success: boolean }>
+  onMemoryTrim?: (callback: () => void) => () => void
+
+  // Persistent Account & Machine Anchoring
+  account?: {
+    getIdentity: () => Promise<{
+      canonicalUid: string
+      friendCode: string
+      accountSecret: string
+      deviceAnchorId: string
+      username?: string
+      createdAt: number
+      lastUpdated: number
+    } | null>
+    saveIdentity: (data: any) => Promise<any>
+    getDeviceAnchor: () => Promise<string>
+  }
 }
 
 declare global {

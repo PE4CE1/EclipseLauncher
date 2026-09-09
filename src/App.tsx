@@ -19,6 +19,8 @@ import { Notification } from './components/shared/Notification'
 import { FriendsWindow } from './components/friends/FriendsWindow'
 import { AddFriendModal } from './components/friends/AddFriendModal'
 import { SplashView } from './components/splash/SplashView'
+import { ChangelogModal } from './components/eclipse/ChangelogModal'
+import { APP_VERSION } from './services/updateService'
 import { useUIStore } from './store/uiStore'
 import { useGameStore } from './store/gameStore'
 import { useDownloadStore } from './store/downloadStore'
@@ -72,6 +74,20 @@ export default function App() {
       }).catch(() => {})
     }
 
+    // Pre-restore persistent account identity from Registry/UserProfile (Tier 1 & 2)
+    if (window.electronAPI?.account?.getIdentity) {
+      window.electronAPI.account.getIdentity().then((identity) => {
+        if (identity?.canonicalUid && identity?.friendCode) {
+          useGameStore.getState().updateSettings({
+            userUid: identity.canonicalUid,
+            friendCode: identity.friendCode,
+            accountSecret: identity.accountSecret,
+            username: identity.username || useGameStore.getState().settings.username,
+          })
+        }
+      }).catch(() => {})
+    }
+
     // Load Electron persisted settings and merge into Zustand store.
     // This ensures userUid and friendCode survive across app restarts.
     if (window.electronAPI?.getSettings) {
@@ -80,8 +96,9 @@ export default function App() {
         const current = useGameStore.getState().settings
         const patch: Record<string, any> = {}
         // Prefer Electron-saved userUid/friendCode over localStorage defaults
-        if (saved.userUid && !current.userUid) patch.userUid = saved.userUid
-        if (saved.friendCode && (!current.friendCode || current.friendCode === 'AK25EF0B')) patch.friendCode = saved.friendCode
+        if (saved.userUid) patch.userUid = saved.userUid
+        if (saved.friendCode && (saved.friendCode.startsWith('ECL-') || !current.friendCode)) patch.friendCode = saved.friendCode
+        if (saved.accountSecret) patch.accountSecret = saved.accountSecret
         if (saved.username && (current.username === 'User' || !current.username)) patch.username = saved.username
         if (saved.avatarUrl && !current.avatarUrl) patch.avatarUrl = saved.avatarUrl
         if (saved.steamProfileUrl && !current.steamProfileUrl) patch.steamProfileUrl = saved.steamProfileUrl
@@ -102,12 +119,14 @@ export default function App() {
         if (useGameStore.getState().settings.gamePerformanceMode !== false) {
           document.body.classList.add('game-performance-mode')
         }
+        updateSocialPresence('ingame', data.name).catch(() => {})
       }
     })
 
     const unsubStop = window.electronAPI?.onGameStopped?.(() => {
       useGameStore.getState().stopPlaySession()
       document.body.classList.remove('game-performance-mode')
+      updateSocialPresence('online', null).catch(() => {})
     })
 
     const unsubMin = window.electronAPI?.onAppMinimized?.(() => {
@@ -452,11 +471,11 @@ export default function App() {
     }
   }, [activeGame, downloads, discordRpcEnabled, discordRpcIdleEnabled, discordRpcShowDownloads, discordRpcPrivacyMode, discordActivityStyle, settings.discordRpcRobloxSubGame, settings.discordRpcAnimatedText])
 
-  // Live Cloud Presence Heartbeat (Every 20s) & on activeGame change
+  // Live Cloud Presence Heartbeat (Every 15s) & on activeGame change
   useEffect(() => {
     const pushPresence = () => {
       const currentActive = useGameStore.getState().activeGame
-      if (currentActive) {
+      if (currentActive && currentActive.name) {
         updateSocialPresence('ingame', currentActive.name)
       } else {
         updateSocialPresence('online', null)
@@ -464,7 +483,7 @@ export default function App() {
     }
 
     pushPresence()
-    const heartbeat = setInterval(pushPresence, 20000)
+    const heartbeat = setInterval(pushPresence, 15000)
 
     return () => clearInterval(heartbeat)
   }, [activeGame])
@@ -519,9 +538,23 @@ export default function App() {
         {/* Cinematic Easter Egg Eclipse Animation */}
         <EclipseCinemaModal />
 
+        {/* Clean Version Update Changelog Modal (shown once after update/install) */}
+        <ChangelogModal />
+
         {/* Startup Splash Screen */}
         <AnimatePresence>
-          {showSplash && <SplashView onComplete={() => setShowSplash(false)} />}
+          {showSplash && (
+            <SplashView 
+              onComplete={() => {
+                setShowSplash(false)
+                // Show changelog once per version after install or update
+                const seenKey = `eclipse_changelog_seen_${APP_VERSION}`
+                if (!localStorage.getItem(seenKey)) {
+                  useUIStore.getState().setIsChangelogOpen(true)
+                }
+              }} 
+            />
+          )}
         </AnimatePresence>
       </div>
     </MotionConfig>

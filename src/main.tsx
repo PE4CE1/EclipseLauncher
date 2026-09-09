@@ -25,9 +25,24 @@ const queryClient = new QueryClient({
       retry: 2,
       refetchOnWindowFocus: false,
       staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 2,
     },
   },
 })
+
+// Listen for system memory trim events to flush inactive query caches and trigger renderer GC
+if (typeof window !== 'undefined' && window.electronAPI?.onMemoryTrim) {
+  window.electronAPI.onMemoryTrim(() => {
+    try {
+      queryClient.removeQueries({ type: 'inactive' })
+    } catch {}
+    try {
+      if (typeof window !== 'undefined' && (window as any).gc) {
+        (window as any).gc()
+      }
+    } catch {}
+  })
+}
 
 const isFriendsWindow = window.location.hash.includes('friends')
 

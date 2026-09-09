@@ -59,33 +59,6 @@ function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }
     if (id) openGameDetails(id, item.name)
   }
 
-  const primaryUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
-  const secondaryUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`
-  const fallbackUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
-
-  const [imgSrc, setImgSrc] = useState(primaryUrl)
-  const [hasError, setHasError] = useState(!appId)
-
-  // Update image source when appId changes (e.g. from cache bust)
-  useEffect(() => {
-    if (appId) {
-      setImgSrc(primaryUrl)
-      setHasError(false)
-    } else {
-      setHasError(true)
-    }
-  }, [appId, primaryUrl])
-
-  const handleImageError = () => {
-    if (imgSrc === primaryUrl) {
-      setImgSrc(secondaryUrl)
-    } else if (imgSrc === secondaryUrl) {
-      setImgSrc(fallbackUrl)
-    } else {
-      setHasError(true)
-    }
-  }
-
   return (
     <motion.div
       id={`cat-card-${item.id}`}
@@ -105,21 +78,13 @@ function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }
           transformStyle: 'preserve-3d',
         }}
       >
-        <div className="absolute inset-0 overflow-hidden rounded-xl bg-hub-elevated [transform:translateZ(0)]">
-          {!hasError ? (
-            <img
-              src={imgSrc}
-              onError={handleImageError}
-              alt={item.name}
-              loading="lazy"
-              decoding="async"
-              className="w-full h-full object-cover z-10 relative transition-transform duration-300 ease-out group-hover:scale-[1.03]"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 text-white font-bold p-4 text-center z-10 relative rounded-xl">
-              {item.name}
-            </div>
-          )}
+        <div className="absolute inset-0 overflow-hidden rounded-xl bg-[#090a0f] [transform:translateZ(0)]">
+          <SmartImage
+            appId={appId}
+            type="poster"
+            alt={item.name}
+            className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+          />
 
           {/* Subtle glass overlay */}
           <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.03] transition-colors duration-300 z-20 pointer-events-none opacity-0 group-hover:opacity-100" />
@@ -205,32 +170,6 @@ const DbGameCard = React.memo(function DbGameCard({ game, index }: { game: GameD
     if (id) openGameDetails(id, game.name)
   }
 
-  const primaryUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
-  const secondaryUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`
-  const fallbackUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
-
-  const [imgSrc, setImgSrc] = useState(primaryUrl)
-  const [hasError, setHasError] = useState(!appId)
-
-  useEffect(() => {
-    if (appId) {
-      setImgSrc(primaryUrl)
-      setHasError(false)
-    } else {
-      setHasError(true)
-    }
-  }, [appId, primaryUrl])
-
-  const handleImageError = () => {
-    if (imgSrc === primaryUrl) {
-      setImgSrc(secondaryUrl)
-    } else if (imgSrc === secondaryUrl) {
-      setImgSrc(fallbackUrl)
-    } else {
-      setHasError(true)
-    }
-  }
-
   return (
     <motion.div
       id={`cat-db-${appId}`}
@@ -250,21 +189,13 @@ const DbGameCard = React.memo(function DbGameCard({ game, index }: { game: GameD
           transformStyle: 'preserve-3d',
         }}
       >
-        <div className="absolute inset-0 overflow-hidden rounded-xl bg-hub-elevated [transform:translateZ(0)]">
-          {!hasError ? (
-            <img
-              src={imgSrc}
-              onError={handleImageError}
-              alt={game.name}
-              loading="lazy"
-              decoding="async"
-              className="w-full h-full object-cover z-10 relative transition-transform duration-300 ease-out group-hover:scale-[1.03]"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 text-white font-bold p-4 text-center z-10 relative rounded-xl">
-              {game.name}
-            </div>
-          )}
+        <div className="absolute inset-0 overflow-hidden rounded-xl bg-[#090a0f] [transform:translateZ(0)]">
+          <SmartImage
+            appId={appId}
+            type="poster"
+            alt={game.name}
+            className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+          />
           
           {game.ccu !== undefined && game.ccu > 0 && (
             <div className="absolute bottom-2 left-2 z-50 flex items-center gap-1.5 bg-black/80 border border-white/10 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-xl">

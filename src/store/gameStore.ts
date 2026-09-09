@@ -324,7 +324,7 @@ export const useGameStore = create<GameStore>()(
         discordRpcRobloxSubGame: true,
         discordRpcAnimatedText: false,
         hardwareAcceleration: true,
-        performanceMode: false,
+        performanceMode: true,
         overlayPerformance: false,
         overlayCrosshair: false,
         overlayGeneralAlwaysOn: true,
@@ -374,6 +374,12 @@ export const useGameStore = create<GameStore>()(
       onRehydrateStorage: () => (state) => {
         if (state && Array.isArray(state.library)) {
           state.library = deduplicateLibrary(state.library)
+        }
+        if (state && state.settings) {
+          if (!localStorage.getItem('eclipse_perf_default_v128')) {
+            state.settings.performanceMode = true
+            localStorage.setItem('eclipse_perf_default_v128', 'true')
+          }
         }
       },
     }
