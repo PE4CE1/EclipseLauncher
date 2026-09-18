@@ -1,5 +1,5 @@
 <img width="1919" height="1079" alt="Screenshot 2026-08-15 195927" src="https://github.com/user-attachments/assets/22fbea14-a9a9-468c-b147-5eb58d201dc9" />
-## 🌑 Eclipse Launcher
+ 🌑 Eclipse Launcher
 
 > A clean, fast, and unified launcher for all your PC games — built by gamers, for gamers.
 
