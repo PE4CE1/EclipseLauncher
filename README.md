@@ -5,7 +5,7 @@
 
 ---
 
-## 💡 Why Eclipse Launcher?
+##  Why Eclipse Launcher?
 
 If you play games on PC, you know the drill: opening five different launchers just to see what games you own, dealing with bloated interfaces, slow boot times, and store pages shoved in your face before you can even hit "Play".
 
@@ -15,25 +15,25 @@ It brings your entire game collection — from Steam, Epic, to standalone `.exe`
 
 ---
 
-## 🔥 Features at a Glance
+##  Features at a Glance
 
-### 🎮 Automated Game Detection
+###  Automated Game Detection
 - **Multi-Platform Scanner**: Automatically detects installed games from Steam and Epic Games, plus any custom `.exe` added manually.
 - **Smart Metadata Matching**: Dynamically fetches official logos, high-res hero banners, background screenshots, and video trailers directly from SteamDB & Steam Store APIs.
 
-### 💬 Custom Discord Rich Presence
+###  Custom Discord Rich Presence
 - Shows your friends what you're actually playing in real time.
 - Integrated **Idle State**: Automatically updates to *"Browsing Library"* when you're hanging out in the launcher menu.
 - **Direct Download Button**: Friends viewing your status on Discord can click a direct link to download Eclipse Launcher for themselves.
 
-### ⏱️ Playtime & Session Tracking
+###  Playtime & Session Tracking
 - Accurately measures played time per game and updates your personal total play duration.
 - Automatically handles background tracking — starts when a game opens and pauses the moment it closes.
 
-### 📥 Built-in Download Manager
+###  Built-in Download Manager
 - Integrated HTTP and WebTorrent download handlers for direct game files and updates without needing extra tools.
 
-### 🎨 Clean, Fast UI
+###  Clean, Fast UI
 - Dark glassmorphism aesthetic built with smooth micro-animations.
 - Fast startup and low memory footprint compared to traditional launchers.
 - Convenient navigation history with full support for mouse side-buttons (Back/Forward).
@@ -67,8 +67,9 @@ Because this is a solo project, your feedback matters a lot. If you find bugs, h
 
 ---
 
-## 🗺️ Roadmap & Future Plans
+##  Roadmap & Future Plans
 
+- Weekly updates
 - [ ] Custom community theme support
 - [ ] Direct cloud save backup integration
 - [✓] Game tagging and custom category filters
