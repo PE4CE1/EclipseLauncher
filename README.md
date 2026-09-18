@@ -62,7 +62,7 @@ Because this is a solo project, your feedback matters a lot. If you find bugs, h
 ## 📦 Download & Installation
 
 1. Go to the [Releases Page](https://github.com/PE4CE1/EclipseLauncher/releases).
-2. Download the latest installer (`Eclipse Launcher Setup 1.0.5.exe`).
+2. Download the latest installer.
 3. Run the installer and you're good to go!
 
 ---
