@@ -1,0 +1,9 @@
+# Clip notification and switches
+
+The clip confirmation follows the original rectangular notification: a strong accent stripe on the left, a 52 px solid-color film icon or thumbnail, a clear saved heading with a small duration badge, and the game title underneath. The 320 px dark card has subtle 4 px corners and a 2 px countdown line along its lower edge. The bottom offset above the taskbar and the inset from the right edge are preserved. Custom accent colors and German/English labels remain supported. A broken image falls back to the film icon, long titles truncate, and the card never takes focus or intercepts clicks.
+
+The original accent sweep is restored: it enters from the right, expands across the banner and contracts into the icon tile, then reverses on exit. Text and icon reveal after the sweep settles. The exit timer covers the full 560 ms sequence. Only transforms and opacity animate; the countdown uses scale instead of changing layout width. Reduced-motion preferences disable the animations. Both dismissal timers are cleared when the card is replaced or unmounted so an older notification cannot dismiss a newer one. The duplicated legacy toast CSS and per-render injected style block were removed.
+
+Clip-setting switches use a 38 × 22 px track and a 16 px thumb with explicit positioning. Both states have equal 3 px outer gaps and the thumb travels 16 px. The geometry no longer depends on padding that is overridden by the global switch reset. Keyboard, autosave, focus and disabled behavior are retained.
+
+Verification: production build/typecheck and the isolated gallery/settings Electron fixture. Actual rendered bounds are checked for both switch states; notification checks cover geometry, localization, custom colors, missing images, long text, replacement during exit, reduced motion and automatic dismissal. Evidence is in `tests/clip-controls-*.log` and `.cache/clip-gallery`.

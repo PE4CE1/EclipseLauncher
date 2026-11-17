@@ -2,14 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="preload" href="/fonts/Inter-Latin-Variable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="icon" type="image/png" href="/eclipselauncher.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' local-media: blob: data: https: http:; media-src 'self' local-media: blob: data: https: http:; img-src 'self' local-media: blob: data: https: http:; connect-src 'self' local-media: blob: data: https: http: ws: wss:; font-src 'self' data: https:;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https:; img-src 'self' local-media: blob: data: https: http:; media-src 'self' local-media: blob: https: http:; connect-src 'self' https: http: ws: wss:; font-src 'self' data: https:; worker-src 'self' blob:; frame-src 'self' eclipse-asset: https:; object-src 'none'; base-uri 'none'; form-action 'none';" />
     <meta name="description" content="Eclipse Launcher - Your Modern PC Game Launcher. Manage Steam, Epic Games, and custom titles in one beautiful app." />
     <title>Eclipse Launcher</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="preload" href="/fonts/Oxanium-Variable.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preconnect" href="https://shared.fastly.steamstatic.com" crossorigin />
   </head>
   <body>
     <div id="root"></div>

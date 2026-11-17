@@ -1,3 +1,4 @@
+import { ipcMain } from './ipcSecurity'
 /**
  * gamepadService.ts
  *
@@ -6,15 +7,49 @@
  * input in real-time (100Hz) even when Rocket League, Roblox, or any other game has OS focus.
  */
 
-import { spawn, ChildProcess, execSync } from 'child_process'
+import { spawn, ChildProcess, execFileSync } from 'child_process'
 import { BrowserWindow, app } from 'electron'
 import path from 'path'
 import fs from 'fs'
-import { getStreamWindow } from './streamManager'
 
 let xinputProc: ChildProcess | null = null
-let overlayWinRef: (() => BrowserWindow | null) | null = null
 let isRunning = false
+let ipcRegistered = false
+let restartTimer: NodeJS.Timeout | null = null
+const consumers = new Set<string>()
+const trackedRenderers = new WeakSet<Electron.WebContents>()
+
+export function initGamepadIPC() {
+  if (ipcRegistered) return
+  ipcRegistered = true
+  ipcMain.handle('gamepad:start-service', event => {
+    const owner = `renderer:${event.sender.id}`
+    if (!trackedRenderers.has(event.sender)) {
+      trackedRenderers.add(event.sender)
+      event.sender.once('destroyed', () => releaseGamepadService(owner))
+      event.sender.on('render-process-gone', () => releaseGamepadService(owner))
+      event.sender.on('did-start-navigation', details => {
+        if (details.isMainFrame && !details.isSameDocument) releaseGamepadService(owner)
+      })
+    }
+    acquireGamepadService(owner)
+    return true
+  })
+  ipcMain.handle('gamepad:stop-service', event => {
+    releaseGamepadService(`renderer:${event.sender.id}`)
+    return true
+  })
+}
+
+export function acquireGamepadService(owner: string, getOverlay?: () => BrowserWindow | null) {
+  consumers.add(owner)
+  startGamepadService(getOverlay)
+}
+
+export function releaseGamepadService(owner: string) {
+  consumers.delete(owner)
+  if (consumers.size === 0) stopGamepadService()
+}
 
 // ─── XInput button bitmask constants ─────────────────────────────────────────
 const BTN = {
@@ -49,7 +84,7 @@ function xInputToGamepadAPI(raw: any) {
     return { pressed, value: pressed ? 1.0 : 0.0 }
   }
 
-  // Standard Gamepad API button layout (0=A, 1=B, 2=X, 3=Y, 4=LB, 5=RB, 6=LT, 7=RT, 8=Back, 9=Start, 10=L3, 11=R3, 12=Up, 13=Down, 14=Left, 15=Right)
+  const isBack = ((bitmask & BTN.BACK) !== 0) || ((bitmask & 0x0800) !== 0)
   const buttons = [
     bit(BTN.A),              // 0  – A / Cross
     bit(BTN.B),              // 1  – B / Circle
@@ -57,9 +92,9 @@ function xInputToGamepadAPI(raw: any) {
     bit(BTN.Y),              // 3  – Y / Triangle
     bit(BTN.LEFT_SHOULDER),  // 4  – LB / L1
     bit(BTN.RIGHT_SHOULDER), // 5  – RB / R1
-    { pressed: lt > 30, value: lt / 255 },  // 6  – LT / L2 (analog)
-    { pressed: rt > 30, value: rt / 255 },  // 7  – RT / R2 (analog)
-    bit(BTN.BACK),           // 8  – Back / Select / Share
+    { pressed: lt > 20, value: lt / 255 },  // 6  – LT / L2 (analog)
+    { pressed: rt > 20, value: rt / 255 },  // 7  – RT / R2 (analog)
+    { pressed: isBack, value: isBack ? 1.0 : 0.0 }, // 8  – Back / Select / Share / Touchpad
     bit(BTN.START),          // 9  – Start / Options
     bit(BTN.LEFT_THUMB),     // 10 – L3
     bit(BTN.RIGHT_THUMB),    // 11 – R3
@@ -67,14 +102,16 @@ function xInputToGamepadAPI(raw: any) {
     bit(BTN.DPAD_DOWN),      // 13 – D-Pad Down
     bit(BTN.DPAD_LEFT),      // 14 – D-Pad Left
     bit(BTN.DPAD_RIGHT),     // 15 – D-Pad Right
+    bit(0x0400),             // 16 – Guide / PS button
+    bit(0x0800),             // 17 – Touchpad click
   ]
 
   // Gamepad API axes: -1..1, LY & RY are inverted per spec
   const axes = [
-    lx / 32767,    // axes[0] – Left X
-    -ly / 32767,   // axes[1] – Left Y
-    rx / 32767,    // axes[2] – Right X
-    -ry / 32767,   // axes[3] – Right Y
+    Math.max(-1, Math.min(1, lx / 32767)),
+    Math.max(-1, Math.min(1, -ly / 32767)),
+    Math.max(-1, Math.min(1, rx / 32767)),
+    Math.max(-1, Math.min(1, -ry / 32767)),
   ]
 
   return { buttons, axes, connected: true }
@@ -82,9 +119,13 @@ function xInputToGamepadAPI(raw: any) {
 
 function getExecutablePath(): string {
   const possiblePaths = [
+    path.join(process.resourcesPath || '', 'app.asar.unpacked', 'electron', 'native', 'XInputReader.exe'),
     path.join(__dirname, 'native/XInputReader.exe'),
     path.join(__dirname, '../electron/native/XInputReader.exe'),
+    path.join(process.cwd(), 'electron/native/XInputReader.exe'),
+    path.join(process.cwd(), 'dist-electron/native/XInputReader.exe'),
     path.join(app.getAppPath(), 'electron/native/XInputReader.exe'),
+    path.join(app.getAppPath(), 'dist-electron/native/XInputReader.exe'),
     path.join(app.getPath('userData'), 'XInputReader.exe'),
   ]
 
@@ -98,7 +139,7 @@ function getExecutablePath(): string {
   if (fs.existsSync(csSource)) {
     try {
       const csc = 'C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe'
-      execSync(`"${csc}" /nologo /optimize /target:exe /out:"${targetExe}" "${csSource}"`)
+      execFileSync(csc, ['/nologo', '/optimize', '/target:exe', `/out:${targetExe}`, csSource], { windowsHide: true, timeout: 15000 })
       if (fs.existsSync(targetExe)) return targetExe
     } catch (err) {
       console.warn('[GamepadService] Failed to auto-compile XInputReader:', err)
@@ -108,13 +149,18 @@ function getExecutablePath(): string {
   return possiblePaths[0]
 }
 
-export function startGamepadService(getOverlay: () => BrowserWindow | null) {
-  if (isRunning) return
+export function startGamepadService(getOverlay?: () => BrowserWindow | null) {
+  initGamepadIPC()
+  if (isRunning && xinputProc) return
+  if (restartTimer) {
+    clearTimeout(restartTimer)
+    restartTimer = null
+  }
   isRunning = true
-  overlayWinRef = getOverlay
 
   const exePath = getExecutablePath()
   if (!fs.existsSync(exePath)) {
+    isRunning = false
     console.warn('[GamepadService] XInputReader.exe not found at:', exePath)
     return
   }
@@ -125,16 +171,20 @@ export function startGamepadService(getOverlay: () => BrowserWindow | null) {
       stdio: ['ignore', 'pipe', 'ignore'],
     })
   } catch (err) {
+    isRunning = false
     console.error('[GamepadService] Failed to spawn XInputReader:', err)
     return
   }
 
   let lineBuffer = ''
+  const child = xinputProc
 
   xinputProc.stdout?.on('data', (chunk: Buffer) => {
+    if (child !== xinputProc || !isRunning) return
     lineBuffer += chunk.toString('utf8')
     const lines = lineBuffer.split('\n')
     lineBuffer = lines.pop() ?? ''
+    if (lineBuffer.length > 65536) lineBuffer = ''
 
     for (const line of lines) {
       const trimmed = line.trim()
@@ -145,7 +195,7 @@ export function startGamepadService(getOverlay: () => BrowserWindow | null) {
 
         const allWins = BrowserWindow.getAllWindows()
         for (const win of allWins) {
-          if (win && !win.isDestroyed()) {
+          if (win && !win.isDestroyed() && win.isVisible() && !win.webContents.isDestroyed()) {
             win.webContents.send('overlay:gamepad-state', state)
           }
         }
@@ -153,22 +203,34 @@ export function startGamepadService(getOverlay: () => BrowserWindow | null) {
     }
   })
 
-  xinputProc.on('exit', (code) => {
+  const handleClose = () => {
+    if (child !== xinputProc) return
     xinputProc = null
     if (isRunning) {
-      setTimeout(() => {
+      restartTimer = setTimeout(() => {
+        restartTimer = null
         if (isRunning) startGamepadService(getOverlay)
       }, 1000)
+      restartTimer.unref()
     }
+  }
+  child.on('error', (err) => {
+    console.warn('[GamepadService] XInputReader process error:', err)
+    handleClose()
   })
+  child.on('exit', handleClose)
 
   console.log('[GamepadService] Native XInputReader service started successfully.')
 }
 
 export function stopGamepadService() {
+  if (restartTimer) {
+    clearTimeout(restartTimer)
+    restartTimer = null
+  }
   if (!isRunning && !xinputProc) return
   isRunning = false
-  overlayWinRef = null
+  consumers.clear()
   if (xinputProc) {
     try {
       xinputProc.kill()

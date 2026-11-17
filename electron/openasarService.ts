@@ -1,4 +1,7 @@
-import { ipcMain, BrowserWindow, shell } from 'electron'
+import { openExternalPath } from './externalLaunch'
+import { ipcMain } from './ipcSecurity'
+import { downloadServiceFile } from './serviceDownload'
+import { BrowserWindow, shell } from 'electron'
 import { exec } from 'child_process'
 import * as path from 'path'
 import * as standardFs from 'fs'
@@ -134,52 +137,14 @@ function checkOpenAsarInstalled(): boolean {
 /**
  * Downloads a file over HTTPS with redirect support
  */
-function downloadFile(url: string, destPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const follow = (targetUrl: string, maxRedirects = 5) => {
-      if (maxRedirects <= 0) {
-        resolve(false)
-        return
-      }
-
-      const req = https.get(targetUrl, {
-        headers: {
-          'User-Agent': 'EclipseLauncher'
-        },
-        timeout: 30000,
-      }, (res) => {
-        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          follow(res.headers.location, maxRedirects - 1)
-          return
-        }
-
-        if (res.statusCode !== 200) {
-          resolve(false)
-          return
-        }
-
-        safeFsOp(() => {
-          const fileStream = fs.createWriteStream(destPath)
-          res.pipe(fileStream)
-          fileStream.on('finish', () => {
-            fileStream.close(() => resolve(true))
-          })
-          fileStream.on('error', () => {
-            try { fs.unlinkSync(destPath) } catch (_) {}
-            resolve(false)
-          })
-        })
-      })
-
-      req.on('error', () => resolve(false))
-      req.on('timeout', () => {
-        req.destroy()
-        resolve(false)
-      })
-    }
-
-    follow(url)
-  })
+async function downloadFile(url: string, destPath: string): Promise<boolean> {
+  try {
+    await downloadServiceFile(url, destPath, { fileSystem: fs })
+    return true
+  } catch (error) {
+    console.warn('[Addons] Download failed:', error)
+    return false
+  }
 }
 
 /**
@@ -513,7 +478,7 @@ export function initOpenAsarIPC(getWindows: () => BrowserWindow[]) {
     const target = resDir || getDiscordBaseDir()
     try {
       if (safeFsOp(() => fs.existsSync(target))) {
-        await shell.openPath(target)
+        await openExternalPath(target)
         return { success: true }
       }
       return { success: false, error: 'Folder not found' }
@@ -525,7 +490,7 @@ export function initOpenAsarIPC(getWindows: () => BrowserWindow[]) {
   // 5. Open OpenAsar GitHub Repository in Browser
   ipcMain.handle('openasar:open-github', async () => {
     try {
-      await shell.openExternal('https://github.com/GooseMod/OpenAsar')
+      await (await import('./externalLaunch')).openExternalApplication('https://github.com/GooseMod/OpenAsar')
       return { success: true }
     } catch (e: any) {
       return { success: false, error: e?.message }

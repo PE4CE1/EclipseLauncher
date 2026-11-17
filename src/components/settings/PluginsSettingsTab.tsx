@@ -5,6 +5,8 @@ import {
   Trash2, Terminal, Sparkles, Music, ExternalLink, Play, Zap
 } from 'lucide-react'
 import { useTranslation } from '../../hooks/useTranslation'
+import { spicetifyErrorMessage } from '../../services/spicetifyMessages'
+import type { SpicetifyResult } from '../../types/spicetify'
 import type { SpicetifyStatus, VencordStatus, MillenniumStatus, OpenAsarStatus } from '../../types/game'
 
 // Sleek minimalist Steam icon
@@ -26,7 +28,7 @@ function DiscordIcon({ size = 18, className = '' }: { size?: number; className?:
 }
 
 export function PluginsSettingsTab() {
-  const { language } = useTranslation()
+  const { t, language } = useTranslation()
   const isDe = language === 'de'
 
   // ─── Millennium State ──────────────────────────────────────────────────────
@@ -72,7 +74,9 @@ export function PluginsSettingsTab() {
   const [showSpicetifyLogs, setShowSpicetifyLogs] = useState(false)
   const spicetifyLogRef = useRef<HTMLDivElement>(null)
 
-  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string; spicetifyError?: SpicetifyResult } | null>(null)
+  const spicetifyBusy = useRef(false)
+  const [spicetifyPhase, setSpicetifyPhase] = useState('')
 
   const cleanLog = (text: string) => {
     return text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/[\x00-\x09\x0B-\x1F\x7F]/g, '')
@@ -230,19 +234,10 @@ export function PluginsSettingsTab() {
     }
 
     if (window.electronAPI?.spicetify?.onStatus) {
-      unsubs.push(window.electronAPI.spicetify.onStatus((st: string) => {
-        if (st === 'done') {
-          refreshSpicetify()
-          setActionMessage({
-            type: 'success',
-            text: isDe ? 'Spicetify erfolgreich ausgeführt' : 'Spicetify successfully applied'
-          })
-        } else if (st === 'error') {
-          setActionMessage({
-            type: 'error',
-            text: isDe ? 'Fehler bei Spicetify aufgetreten' : 'Error in Spicetify occurred'
-          })
-        }
+      unsubs.push(window.electronAPI.spicetify.onStatus((phase: string) => {
+        setSpicetifyPhase(phase)
+        setSpicetifyStatus(previous => ({ ...previous, isInstalling: phase !== 'done' && phase !== 'error' }))
+        if (phase === 'done' || phase === 'error') void refreshSpicetify()
       }))
     }
 
@@ -437,92 +432,38 @@ export function PluginsSettingsTab() {
   }
 
   // ─── Spicetify Handlers ────────────────────────────────────────────────────
-  const handleSpicetifyInstall = async () => {
-    setActionMessage(null)
-    setSpicetifyLogs([])
-    setSpicetifyStatus(prev => ({ ...prev, isInstalling: true }))
-
+  const runSpicetifyAction = async (action: 'install' | 'upgrade' | 'restore', successText: string) => {
+    if (spicetifyBusy.current) return
+    spicetifyBusy.current = true
+    setActionMessage(null); setSpicetifyLogs([])
+    setSpicetifyPhase(action === 'install' ? 'installing-cli' : action === 'restore' ? 'restoring' : 'upgrading')
+    setSpicetifyStatus(previous => ({ ...previous, isInstalling: true }))
     try {
-      const res = await window.electronAPI?.spicetify?.install?.()
-      if (res?.success) {
-        setActionMessage({
-          type: 'success',
-          text: isDe ? 'Spicetify erfolgreich installiert' : 'Spicetify installed successfully'
-        })
-      } else if (res?.error) {
-        setActionMessage({ type: 'error', text: res.error })
+      const method = window.electronAPI?.spicetify?.[action]
+      const result: SpicetifyResult = method ? await method() : { success: false, errorCode: 'start_failed' }
+      if (result.success) setActionMessage({ type: 'success', text: successText })
+      else {
+        setActionMessage({ type: 'error', text: '', spicetifyError: result })
+        setShowSpicetifyLogs(true)
+        if (result.details) setSpicetifyLogs(previous => previous.length ? previous : result.details!.split(/\r?\n/).slice(-80))
       }
-    } catch (err: any) {
-      setActionMessage({ type: 'error', text: err?.message || 'Fehler' })
+    } catch (error) {
+      setActionMessage({ type: 'error', text: '', spicetifyError: { success: false, error: String(error) } })
     } finally {
-      setSpicetifyStatus(prev => ({ ...prev, isInstalling: false }))
-      refreshSpicetify()
+      spicetifyBusy.current = false
+      setSpicetifyStatus(previous => ({ ...previous, isInstalling: false }))
+      void refreshSpicetify()
     }
   }
-
-  const handleSpicetifyApply = async () => {
-    setActionMessage(null)
-    try {
-      const res = await window.electronAPI?.spicetify?.apply?.()
-      if (res?.success) {
-        setActionMessage({
-          type: 'success',
-          text: isDe ? 'Spotify erfolgreich gepatcht' : 'Spotify patched successfully'
-        })
-      } else {
-        setActionMessage({ type: 'error', text: res?.error || 'Fehler' })
-      }
-    } catch (e: any) {
-      setActionMessage({ type: 'error', text: e?.message || 'Fehler' })
-    }
-  }
-
-  const handleSpicetifyRestore = async () => {
-    setActionMessage(null)
-    try {
-      const res = await window.electronAPI?.spicetify?.restore?.()
-      if (res?.success) {
-        setActionMessage({
-          type: 'success',
-          text: isDe ? 'Spotify zurückgesetzt' : 'Spotify restored'
-        })
-        refreshSpicetify()
-      } else {
-        setActionMessage({ type: 'error', text: res?.error || 'Fehler' })
-      }
-    } catch (e: any) {
-      setActionMessage({ type: 'error', text: e?.message || 'Fehler' })
-    }
-  }
-
-  const handleSpicetifyUpgrade = async () => {
-    setActionMessage(null)
-    try {
-      const res = await window.electronAPI?.spicetify?.upgrade?.()
-      if (res?.success) {
-        setActionMessage({
-          type: 'success',
-          text: isDe ? 'Spicetify aktualisiert' : 'Spicetify updated'
-        })
-        refreshSpicetify()
-      } else {
-        setActionMessage({ type: 'error', text: res?.error || 'Fehler' })
-      }
-    } catch (e: any) {
-      setActionMessage({ type: 'error', text: e?.message || 'Fehler' })
-    }
-  }
+  const handleSpicetifyInstall = () => runSpicetifyAction('install', isDe ? 'Spicetify und Marketplace installiert' : 'Spicetify and Marketplace installed')
+  const handleSpicetifyUpgrade = () => runSpicetifyAction('upgrade', isDe ? 'Spicetify aktualisiert. Starte Spotify neu, um die Änderungen zu sehen.' : 'Spicetify updated. Restart Spotify to see the changes.')
+  const handleSpicetifyRestore = () => runSpicetifyAction('restore', isDe ? 'Spotify zurückgesetzt. Starte Spotify neu.' : 'Spotify restored. Restart Spotify.')
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18 }}
-      className="space-y-5"
-    >
+    <div className="space-y-5">
       {/* Section Title */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="settings-extension-heading flex items-center justify-between">
+        <div className="settings-extension-title">
           <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
             <Puzzle size={18} className="text-white" />
             <span>Plugins</span>
@@ -534,21 +475,309 @@ export function PluginsSettingsTab() {
 
         {actionMessage && (
           <motion.div 
+            data-plugin-action-message role={actionMessage.type === 'error' ? 'alert' : 'status'}
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
-            className={`text-xs px-3 py-1 rounded-lg border font-medium ${
+            className={`max-w-lg text-xs px-3 py-1 rounded-lg border font-medium leading-relaxed ${
               actionMessage.type === 'success'
                 ? 'bg-white/10 text-white border-white/20'
                 : 'bg-red-500/10 text-red-300 border-red-500/20'
             }`}
           >
-            {actionMessage.text}
+            {actionMessage.spicetifyError ? spicetifyErrorMessage(actionMessage.spicetifyError, isDe) : actionMessage.text}
           </motion.div>
         )}
       </div>
 
+      {/* ─── Spicetify Minimalist Card ─────────────────────────────────── */}
+      <div data-plugin="spicetify" className="settings-glass-card bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5 relative overflow-hidden">
+        {/* Top row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center flex-shrink-0">
+              <Music size={18} className="text-white" />
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-white tracking-tight">Spicetify</span>
+                {spicetifyStatus.isSpicetifyInstalled ? (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/15">
+                    {spicetifyStatus.version || t('spicetifyInstalled')}
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium text-white/40 px-2 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06]">
+                    {isDe ? 'Nicht installiert' : 'Not installed'}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-white/50 mt-0.5">
+                {isDe 
+                  ? 'Themes, Marketplace & Erweiterungen für Spotify' 
+                  : 'Themes, marketplace & extensions for Spotify'}
+              </p>
+            </div>
+          </div>
+
+          {/* Minimalist Recommendation Badges */}
+          <div className="flex items-center gap-2">
+            <div className="px-2.5 py-1 rounded-lg bg-white/10 text-white text-[11px] font-semibold flex items-center gap-1.5 border border-white/15">
+              <Sparkles size={12} className="text-white" />
+              <span>{isDe ? 'Empfohlen für Free' : 'Recommended for Free'}</span>
+            </div>
+            <div className="px-2.5 py-1 rounded-lg bg-white/[0.02] text-white/40 text-[11px] font-medium border border-white/[0.05]">
+              {isDe ? 'Optional für Premium' : 'Optional for Premium'}
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons Row */}
+        <div className="mt-5 pt-4 border-t border-white/[0.06] flex items-center justify-between flex-wrap gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            {!spicetifyStatus.isSpicetifyInstalled ? (
+              <button
+                type="button"
+                onClick={handleSpicetifyInstall}
+                disabled={spicetifyStatus.isInstalling}
+                className="px-4 py-2 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {spicetifyStatus.isInstalling ? (
+                  <>
+                    <RefreshCw size={13} className="animate-spin text-black" />
+                    <span>{isDe ? 'Wird installiert...' : 'Installing...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={13} />
+                    <span>{isDe ? 'Spicetify installieren' : 'Install Spicetify'}</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={handleSpicetifyUpgrade}
+                  data-spicetify-update
+                  disabled={spicetifyStatus.isInstalling}
+                  className="px-3.5 py-1.5 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw size={12} className={spicetifyStatus.isInstalling ? 'animate-spin' : undefined}/>
+                  <span>{spicetifyStatus.isInstalling ? (spicetifyPhase === 'repairing' ? (isDe ? 'Wird repariert…' : 'Repairing…') : (isDe ? 'Wird aktualisiert…' : 'Updating…')) : t('spicetifyUpgradeBtn')}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.electronAPI?.spicetify?.openFolder?.()}
+                  className="px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.09] text-white text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 border border-white/10 cursor-pointer"
+                >
+                  <FolderOpen size={12} />
+                  <span>{isDe ? 'Ordner' : 'Folder'}</span>
+                </button>
+
+
+
+                <button
+                  type="button"
+                  onClick={handleSpicetifyRestore}
+                  disabled={spicetifyStatus.isInstalling}
+                  className="px-3 py-1.5 hover:bg-red-500/10 text-white/40 hover:text-red-300 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 size={12} />
+                  <span>{isDe ? 'Zurücksetzen' : 'Restore'}</span>
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Minimal Terminal Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowSpicetifyLogs(!showSpicetifyLogs)}
+            className="text-[11px] text-white/30 hover:text-white/70 flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Terminal size={12} />
+            <span>{showSpicetifyLogs ? (isDe ? 'Konsole verbergen' : 'Hide console') : (isDe ? 'Protokoll' : 'Log')}</span>
+          </button>
+        </div>
+
+        {/* Clean Log Output without ANSI Garbage */}
+        <AnimatePresence>
+          {showSpicetifyLogs && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="mt-3 overflow-hidden"
+            >
+              <div 
+                ref={spicetifyLogRef}
+                className="bg-black/80 border border-white/10 rounded-lg p-3 font-mono text-[11px] text-white/70 h-32 overflow-y-auto space-y-0.5 select-text"
+              >
+                {spicetifyLogs.length === 0 ? (
+                  <div className="text-white/30 italic">
+                    {isDe ? 'Bereit.' : 'Ready.'}
+                  </div>
+                ) : (
+                  spicetifyLogs.map((line, idx) => (
+                    <div key={idx} className="leading-snug whitespace-pre-wrap">{line}</div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      {/* ─── Vencord Minimalist Card ────────────────────────────────────── */}
+      <div data-plugin="vencord" className="settings-glass-card bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5 relative overflow-hidden">
+        {/* Top row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center flex-shrink-0">
+              <DiscordIcon size={20} className="text-white" />
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-white tracking-tight">Vencord</span>
+                {vencordStatus.isVencordInstalled ? (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/15">
+                    {vencordStatus.version || vencordStatus.latestVersion || 'v1.15.4'}
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono text-white/60 px-2 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06]">
+                    {vencordStatus.latestVersion ? `${vencordStatus.latestVersion} ${isDe ? 'verfügbar' : 'available'}` : (isDe ? 'Nicht installiert' : 'Not installed')}
+                  </span>
+                )}
+                {vencordStatus.isVencordInstalled && vencordStatus.latestVersion && (
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] text-white/40 border border-white/[0.06]" title={isDe ? 'Aktuellste Version von GitHub' : 'Latest version on GitHub'}>
+                    {isDe ? 'Neueste' : t('uiLatest')}: {vencordStatus.latestVersion}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-white/50 mt-0.5">
+                {isDe 
+                  ? 'Client-Modifikation, Themes & Plugins für Discord' 
+                  : 'Client modification, themes & plugins for Discord'}
+              </p>
+            </div>
+          </div>
+
+          {/* Minimalist Badge */}
+          <div className="flex items-center gap-2">
+            <div className="px-2.5 py-1 rounded-lg bg-white/10 text-white text-[11px] font-semibold flex items-center gap-1.5 border border-white/15">
+              <Sparkles size={12} className="text-white" />
+              <span>{isDe ? 'Empfohlen für Discord' : 'Recommended for Discord'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons Row */}
+        <div className="mt-5 pt-4 border-t border-white/[0.06] flex items-center justify-between flex-wrap gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            {!vencordStatus.isVencordInstalled ? (
+              <button
+                type="button"
+                onClick={handleVencordInstall}
+                disabled={vencordStatus.isInstalling}
+                className="px-4 py-2 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {vencordStatus.isInstalling ? (
+                  <>
+                    <RefreshCw size={13} className="animate-spin text-black" />
+                    <span>{isDe ? 'Wird installiert...' : 'Installing...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={13} />
+                    <span>{isDe ? 'Vencord installieren' : 'Install Vencord'}</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={handleVencordRepair}
+                  className="px-3.5 py-1.5 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw size={12} />
+                  <span>{isDe ? 'Aktualisieren / Reparieren' : 'Update / Repair'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.electronAPI?.vencord?.openThemes?.()}
+                  className="px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.09] text-white text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 border border-white/10 cursor-pointer"
+                >
+                  <FolderOpen size={12} />
+                  <span>{isDe ? 'Themes' : 'Themes'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.electronAPI?.vencord?.openFolder?.()}
+                  className="px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.09] text-white text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 border border-white/10 cursor-pointer"
+                >
+                  <FolderOpen size={12} />
+                  <span>{isDe ? 'Ordner' : 'Folder'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleVencordUninstall}
+                  className="px-3 py-1.5 hover:bg-red-500/10 text-white/40 hover:text-red-300 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 size={12} />
+                  <span>{isDe ? 'Deinstallieren' : 'Uninstall'}</span>
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Minimal Terminal Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowVencordLogs(!showVencordLogs)}
+            className="text-[11px] text-white/30 hover:text-white/70 flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Terminal size={12} />
+            <span>{showVencordLogs ? (isDe ? 'Konsole verbergen' : 'Hide console') : (isDe ? 'Protokoll' : 'Log')}</span>
+          </button>
+        </div>
+
+        {/* Clean Log Output */}
+        <AnimatePresence>
+          {showVencordLogs && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="mt-3 overflow-hidden"
+            >
+              <div 
+                ref={vencordLogRef}
+                className="bg-black/80 border border-white/10 rounded-lg p-3 font-mono text-[11px] text-white/70 h-32 overflow-y-auto space-y-0.5 select-text"
+              >
+                {vencordLogs.length === 0 ? (
+                  <div className="text-white/30 italic">
+                    {isDe ? 'Bereit.' : 'Ready.'}
+                  </div>
+                ) : (
+                  vencordLogs.map((line, idx) => (
+                    <div key={idx} className="leading-snug whitespace-pre-wrap">{line}</div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
       {/* ─── Millennium Minimalist Card ─────────────────────────────────── */}
-      <div className="bg-[#0b0c10] border border-white/[0.08] rounded-2xl p-5 relative overflow-hidden">
+      <div data-plugin="millennium" className="settings-glass-card bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5 relative overflow-hidden">
         {/* Top row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
@@ -570,7 +799,7 @@ export function PluginsSettingsTab() {
                 )}
                 {millenniumStatus.isMillenniumInstalled && millenniumStatus.latestVersion && (
                   <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] text-white/40 border border-white/[0.06]" title={isDe ? 'Aktuellste Version von GitHub' : 'Latest version on GitHub'}>
-                    {isDe ? 'Neueste' : 'Latest'}: {millenniumStatus.latestVersion}
+                    {isDe ? 'Neueste' : t('uiLatest')}: {millenniumStatus.latestVersion}
                   </span>
                 )}
               </div>
@@ -734,155 +963,8 @@ export function PluginsSettingsTab() {
         </AnimatePresence>
       </div>
 
-      {/* ─── Vencord Minimalist Card ────────────────────────────────────── */}
-      <div className="bg-[#0b0c10] border border-white/[0.08] rounded-2xl p-5 relative overflow-hidden">
-        {/* Top row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center flex-shrink-0">
-              <DiscordIcon size={20} className="text-white" />
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-white tracking-tight">Vencord</span>
-                {vencordStatus.isVencordInstalled ? (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/15">
-                    {vencordStatus.version || vencordStatus.latestVersion || 'v1.15.4'}
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-mono text-white/60 px-2 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06]">
-                    {vencordStatus.latestVersion ? `${vencordStatus.latestVersion} ${isDe ? 'verfügbar' : 'available'}` : (isDe ? 'Nicht installiert' : 'Not installed')}
-                  </span>
-                )}
-                {vencordStatus.isVencordInstalled && vencordStatus.latestVersion && (
-                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] text-white/40 border border-white/[0.06]" title={isDe ? 'Aktuellste Version von GitHub' : 'Latest version on GitHub'}>
-                    {isDe ? 'Neueste' : 'Latest'}: {vencordStatus.latestVersion}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-white/50 mt-0.5">
-                {isDe 
-                  ? 'Client-Modifikation, Themes & Plugins für Discord' 
-                  : 'Client modification, themes & plugins for Discord'}
-              </p>
-            </div>
-          </div>
-
-          {/* Minimalist Badge */}
-          <div className="flex items-center gap-2">
-            <div className="px-2.5 py-1 rounded-lg bg-white/10 text-white text-[11px] font-semibold flex items-center gap-1.5 border border-white/15">
-              <Sparkles size={12} className="text-white" />
-              <span>{isDe ? 'Empfohlen für Discord' : 'Recommended for Discord'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons Row */}
-        <div className="mt-5 pt-4 border-t border-white/[0.06] flex items-center justify-between flex-wrap gap-2.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            {!vencordStatus.isVencordInstalled ? (
-              <button
-                type="button"
-                onClick={handleVencordInstall}
-                disabled={vencordStatus.isInstalling}
-                className="px-4 py-2 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                {vencordStatus.isInstalling ? (
-                  <>
-                    <RefreshCw size={13} className="animate-spin text-black" />
-                    <span>{isDe ? 'Wird installiert...' : 'Installing...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <Download size={13} />
-                    <span>{isDe ? 'Vencord installieren' : 'Install Vencord'}</span>
-                  </>
-                )}
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={handleVencordRepair}
-                  className="px-3.5 py-1.5 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <RefreshCw size={12} />
-                  <span>{isDe ? 'Aktualisieren / Reparieren' : 'Update / Repair'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => window.electronAPI?.vencord?.openThemes?.()}
-                  className="px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.09] text-white text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 border border-white/10 cursor-pointer"
-                >
-                  <FolderOpen size={12} />
-                  <span>{isDe ? 'Themes' : 'Themes'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => window.electronAPI?.vencord?.openFolder?.()}
-                  className="px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.09] text-white text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 border border-white/10 cursor-pointer"
-                >
-                  <FolderOpen size={12} />
-                  <span>{isDe ? 'Ordner' : 'Folder'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleVencordUninstall}
-                  className="px-3 py-1.5 hover:bg-red-500/10 text-white/40 hover:text-red-300 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Trash2 size={12} />
-                  <span>{isDe ? 'Deinstallieren' : 'Uninstall'}</span>
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Minimal Terminal Toggle */}
-          <button
-            type="button"
-            onClick={() => setShowVencordLogs(!showVencordLogs)}
-            className="text-[11px] text-white/30 hover:text-white/70 flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Terminal size={12} />
-            <span>{showVencordLogs ? (isDe ? 'Konsole verbergen' : 'Hide console') : (isDe ? 'Protokoll' : 'Log')}</span>
-          </button>
-        </div>
-
-        {/* Clean Log Output */}
-        <AnimatePresence>
-          {showVencordLogs && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="mt-3 overflow-hidden"
-            >
-              <div 
-                ref={vencordLogRef}
-                className="bg-black/80 border border-white/10 rounded-lg p-3 font-mono text-[11px] text-white/70 h-32 overflow-y-auto space-y-0.5 select-text"
-              >
-                {vencordLogs.length === 0 ? (
-                  <div className="text-white/30 italic">
-                    {isDe ? 'Bereit.' : 'Ready.'}
-                  </div>
-                ) : (
-                  vencordLogs.map((line, idx) => (
-                    <div key={idx} className="leading-snug whitespace-pre-wrap">{line}</div>
-                  ))
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
       {/* ─── OpenAsar Minimalist Card ───────────────────────────────────── */}
-      <div className="bg-[#0b0c10] border border-white/[0.08] rounded-2xl p-5 relative overflow-hidden">
+      <div data-plugin="openasar" className="settings-glass-card bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5 relative overflow-hidden">
         {/* Top row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
@@ -1036,150 +1118,7 @@ export function PluginsSettingsTab() {
         </AnimatePresence>
       </div>
 
-      {/* ─── Spicetify Minimalist Card ─────────────────────────────────── */}
-      <div className="bg-[#0b0c10] border border-white/[0.08] rounded-2xl p-5 relative overflow-hidden">
-        {/* Top row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center flex-shrink-0">
-              <Music size={18} className="text-white" />
-            </div>
 
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-white tracking-tight">Spicetify</span>
-                {spicetifyStatus.isSpicetifyInstalled ? (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/15">
-                    {spicetifyStatus.version || 'v2.44.0'}
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-medium text-white/40 px-2 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06]">
-                    {isDe ? 'Nicht installiert' : 'Not installed'}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-white/50 mt-0.5">
-                {isDe 
-                  ? 'Themes, Marketplace & Erweiterungen für Spotify' 
-                  : 'Themes, marketplace & extensions for Spotify'}
-              </p>
-            </div>
-          </div>
-
-          {/* Minimalist Recommendation Badges */}
-          <div className="flex items-center gap-2">
-            <div className="px-2.5 py-1 rounded-lg bg-white/10 text-white text-[11px] font-semibold flex items-center gap-1.5 border border-white/15">
-              <Sparkles size={12} className="text-white" />
-              <span>{isDe ? 'Empfohlen für Free' : 'Recommended for Free'}</span>
-            </div>
-            <div className="px-2.5 py-1 rounded-lg bg-white/[0.02] text-white/40 text-[11px] font-medium border border-white/[0.05]">
-              {isDe ? 'Optional für Premium' : 'Optional for Premium'}
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons Row */}
-        <div className="mt-5 pt-4 border-t border-white/[0.06] flex items-center justify-between flex-wrap gap-2.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            {!spicetifyStatus.isSpicetifyInstalled ? (
-              <button
-                type="button"
-                onClick={handleSpicetifyInstall}
-                disabled={spicetifyStatus.isInstalling}
-                className="px-4 py-2 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                {spicetifyStatus.isInstalling ? (
-                  <>
-                    <RefreshCw size={13} className="animate-spin text-black" />
-                    <span>{isDe ? 'Wird installiert...' : 'Installing...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <Download size={13} />
-                    <span>{isDe ? 'Spicetify installieren' : 'Install Spicetify'}</span>
-                  </>
-                )}
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={handleSpicetifyApply}
-                  className="px-3.5 py-1.5 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Sparkles size={12} />
-                  <span>{isDe ? 'Anwenden' : 'Apply'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => window.electronAPI?.spicetify?.openFolder?.()}
-                  className="px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.09] text-white text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 border border-white/10 cursor-pointer"
-                >
-                  <FolderOpen size={12} />
-                  <span>{isDe ? 'Ordner' : 'Folder'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSpicetifyUpgrade}
-                  className="px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.09] text-white text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 border border-white/10 cursor-pointer"
-                >
-                  <RefreshCw size={12} />
-                  <span>{isDe ? 'Update' : 'Update'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSpicetifyRestore}
-                  className="px-3 py-1.5 hover:bg-red-500/10 text-white/40 hover:text-red-300 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Trash2 size={12} />
-                  <span>{isDe ? 'Zurücksetzen' : 'Restore'}</span>
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Minimal Terminal Toggle */}
-          <button
-            type="button"
-            onClick={() => setShowSpicetifyLogs(!showSpicetifyLogs)}
-            className="text-[11px] text-white/30 hover:text-white/70 flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Terminal size={12} />
-            <span>{showSpicetifyLogs ? (isDe ? 'Konsole verbergen' : 'Hide console') : (isDe ? 'Protokoll' : 'Log')}</span>
-          </button>
-        </div>
-
-        {/* Clean Log Output without ANSI Garbage */}
-        <AnimatePresence>
-          {showSpicetifyLogs && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="mt-3 overflow-hidden"
-            >
-              <div 
-                ref={spicetifyLogRef}
-                className="bg-black/80 border border-white/10 rounded-lg p-3 font-mono text-[11px] text-white/70 h-32 overflow-y-auto space-y-0.5 select-text"
-              >
-                {spicetifyLogs.length === 0 ? (
-                  <div className="text-white/30 italic">
-                    {isDe ? 'Bereit.' : 'Ready.'}
-                  </div>
-                ) : (
-                  spicetifyLogs.map((line, idx) => (
-                    <div key={idx} className="leading-snug whitespace-pre-wrap">{line}</div>
-                  ))
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
+    </div>
   )
 }

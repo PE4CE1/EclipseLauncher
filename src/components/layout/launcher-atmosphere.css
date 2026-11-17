@@ -1,0 +1,127 @@
+.launcher-shell { isolation: isolate; }
+.launcher-shell[data-atmosphere] {
+  --launcher-panel: #0a0b0d4d;
+  --launcher-toolbar: #0a0b0d70;
+  --launcher-divider: #ffe9d90e;
+  --launcher-card: #0b0c10b3;
+  --launcher-card-hover: #181719cc;
+  --launcher-dialog: #0c0d10f5;
+  background-color: #08090b;
+}
+.launcher-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  contain: strict;
+  pointer-events: none;
+  opacity: 0;
+  background-image:
+    radial-gradient(ellipse at 18% 12%, #48210f16, transparent 60%),
+    radial-gradient(ellipse at 92% 85%, #3d180e12, transparent 62%);
+  transition: opacity 700ms cubic-bezier(.22,.61,.36,1);
+}
+.launcher-atmosphere[data-visible] { opacity: 1; }
+.launcher-atmosphere[data-visible][data-dimmed] { opacity: .25; transition-duration: 350ms; }
+.launcher-view[data-covered] { visibility: hidden; opacity: 0; pointer-events: none; }
+
+/* Every ellipse fades out inside its texture, leaving a transparent margin on
+   all four sides. Moving/rotating it cannot expose a rectangular cutoff. */
+.launcher-atmosphere__ember,
+.launcher-atmosphere__copper {
+  position: absolute;
+  width: min(115vw, 1100px);
+  height: min(110vh, 850px);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+.launcher-atmosphere__ember {
+  left: -110px;
+  top: -250px;
+  background:
+    radial-gradient(ellipse 46% 34% at 50% 50%, #d759222d, #a13a1c1f 30%, #64230e12 54%, transparent 92%),
+    radial-gradient(ellipse 36% 23% at 53% 55%, #b63e1b1a, #64210f0c 42%, transparent 92%);
+  animation-name: launcher-ember-drift;
+  animation-duration: 26s;
+  animation-delay: -8s;
+}
+.launcher-atmosphere__copper {
+  right: -130px;
+  bottom: -180px;
+  background:
+    radial-gradient(ellipse 46% 34% at 50% 50%, #c652242b, #8e301b1c 32%, #52211310 57%, transparent 92%),
+    radial-gradient(ellipse 35% 23% at 46% 48%, #ad36191a, #6c25100b 42%, transparent 92%);
+  animation-name: launcher-copper-drift;
+  animation-duration: 32s;
+  animation-delay: -18s;
+}
+@keyframes launcher-ember-drift {
+  from { transform: translate3d(-25px, -12px, 0) rotate(-24deg); }
+  to { transform: translate3d(105px, 72px, 0) rotate(-12deg); }
+}
+@keyframes launcher-copper-drift {
+  from { transform: translate3d(35px, 28px, 0) rotate(-18deg); }
+  to { transform: translate3d(-115px, -68px, 0) rotate(-30deg); }
+}
+.launcher-atmosphere[data-paused] > div,
+body.app-minimized .launcher-atmosphere > div,
+body.performance-mode .launcher-atmosphere > div,
+body.game-performance-mode .launcher-atmosphere > div { animation-play-state: paused; }
+
+/* Reveal the atmosphere through page surfaces, keeping artwork and dialogs solid. */
+#root .launcher-shell[data-atmosphere] .home-view,
+#root .launcher-shell[data-atmosphere] .store-hero { background-color: transparent; }
+#root .launcher-shell[data-atmosphere] .launcher-page-surface { background-color: transparent; }
+.launcher-shell[data-atmosphere] .launcher-content { background-color: #08090b14; }
+.launcher-shell[data-atmosphere] .launcher-panel {
+  background-color: var(--launcher-panel);
+  border-color: var(--launcher-divider);
+}
+.launcher-shell[data-atmosphere] .launcher-card { backdrop-filter: none; }
+.launcher-shell[data-atmosphere] .game-detail-hero { background-color: transparent; }
+.launcher-shell[data-atmosphere] .hero-scenery {
+  mask-image: linear-gradient(#000 0%, #000 65%, transparent 100%);
+}
+/* Shared tint for page headers; sticky controls also blur scrolling artwork. */
+.launcher-shell[data-atmosphere] .topbar,
+.launcher-shell[data-atmosphere] .launcher-toolbar {
+  backdrop-filter: none;
+  background-color: var(--launcher-toolbar);
+  background-image: linear-gradient(180deg, #ffffff03, transparent);
+  border-color: var(--launcher-divider);
+  box-shadow: none;
+}
+.launcher-shell[data-atmosphere] .topbar[data-game-open] {
+  background-color: transparent;
+  background-image: linear-gradient(90deg, transparent, #0a0b0d70 110px, #0a0b0dbd 32%);
+  border-color: transparent;
+}
+.launcher-shell[data-atmosphere] .topbar {
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.launcher-shell .launcher-toolbar.sticky {
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.launcher-shell[data-unfocused] .launcher-toolbar.sticky {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: rgb(10 11 13 / .94);
+}
+.launcher-shell[data-unfocused] .topbar,
+html.performance-mode .launcher-shell .topbar,
+body.performance-mode .launcher-shell .topbar,
+body.app-minimized .launcher-shell .topbar,
+body.game-performance-mode .launcher-shell .topbar {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  /* A translucent header without blur exposes readable content underneath. */
+  background-color: #0a0b0d !important;
+  background-image: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .launcher-atmosphere { transition: none; }
+  .launcher-atmosphere > div { animation: none; }
+}

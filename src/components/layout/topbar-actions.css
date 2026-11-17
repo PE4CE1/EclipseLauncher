@@ -1,0 +1,26 @@
+.topbar-action {
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  height:34px;
+  border:1px solid rgb(255 255 255 / .075);
+  border-radius:8px;
+  background:linear-gradient(180deg,rgb(255 255 255 / .035),rgb(255 255 255 / .012));
+  color:#96928d;
+  cursor:pointer;
+  user-select:none;
+  transition:background-color 140ms,border-color 140ms,color 140ms;
+}
+.topbar-action:hover { background-color:rgb(255 255 255 / .045);border-color:rgb(255 255 255 / .16);color:#ede6dd; }
+.topbar-action:active { background-color:rgb(255 255 255 / .065); }
+.topbar-action[data-open] { border-color:#c89d6c55;background-color:#ad794614;color:#e5c3a0; }
+.topbar-action:focus-visible { outline:2px solid #c69b6c;outline-offset:2px; }
+.topbar-icon-action { width:34px; }
+.topbar-controller { gap:9px;padding:0 11px; }
+.topbar-controller-icon { color:#b7afa5; }
+.topbar-controller-status { display:flex;align-items:center;gap:5px;font-size:11px;font-weight:550;font-variant-numeric:tabular-nums;line-height:1; }
+.topbar-controller-status>div { gap:5px; }
+.topbar-unread-dot { position:absolute;top:6px;right:6px;width:5px;height:5px;border-radius:50%;background:#deb386;box-shadow:0 0 0 2px #141210;pointer-events:none; }
+@media(prefers-reduced-motion:reduce) { .topbar-action { transition:none; } }

@@ -7,6 +7,11 @@ import { useSearchGames } from '../../hooks/useGames'
 import { getHeaderUrl } from '../../services/assetHelper'
 import { searchItemToGame } from '../../services/steamService'
 import { useTranslation } from '../../hooks/useTranslation'
+import { useClipStore } from '../../store/clipStore'
+import { ControllerPopover, ControllerState } from './ControllerPopover'
+import { QuickAccess } from './QuickAccess'
+import { useShallow } from 'zustand/react/shallow'
+import './topbar-actions.css'
 
 function useDebounce<T>(value: T, delay: number): T {
   const [deb, setDeb] = useState(value)
@@ -17,66 +22,132 @@ function useDebounce<T>(value: T, delay: number): T {
   return deb
 }
 
-interface GamepadBatteryState {
-  connected: boolean
-  model: string
-  level: number
-  charging: boolean
-}
-
-function useControllerBattery() {
-  const [info, setInfo] = useState<GamepadBatteryState>({
+function useControllerBattery(): ControllerState {
+  const [info, setInfo] = useState<ControllerState>({
     connected: false,
     model: '',
+    vendor: 'unknown',
+    connectionType: 'none',
     level: 100,
     charging: false,
+    hasExactLevel: false,
+    slot: 0,
   })
 
   useEffect(() => {
-    const updateGamepads = () => {
-      if (typeof navigator.getGamepads !== 'function') return
-      const gamepads = navigator.getGamepads()
-      let found = false
-      for (const gp of gamepads) {
-        if (gp && gp.connected) {
-          found = true
-          let model = 'Controller'
-          const idLower = gp.id.toLowerCase()
-          if (idLower.includes('xbox') || idLower.includes('xinput')) {
-            model = 'Xbox Controller'
-          } else if (idLower.includes('dualsense') || idLower.includes('054c') || idLower.includes('sony') || idLower.includes('playstation')) {
-            model = 'DualSense / PS Controller'
-          } else if (idLower.includes('switch') || idLower.includes('nintendo')) {
-            model = 'Nintendo Switch Controller'
+    let isMounted = true
+    let wasConnected = false
+    let inFlight = false
+
+    const updateGamepads = async () => {
+      if (document.hidden || inFlight) return
+      inFlight = true
+      try {
+        let gp: Gamepad | null = null
+        let foundIndex = 0
+
+        if (typeof navigator.getGamepads === 'function') {
+          const gamepads = navigator.getGamepads()
+          for (let i = 0; i < gamepads.length; i++) {
+            if (gamepads[i] && gamepads[i]!.connected) {
+              foundIndex = i
+              gp = gamepads[i]!
+              break
+            }
+          }
+        }
+
+        // Query native hardware telemetry via Electron IPC only when gamepad is detected or was previously connected
+        let hw: any = null
+        if (gp || wasConnected) {
+          try {
+            if (window.electronAPI?.getControllerBattery) {
+              hw = await window.electronAPI.getControllerBattery()
+            }
+          } catch (err) {
+            console.warn('[TopBar] Hardware controller query error:', err)
+          }
+        }
+
+        const isConnected = Boolean((hw && hw.connected) || gp)
+        wasConnected = isConnected
+
+        if (!isConnected) {
+          if (isMounted) {
+            setInfo(prev => prev.connected ? { ...prev, connected: false } : prev)
+          }
+          return
+        }
+
+        let vendor: 'sony' | 'xbox' | 'nintendo' | 'unknown' = 'unknown'
+        let model = 'Game Controller'
+        let connectionType: 'bluetooth' | 'usb' | 'wireless' | 'none' = 'bluetooth'
+        let level = 100
+        let charging = false
+        let hasExactLevel = false
+
+        if (hw && hw.connected) {
+          if (hw.model) model = hw.model
+          if (hw.vendor && hw.vendor !== 'unknown') vendor = hw.vendor
+          if (hw.connectionType && hw.connectionType !== 'none') connectionType = hw.connectionType
+          if (hw.level !== undefined && hw.level >= 0) {
+            level = hw.level
+            hasExactLevel = Boolean(hw.hasExactLevel)
+          }
+          if (hw.charging !== undefined) charging = hw.charging
+        } else if (gp) {
+          const idLower = (gp.id || '').toLowerCase()
+          if (idLower.includes('054c') || idLower.includes('dualsense') || idLower.includes('playstation') || idLower.includes('sony')) {
+            vendor = 'sony'
+            if (idLower.includes('0df2') || idLower.includes('edge')) {
+              model = 'Sony DualSense Edge™'
+            } else if (idLower.includes('05c4') || idLower.includes('09cc') || idLower.includes('dualshock')) {
+              model = 'Sony DualShock® 4'
+            } else {
+              model = 'Sony PlayStation 5 DualSense™'
+            }
+          } else if (idLower.includes('xbox') || idLower.includes('xinput') || idLower.includes('045e')) {
+            vendor = 'xbox'
+            model = 'Xbox Wireless Controller'
+          } else if (idLower.includes('switch') || idLower.includes('nintendo') || idLower.includes('057e')) {
+            vendor = 'nintendo'
+            model = 'Nintendo Switch Pro Controller'
           }
 
-          const battery = (gp as any).battery
-          const level = battery ? Math.round(battery.level * 100) : 85
-          const charging = battery ? Boolean(battery.charging) : false
+          if (idLower.includes('usb') || (!idLower.includes('wireless') && !idLower.includes('bluetooth') && !idLower.includes('bt'))) {
+            connectionType = 'usb'
+            charging = true
+          }
+        }
 
-          setInfo({
+        if (isMounted) {
+          const next: ControllerState = {
             connected: true,
             model,
+            vendor,
+            connectionType,
             level,
             charging,
-          })
-          break
+            hasExactLevel,
+            slot: foundIndex,
+            rawId: gp?.id,
+          }
+          setInfo(prev => (Object.keys(next) as (keyof ControllerState)[]).every(key => Object.is(prev[key], next[key])) ? prev : next)
         }
-      }
-
-      if (!found) {
-        setInfo(prev => prev.connected ? { ...prev, connected: false } : prev)
-      }
+      } finally { inFlight = false }
     }
 
     updateGamepads()
     window.addEventListener('gamepadconnected', updateGamepads)
     window.addEventListener('gamepaddisconnected', updateGamepads)
+    document.addEventListener('visibilitychange', updateGamepads)
     const interval = setInterval(updateGamepads, 3000)
 
     return () => {
+      isMounted = false
       window.removeEventListener('gamepadconnected', updateGamepads)
       window.removeEventListener('gamepaddisconnected', updateGamepads)
+      document.removeEventListener('visibilitychange', updateGamepads)
       clearInterval(interval)
     }
   }, [])
@@ -93,7 +164,6 @@ export function TopBar() {
     isGameModalOpen, setIsGameModalOpen, selectedGameName,
     goBack, goForward, canGoBack, canGoForward,
     isEclipseCinemaActive,
-    isLightboxOpen,
     notificationHistory,
     isNotificationDropdownOpen,
     setIsNotificationDropdownOpen,
@@ -101,14 +171,27 @@ export function TopBar() {
     markAllNotificationsRead,
     clearNotificationHistory,
     setIsFriendsOpen
-  } = useUIStore()
+  } = useUIStore(useShallow(s => ({
+    searchQuery: s.searchQuery, setSearchQuery: s.setSearchQuery,
+    isSearchOpen: s.isSearchOpen, setIsSearchOpen: s.setIsSearchOpen,
+    activeView: s.activeView, openGameDetails: s.openGameDetails, setActiveView: s.setActiveView,
+    isGameModalOpen: s.isGameModalOpen, setIsGameModalOpen: s.setIsGameModalOpen, selectedGameName: s.selectedGameName,
+    goBack: s.goBack, goForward: s.goForward, canGoBack: s.canGoBack, canGoForward: s.canGoForward,
+    isEclipseCinemaActive: s.isEclipseCinemaActive,
+    notificationHistory: s.notificationHistory, isNotificationDropdownOpen: s.isNotificationDropdownOpen,
+    setIsNotificationDropdownOpen: s.setIsNotificationDropdownOpen, toggleNotificationDropdown: s.toggleNotificationDropdown,
+    markAllNotificationsRead: s.markAllNotificationsRead, clearNotificationHistory: s.clearNotificationHistory,
+    setIsFriendsOpen: s.setIsFriendsOpen,
+  })))
 
-  const { language } = useTranslation()
-  const { settings, activeGame } = useGameStore()
-  const isPerformanceMode = Boolean(settings?.performanceMode || (activeGame && settings?.gamePerformanceMode !== false))
+  const { t, language } = useTranslation()
+  const isTrimmerOpen = useClipStore(s => s.isTrimmerOpen)
+  const { settings, activeGame } = useGameStore(useShallow(s => ({ settings: s.settings, activeGame: s.activeGame })))
+  const isPerformanceMode = document.hidden || !document.hasFocus()
   const unreadCount = notificationHistory.filter(n => !n.read).length
   const notifDropdownRef = useRef<HTMLDivElement>(null)
   const controllerBattery = useControllerBattery()
+  const [isControllerPopoverOpen, setIsControllerPopoverOpen] = useState(false)
 
   const [localQuery, setLocalQuery] = useState('')
   const debouncedQuery = useDebounce(localQuery, 350)
@@ -146,22 +229,30 @@ export function TopBar() {
     setLocalQuery('')
   }
 
+  const isHeaderHidden = isEclipseCinemaActive || (activeView === 'clips' && !isGameModalOpen && isTrimmerOpen)
   const viewTitle: Record<string, string> = {
-    home:      'Home',
-    catalogue: 'Catalogue',
-    library:   'My Library',
-    downloads: 'Downloads',
-    settings:  'Settings',
+    home:      t('home'),
+    catalogue: t('catalogue'),
+    library:   t('uiMyLibrary'),
+    downloads: t('downloads'),
+    settings:  t('settings'),
+    clips: t('clipsTab'),
+    profile: language === 'de' ? 'Profil' : 'Profile',
+    notifications: t('notificationsTab'),
+    storage: t('storage'),
+    'eclipse-info': 'Eclipse Launcher',
+    'free-games': t('freeGamesRadar'),
   }
 
   return (
-    <header className={`topbar absolute top-0 left-0 right-0 h-16 z-50 flex items-center justify-between px-6 bg-[#07080a]/75 backdrop-blur-md border-b border-white/[0.06] transition-all duration-300 pointer-events-auto ${
-      isEclipseCinemaActive || isLightboxOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+    <header data-view={activeView} data-game-open={isGameModalOpen || undefined} className={`topbar absolute top-0 left-0 right-0 h-16 z-50 flex items-center justify-between px-6 bg-[#07080a]/75 backdrop-blur-md border-b border-white/[0.06] transition-[opacity,background-color,border-color] duration-300 pointer-events-auto ${
+      isHeaderHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
     }`}>
       {/* View title or Back button & Navigation History */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1">
           <button
+            id="topbar-history-back"
             onClick={() => goBack()}
             disabled={!canGoBack && !isGameModalOpen}
             className={`p-1.5 rounded-lg transition-colors ${
@@ -169,11 +260,12 @@ export function TopBar() {
                 ? 'text-hub-text hover:text-white hover:bg-white/10 cursor-pointer'
                 : 'text-hub-muted/20 cursor-not-allowed'
             }`}
-            title="Back (Mouse Button 4)"
+            title={t('uiBackMouse')}
           >
             <ChevronLeft size={18} />
           </button>
           <button
+            id="topbar-history-forward"
             onClick={() => goForward()}
             disabled={!canGoForward}
             className={`p-1.5 rounded-lg transition-colors ${
@@ -181,7 +273,7 @@ export function TopBar() {
                 ? 'text-hub-text hover:text-white hover:bg-white/10 cursor-pointer'
                 : 'text-hub-muted/20 cursor-not-allowed'
             }`}
-            title="Forward (Mouse Button 5)"
+            title={t('uiForwardMouse')}
           >
             <ChevronRight size={18} />
           </button>
@@ -189,10 +281,12 @@ export function TopBar() {
 
         {isGameModalOpen ? (
           <button 
+            id="topbar-game-back"
             onClick={() => setIsGameModalOpen(false)}
             className="text-lg font-bold text-hub-text hover:text-white transition-colors cursor-pointer"
           >
-            Back
+
+            {t('uiBack')}
           </button>
         ) : (
           <h1 className="text-lg font-bold text-hub-text">
@@ -218,7 +312,7 @@ export function TopBar() {
                   ref={inputRef}
                   id="topbar-search-input"
                   type="text"
-                  placeholder="Search Steam..."
+                  placeholder={t('uiSearchSteam')}
                   value={localQuery}
                   onChange={e => setLocalQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -240,15 +334,16 @@ export function TopBar() {
               {/* Dropdown */}
               {localQuery.length >= 2 && (
                 <motion.div
-                  initial={isPerformanceMode ? false : { opacity: 0, y: -8 }}
+                  initial={isPerformanceMode ? false : { opacity: 0, y: -5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={isPerformanceMode ? { duration: 0 } : undefined}
-                  className="absolute top-full left-0 right-0 mt-2 bg-[#08080b] rounded-xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.98)] max-h-80 overflow-y-auto z-50 border border-white/[0.08]"
+                  transition={{duration:isPerformanceMode?0:.16,ease:[.2,.7,.2,1]}}
+                  className="app-dropdown-surface absolute top-full left-0 right-0 mt-2 bg-[#08080b] rounded-xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.98)] max-h-80 overflow-y-auto z-50 border border-white/[0.08]"
                   style={{ backgroundColor: '#08080b' }}
                 >
                   {results.length === 0 && !isFetching && (
                     <div className="p-4 text-center text-sm text-hub-muted">
-                      No results on Steam
+
+                      {t('uiNoSteamResults')}
                     </div>
                   )}
 
@@ -280,7 +375,7 @@ export function TopBar() {
                               <span className="text-xs text-hub-muted">{item.price.final_formatted}</span>
                             </>
                           ) : item.price?.final === 0 ? (
-                            <span className="text-xs text-indigo-400 font-medium">Free to Play</span>
+                            <span className="text-xs text-indigo-400 font-medium">{t('freeToPlay')}</span>
                           ) : item.price ? (
                             <span className="text-xs text-hub-muted">{item.price.final_formatted}</span>
                           ) : null}
@@ -298,7 +393,8 @@ export function TopBar() {
                       }}
                       className="w-full p-3 text-center text-xs text-indigo-400 hover:bg-hub-elevated transition-colors"
                     >
-                      See all results in Catalogue →
+
+                      {t('uiCatalogueResults')}
                     </button>
                   )}
                 </motion.div>
@@ -307,32 +403,48 @@ export function TopBar() {
           )}
         </AnimatePresence>
 
-        {/* Controller Battery Indicator */}
+
+        {/* Controller Battery Indicator & Popover Trigger */}
         {controllerBattery.connected && (
-          <div 
-            className="flex items-center gap-1.5 px-2.5 h-9 rounded-lg bg-hub-surface border border-hub-border/40 text-xs font-semibold text-white/90 select-none shadow-sm transition-all"
-            title={`${controllerBattery.model} • ${controllerBattery.charging ? 'Wird geladen' : `${controllerBattery.level}% Akku`}`}
-          >
-            <Gamepad2 size={15} className="text-white/70" />
-            <div className="flex items-center gap-1 font-mono text-[11px]">
-              {controllerBattery.charging ? (
-                <div className="flex items-center gap-0.5 text-amber-400">
-                  <Zap size={12} fill="currentColor" />
-                  <span>{controllerBattery.level}%</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <span className={`w-2 h-2 rounded-full ${
-                    controllerBattery.level > 50 
-                      ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' 
-                      : controllerBattery.level > 20 
-                        ? 'bg-amber-400' 
-                        : 'bg-red-400 animate-pulse'
-                  }`} />
-                  <span className="text-white/80">{controllerBattery.level}%</span>
-                </div>
-              )}
-            </div>
+          <div className="relative">
+            <button
+              id="topbar-controller-btn"
+              onClick={() => setIsControllerPopoverOpen(!isControllerPopoverOpen)}
+              type="button"
+              aria-expanded={isControllerPopoverOpen}
+              className="topbar-action topbar-controller"
+              data-open={isControllerPopoverOpen || undefined}
+              title={`${controllerBattery.model} • ${t('controllerStatusAndTest')}`}
+            >
+              <Gamepad2 size={16} className="topbar-controller-icon" />
+              <div className="topbar-controller-status">
+                {controllerBattery.charging ? (
+                  <div className="flex items-center gap-0.5 text-amber-400">
+                    <Zap size={12} fill="currentColor" />
+                    <span>{controllerBattery.hasExactLevel ? `${controllerBattery.level}%` : 'USB'}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      controllerBattery.level > 50
+                        ? 'bg-emerald-400'
+                        : controllerBattery.level > 20
+                          ? 'bg-amber-400'
+                          : 'bg-red-400'
+                    }`} />
+                    <span className="text-white/80">
+                      {controllerBattery.hasExactLevel ? `${controllerBattery.level}%` : t('controllerActive')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </button>
+
+            <ControllerPopover
+              controller={controllerBattery}
+              isOpen={isControllerPopoverOpen}
+              onClose={() => setIsControllerPopoverOpen(false)}
+            />
           </div>
         )}
 
@@ -342,13 +454,17 @@ export function TopBar() {
             if (isSearchOpen) { setIsSearchOpen(false); setLocalQuery('') }
             else setIsSearchOpen(true)
           }}
-          className="w-9 h-9 flex items-center justify-center rounded-lg bg-hub-surface border border-hub-border/40 text-hub-muted hover:text-hub-text hover:bg-hub-elevated transition-all cursor-pointer"
-          aria-label="Toggle search"
+          type="button"
+          aria-expanded={isSearchOpen}
+          data-open={isSearchOpen || undefined}
+          className="topbar-action topbar-icon-action"
+          aria-label={t('uiToggleSearch')}
         >
           {isSearchOpen ? <X size={15} /> : <Search size={15} />}
         </button>
 
         {/* Notification Bell with Dropdown Menu */}
+        <QuickAccess location="topbar"/>
         <div className="relative" ref={notifDropdownRef}>
           <button
             onClick={() => {
@@ -357,23 +473,28 @@ export function TopBar() {
                 markAllNotificationsRead()
               }
             }}
-            className="relative w-9 h-9 flex items-center justify-center rounded-lg bg-hub-surface border border-hub-border/40 text-hub-muted hover:text-white hover:bg-hub-elevated transition-all cursor-pointer"
+            id="topbar-notifications-btn"
+            type="button"
+            aria-expanded={isNotificationDropdownOpen}
+            aria-label={t('notificationsTab')}
+            data-open={isNotificationDropdownOpen || undefined}
+            className="topbar-action topbar-icon-action"
             title={language === 'de' ? 'Benachrichtigungen' : 'Notifications'}
           >
             <Bell size={15} />
             {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-white animate-pulse" />
+              <span className="topbar-unread-dot" />
             )}
           </button>
 
           <AnimatePresence>
             {isNotificationDropdownOpen && (
               <motion.div
-                initial={isPerformanceMode ? false : { opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={isPerformanceMode ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.95 }}
-                transition={{ duration: isPerformanceMode ? 0 : 0.15, ease: 'easeOut' }}
-                className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-[#08080b] border border-white/[0.08] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.98)] overflow-hidden z-50 select-none"
+                initial={isPerformanceMode ? false : { opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={isPerformanceMode ? { opacity: 0 } : { opacity: 0, y: -5 }}
+                transition={{ duration: isPerformanceMode ? 0 : 0.16, ease: [.2,.7,.2,1] }}
+                className="app-dropdown-surface absolute right-0 top-full mt-2 w-80 sm:w-96 bg-[#08080b] border border-white/[0.08] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.98)] overflow-hidden z-50 select-none"
                 style={{ backgroundColor: '#08080b' }}
               >
                 {/* Header */}

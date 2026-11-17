@@ -1,0 +1,40 @@
+const assert=require('node:assert/strict'),{execFile}=require('node:child_process'),{promisify}=require('node:util')
+module.exports=async({evaluate,until,wait,click,errors,media})=>{
+  await evaluate('window.__clipFixture.microphoneFailures(100);true')
+  assert.equal(await evaluate('window.__clipFixture.start()',true),true)
+  const started=Date.now()
+  assert.equal(await evaluate('window.__clipFixture.state().status.micAvailable'),false)
+  assert.equal(await evaluate('window.__clipFixture.state().status.micError'),'NotReadableError')
+  await until('!!document.querySelector("[data-microphone-unavailable] button")')
+  await click('[data-microphone-unavailable] button')
+  await until('window.__clipFixture.state().status.micRecovering===false')
+  assert.equal(await evaluate('window.__clipFixture.state().status.micAvailable'),false,'Failed manual retry must stay visibly unavailable')
+  await evaluate('window.__clipFixture.microphoneFailures(0);true')
+  await click('[data-microphone-unavailable] button')
+  await until('window.__clipFixture.state().status.micAvailable===true',6000)
+  assert.equal(await evaluate('window.__clipFixture.captureStarts()'),1,'Input recovery must not restart video or erase existing replay history')
+  await until('!document.querySelector("[data-microphone-unavailable]")')
+  await wait(700)
+  await evaluate('window.__clipFixture.disconnectMicrophone();true')
+  assert.equal(await evaluate('window.__clipFixture.state().status.micAvailable'),false)
+  await until('window.__clipFixture.state().status.micAvailable===true',4000)
+  // The hidden canvas can deliver fewer frames under simultaneous UI/build load.
+  // Give the encoder enough history before asserting a complete five-second save.
+  await wait(Math.max(1500,8500-(Date.now()-started)))
+  assert.equal(await evaluate('window.__clipFixture.save({customTitle:"Microphone recovered"})',true),true)
+  const state=await evaluate('window.__clipFixture.state()'),clip=state.clips[0]
+  assert.equal(await evaluate('window.__clipFixture.captureStarts()'),1)
+  assert.ok(clip.duration>=4.5,'Recovery must preserve the full rolling replay history: '+clip.duration)
+  assert.ok(clip.micFileName,'Saved clip must contain the recovered microphone track')
+  const ffmpeg=require('ffmpeg-static'),path=require('node:path'),file=path.join(path.dirname(clip.filePath),clip.micFileName)
+  const facts=await media.inspectMedia(ffmpeg,file)
+  assert.ok(facts.duration>=4.4,'Microphone timeline includes outage and recovered input')
+  const decoded=await promisify(execFile)(ffmpeg,['-v','error','-i',file,'-f','f32le','-ac','1','-ar','8000','pipe:1'],{encoding:'buffer',maxBuffer:2e6,windowsHide:true})
+  const samples=decoded.stdout;let peak=0
+  for(let offset=Math.max(0,samples.length-32000);offset+4<=samples.length;offset+=4)peak=Math.max(peak,Math.abs(samples.readFloatLE(offset)))
+  assert.ok(peak>.05,'Recovered microphone must contain actual audible PCM, not just an empty audio file')
+  await evaluate('window.__clipFixture.close();window.__clipFixture.stop();true')
+  assert.equal(await evaluate('window.__clipFixture.state().liveTracks'),0)
+  assert.deepEqual(errors,[])
+  return{success:true,initialFailure:'NotReadableError',manualRetry:true,automaticRecovery:true,disconnectRecovery:true,videoStarts:1,duration:clip.duration,microphoneDuration:facts.duration,syntheticSignalPeak:peak,liveTracksAfterStop:0}
+}

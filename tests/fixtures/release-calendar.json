@@ -1,0 +1,3701 @@
+{
+  "capturedAt": "2026-11-06T23:42:46.329Z",
+  "searches": [
+    {
+      "filter": "popularcomingsoon",
+      "ids": [
+        3629430,
+        4530370,
+        5175310,
+        2523740,
+        4045480,
+        3669620,
+        4576490,
+        5086460,
+        5037200,
+        5118500,
+        2638080,
+        4661070,
+        4218360,
+        4876650,
+        3499790,
+        4559930,
+        2870790,
+        5200620,
+        4776500,
+        2487190,
+        3687090,
+        5378110,
+        2860490,
+        2321960,
+        4534960,
+        2826790,
+        5246700,
+        3218350,
+        4521650,
+        3810510,
+        5185750,
+        4150720,
+        4672030,
+        2378230,
+        4618570,
+        4459590,
+        5189160,
+        4908110,
+        5138990,
+        2295170,
+        2991650,
+        3218570,
+        4304060,
+        3517740,
+        3680170,
+        5182720,
+        4551060,
+        3724300,
+        3504050,
+        4901540,
+        4739500,
+        2669450,
+        2272360,
+        2988120,
+        3610790,
+        4463520,
+        2847780,
+        5051090,
+        4253570,
+        4402200,
+        3030560,
+        5064170,
+        4493130,
+        5343400,
+        4082030,
+        4528040,
+        3710120,
+        3285880,
+        5072600,
+        4832970,
+        1652580,
+        4088360,
+        3188660,
+        4210250,
+        4909100,
+        4114080,
+        5217960,
+        1846700,
+        4184810,
+        3433110,
+        3873760,
+        4611240,
+        5259730,
+        4990840,
+        4928450,
+        3936340,
+        3161310,
+        2984800,
+        5295330,
+        4099810,
+        4390080,
+        4514060,
+        3177710,
+        4599880,
+        2670430,
+        4795460,
+        2174510,
+        2280360,
+        724930,
+        2953940
+      ]
+    },
+    {
+      "filter": "popularnew",
+      "ids": [
+        1876930,
+        4468540,
+        5160800,
+        4834760,
+        3499520,
+        4725170,
+        1211600,
+        3067120,
+        2008750,
+        2008740,
+        3066890,
+        3067130,
+        2229820,
+        2448570,
+        3296060,
+        2411200,
+        4140700,
+        5017810,
+        3577020,
+        3204330,
+        3546610,
+        5119400,
+        3573120,
+        3581230,
+        3275210,
+        5037510,
+        2615540,
+        1677110,
+        1548180,
+        3727090,
+        4358660,
+        5101960,
+        5028050,
+        2320980,
+        5181520,
+        1494420,
+        5266240,
+        4251460,
+        2440760,
+        1686230,
+        4740930,
+        5475960,
+        5133900,
+        1799840,
+        5088440,
+        2920220,
+        5031210,
+        4715160,
+        4096830,
+        3026450,
+        3884860,
+        2482760,
+        4115450,
+        940230,
+        4348910,
+        2223980,
+        4312190,
+        1737870,
+        1566200,
+        5335510,
+        4435490,
+        3259780,
+        5306540,
+        1203620,
+        5228920,
+        4732690,
+        2929250,
+        4098030,
+        3314580,
+        5258340,
+        2254990,
+        5155360,
+        1551980,
+        3883570,
+        3010850,
+        4078430,
+        3393110,
+        2288340,
+        3493540,
+        1488490,
+        3222640,
+        4080220,
+        3669870,
+        4981570,
+        5212940,
+        4358690,
+        3699590,
+        4705510,
+        4019220,
+        2977260,
+        4126040,
+        4678800,
+        1374490,
+        2887580,
+        3070070,
+        3393280,
+        892970,
+        3624140,
+        4656000,
+        5020310
+      ]
+    }
+  ],
+  "items": [
+    {
+      "appid": 3629430,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "DREADMOOR",
+      "release": {
+        "steam_release_date": 1794229200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3629430/${FILENAME}?t=1793299012",
+        "header": "5b80c132b3479c69a92c25a5266db523850cfc36/header.jpg",
+        "library_hero": "81367347d4e0c55201e666e5c9008c3dab7ee47f/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4530370,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Football Manager 27",
+      "release": {
+        "steam_release_date": 1794326400,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4530370/${FILENAME}?t=1793982134",
+        "header": "7d1e9c10ac3b24311e4d376afdaee25d1df0d1c2/header_alt_assets_0_german.jpg",
+        "library_hero": "d38e5bf84f475381c6146e2d54f03d1db5292f10/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5175310,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Worst Class Ever",
+      "release": {
+        "steam_release_date": 1794268800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5175310/${FILENAME}?t=1793936638",
+        "header": "50c902c5f32b7a4f76665856113c3d8e4f861b93/header.jpg",
+        "library_hero": "370926e20f12ffa7ccb3b276b01651cd2eb620b6/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2523740,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "DreamWorks Shrek 2 Remastered",
+      "release": {
+        "steam_release_date": 1794330000,
+        "is_coming_soon": true,
+        "is_preload": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2523740/${FILENAME}?t=1794005630",
+        "header": "abfa94e9a286146554386662e218aae82716711f/header.jpg",
+        "library_hero": "d4d53f6a7f9724fd57bfb36eed66b3aced2bf878/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4045480,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Drawquarium",
+      "release": {
+        "steam_release_date": 1794592140,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4045480/${FILENAME}?t=1793875400",
+        "header": "84e76865a2649679dfb1687354ba0e5a05f44b0b/header.jpg",
+        "library_hero": "aa15d4b817436859a4862da640e7af02f265d51e/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3669620,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Warhammer Survivors",
+      "release": {
+        "steam_release_date": 1794304800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3669620/${FILENAME}?t=1792417110",
+        "header": "dc61fccdeec6b05a58fbcdd7b1d0bbbe1f6999ea/header.jpg",
+        "library_hero": "c614a84a9caacfd46decc2bfbcca15f9cdcfc80b/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4576490,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Casualties: Unknown",
+      "release": {
+        "steam_release_date": 1794232800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4576490/${FILENAME}?t=1792136865",
+        "header": "907888dce73f50c48410b5ab92971a0d95776b29/header.jpg",
+        "library_hero": "ff891c3749212e837fd707579c8bc9dc0a58f221/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5086460,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "PeeVPee",
+      "release": {
+        "steam_release_date": 1794218400,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5086460/${FILENAME}?t=1792681371",
+        "header": "5cf13f8ef535f54851fa4ebfd4d5c9ac905e3ec6/header.jpg",
+        "library_hero": "dc50af2ba093f6413277290588f5fdfd7ca4f780/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5037200,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "just volleyball",
+      "release": {
+        "steam_release_date": 1796025600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_month"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5037200/${FILENAME}?t=1793764414",
+        "header": "cd1b5a290d15e7379b31dcacc12f1e5b25d37577/header.jpg",
+        "library_hero": "83ae64c434a788214cd9569706ebee696e0faf72/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5118500,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Safari-TV",
+      "release": {
+        "steam_release_date": 1794257160,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5118500/${FILENAME}?t=1793990950",
+        "header": "38500a4247747ac23f847e7a6e3e9d03cfad1fcb/header.jpg",
+        "library_hero": "f99dee561128c26a4430bff72ede8062256e5163/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2638080,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Annihilated",
+      "release": {
+        "steam_release_date": 1794297600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2638080/${FILENAME}?t=1793847457",
+        "header": "e44c696c243b2fc64b65eb2ef439ef3535ba1e40/header.jpg",
+        "library_hero": "library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4661070,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "HANDS OVER",
+      "release": {
+        "steam_release_date": 1794557400,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4661070/${FILENAME}?t=1793887712",
+        "header": "1a0bee98f8e5b25723732c1d046711eefb6cb494/header.jpg",
+        "library_hero": "705f8ebd04b8d5a447dd618fea1263d03271e8c4/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4218360,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Wall World Strategy",
+      "release": {
+        "steam_release_date": 1794398400,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4218360/${FILENAME}?t=1793696959",
+        "header": "affb6b94d152a5a52e6c5a75bb246be70e07ae3a/header.jpg",
+        "library_hero": "33c687ee4370ec291c37d112febaa0036ebdc6c1/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4876650,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Niemals nach Farbe sortieren",
+      "release": {
+        "steam_release_date": 1794329700,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4876650/${FILENAME}?t=1793906206",
+        "header": "ca2988a8b150e0ff201bbb7196361efec8461b1a/header_german.jpg",
+        "library_hero": "f261d85c713ceda27f1a8f4ac44a24b2c761bc34/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3499790,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Ashes of the Singularity II",
+      "release": {
+        "steam_release_date": 1794319200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3499790/${FILENAME}?t=1793916066",
+        "header": "0c833c880e8edbf2f798c92f065ec991cd962a65/header.jpg",
+        "library_hero": "b783acfe92047a2d510496480f528b1e8e840027/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4559930,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Oboro no Ichi",
+      "release": {
+        "steam_release_date": 1794247200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4559930/${FILENAME}?t=1793168399",
+        "header": "f0fbf6e5b3c0cca4d8df11cddac36eed839afcd5/header.jpg",
+        "library_hero": "bc31033564e335306a38b728cf2d21ce7e7bd431/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2870790,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Dumpster Gang",
+      "release": {
+        "steam_release_date": 1796320800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2870790/${FILENAME}?t=1793967905",
+        "header": "64d98405caee8e36f934c8c539e9d1d956c9b1db/header_alt_assets_0_german.jpg",
+        "library_hero": "8e35005c7a08f04f463e375dbf6e7597333a1acb/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5200620,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Dungeonbound",
+      "release": {
+        "steam_release_date": 1794788760,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5200620/${FILENAME}?t=1793798725",
+        "header": "b3a32d9086038acf42c9457c2bc062f93d90ea3e/header.jpg",
+        "library_hero": "5353b9410c5060e7b60bb72ef288ccaf06617b65/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4776500,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Carry On Together",
+      "release": {
+        "steam_release_date": 1796025600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_month"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4776500/${FILENAME}?t=1793966148",
+        "header": "dd821e9b25b83d4ec004b75c8933191b725578f8/header.jpg",
+        "library_hero": "3a52192be5bafceedeaaae37390ca29e1a0d0684/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2487190,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Main Sequence",
+      "release": {
+        "steam_release_date": 1794499200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2487190/${FILENAME}?t=1793031514",
+        "header": "73ed2165456629bf1bd7586ad0113a2accecefc9/header.jpg",
+        "library_hero": "01c94f48ea540832aa6db798f5d02c293a7a5cbe/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3687090,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Dice Hoarder",
+      "release": {
+        "steam_release_date": 1794596400,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3687090/${FILENAME}?t=1793219730",
+        "header": "af03fa8cadd860459554ac85a2e47c47190c9f90/header.jpg",
+        "library_hero": "a14e9fa845250994801449aaea0e2b0da92cf6df/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5378110,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "One More Lawn",
+      "release": {
+        "steam_release_date": 1794502800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5378110/${FILENAME}?t=1793980608",
+        "header": "9ac5251c1c2fd82c9b6fc5205e71dc94f65ec583/header.jpg",
+        "library_hero": "05a742201ebe061228498b1b30aa61af231dff0d/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2860490,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "ワロタ、俺の家のとなり魔王城www",
+      "release": {
+        "steam_release_date": 1794581940,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2860490/${FILENAME}?t=1792995452",
+        "header": "25cd77fbd2add6f77ec6e1b62429b416254d02c1/header.jpg",
+        "library_hero": "85e3afabf86fb8185015d3d136d8b9496469ceae/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2321960,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Spirit Crossing",
+      "release": {
+        "steam_release_date": 1794844800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2321960/${FILENAME}?t=1793313658",
+        "header": "ef5229ee7c51162c7233296443ef0520408387cd/header.jpg",
+        "library_hero": "0e0618266e67f1586348cab222219d5afee8f69d/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4534960,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Dear Passengers",
+      "release": {
+        "steam_release_date": 1798704000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_year"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4534960/${FILENAME}?t=1787132605",
+        "header": "7ddef53346afe3e3d4d479dbed740cdb38cfe09a/header.jpg",
+        "library_hero": "33892752c23df9e48c162ab7f8db8ee72d35ba34/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2826790,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Stormforge",
+      "release": {
+        "steam_release_date": 1794337200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2826790/${FILENAME}?t=1793953918",
+        "header": "231c01d922d8f4121d6c476b4334ca6c90cd3fc1/header.jpg",
+        "library_hero": "d451bdd34c3bfb0483423440412aabc685a9f7f3/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5246700,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Defilade",
+      "release": {
+        "steam_release_date": 1797354000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5246700/${FILENAME}?t=1793993457",
+        "header": "318c61bb0156ded3e25429d95f92d09a50b56f8c/header.jpg",
+        "library_hero": "bd1d572f6be63c804daf5750a4e3ff0a5914d0cb/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3218350,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Melvor Idle 2",
+      "release": {
+        "steam_release_date": 1794909600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3218350/${FILENAME}?t=1793260534",
+        "header": "21b3f6881a12eef86b7c17b21640b396f3510f92/header.jpg",
+        "library_hero": "ec2b8edbbbdf1d0a5847d4129bda94453a841874/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4521650,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Farm & Feast",
+      "release": {
+        "steam_release_date": 1794409200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4521650/${FILENAME}?t=1793612272",
+        "header": "d4cdc74914f969e7e027a4eba7522571d51b3109/header.jpg",
+        "library_hero": "5ae1e86edc3e83c9396859335b85da9103614afa/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3810510,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "DERELIKT",
+      "release": {
+        "steam_release_date": 1794591000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3810510/${FILENAME}?t=1793801685",
+        "header": "45f23f4a1143f49de0962289003d6b269fa970bd/header.jpg",
+        "library_hero": "f03c919e8b1bc58455a92795e8da5be786f5f576/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5185750,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Trafficity",
+      "release": {
+        "steam_release_date": 1794819600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5185750/${FILENAME}?t=1793992298",
+        "header": "cba1f3195974a89cac41d5ae9c56e6bed1809b56/header.jpg",
+        "library_hero": "7b8d4b60239392d4aa5401f6ed6253773330d7e8/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4150720,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "PUKEY GODDESS SHOT TRICK",
+      "release": {
+        "steam_release_date": 1796732280,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4150720/${FILENAME}?t=1792768849",
+        "header": "7d4ab50bd6073a912094cb2b17d0617415e002d3/header.jpg",
+        "library_hero": "0b2e119f292fa34eb765f05684715f3a8cb5812e/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4672030,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Malignus",
+      "release": {
+        "steam_release_date": 1794553200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4672030/${FILENAME}?t=1793933634",
+        "header": "2a48de38188ea6095251866d65344f6429399f44/header.jpg",
+        "library_hero": "fa894af548e1be8df5b585ff887ca19530cc073b/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2378230,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Neo Junk City",
+      "release": {
+        "steam_release_date": 1794240000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2378230/${FILENAME}?t=1793748430",
+        "header": "2f07bd838528c28d9ce0c55bdac29db46e4189b2/header.jpg",
+        "library_hero": "6d310c9eb2b2d622be1b2eee5cd06b6cddcbbeb7/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4618570,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Booster Pack Heroes",
+      "release": {
+        "steam_release_date": 1794310800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4618570/${FILENAME}?t=1793989351",
+        "header": "b23824cde8f828abb42f3ef497f37657475ba505/header.jpg",
+        "library_hero": "34addfcd7fb9ecec6ba3ca43fe68ed843b184cda/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4459590,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Glückslegion - Slotbound",
+      "release": {
+        "steam_release_date": 1794258000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4459590/${FILENAME}?t=1793804349",
+        "header": "560f439f789caa08634fbf9ff462c73bf06fbf41/header.jpg",
+        "library_hero": "9abceb76e4f410fd6cbe4732b0004bdd37f2dcdc/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5189160,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "We March as One",
+      "release": {
+        "steam_release_date": 1794590940,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5189160/${FILENAME}?t=1792425821",
+        "header": "52bc72368a29a1a13173db5ec3481a242422a6ca/header.jpg",
+        "library_hero": "ea5963f5df8ce803c32d01696c1addc866223627/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4908110,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Gas N Cars",
+      "release": {
+        "steam_release_date": 1794394800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4908110/${FILENAME}?t=1793026027",
+        "header": "12e1528696b990d9f241f1678b20e698044098c0/header.jpg",
+        "library_hero": "d9c8e9eafa00cdc9f6de7f2fca1874910670f200/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5138990,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Unharvest",
+      "release": {
+        "steam_release_date": 1796659200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5138990/${FILENAME}?t=1793435196",
+        "header": "a2088347d4eebf4f7b0531c47b948f0343627ce0/header.jpg",
+        "library_hero": "3781b51bfaf5f342b6b77086684bc2584082b15b/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2295170,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Emberville",
+      "release": {
+        "steam_release_date": 1799341200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2295170/${FILENAME}?t=1793641621",
+        "header": "99852482000e8eb5b7b75c52bf5f70406c6f6e5f/header.jpg",
+        "library_hero": "29cbda61393820a9d59ab4917ebcfb25fed59618/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2991650,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "DAWN AEROWAR",
+      "release": {
+        "steam_release_date": 1794342600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2991650/${FILENAME}?t=1793899100",
+        "header": "69bf1c7377f04b17657107e4db18d386d4deda98/header.jpg",
+        "library_hero": "97863ee3e40309365017aea953b46f2919688d41/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3218570,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "TANUKI: Pon's Summer",
+      "release": {
+        "steam_release_date": 1794304800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3218570/${FILENAME}?t=1793920683",
+        "header": "03a5efdc08ce01b4067a4aed0f0601e5de22790b/header.jpg",
+        "library_hero": "6243d10d0eaa17a49af9892bee385e3595c7169b/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4304060,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "SONIC PICO PARK",
+      "release": {
+        "steam_release_date": 1794470400,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4304060/${FILENAME}?t=1792544482",
+        "header": "193353d185ee1af3d51068346d9d1a32e81e8ec5/header.jpg",
+        "library_hero": "bf08561b17a0cedd8d82061eba56e254867a4e01/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3517740,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Frostrail",
+      "release": {
+        "steam_release_date": 1798704000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_quarter",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3517740/${FILENAME}?t=1793808000",
+        "header": "28d1bf5419f7e715d062529dcac89b5bece219dd/header.jpg",
+        "library_hero": "2c351ed65d883effa65cc93228b843188d6e0fe5/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3680170,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Mortuus",
+      "release": {
+        "steam_release_date": 1799683200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3680170/${FILENAME}?t=1793909991",
+        "header": "e167565742a0839d40027c35f3bdeb6c0a198f5a/header.jpg",
+        "library_hero": "370de42725045ec5dccf37863016200967e94dc2/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5182720,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Waifu Curator",
+      "release": {
+        "steam_release_date": 1794256920,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5182720/${FILENAME}?t=1793371394",
+        "header": "76f6e834ce10a2d235d542c21634b198924deb05/header.jpg",
+        "library_hero": "857f921f4e9ae27a654f987b9766a78d74963ced/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4551060,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Salt and Soil: A Frontier Family Sim",
+      "release": {
+        "steam_release_date": 1794247200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4551060/${FILENAME}?t=1793801896",
+        "header": "032845633bfbead3cdca6e61e29e8b9622e2ae65/header.jpg",
+        "library_hero": "6127f1076546d8364a056d8392f0f0d35a624701/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3724300,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Toto's Journey",
+      "release": {
+        "steam_release_date": 1795026600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3724300/${FILENAME}?t=1793627236",
+        "header": "92e1d5509cb77280e69a080068dcc16effa0d3ab/header.jpg",
+        "library_hero": "6da86ca95aa198a8a0ffea89ed0f73cc63f1d27e/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3504050,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Hillthorn",
+      "release": {
+        "steam_release_date": 1794319200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3504050/${FILENAME}?t=1793805230",
+        "header": "8f97440ec9047873c605469558ce50110a766a05/header.jpg",
+        "library_hero": "9eed038bb5050bd5c95f2291ac0472cc63e967e6/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4901540,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Brick Buddies",
+      "release": {
+        "steam_release_date": 1794184200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4901540/${FILENAME}?t=1793014435",
+        "header": "45650fc36212b56784e565f5891b12670fca8bd7/header.jpg",
+        "library_hero": "f500d81defbd6399f9a5bf4ae0d4bfdcbd691525/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4739500,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "JOHN GLEEP",
+      "release": {
+        "steam_release_date": 1794420000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4739500/${FILENAME}?t=1793601230",
+        "header": "277e381de9e54a69696e3aa6c2d80035302777fc/header.jpg",
+        "library_hero": "f03dfdcb3e769d245c46fc38ea39e46c11a68b84/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2669450,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "My Child New Beginnings",
+      "release": {
+        "steam_release_date": 1794330000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2669450/${FILENAME}?t=1793979056",
+        "header": "08fe1f9d0a1bea15a4aedc534b9daead2f635980/header.jpg",
+        "library_hero": "438063b52c6eb2b6f980743f11d260c2cc2cd718/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2272360,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Warhammer 40,000: Dawn of War IV",
+      "release": {
+        "steam_release_date": 1796313600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2272360/${FILENAME}?t=1793946854",
+        "header": "f50a309da98ef75cbdae400a7d492e36314ce415/header.jpg",
+        "library_hero": "63bb72eb8e7513bc4756bb46d38f046114c33087/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2988120,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Never Be Alone",
+      "release": {
+        "steam_release_date": 1796720400,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2988120/${FILENAME}?t=1788694890",
+        "header": "f3b6f052317d0b898424877318892499de559319/header.jpg",
+        "library_hero": "c660c86711c09347904a002d8e85d0ab55aebef8/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3610790,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Hope in the City",
+      "release": {
+        "steam_release_date": 1794420000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3610790/${FILENAME}?t=1792688719",
+        "header": "ffb093c37d6c081471f4e01167500824fa13d927/header.jpg",
+        "library_hero": "b89706d0d7f54f754e4291402e1cf8c6a8a29844/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4463520,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Moomin: Midsummer Madness",
+      "release": {
+        "steam_release_date": 1794470400,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4463520/${FILENAME}?t=1793358659",
+        "header": "c4e85af3552b33fc849be844e50efc50d751d9c3/header.jpg",
+        "library_hero": "40a0ecfd02f70f81d694126836b2ab576935a2e9/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2847780,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Nocturnal 2",
+      "release": {
+        "steam_release_date": 1794330000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2847780/${FILENAME}?t=1793909453",
+        "header": "6b57fa23ef819357a78747bd8be5758c1012e3de/header.jpg",
+        "library_hero": "library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5051090,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "The Cozy Funemployment",
+      "release": {
+        "steam_release_date": 1794387600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5051090/${FILENAME}?t=1793158378",
+        "header": "3cfb50537b0bf57ee89dc9a5ac4faafc62461ba9/header.jpg",
+        "library_hero": "e7c9b3f0fd021ca83f4b9a8eeabfcbd350084d61/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4253570,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Reshine",
+      "release": {
+        "steam_release_date": 1795711140,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4253570/${FILENAME}?t=1793911859",
+        "header": "09f1d7876ba9b84e031efff07154f690851e9ce6/header_alt_assets_0.jpg",
+        "library_hero": "c3aa480ea99b65534524549a9e8d12cdee10d4af/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4402200,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Project Tomorrow",
+      "release": {
+        "steam_release_date": 1794250800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4402200/${FILENAME}?t=1793919878",
+        "header": "23260210de3bfe81d6b894e32e95326a468108cd/header.jpg",
+        "library_hero": "04018558b69ec00bed10bf495ef25f79b3e1ec1e/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3030560,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Sloppy Forgeries",
+      "release": {
+        "steam_release_date": 1794592800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3030560/${FILENAME}?t=1793821971",
+        "header": "3eec630946545b5a7df00896cd735c3c110f7c0a/header.jpg",
+        "library_hero": "library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5064170,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Go Next!",
+      "release": {
+        "steam_release_date": 1794240000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5064170/${FILENAME}?t=1793994999",
+        "header": "fd2ef71b9537f3fff25f47e9ec5ea92ae290b7b8/header.jpg",
+        "library_hero": "07e441f89231ad39127d992ae633e06d92a91378/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4493130,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Ski-E-O! Ski Resort Tycoon",
+      "release": {
+        "steam_release_date": 1794506400,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4493130/${FILENAME}?t=1792696424",
+        "header": "0188d1a232e5ab2c906e136031e52da8486cbe77/header.jpg",
+        "library_hero": "ac5113339b1e28e588f16b478d2e4db3a03b90db/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5343400,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Car Flipper",
+      "release": {
+        "steam_release_date": 1794506400,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5343400/${FILENAME}?t=1794003193",
+        "header": "0b449eee06b3033ae8fa5f749261a3353759982f/header.jpg",
+        "library_hero": "b50e1324262d041ce3047e98a9b2be8c4e82172a/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4082030,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Barbie™ Rewind",
+      "release": {
+        "steam_release_date": 1794492000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4082030/${FILENAME}?t=1792608169",
+        "header": "58beeb27ced499b9010c24cbc8c6ee0c24e67cad/header.jpg",
+        "library_hero": "0013238b38ab38a4e768fe30efdf2609f7185441/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4528040,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Sol One",
+      "release": {
+        "steam_release_date": 1794603540,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4528040/${FILENAME}?t=1793846600",
+        "header": "11a329c17dd618cc32ac583ed50f94bae454d7cb/header.jpg",
+        "library_hero": "2cb2716e51d6b24f66c65a06787a4b914c7ddc6d/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3710120,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Potion-making: Path of the Alchemist",
+      "release": {
+        "steam_release_date": 1794324600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3710120/${FILENAME}?t=1792156716",
+        "header": "e6d725d6ef965d55a409e41ca9a345360d7e9ed6/header.jpg",
+        "library_hero": "ddbd29543d394c972ba3c4ffc2b9f2caa33f1c5c/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3285880,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "MONOMOON",
+      "release": {
+        "steam_release_date": 1794414600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3285880/${FILENAME}?t=1792919249",
+        "header": "d47979f80e7e19ff0ffca75f42ba98a6238a3ce4/header.jpg",
+        "library_hero": "78ebae1a6658d26e79418aae567c0ac231fc9f97/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5072600,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Family Time",
+      "release": {
+        "steam_release_date": 1806476400,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_quarter"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5072600/${FILENAME}?t=1789744534",
+        "header": "4584069ef5af5221d75a0e82de25155ea32a61d7/header.jpg",
+        "library_hero": "ccc6ac89c765375a93b56af1de7b1df04e080d4d/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4832970,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "What the Buck?!",
+      "release": {
+        "steam_release_date": 1794246900,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4832970/${FILENAME}?t=1793566237",
+        "header": "ed62607b2b309bfd36bf34e5bd765558bea73307/header.jpg",
+        "library_hero": "77fb65aad324b4b37b142957d600f49e9892dd18/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1652580,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Imperial Grace",
+      "release": {
+        "steam_release_date": 1794420000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1652580/${FILENAME}?t=1793301182",
+        "header": "8bc8e0adfbd5dff7a3e1b0b7568765ec26ba8a7c/header.jpg",
+        "library_hero": "45382d5fe1e6c85e6995d61d627bb6399c2f592b/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4088360,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Funeral for the Sun",
+      "release": {
+        "steam_release_date": 1794225600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4088360/${FILENAME}?t=1793975072",
+        "header": "4133ea3727c30395a6f6c6d3ed94eee63319650e/header.jpg",
+        "library_hero": "624b5377b428e7928fa6eeedd93ad69c7f2e2465/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3188660,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Motocross The Game",
+      "release": {
+        "steam_release_date": 1794819600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3188660/${FILENAME}?t=1793784401",
+        "header": "header.jpg",
+        "library_hero": "059c410177e3041453c54efbca54545ebd4a0e71/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4210250,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Logic Arrows",
+      "release": {
+        "steam_release_date": 1794330000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4210250/${FILENAME}?t=1793714621",
+        "header": "5f164771b18526e972714b4d679777678c496769/header.jpg",
+        "library_hero": "2c9ad809bdf2845280bd7d7eb42d51ad14857eb1/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4909100,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Box Flow",
+      "release": {
+        "steam_release_date": 1794015480,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4909100/${FILENAME}?t=1788891833",
+        "header": "4d83ca7d386fe7269d67bf448409d495f05f84f0/header.jpg",
+        "library_hero": "739fbb945e54a54fac15046952b068832d949c69/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4114080,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "StateOS: The Political Sandbox",
+      "release": {
+        "steam_release_date": 1794247200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4114080/${FILENAME}?t=1792650456",
+        "header": "f5af0d39addb125f833245a0022e752a070c6fab/header.jpg",
+        "library_hero": "bd5c3ad34e4778d2a3e097a84736bd5c4da13197/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5217960,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Jewelry Keeper",
+      "release": {
+        "steam_release_date": 1794010260,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5217960/${FILENAME}?t=1789020938",
+        "header": "75611979c13cdde401db120f9ed35f93d90deeec/header.jpg",
+        "library_hero": "66985e9313a74a40476d69207ea2ce99499661af/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1846700,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Witchbrook",
+      "release": {
+        "steam_release_date": 1801137600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1846700/${FILENAME}?t=1793281852",
+        "header": "957b7e61bf8cb5e91f5dce21403a4288d78fb7b7/header.jpg",
+        "library_hero": "ab9e76493ad4d0cb06393ebe1e284f994dbdf848/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4184810,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Bullet Meltdown",
+      "release": {
+        "steam_release_date": 1794204000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4184810/${FILENAME}?t=1791863587",
+        "header": "e60e9e8b925f16cf71e5fe4e88ebe475be3410fe/header.jpg",
+        "library_hero": "8559512eb7bae0f90e0ff884e5668095441bd9b2/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3433110,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Cinema Theater Tycoon",
+      "release": {
+        "steam_release_date": 1794207600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3433110/${FILENAME}?t=1793910348",
+        "header": "7a9f4b9b5036f78393901eed8d99ac1ff281d0b4/header.jpg",
+        "library_hero": "0d7eae4f61cca2150aaa3b260b222d2c2d5eb1da/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3873760,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Fußballmanager: Auto-Schach",
+      "release": {
+        "steam_release_date": 1794024060,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3873760/${FILENAME}?t=1793987933",
+        "header": "ebc55b5447836878d97b91a6aacfc05b9966edd6/header.jpg",
+        "library_hero": "21a81e79015a7a708a139b0d3a5e7075473457e4/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4611240,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Music Manager",
+      "release": {
+        "steam_release_date": 1794225600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4611240/${FILENAME}?t=1792497015",
+        "header": "045123770fbcca6810e9c9d9c3eac132d1f8febf/header.jpg",
+        "library_hero": "bff88f8af30717d95372b47928fc102021d4b131/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5259730,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Dub Party",
+      "release": {
+        "steam_release_date": 1794067200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5259730/${FILENAME}?t=1793980554",
+        "header": "135be578d9f2405f8b982ea62284f20ce16ccb83/header.jpg",
+        "library_hero": "a3c08749653475d35b70f9e30824760bb51cde97/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4990840,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "FAKE ME",
+      "release": {
+        "steam_release_date": 1794502800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4990840/${FILENAME}?t=1793712981",
+        "header": "03ef494199385e3ca78da1fecd7563483c52877e/header.jpg",
+        "library_hero": "928dab420129c38988d026e3b2db490e653f37fc/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4928450,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Grand Theft Timeline",
+      "release": {
+        "steam_release_date": 1795111200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4928450/${FILENAME}?t=1794006027",
+        "header": "9856eb60fb023ea4c10ed38270e8fbd0159522ed/header.jpg",
+        "library_hero": "0d5e60a5b128c336dd169c546954359af380842d/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3936340,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Hell Wait",
+      "release": {
+        "steam_release_date": 1794232800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3936340/${FILENAME}?t=1793659500",
+        "header": "a429813374132309ee2a54bfd32c99ad5d1a2d68/header.jpg",
+        "library_hero": "b211ed7fa77f208584ca111d877a31365ab6f3fa/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3161310,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Hela: of Mice & Magic",
+      "release": {
+        "steam_release_date": 1796119200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3161310/${FILENAME}?t=1792483278",
+        "header": "868b1938e4540924707c8db978d494322757e28d/header.jpg",
+        "library_hero": "e16d3104240f59a25d9bd60cf291f0435bb99aa1/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2984800,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Double Whammy",
+      "release": {
+        "steam_release_date": 1794333600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2984800/${FILENAME}?t=1793990098",
+        "header": "cb6b2bad12edf416fac0cd1a8220525d7ed9c2a3/header.jpg",
+        "library_hero": "3a36306993fe1e992b36afc30a5ec533b28e19c3/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5295330,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Water TD",
+      "release": {
+        "steam_release_date": 1794592800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5295330/${FILENAME}?t=1793469894",
+        "header": "892421d4a87a720a313e036c1db4a67347c9597f/header.jpg",
+        "library_hero": "69858d0737d4b82a868ec25037b263b7d2962c72/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4099810,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "1999TOKOYO Building",
+      "release": {
+        "steam_release_date": 1794236400,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4099810/${FILENAME}?t=1793964352",
+        "header": "b6cc300848c6d5186272fb10361dca827fb864a2/header.jpg",
+        "library_hero": "0786d2dd02635dbd0b909501b7a6890740dff83b/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4390080,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Bottled by Bears",
+      "release": {
+        "steam_release_date": 1794402000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4390080/${FILENAME}?t=1793622391",
+        "header": "2d72fb041335f66b827b1ec3db8191c70aab4642/header.jpg",
+        "library_hero": "791e93343f992672fcc21ecfd259bfd911786c50/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4514060,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Taimanin Asagi 2",
+      "release": {
+        "steam_release_date": 1794358800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4514060/${FILENAME}?t=1789441222",
+        "header": "ba26d9c8885e104f9679f4ddfef8f16a51a43167/header.jpg",
+        "library_hero": "5072492ca29042a198b6af6b2b8a862dc9a0c737/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3177710,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "On The Train",
+      "release": {
+        "steam_release_date": 1794499200,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3177710/${FILENAME}?t=1792611722",
+        "header": "header.jpg",
+        "library_hero": "2fe6eecf8046a0d68e83792705eb9c0a13175607/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4599880,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Grandma Left Me A Building",
+      "release": {
+        "steam_release_date": 1794578400,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4599880/${FILENAME}?t=1793820329",
+        "header": "154a69759795576b419025e5a831346724316ff8/header.jpg",
+        "library_hero": "31399220cfeafe11110499311bbfee1239ae7cd6/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2670430,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Dashoot: ABYA's Adventure",
+      "release": {
+        "steam_release_date": 1794297600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2670430/${FILENAME}?t=1793763354",
+        "header": "d8ea9e68e049e9772de2ea153be564c90f98e28b/header.jpg",
+        "library_hero": "6d210d3fefa177b968b63fb573c9d06cf28f4902/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4795460,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "The Citadel Project",
+      "release": {
+        "steam_release_date": 1794402000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4795460/${FILENAME}?t=1793987937",
+        "header": "09b928962c32fa3356e5150f49069dae6913bf95/header.jpg",
+        "library_hero": "80cd9e0a614203b67c1f48d0998a62a9897efdc0/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2174510,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Backseat Champions",
+      "release": {
+        "steam_release_date": 1794574800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2174510/${FILENAME}?t=1793789589",
+        "header": "15ffd721cb029c415bcc4ee2702713c9d52df6a4/header.jpg",
+        "library_hero": "33b39269f0b5eb7ff1a86c3f8d1384c42463ed10/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2280360,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Scarecrow: 90s Crime Story",
+      "release": {
+        "steam_release_date": 1794502800,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2280360/${FILENAME}?t=1793911049",
+        "header": "00bf57d3ca4e2cfc1ef62bb5248b9630cd3a6c2f/header.jpg",
+        "library_hero": "88083d3516a424a045df2df340a12e838f83e9ce/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 724930,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Last Chickenburg",
+      "release": {
+        "steam_release_date": 1794207600,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full",
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/724930/${FILENAME}?t=1793960356",
+        "header": "23ffc3e4cb23d1643d00f54bac57cae20f606ee1/header_alt_assets_0.jpg",
+        "library_hero": "library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2953940,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Ancient Wars: Sparta HD",
+      "release": {
+        "steam_release_date": 1794510000,
+        "is_coming_soon": true,
+        "coming_soon_display": "date_full"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2953940/${FILENAME}?t=1792689197",
+        "header": "1b32cbfa428a1962df2b85b2a41d8838e860d7c0/header.jpg",
+        "library_hero": "6a4547973369f1c2bb89ae24ac0e2d20274be0fc/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1876930,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Saloon Simulator",
+      "release": {
+        "steam_release_date": 1793987674,
+        "original_steam_release_date": 1752576398,
+        "release_from_early_access_date": 1793952000,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1876930/${FILENAME}?t=1793987815",
+        "header": "336a5c6ba1d464e6a18c49ec7eea0b5bc4afe4bc/header.jpg",
+        "library_hero": "9ccb9e9bef81858ca6c58e3cb5d807022e94f4d2/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4468540,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "It's About Pirates",
+      "release": {
+        "steam_release_date": 1793980870
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4468540/${FILENAME}?t=1793982937",
+        "header": "e7571c6e07babc42038b817b490adc0e1002c4ae/header.jpg",
+        "library_hero": "405e8d5ba376af52d96904f3b36a66bef8b69b90/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5160800,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Find The Needle",
+      "release": {
+        "steam_release_date": 1793980112,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5160800/${FILENAME}?t=1793980111",
+        "header": "9ad39ef753543a194a7546ee8a17dc4b821cd021/header.jpg",
+        "library_hero": "26fb798b2a94770503cbe8f50e2dc7ce2975a324/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4834760,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Pool of Radiance: Ruins of Myth Drannor",
+      "release": {
+        "steam_release_date": 1793973441
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4834760/${FILENAME}?t=1793974605",
+        "header": "d56eafff9c3c2a6788604850e402c1f02ee4d955/header.jpg",
+        "library_hero": "ebf1e796c5b821568e7ed12bf7e48cab41ea9565/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3499520,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Piano Glow",
+      "release": {
+        "steam_release_date": 1793961999,
+        "original_steam_release_date": 1741622592,
+        "release_from_early_access_date": 1793952000,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3499520/${FILENAME}?t=1793987244",
+        "header": "header.jpg",
+        "library_hero": "713214c96260c2768a332bde85c4c1eee8592619/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4725170,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Elven Huntress: Sunveil",
+      "release": {
+        "steam_release_date": 1793959236
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4725170/${FILENAME}?t=1793959270",
+        "header": "a76455e3cba81a03cda09148f164ad06d5505758/header.jpg",
+        "library_hero": "5fa134b76bcdf38eed1c3d22eb3b3b77e87c3095/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1211600,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "ZED ZONE",
+      "release": {
+        "steam_release_date": 1793948287,
+        "original_steam_release_date": 1680148696,
+        "release_from_early_access_date": 1793952000,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1211600/${FILENAME}?t=1793949713",
+        "header": "aac7446006d1fb3898eccf697406d0c357cf20a3/header_alt_assets_2.jpg",
+        "library_hero": "45145fa3763e6506372bf884417f237c1587b841/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3067120,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Wing Commander™ Prophecy: 30th Anniversary Edition",
+      "release": {
+        "steam_release_date": 1793901384
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3067120/${FILENAME}?t=1794000773",
+        "header": "c3528e4be82905be2169192675d3b878e4a7d9d2/header.jpg",
+        "library_hero": "59dfc6184017a107f1a23a2c1c8837a21101681b/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2008750,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Wing Commander™ IV: The Price of Freedom: 30th Anniversary Edition",
+      "release": {
+        "steam_release_date": 1793901374
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2008750/${FILENAME}?t=1794000740",
+        "header": "be2fb13c2a9d9c7c67d4e8feb204b699f91bedb3/header.jpg",
+        "library_hero": "e36c936c504b2b9a78b2d3f2fc48e4818252e813/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2008740,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Wing Commander™ III: Heart of the Tiger: 30th Anniversary Edition",
+      "release": {
+        "steam_release_date": 1793901369
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2008740/${FILENAME}?t=1794000702",
+        "header": "3900fb9a429df92ade69f05085ee576fa7f8bc10/header.jpg",
+        "library_hero": "8995fceaa5cbcbac80a3d32418c6df26a3b5619a/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3066890,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Crusader: No Remorse™",
+      "release": {
+        "steam_release_date": 1793901336
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3066890/${FILENAME}?t=1793987543",
+        "header": "6d7b7343494fbecf4522f4f5576eb5d555abed28/header.jpg",
+        "library_hero": "a7216b7a558d34f015d80ff194c0bf46afcb46e0/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3067130,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Privateer 2: The Darkening: 30th Anniversary Edition",
+      "release": {
+        "steam_release_date": 1793901336
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3067130/${FILENAME}?t=1793987192",
+        "header": "e7c070d26cc151e405cc125fd9737c31e2be5822/header.jpg",
+        "library_hero": "05aa30cf0c2bd2414a7ad9e528961a2ef78e5f80/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2229820,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Theme Hospital™",
+      "release": {
+        "steam_release_date": 1793901331
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2229820/${FILENAME}?t=1793987494",
+        "header": "887be34f9a940d3e22e4ec6b01f6371500ca061f/header.jpg",
+        "library_hero": "8a447f44ac3087c3c7d3b6b0a1fcdc2125554cc3/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2448570,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Road Rash™",
+      "release": {
+        "steam_release_date": 1793901296
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2448570/${FILENAME}?t=1793986604",
+        "header": "a12ed683c51938590f28400c89cd8c8204e1e8db/header.jpg",
+        "library_hero": "0e11b88ea64b8951b55b27a61d7a8209e78c253d/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3296060,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Escape Academy 2: Back 2 School",
+      "release": {
+        "steam_release_date": 1793899209
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3296060/${FILENAME}?t=1793927584",
+        "header": "2602a19a9df4c306febaed3f9cab850b78515f23/header.jpg",
+        "library_hero": "4e7e621d8505fd2caad63c00c813114742c1602b/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2411200,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Underkeep",
+      "release": {
+        "steam_release_date": 1793898069
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2411200/${FILENAME}?t=1794008212",
+        "header": "be22c58d9f42d3d349198e87b3c192998047b053/header.jpg",
+        "library_hero": "d0f24dfe31ae484161bdc364d4399d29d5e247e1/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4140700,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Cash is King! Business Simulator",
+      "release": {
+        "steam_release_date": 1793896805
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4140700/${FILENAME}?t=1793964910",
+        "header": "94f6b303b94fdf443b351efa586a9e0791c2cff4/header.jpg",
+        "library_hero": "f52c7e2114bf4d3ecf3aacd2a7fd82bce014ad24/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5017810,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Gildoria - Organize a Dragon's Hoard",
+      "release": {
+        "steam_release_date": 1793894731
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5017810/${FILENAME}?t=1793894730",
+        "header": "2b8f9d1bc108b6514619839f6dda30b15a741206/header.jpg",
+        "library_hero": "c64471ac0a5a19ca5659b61e2302c426947ea268/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3577020,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Clean Start",
+      "release": {
+        "steam_release_date": 1793894498
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3577020/${FILENAME}?t=1793897986",
+        "header": "bc883276f172c069ae2b4c08c69fd888b9b38705/header_alt_assets_0_german.jpg",
+        "library_hero": "e30298977211eb4f29b268df7acea0e199a171e5/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3204330,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "County of Fortune",
+      "release": {
+        "steam_release_date": 1793894092,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3204330/${FILENAME}?t=1793894371",
+        "header": "a67740ef43a40c7a0a080f59804be8cd46ca079a/header_alt_assets_3_german.jpg",
+        "library_hero": "9ccb69a5f0eb0fe0ddd87e25fc1c8f8afb62e71a/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3546610,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Wielders of the Essence",
+      "release": {
+        "steam_release_date": 1793890837
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3546610/${FILENAME}?t=1793900780",
+        "header": "60b406b71b60acb81f9a4c5e3405f3a051ea17f7/header.jpg",
+        "library_hero": "837cd11bd34431d8b94e4ab18fe1808311de979b/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5119400,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "WORKS: Motorsport Factory",
+      "release": {
+        "steam_release_date": 1793871850,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5119400/${FILENAME}?t=1793871849",
+        "header": "fbeae6072b2700f617fb48ca1b2d5e519af17433/header.jpg",
+        "library_hero": "afa472451648f8aa6520afcde04ff76f7be69491/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3573120,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "SpellChain",
+      "release": {
+        "steam_release_date": 1793865617
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3573120/${FILENAME}?t=1793873463",
+        "header": "17cda876f224924c39f0f4076ad4a638e6239584/header.jpg",
+        "library_hero": "00cd3258ea7d4326e5ec1b6f26ccf0b9dda9f4a8/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3581230,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Cozy Game Restoration",
+      "release": {
+        "steam_release_date": 1793837925
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3581230/${FILENAME}?t=1793966650",
+        "header": "72723670e61f2e3c107ec8f34a4acb06a7e8db20/header.jpg",
+        "library_hero": "c2bf14da7197ea026211ae1130e7f21710629ef6/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3275210,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Pionero Capital",
+      "release": {
+        "steam_release_date": 1793820644,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3275210/${FILENAME}?t=1793820643",
+        "header": "c4a0b91c0398e98e31bb3563d17165d079954a8d/header.jpg",
+        "library_hero": "ced964001fdcc151d96ffff79fcb1fc1d0e4f40b/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5037510,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Playrooms",
+      "release": {
+        "steam_release_date": 1793817032
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5037510/${FILENAME}?t=1793970736",
+        "header": "aa50da281292d0776241c58beef540614f4f6191/header.jpg",
+        "library_hero": "e3387ab552d846db757ca513ebf3ac1d59857873/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2615540,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "VOID/BREAKER",
+      "release": {
+        "steam_release_date": 1793814015,
+        "release_from_early_access_date": 1793779200,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2615540/${FILENAME}?t=1793821113",
+        "header": "4f3789458cfd9c3375c2926620b19640135f7c4a/header_alt_assets_8.jpg",
+        "library_hero": "fd07932e1aeeb6758d8b8d28860e409853a44ec5/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1677110,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Lightyear Frontier",
+      "release": {
+        "steam_release_date": 1793811971,
+        "original_steam_release_date": 1710870371,
+        "release_from_early_access_date": 1793779200,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1677110/${FILENAME}?t=1793891345",
+        "header": "f4aec944f634f189990fe69e6d353b5609787955/header_alt_assets_7.jpg",
+        "library_hero": "d275fa34456382233ac9a49701504bd37f9a2df4/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1548180,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Worship",
+      "release": {
+        "steam_release_date": 1793811622,
+        "original_steam_release_date": 1752681682,
+        "release_from_early_access_date": 1793779200,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1548180/${FILENAME}?t=1793811965",
+        "header": "3152d78d6b630caa4cba95509dd406f815b2a068/header.jpg",
+        "library_hero": "6abc1f9cbf428317049353433e547267512ba6be/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3727090,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Horses of Hoofprint Bay",
+      "release": {
+        "steam_release_date": 1793800835
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3727090/${FILENAME}?t=1793830906",
+        "header": "05ecc629bbeefe5b64ea3acc33da82009bccf968/header.jpg",
+        "library_hero": "17d7d81be240afb57726b30688b302f5170c4fe5/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4358660,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Hull Rupture",
+      "release": {
+        "steam_release_date": 1793800811
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4358660/${FILENAME}?t=1793808075",
+        "header": "2fa72f445e69cd86b4eff46bd22d03352a2f6f82/header_alt_assets_4_german.jpg",
+        "library_hero": "495c811c0832e32449b07259f968cea6e7ec53d4/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5101960,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Dungeons & Dynasties",
+      "release": {
+        "steam_release_date": 1793728820,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5101960/${FILENAME}?t=1793728816",
+        "header": "b410c700f03fb3f65478e393cf864f90e7a1a57c/header.jpg",
+        "library_hero": "d7f8021bde4e5bd4ca31f96369f50b31673a6321/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5028050,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Traffic Architect",
+      "release": {
+        "steam_release_date": 1793728778
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5028050/${FILENAME}?t=1793728776",
+        "header": "72607a0ad3009de80f6df2ffcceb6f889fb5cd9a/header.jpg",
+        "library_hero": "e1e2c8ffd7fdd825d80ee743349032fdaa555462/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2320980,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Loftia",
+      "release": {
+        "steam_release_date": 1793728617,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2320980/${FILENAME}?t=1793732506",
+        "header": "header.jpg",
+        "library_hero": "3b26da63898f0a634c12669128c27b7228709879/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5181520,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Mycelarium",
+      "release": {
+        "steam_release_date": 1793721607
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5181520/${FILENAME}?t=1793964125",
+        "header": "5b6220116b49c7e7a968cc608d32e47bc8fe722f/header.jpg",
+        "library_hero": "a7bdf06f3a9b4d0f97ae45aac90b1622790e00b3/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1494420,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Silica",
+      "release": {
+        "steam_release_date": 1793718316,
+        "original_steam_release_date": 1683121878,
+        "release_from_early_access_date": 1793692800,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1494420/${FILENAME}?t=1793718314",
+        "header": "66c5a129ce55ff945cfbbfb375f55182879b4c14/header_alt_assets_7.jpg",
+        "library_hero": "4bfd8b50d186b1b9136287400f1a6854d668e57c/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5266240,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Potato Please",
+      "release": {
+        "steam_release_date": 1793717979
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5266240/${FILENAME}?t=1793891257",
+        "header": "e289442aa6b3756109bc65b427556ea538efb849/header.jpg",
+        "library_hero": "afed59b301d35797d60504b76f796e6bb5f97d1e/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4251460,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Godzilla: Destroy All Monsters Melee Remastered",
+      "release": {
+        "steam_release_date": 1793714348
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4251460/${FILENAME}?t=1793714569",
+        "header": "28023d80b51185fe3dbadadf608523942f47238c/header.jpg",
+        "library_hero": "bc7ab6b6fc0b37f7d076b945ad364434ab3bce00/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2440760,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "GRAVHOUNDS",
+      "release": {
+        "steam_release_date": 1793638884,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2440760/${FILENAME}?t=1793732699",
+        "header": "0cfc90421cd35e4eba96cf4762040acc84bbc9a9/header_alt_assets_1_german.jpg",
+        "library_hero": "bedf3eb072c8634a67178a629f4cc973e6c2096d/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1686230,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Mayday: The Survival Island",
+      "release": {
+        "steam_release_date": 1793638749
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1686230/${FILENAME}?t=1793639498",
+        "header": "0af62145e9929482bc43fe15f79791b8320ae542/header.jpg",
+        "library_hero": "c9f48b84f870ea0c40beacbb9861ebf0b9892a9a/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4740930,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Legend of Defenders",
+      "release": {
+        "steam_release_date": 1793610026
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4740930/${FILENAME}?t=1793778203",
+        "header": "96f66fa1556e248a39e2061e55d8321beb79b695/header_alt_assets_1.jpg",
+        "library_hero": "957cda5bace13ee609b83832f1d112afc5686825/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5475960,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Incremental Traffic",
+      "release": {
+        "steam_release_date": 1793602318
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5475960/${FILENAME}?t=1793908197",
+        "header": "dc29630dc6764bee4bfc041b42ebbbcfd1cb706a/header.jpg",
+        "library_hero": "f6d354ac1a043c1a78405546a13cee64de12138f/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5133900,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Can 'Em All",
+      "release": {
+        "steam_release_date": 1793384096
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5133900/${FILENAME}?t=1793384095",
+        "header": "19aa14ebe3720e02f7f8c720abbf9749cf36967f/header.jpg",
+        "library_hero": "915952609515a20be18eee99e9161947ffe91a3b/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1799840,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Queen's Domain",
+      "release": {
+        "steam_release_date": 1793379348
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1799840/${FILENAME}?t=1793982850",
+        "header": "1a209734951f53b019ec9fa03f835def14f2a968/header.jpg",
+        "library_hero": "library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5088440,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Rip It! Card Collector",
+      "release": {
+        "steam_release_date": 1793368236
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5088440/${FILENAME}?t=1793726040",
+        "header": "c954ef40e8f93cc628fa4993b038ee2e021cdeb7/header_alt_assets_1.jpg",
+        "library_hero": "8d723088ad30fd5130541d179b9403061ed13e7e/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2920220,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Terrible Lizards",
+      "release": {
+        "steam_release_date": 1793292737
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2920220/${FILENAME}?t=1793292736",
+        "header": "4b19bf2cbb1c1ef26cc0e898fc6e727776845b73/header.jpg",
+        "library_hero": "cffa174f9bb07fd52a5fc155a38f070c0b8bc990/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5031210,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Aufstieg der Händler",
+      "release": {
+        "steam_release_date": 1793292625,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5031210/${FILENAME}?t=1793885862",
+        "header": "df4498365f4819953e98dc2d28c8f7494f07717c/header_german.jpg",
+        "library_hero": "a2359cf9227d6be783dc93b2e71049a6da764ceb/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4715160,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Finals Week ✍🏻",
+      "release": {
+        "steam_release_date": 1793289645
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4715160/${FILENAME}?t=1793289966",
+        "header": "3d05c4f85866620b0b47754e30414cb4414b42dc/header.jpg",
+        "library_hero": "6dcde1b33f0cdc45657d6cc8d0a246cb7b8b83a9/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4096830,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "S.O.N.A.R. - Submarine Operators Not Actually Ready",
+      "release": {
+        "steam_release_date": 1793285769
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4096830/${FILENAME}?t=1793468792",
+        "header": "79e55d368aefa2c2d829264b348c7f0e8eb3d06a/header.jpg",
+        "library_hero": "cdcbf2f7504e7bb236901ffb10e625e3c66ecb7e/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3026450,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Deadly Days: Roadtrip",
+      "release": {
+        "steam_release_date": 1793282353,
+        "original_steam_release_date": 1758545791,
+        "release_from_early_access_date": 1793257200,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3026450/${FILENAME}?t=1793282351",
+        "header": "6d187c0b30f9c2c6ab8dd517a35a43383f0c19dd/header_alt_assets_6_german.jpg",
+        "library_hero": "ff38528b28dedb5e7b470f503156e2c62922d2e1/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3884860,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "The Wolf Among Us Remastered",
+      "release": {
+        "steam_release_date": 1793278837
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3884860/${FILENAME}?t=1793636108",
+        "header": "80ddd096b6fdd5ab25162251bee4131c78cdf351/header.jpg",
+        "library_hero": "af3d5a788291adfa9e8e5fbdde05fa7ba102922f/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2482760,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Hunting Simulator 3",
+      "release": {
+        "steam_release_date": 1793264389
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2482760/${FILENAME}?t=1793285056",
+        "header": "98792e1f2afd77d2fad2326e0bde1b2845790cc9/header_alt_assets_1_german.jpg",
+        "library_hero": "83ee460084c8621d5dca8535221a500a9eb936f3/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4115450,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Phantom Blade Zero",
+      "release": {
+        "steam_release_date": 1793238343
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4115450/${FILENAME}?t=1793261976",
+        "header": "7f882f889630270d3d3fb93825ac6f55b55e7a6c/header.jpg",
+        "library_hero": "1cd52ca84a3d974c4206e9cb90231956324c5999/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 940230,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Geoplanetical",
+      "release": {
+        "steam_release_date": 1793199296,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/940230/${FILENAME}?t=1793824196",
+        "header": "cd3828ba0e43c85eeccb5c1705112278bb32dcf6/header.jpg",
+        "library_hero": "4c89ec167ef524a1eae74ce1bae7e65060db4aef/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4348910,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Probably Stolen - Cyberpunk Shopkeeper Sim",
+      "release": {
+        "steam_release_date": 1793192022
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4348910/${FILENAME}?t=1793942460",
+        "header": "e71463bc2a4c17e0358fea24572fde79da4ccb73/header_alt_assets_3_german.jpg",
+        "library_hero": "5c4503e62e9ff9d138d93d972ebd1fe62af114bc/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2223980,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Nomad Drive",
+      "release": {
+        "steam_release_date": 1793120444,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2223980/${FILENAME}?t=1793667805",
+        "header": "433d5727162af686f0e7d56de539f8476fb0cf0e/header.jpg",
+        "library_hero": "b527d739013cc6cd752e38741436155b2f402c53/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4312190,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "CRACK",
+      "release": {
+        "steam_release_date": 1793032263
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4312190/${FILENAME}?t=1793567520",
+        "header": "27e1703125b59ef4965f9b2793ed877aa493a4c3/header_alt_assets_0_german.jpg",
+        "library_hero": "e37f16829b58fcded5bc39d2923f998d07e1e159/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1737870,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "REKA",
+      "release": {
+        "steam_release_date": 1793012066,
+        "original_steam_release_date": 1726131242,
+        "release_from_early_access_date": 1792998000,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1737870/${FILENAME}?t=1793120469",
+        "header": "d8ea454a870af3d14aa41fbb58356185c9a7d29b/header_alt_assets_5.jpg",
+        "library_hero": "8340f5ddda57534cf08a96a3432b59775687af4e/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1566200,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Tape to Tape",
+      "release": {
+        "steam_release_date": 1792771323,
+        "original_steam_release_date": 1683125503,
+        "release_from_early_access_date": 1792738800,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1566200/${FILENAME}?t=1793653053",
+        "header": "8a10ac73d753b68c2ed09298ce98ee12a225fd3b/header_alt_assets_2.jpg",
+        "library_hero": "9087e2371b9da46fd561ce2baac81d81f3ce3488/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5335510,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Moon Sweepers",
+      "release": {
+        "steam_release_date": 1792738803
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5335510/${FILENAME}?t=1792950881",
+        "header": "41e1e802dfc069cc245b91043e451a2f9ffa80e3/header.jpg",
+        "library_hero": "96be25d2fcd970087569af58184ede859f213256/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4435490,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Call of Duty®: Modern Warfare® 4",
+      "release": {
+        "steam_release_date": 1792728000
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4435490/${FILENAME}?t=1793941334",
+        "header": "0c492be3204835d71e8b454b6eb1817f8ff68c0d/header.jpg",
+        "library_hero": "4138eadd1bb476b0499f6ee7690aba461fdf179c/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3259780,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "FINAL FANTASY RESONANCE",
+      "release": {
+        "steam_release_date": 1792684790
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3259780/${FILENAME}?t=1793984485",
+        "header": "710da43babb2043f9f6ad0e50023e31167d94708/header.jpg",
+        "library_hero": "0cb714b00aaac49c450ad1d64c0c3a3cf14e4cfc/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5306540,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Groundwork Simulator",
+      "release": {
+        "steam_release_date": 1792663186,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5306540/${FILENAME}?t=1793005696",
+        "header": "64674a7e52a9ea471b11731fb65425370550c032/header.jpg",
+        "library_hero": "d150aeda18d29e714e15aa8a5dc2c0bfae1cf877/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1203620,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Enshrouded",
+      "release": {
+        "steam_release_date": 1792076633,
+        "release_from_early_access_date": 1792047600,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1203620/${FILENAME}?t=1792078032",
+        "header": "98ca939f51b39bdd41e0e9198a9ccf8421148770/header_alt_assets_2.jpg",
+        "library_hero": "65bf9ce18aee402c94c5e370f0a4c7c87119f910/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5228920,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Brick by Brick: Tidy Up the Small Town!",
+      "release": {
+        "steam_release_date": 1792069401
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5228920/${FILENAME}?t=1793912232",
+        "header": "8c57f18ab6a1940b328584fe5556f4c87839e1a0/header.jpg",
+        "library_hero": "e64a35e6ea1f2da44f3409ecbe0a049236b68003/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4732690,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Arknights: Endfield",
+      "release": {
+        "steam_release_date": 1792016177
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4732690/${FILENAME}?t=1792035845",
+        "header": "a84104b5ffa357982d188cab0be5d6cfde8a6398/header.jpg",
+        "library_hero": "1f8059e92e7f33e41b68b973ca1c80e926586028/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2929250,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "over the hill",
+      "release": {
+        "steam_release_date": 1791993401
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2929250/${FILENAME}?t=1793102846",
+        "header": "header.jpg",
+        "library_hero": "8511fad37dfe8ccedee5790c95287fb7d6de9fb9/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4098030,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Shipping Store Simulator 2037",
+      "release": {
+        "steam_release_date": 1791985845
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4098030/${FILENAME}?t=1793018120",
+        "header": "5779065f314165697c01a5382faee517b39e1436/header.jpg",
+        "library_hero": "d181d078378b13d5abbfa150d81fb2ac410ae63b/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3314580,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Trash Day",
+      "release": {
+        "steam_release_date": 1791910940
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3314580/${FILENAME}?t=1792435391",
+        "header": "6d7cb32debcbdba122624fae234c659cdff2b4bf/header.jpg",
+        "library_hero": "85410a029e287b9559bdc3ca5c19e8a725fbcf39/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5258340,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "One Million Coins",
+      "release": {
+        "steam_release_date": 1791905420
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5258340/${FILENAME}?t=1793866850",
+        "header": "11ce91f7fb2c45add1b4607a0ba1c26b1c0fcd31/header.jpg",
+        "library_hero": "a5570a940f7dbaa79d2254849e2b945922889405/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2254990,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Permafrost",
+      "release": {
+        "steam_release_date": 1791550420,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2254990/${FILENAME}?t=1793807284",
+        "header": "693eff202c061aaecba330b44d76485a672bea97/header.jpg",
+        "library_hero": "1e9566bcc99f0daaedab98e5f8fad48d9c42541c/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5155360,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Hood Warfare 2",
+      "release": {
+        "steam_release_date": 1791488014
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5155360/${FILENAME}?t=1792873404",
+        "header": "73c77dc5efdbffef90c2d32324d518e68a18fc4b/header.jpg",
+        "library_hero": "875b3229b1425f8e01d26630bbd64975d68f3f76/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1551980,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Clive Barker's Hellraiser: Revival",
+      "release": {
+        "steam_release_date": 1791460746
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1551980/${FILENAME}?t=1791462446",
+        "header": "d1e7111b93b6a8b3eb029908887648348c2c55e6/header.jpg",
+        "library_hero": "fa536cdcd3bbcf5e8074d1c1a10e2c05e08469ec/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3883570,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Invokyr",
+      "release": {
+        "steam_release_date": 1791445532,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3883570/${FILENAME}?t=1792307731",
+        "header": "a1d37fb2bf0de54d1746d1aa4b83fb7ca81700d8/header.jpg",
+        "library_hero": "f8e4e4e26e56348ed57bd1bff8e25f1994c51f4a/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3010850,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Gears of War: E-Day",
+      "release": {
+        "steam_release_date": 1791298839
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3010850/${FILENAME}?t=1792692888",
+        "header": "1abb0c5ef76c14f463dd6e3964adb64f984237d2/header.jpg",
+        "library_hero": "b5751ae4302e34a0fdc216f7d23ba07a8d041443/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4078430,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "STAR WARS: Galactic Racer™",
+      "release": {
+        "steam_release_date": 1791277112
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4078430/${FILENAME}?t=1791388584",
+        "header": "97215eb609882139ce6a28419116be23fcf5ac86/header.jpg",
+        "library_hero": "541b6180ab006e79bb64ad768ad523ef0207c489/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3393110,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "AION 2",
+      "release": {
+        "steam_release_date": 1791205224
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3393110/${FILENAME}?t=1792771538",
+        "header": "10aa4b096ebe6af0d1dd7882e5ba004271aef6f7/header.jpg",
+        "library_hero": "0f3eb5d09fe82771cc01c87cd6d12fb1f38d6069/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2288340,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "ACE COMBAT 8: WINGS OF THEVE",
+      "release": {
+        "steam_release_date": 1790892006
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2288340/${FILENAME}?t=1792128424",
+        "header": "13dea8084135fd130605b78189c82e39bf944c35/header.jpg",
+        "library_hero": "2cb2890597c98cd90bc85e609dbb41645d269ad6/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3493540,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Transport Fever 3",
+      "release": {
+        "steam_release_date": 1790697561
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3493540/${FILENAME}?t=1791359026",
+        "header": "4c179a79a6286b15575ca3f1a6ca620e5d159b19/header.jpg",
+        "library_hero": "1b35c7e31d4867e0055e572e8aa06d921f9645a7/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1488490,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Nivalis Nights",
+      "release": {
+        "steam_release_date": 1790693214
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1488490/${FILENAME}?t=1793636810",
+        "header": "28e511ff46672f9649744961fd6edbf19df75265/header.jpg",
+        "library_hero": "b3a992f82cb0de68e19cbb1a569112d3feebc2eb/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3222640,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Wild West Pioneers",
+      "release": {
+        "steam_release_date": 1790336763,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3222640/${FILENAME}?t=1790343414",
+        "header": "e2d0ec030fef4f18e734ef91ad68f1b147bffb65/header.jpg",
+        "library_hero": "6bcbbd195b884670b4a216b47217b2235cd2f0e3/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4080220,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "EA SPORTS FC™ 27",
+      "release": {
+        "steam_release_date": 1790290781
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4080220/${FILENAME}?t=1793610006",
+        "header": "ff6a3779f1ca83aae8ad3878454f6c11008ea24d/header.jpg",
+        "library_hero": "98909665528dc40a7d43fd3dd6edc8088ed98c44/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3669870,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "CONTROL Resonant",
+      "release": {
+        "steam_release_date": 1790258475
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3669870/${FILENAME}?t=1793357289",
+        "header": "1e0c76e4253d347bb1304c3f213570251d924edf/header.jpg",
+        "library_hero": "6800d1c970b28815caa97e694ce811ca090f82e2/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4981570,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Wand & Order: Tidy up the magic shop!",
+      "release": {
+        "steam_release_date": 1790191811
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4981570/${FILENAME}?t=1790501148",
+        "header": "220cdaf5171fb86917cd0f288c4fd551d89f24f9/header.jpg",
+        "library_hero": "904099d00236649192bd8615111c1960cd2e88c3/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5212940,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Bunker Tidy Up",
+      "release": {
+        "steam_release_date": 1790174811
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5212940/${FILENAME}?t=1793997031",
+        "header": "d037c2b0daaa0b7a4708fa7765e89f041ca8c928/header_alt_assets_1.jpg",
+        "library_hero": "d2dd74da5574708902df9121d860cb949d587a38/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4358690,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Graveyard Keeper 2",
+      "release": {
+        "steam_release_date": 1790096470
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4358690/${FILENAME}?t=1793194709",
+        "header": "d63c37d6289ef7c48d89c0521fb82ac51d7f5ce8/header.jpg",
+        "library_hero": "18a58b51f08c7973992f2a64ab533e0b65103fdf/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3699590,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Well Dweller",
+      "release": {
+        "steam_release_date": 1790089195
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3699590/${FILENAME}?t=1790314621",
+        "header": "49dd898fc6800fb34e599e23b7a015447f8209d5/header.jpg",
+        "library_hero": "8ce0d8562ef8d52639f9afba97657908ef37de92/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4705510,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Happy Wheels",
+      "release": {
+        "steam_release_date": 1789999179
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4705510/${FILENAME}?t=1791030748",
+        "header": "acd7fedba57cc1d506f18886ae6c937f754da6c1/header.jpg",
+        "library_hero": "af6e926f8e3d12c2aaa9ec59fd8d5326c188c8f6/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4019220,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Dressmaker",
+      "release": {
+        "steam_release_date": 1789990310
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4019220/${FILENAME}?t=1792401675",
+        "header": "f1cd08127872e60e4c47a4bc3e40d682d94741bf/header.jpg",
+        "library_hero": "122eb9b7e28c9db5679448517302037834d70309/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2977260,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Die Gilde 1 Remake: Europa 1410",
+      "release": {
+        "steam_release_date": 1789650112,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2977260/${FILENAME}?t=1789971895",
+        "header": "51cf3d04f864cf45d5f90057fcb005a2bdb7b85b/header_german.jpg",
+        "library_hero": "af787223055b3dd9aedc820027b9e80f24390e04/library_hero_german.jpg"
+      }
+    },
+    {
+      "appid": 4126040,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Aniimo",
+      "release": {
+        "steam_release_date": 1789523493
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4126040/${FILENAME}?t=1793258293",
+        "header": "c1ee5babadf5d46000587a5eaf5901bbb6b7013c/header.jpg",
+        "library_hero": "0bc81bb95c68c6b8cacd0b2edf610ba77aba5b51/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4678800,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Train Sim World® 7 ",
+      "release": {
+        "steam_release_date": 1789491600
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4678800/${FILENAME}?t=1793720629",
+        "header": "fbfacf45587dbb8f28446fa14bdba14ae512edb0/header.jpg",
+        "library_hero": "9a55058ac3856cd3bdb38ef2fdfe5f58ef2184ab/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 1374490,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "RuneScape: Dragonwilds",
+      "release": {
+        "steam_release_date": 1789462852,
+        "release_from_early_access_date": 1789455600,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1374490/${FILENAME}?t=1793974714",
+        "header": "3e27915a647dbf05e17f2ff98d33c9a0765da539/header.jpg",
+        "library_hero": "26888710528ba20ab11743212140ca36930569d3/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 2887580,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Active Matter",
+      "release": {
+        "steam_release_date": 1789462745
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2887580/${FILENAME}?t=1793032833",
+        "header": "191801a8de4db48075ef195473a922391cb4c6de/header.jpg",
+        "library_hero": "b42171b77ed2920f8c320425cff5994e34a38438/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3070070,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "TCG Card Shop Simulator",
+      "release": {
+        "steam_release_date": 1789404603,
+        "original_steam_release_date": 1726399396,
+        "release_from_early_access_date": 1789542000,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3070070/${FILENAME}?t=1793152078",
+        "header": "b4f36532c943011a9f1600c2585ca7065ef5b1bb/header.jpg",
+        "library_hero": "6b14b6b4fbb8a386718ab9bbc227a82163733b00/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3393280,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Anime Shop Simulator ✨",
+      "release": {
+        "steam_release_date": 1789148421
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3393280/${FILENAME}?t=1792838483",
+        "header": "addf6327ac73b1cd42cfc66b9c79f329a742a395/header.jpg",
+        "library_hero": "b522d7bf0b489adc410845e3341d316a9ae7b033/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 892970,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Valheim",
+      "release": {
+        "steam_release_date": 1788958595,
+        "original_release_date": 0,
+        "original_steam_release_date": 1612277769,
+        "release_from_early_access_date": 1788937200,
+        "release_from_early_access_style": 1
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/892970/${FILENAME}?t=1791544831",
+        "header": "1888731b59362fca6c026cdbafa3dfffd45c3146/header_alt_assets_6.jpg",
+        "library_hero": "54c41f4233adb74762d722e5b34cfb014402b55e/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 3624140,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Wanderburg",
+      "release": {
+        "steam_release_date": 1788872360,
+        "is_early_access": true
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3624140/${FILENAME}?t=1793918838",
+        "header": "a0a68815aac3899476a7365a04771e731008a406/header.jpg",
+        "library_hero": "05bb4ae71d206057ac957ae88551912f77cb95f5/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 4656000,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "BOMBANANA!",
+      "release": {
+        "steam_release_date": 1788351952
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4656000/${FILENAME}?t=1792877964",
+        "header": "99c086faba625a8d3bc459bab444087d257ccbe1/header.jpg",
+        "library_hero": "6432b9026df018c6db23dd752352a79faf880ebc/library_hero.jpg"
+      }
+    },
+    {
+      "appid": 5020310,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Dub Together",
+      "release": {
+        "steam_release_date": 1788289373
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5020310/${FILENAME}?t=1790943462",
+        "header": "5120fdb5c1622bf7317187323aac962b3034fb93/header.jpg",
+        "library_hero": "4fb264b436f40cd3d845483653f8a66f45a9fe55/library_hero.jpg"
+      }
+    }
+  ]
+}

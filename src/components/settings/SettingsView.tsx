@@ -1,65 +1,100 @@
-import { useState, useEffect } from 'react'
+import { Select } from '../shared/Select'
+import { useState, useEffect, useLayoutEffect, useRef, useId } from 'react'
+import { persistAppSettings } from '../../services/settingsPersistence'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  User, RefreshCw, Zap, Save, Shield, ShieldCheck,
-  Settings as SettingsIcon, Download, Bell, Gamepad2, 
-  Link, Monitor, Check, Plus, Trash, Loader2, Folder, Volume2,
+import {
+  User, RefreshCw, Zap, Shield, ShieldCheck,
+  Settings as SettingsIcon, Download, Bell, Gamepad2,
+  Link, Monitor, Check, Plus, Loader2, Folder, Volume2,
   Paintbrush, ExternalLink, Trash2, Power, RotateCcw, Film, HardDrive, Puzzle,
-  Key, Copy, Eye, EyeOff
+  Boxes, Activity,
 } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
 import { useThemeStore } from '../../store/themeStore'
 import { useScanner } from '../../hooks/useScanner'
 import { useSourceStore } from '../../store/sourceStore'
+import { SourceConnection } from './SourceConnection'
 import { useTranslation } from '../../hooks/useTranslation'
 import { GameplayOverlayTab } from './GameplayOverlayTab'
+import { AccountProtection } from './AccountProtection'
+import { StartupStatus } from './StartupStatus'
+import { AppModeControl } from './AppModeControl'
+import { QuickAccessSettings } from './QuickAccessSettings'
 import { ClipSettingsPanel } from '../clips/ClipSettingsPanel'
 import { StorageManagerView } from '../storage/StorageManagerView'
 import { PluginsSettingsTab } from './PluginsSettingsTab'
+import { AddonsSettingsTab } from './AddonsSettingsTab'
 import { fetchSteamUserProfile } from '../../services/steamService'
-import { restoreAccountBySecret } from '../../services/firebaseService'
 import { sendAppNotification } from '../../services/notificationService'
+import { ChatNotificationSettings } from './ChatNotificationSettings'
 import { playNotificationChime, playNotificationSound, getSoundPresets } from '../../services/soundService'
+import { SceneTransition } from '../shared/SceneTransition'
+import './settings-surfaces.css'
+import type { AppSettings } from '../../types/game'
+
+const CleanCheckbox = ({ checked, onChange, label, description, rightElement }: { checked: boolean; onChange: () => void; label: string; description?: string; rightElement?: React.ReactNode }) => {
+  const descriptionId = useId()
+  return <div className="settings-option-row">
+    <label className="settings-option-label">
+      <span className="settings-option-copy"><span>{label}</span>{description && <small id={descriptionId}>{description}</small>}</span>
+      <span className="settings-toggle">
+        <input type="checkbox" role="switch" aria-label={label} aria-describedby={description ? descriptionId : undefined} checked={checked} onChange={onChange} />
+        <span aria-hidden="true" />
+      </span>
+    </label>
+    {rightElement && <div className="settings-option-action">{rightElement}</div>}
+  </div>
+}
 
 export function SettingsView() {
-  const { settings, updateSettings, scanMessage, isScanning } = useGameStore()
-  const { showNotification, activeSettingsTab, setActiveSettingsTab } = useUIStore()
+  const settings = useGameStore(state => state.settings)
+  const updateSettings = useGameStore(state => state.updateSettings)
+  const scanMessage = useGameStore(state => state.scanMessage)
+  const isScanning = useGameStore(state => state.isScanning)
+  const showNotification = useUIStore(s => s.showNotification)
+  const activeSettingsTab = useUIStore(s => s.activeSettingsTab)
+  const setActiveSettingsTab = useUIStore(s => s.setActiveSettingsTab)
+  const contentScroll = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (contentScroll.current) contentScroll.current.scrollTop = 0
+  }, [activeSettingsTab])
+  const isSteamMonitorOpen = useUIStore(s => s.isSteamMonitorOpen)
+  const toggleSteamMonitor = useUIStore(s => s.toggleSteamMonitor)
   const { installedThemes, activeThemeId, toggleTheme, deleteTheme, setActiveTheme } = useThemeStore()
   const { scan } = useScanner()
-  const { sources, syncSource, syncAll, addSource, addRawSource, removeSource, removeAllSources } = useSourceStore()
+  const { sources, syncAll, addSource, addRawSource, removeAllSources } = useSourceStore()
   const { t, language } = useTranslation()
 
-  const TABS = [
-    { id: 'general', label: t('general'), icon: SettingsIcon },
-    { id: 'downloads', label: t('downloads'), icon: Download },
-    { id: 'storage', label: t('storage') || (language === 'de' ? 'Speicher' : 'Storage'), icon: HardDrive },
-    { id: 'notifications', label: t('notificationsTab'), icon: Bell },
-    { id: 'gameplay', label: t('gameplay'), icon: Gamepad2 },
-    { id: 'integrations', label: t('integrations'), icon: Link },
-    { id: 'system', label: t('system') || 'System', icon: Monitor },
-    { id: 'profile', label: t('profileSettings'), icon: User },
+  const de = language === 'de'
+  const groups = [
+    { label: de ? 'Launcher' : 'Launcher', tabs: [
+      { id: 'general', label: t('general'), icon: SettingsIcon, description: de ? 'Sprache, Startverhalten und das Aussehen von Eclipse.' : 'Language, startup behavior and the look of Eclipse.' },
+      { id: 'downloads', label: t('downloads'), icon: Download, description: de ? 'Speicherorte, Quellen und Optionen für deine Downloads.' : 'Folders, sources and options for your downloads.' },
+      { id: 'storage', label: t('storage'), icon: HardDrive, description: de ? 'Laufwerke und installierte Spiele im Überblick.' : 'Manage your drives and installed games.' },
+      { id: 'notifications', label: t('notificationsTab'), icon: Bell, description: de ? 'Wähle, welche Hinweise du sehen und hören möchtest.' : 'Choose which alerts you want to see and hear.' },
+    ] },
+    { label: de ? 'Spielerlebnis' : 'Experience', tabs: [
+      { id: 'gameplay', label: t('gameplay'), icon: Gamepad2, description: de ? 'Deine Anzeigen im Spiel – genau so, wie du sie brauchst.' : 'Set up the information you see while playing.' },
+      { id: 'clips', label: 'Clips', icon: Film, description: de ? 'Aufnahme, Audio und Tastenkürzel für deine Highlights.' : 'Recording, audio and shortcuts for your highlights.' },
+      { id: 'integrations', label: t('integrations'), icon: Link, description: de ? 'Verbinde Eclipse mit deinen anderen Apps.' : 'Connect Eclipse with your other apps.' },
+      { id: 'system', label: t('system'), icon: Monitor, description: de ? 'Hintergrundbeleuchtung, Darstellung und Systemressourcen.' : 'Background lighting, rendering and system resources.' },
+    ] },
+    { label: de ? 'Konto' : 'Account', tabs: [
+      { id: 'profile', label: t('profileSettings'), icon: User, description: de ? 'Steam-Profil, Privatsphäre und Kontoschutz.' : 'Your Steam profile, privacy and account protection.' },
+    ] },
+    { label: t('extensions'), tabs: [
+      { id: 'plugins', label: t('plugins'), icon: Puzzle, description: de ? 'Verwalte Erweiterungen für deine verbundenen Apps.' : 'Manage extensions for your connected apps.' },
+      { id: 'addons', label: 'Add-ons', icon: Boxes, description: de ? 'Zusätzliche Funktionen für deinen Launcher.' : 'Additional features for your launcher.' },
+    ] },
   ]
+  const currentTab = groups.flatMap(group => group.tabs).find(tab => tab.id === activeSettingsTab) || groups[0].tabs[0]
 
-  const [localSettings, setLocalSettings] = useState(settings)
-  const syncInitial = typeof window !== 'undefined' ? (window as any).electronAPI?.account?.initialIdentity : null
-  const effectiveFriendCode = (settings.friendCode && settings.friendCode.startsWith('ECL-'))
-    ? settings.friendCode
-    : ((localSettings.friendCode && localSettings.friendCode.startsWith('ECL-'))
-      ? localSettings.friendCode
-      : ((syncInitial?.friendCode && syncInitial.friendCode.startsWith('ECL-')) ? syncInitial.friendCode : ''))
-  const effectiveSecret = settings.accountSecret || localSettings.accountSecret || syncInitial?.accountSecret || ''
-
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [newSourceUrl, setNewSourceUrl] = useState('')
   const [showAddSource, setShowAddSource] = useState(false)
+  const [importingSources, setImportingSources] = useState(false)
   const [isCleaningRam, setIsCleaningRam] = useState(false)
-  const [showSecretKey, setShowSecretKey] = useState(false)
-  const [restoreInput, setRestoreInput] = useState('')
-  const [isRestoring, setIsRestoring] = useState(false)
 
-  // VPN State
   const [detectedVpns, setDetectedVpns] = useState<Array<{ id: string; name: string; isRunning: boolean; isConnected: boolean }>>([])
   const [vpnStatus, setVpnStatus] = useState<{ isConnected: boolean; vpnName?: string }>({ isConnected: false })
   const [isScanningVpns, setIsScanningVpns] = useState(false)
@@ -75,9 +110,9 @@ export function SettingsView() {
       ])
       setDetectedVpns(vpns || [])
       setVpnStatus(status || { isConnected: false })
-      if (vpns && vpns.length > 0 && !localSettings.selectedVpnProvider) {
+      if (vpns && vpns.length > 0 && !settings.selectedVpnProvider) {
         set('selectedVpnProvider', vpns[0].id)
-        updateSettings({ selectedVpnProvider: vpns[0].id })
+
       }
     } catch (e) {
       console.warn('VPN scan error:', e)
@@ -92,38 +127,21 @@ export function SettingsView() {
     }
   }, [activeSettingsTab])
 
-  const [startupOptions] = useState({
-    exitInsteadOfMinimize: true,
-    hideToTray: false,
-    startOnBoot: true,
-    startMinimized: false,
-    launchInLibrary: false,
-    autoCheckUpdates: settings.autoCheckUpdates ?? true
-  })
-  const [downloadOptions, setDownloadOptions] = useState({
-    speedLimit: '0',
-    adapter: 'All adapters',
-    seedAfter: false,
-    unpackAuto: true,
-    showMBps: false,
-    deleteArchive: false,
-    createShortcut: true
-  })
+  useEffect(() => {
+    if (settings.downloadPath || !window.electronAPI?.getDefaultDownloadPath) return
+    let active = true
+    window.electronAPI.getDefaultDownloadPath().then(path => {
+      if (active && path && !useGameStore.getState().settings.downloadPath) set('downloadPath', path)
+    }).catch(() => {})
+    return () => { active = false }
+  }, [settings.downloadPath])
 
-  useEffect(() => { 
-    setLocalSettings(settings) 
-    if (!settings.downloadPath && window.electronAPI?.getDefaultDownloadPath) {
-      window.electronAPI.getDefaultDownloadPath().then((p: string) => {
-        if (p) {
-          set('downloadPath', p)
-          updateSettings({ downloadPath: p })
-        }
-      }).catch(() => {})
-    }
-  }, [settings])
+  function persistSettings(patch: Partial<AppSettings>) {
+    void persistAppSettings(patch)
+  }
 
-  function set(key: string, value: any) {
-    setLocalSettings(prev => ({ ...prev, [key]: value }))
+  function set<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
+    persistSettings({ [key]: value } as Pick<AppSettings, K>)
   }
 
   async function handleBrowsePath() {
@@ -135,31 +153,10 @@ export function SettingsView() {
     }
   }
 
-  async function save() {
-    if (isSaving) return
-    setIsSaving(true)
-    setSaveState('saving')
-    const newSettings = { ...localSettings, autoCheckUpdates: startupOptions.autoCheckUpdates }
-    updateSettings(newSettings)
-    if (window.electronAPI) {
-      await window.electronAPI.setSettings(newSettings as any)
-    }
-    setTimeout(() => {
-      setIsSaving(false)
-      setSaveState('saved')
-      if (newSettings.soundEffects ?? true) {
-        playNotificationSound(newSettings.notificationSound || 'eclipse_calm')
-      }
-      showNotification(t('settingsSaved') || 'Settings saved', 'success', 'Eclipse Launcher', 2000)
-      setTimeout(() => {
-        setSaveState('idle')
-      }, 1500)
-    }, 350)
-  }
-
   async function handleAddSource() {
-    if (!newSourceUrl) return
+    if (!newSourceUrl || importingSources) return
     const input = newSourceUrl.trim()
+    setImportingSources(true)
     try {
       if (input.startsWith('{')) {
         await addRawSource(input)
@@ -171,7 +168,7 @@ export function SettingsView() {
       setShowAddSource(false)
     } catch (e: any) {
       showNotification(language === 'de' ? 'Fehler: ' + e.message : 'Error: ' + e.message, 'error')
-    }
+    } finally { setImportingSources(false) }
   }
 
   async function handleImportFile() {
@@ -188,108 +185,45 @@ export function SettingsView() {
     }
   }
 
-  // Reusable clean monochrome checkbox
-  const CleanCheckbox = ({ checked, onChange, label, description, rightElement }: { checked: boolean; onChange: () => void; label: string; description?: string; rightElement?: React.ReactNode }) => (
-    <div className="flex items-center justify-between gap-4">
-      <label className="flex items-start gap-3 cursor-pointer group select-none flex-1">
-        <div 
-          className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all duration-150 flex-shrink-0 mt-0.5 ${
-            checked 
-              ? 'bg-white border-white text-black shadow-sm' 
-              : 'bg-white/[0.04] border-white/20 group-hover:border-white/40'
-          }`}
-        >
-          {checked && <Check size={13} strokeWidth={3} className="text-black" />}
-        </div>
-        <div className="flex-1">
-          <span className="text-sm text-white/80 group-hover:text-white transition-colors block font-medium">
-            {label}
-          </span>
-          {description && (
-            <span className="text-xs text-hub-muted block mt-0.5 leading-relaxed">
-              {description}
-            </span>
-          )}
-        </div>
-        <input type="checkbox" className="hidden" checked={checked} onChange={onChange} />
-      </label>
-      {rightElement && (
-        <div className="flex-shrink-0">
-          {rightElement}
-        </div>
-      )}
-    </div>
-  )
-
   return (
-    <div className="h-full flex text-hub-text bg-hub-base">
-      
-      {/* ─── Left Sidebar ─── */}
-      <div className="w-60 border-r border-hub-border/40 bg-hub-surface flex flex-col h-full overflow-y-auto pt-6">
-        <div className="px-4 pb-2 text-xs font-semibold uppercase tracking-wider text-white/40">{t('settings')}</div>
-        <nav className="flex flex-col space-y-0.5 px-2">
-          {TABS.map(tab => {
-            const Icon = tab.icon
-            const isActive = activeSettingsTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveSettingsTab(tab.id)}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
-                  isActive 
-                    ? 'bg-white/10 text-white font-medium shadow-sm' 
-                    : 'text-hub-text-secondary hover:text-white hover:bg-white/[0.04]'
-                }`}
-              >
-                <Icon size={16} className={isActive ? 'text-white' : 'text-hub-muted'} />
-                {tab.label}
-              </button>
-            )
-          })}
+    <div className="settings-view launcher-page-surface h-full flex text-hub-text bg-hub-base">
 
-          {/* ─── Partitioned Extensions & Plugins Category ─── */}
-          <div className="pt-3 pb-1 px-2">
-            <div className="h-px bg-white/[0.08] mb-2.5" />
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-white/35 px-1 pb-1">
-              {t('extensions') || (language === 'de' ? 'Erweiterungen' : 'Extensions')}
-            </div>
-          </div>
-
-          <button
-            onClick={() => setActiveSettingsTab('plugins')}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
-              activeSettingsTab === 'plugins' 
-                ? 'bg-white/10 text-white font-medium shadow-sm' 
-                : 'text-hub-text-secondary hover:text-white hover:bg-white/[0.04]'
-            }`}
-          >
-            <Puzzle size={16} className={activeSettingsTab === 'plugins' ? 'text-white' : 'text-hub-muted'} />
-            <span>{t('plugins') || 'Plugins'}</span>
-          </button>
+      <aside className="settings-navigation" aria-label={t('settings')}>
+        <div className="settings-navigation-heading"><SettingsIcon size={16} /><span>{t('settings')}</span></div>
+        <nav>
+          {groups.map(group => <div className="settings-nav-group" key={group.label}>
+            <p>{group.label}</p>
+            {group.tabs.map(tab => <button key={tab.id} type="button" id={`settings-tab-${tab.id}`}
+              aria-current={activeSettingsTab === tab.id ? 'page' : undefined}
+              onClick={() => setActiveSettingsTab(tab.id)}>
+              <tab.icon size={16} aria-hidden="true" /><span>{tab.label}</span>
+            </button>)}
+          </div>)}
         </nav>
-      </div>
+        <p className="settings-navigation-note"><Check size={12} />{de ? 'Automatische Speicherung' : 'Automatic saving'}</p>
+      </aside>
 
-      {/* ─── Right Content Area (GPU Layer Isolated, Left-Aligned) ─── */}
-      <div 
-        style={{ contain: 'paint layout', transform: 'translateZ(0)', willChange: 'scroll-position' }}
-        className="flex-1 overflow-y-auto px-10 py-8 relative"
-      >
-        <div className="w-full max-w-5xl pb-32">
+      <div ref={contentScroll} className="settings-scroll" data-settings-page={activeSettingsTab}>
+        <SceneTransition sceneKey={activeSettingsTab} data-settings-scene={activeSettingsTab} className="settings-content">
+          <header className="settings-page-heading">
+            <div><p>{t('settings')}</p><h1>{currentTab.label}</h1><span>{currentTab.description}</span></div>
+          </header>
+          <div className="settings-content-body">
           {activeSettingsTab === 'general' && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-8">
-              
+            <div className="space-y-8">
+
               <section>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold text-white tracking-tight">{t('appBasics')}</h2>
-                  <button 
-                    onClick={() => scan()} 
+                  <button
+                    onClick={() => scan()}
                     className="px-3 py-1.5 bg-white/10 text-white hover:bg-white/20 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 border border-white/10"
                   >
                     <RefreshCw size={13} className={isScanning ? "animate-spin" : ""} />
                     {isScanning ? t('scanning') : t('scanNow')}
                   </button>
                 </div>
-                
+
                 <div className="space-y-5">
                   {/* Download Path */}
                   <div>
@@ -297,11 +231,13 @@ export function SettingsView() {
                     <div className="flex gap-2">
                       <div className="flex-1 relative">
                         <Folder className="absolute left-3 top-2.5 text-hub-muted" size={16} />
-                        <input 
-                          type="text" 
-                          value={localSettings.downloadPath || 'C:\\Downloads'}
+                        <input
+                          aria-label={t('downloadPath')}
+                          id="settings-download-path"
+                          type="text"
+                          value={settings.downloadPath || 'C:\\Downloads'}
                           onChange={e => set('downloadPath', e.target.value)}
-                          className="w-full bg-hub-elevated border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-white/30 transition-all"
+                          className="w-full bg-white/[0.025] border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-white/30 transition-all"
                         />
                       </div>
                       <button onClick={handleBrowsePath} className="px-4 py-2 bg-white/10 border border-white/15 rounded-lg text-xs font-semibold text-white hover:bg-white/20 transition-all">
@@ -313,18 +249,22 @@ export function SettingsView() {
                   {/* Language */}
                   <div>
                     <label className="block text-xs font-semibold text-white/70 uppercase tracking-wider mb-2">{t('language')}</label>
-                    <select 
+                    <Select
+                      id="settings-language"
+                      aria-label={t('language')}
                       value={language}
                       onChange={e => {
-                        updateSettings({ language: e.target.value })
-                        set('language', e.target.value)
+                        const newLang = e.target.value
+                        set('language', newLang)
                       }}
-                      className="w-full bg-hub-elevated border border-white/10 rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:border-white/30 appearance-none transition-all"
+                      className="w-full bg-white/[0.025] border border-white/10 rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:border-white/30 appearance-none transition-all"
                     >
                       <option value="de">Deutsch</option>
                       <option value="en">English</option>
-                    </select>
+                    </Select>
                   </div>
+                  <AppModeControl />
+                  <QuickAccessSettings/>
                 </div>
               </section>
 
@@ -334,11 +274,12 @@ export function SettingsView() {
                 <h2 className="text-lg font-bold text-white mb-4 tracking-tight">{t('startupBehavior')}</h2>
                 <div className="space-y-3.5">
                   {[
-                    { key: 'exitInsteadOfMinimize', label: t('exitInsteadOfMinimize'), value: settings.exitInsteadOfMinimize ?? true },
+                    { key: 'exitInsteadOfMinimize', label: t('exitInsteadOfMinimize'), value: settings.exitInsteadOfMinimize ?? false },
                     { key: 'autoMinimizeOnGame', label: t('autoMinimizeOnGame'), value: settings.autoMinimizeOnGame ?? false },
                     { key: 'startOnBoot', label: t('startOnBoot'), value: settings.startOnBoot ?? true },
                     { key: 'startMinimized', label: t('startMinimized'), value: settings.startMinimized ?? false },
                     { key: 'launchInLibrary', label: t('launchInLibrary'), value: settings.launchInLibrary ?? false },
+                    { key: 'launchInClips', label: t('launchInClips'), value: settings.launchInClips ?? false },
                     { key: 'autoCheckUpdates', label: t('autoCheckUpdates'), value: settings.autoCheckUpdates ?? true },
                   ].map(opt => (
                     <CleanCheckbox
@@ -346,16 +287,10 @@ export function SettingsView() {
                       checked={opt.value}
                       label={opt.label}
                       onChange={() => {
-                        const val = !opt.value
-                        updateSettings({ [opt.key]: val })
-                        if (window.electronAPI) {
-                          window.electronAPI.setSettings({ [opt.key]: val })
-                          if (opt.key === 'startOnBoot' || opt.key === 'startMinimized') {
-                            const sBoot = opt.key === 'startOnBoot' ? val : (settings.startOnBoot ?? true)
-                            const sMin = opt.key === 'startMinimized' ? val : (settings.startMinimized ?? false)
-                            window.electronAPI.setAutoLaunch(sBoot, sMin)
-                          }
-                        }
+                        const patch: Partial<AppSettings> = { [opt.key]: !opt.value }
+                        if (!opt.value && opt.key === 'launchInLibrary') patch.launchInClips = false
+                        if (!opt.value && opt.key === 'launchInClips') patch.launchInLibrary = false
+                        void persistAppSettings(patch)
                       }}
                     />
                   ))}
@@ -364,10 +299,12 @@ export function SettingsView() {
 
               <hr className="border-white/[0.08]" />
 
+              <StartupStatus enabled={settings.startOnBoot !== false} minimized={settings.startMinimized === true} language={language} />
+
               {/* Minimalist Shortcuts Section */}
               <section>
                 <h2 className="text-lg font-bold text-white mb-4 tracking-tight">{language === 'de' ? 'Verknüpfungen' : 'Shortcuts'}</h2>
-                <div className="flex items-center justify-between p-4 bg-[#0f1015] border border-white/10 rounded-xl">
+                <div className="settings-glass-card flex items-center justify-between p-4 bg-white/[0.02] border border-white/10 rounded-xl">
                   <div className="space-y-0.5">
                     <div className="font-semibold text-sm text-white">
                       {language === 'de' ? 'Desktop-Verknüpfung erstellen' : 'Create Desktop Shortcut'}
@@ -406,7 +343,7 @@ export function SettingsView() {
                     checked={settings.scanUninstalledSteam ?? false}
                     label={language === 'de' ? 'Nicht installierte Steam-Spiele in Bibliothek anzeigen' : 'Show uninstalled Steam games in library'}
                     onChange={() => {
-                      updateSettings({ scanUninstalledSteam: !settings.scanUninstalledSteam })
+
                       set('scanUninstalledSteam', !settings.scanUninstalledSteam)
                       setTimeout(() => scan(), 100)
                     }}
@@ -416,7 +353,7 @@ export function SettingsView() {
                     checked={settings.autoScanSplash ?? false}
                     label={language === 'de' ? 'Spiele-Scan automatisch beim Startbildschirm ausführen' : 'Automatically start scanning on Splash Screen'}
                     onChange={() => {
-                      updateSettings({ autoScanSplash: !settings.autoScanSplash })
+
                       set('autoScanSplash', !settings.autoScanSplash)
                     }}
                   />
@@ -433,7 +370,7 @@ export function SettingsView() {
                         <div className="flex items-center gap-3 mt-4 p-3 rounded-xl bg-white/[0.04] border border-white/10">
                           <Loader2 size={16} className="text-white animate-spin" />
                           <div className="flex flex-col">
-                            <span className="text-xs font-semibold text-white">Background Task Running</span>
+                            <span className="text-xs font-semibold text-white">{t('uiBackgroundTask')}</span>
                             <span className="text-[11px] text-white/50">{scanMessage}</span>
                           </div>
                         </div>
@@ -450,13 +387,13 @@ export function SettingsView() {
                   <div>
                     <h2 className="text-lg font-bold text-white tracking-tight">{t('appearance')}</h2>
                     <p className="text-xs text-white/50 mt-0.5">
-                      {language === 'de' 
-                        ? 'Passe das Design von Eclipse Launcher mit Themes aus dem Web Store an.' 
+                      {language === 'de'
+                        ? 'Passe das Design von Eclipse Launcher mit Themes aus dem Web Store an.'
                         : 'Customize Eclipse Launcher styling with themes from the Web Store.'}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button 
+                    <button
                       onClick={() => {
                         const url = 'https://eclipselauncher.pages.dev/#/themes'
                         if (window.electronAPI?.openUrl) {
@@ -471,7 +408,7 @@ export function SettingsView() {
                       <span>{t('webStore')}</span>
                     </button>
                     {activeThemeId && (
-                      <button 
+                      <button
                         onClick={() => setActiveTheme(null)}
                         className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
                         title={language === 'de' ? 'Auf Standard-Eclipse zurücksetzen' : 'Reset to Default Eclipse'}
@@ -491,12 +428,12 @@ export function SettingsView() {
                     <div>
                       <p className="text-sm font-medium text-white/80">{t('noThemes')}</p>
                       <p className="text-xs text-white/40 mt-1 max-w-sm">
-                        {language === 'de' 
+                        {language === 'de'
                           ? 'Besuche den Web Store, um Themes mit 1-Klick direkt in deinen Launcher zu importieren.'
                           : 'Visit the Web Store to 1-click import custom themes directly into your launcher.'}
                       </p>
                     </div>
-                    <button 
+                    <button
                       onClick={() => {
                         const url = 'https://eclipselauncher.pages.dev/#/themes'
                         if (window.electronAPI?.openUrl) {
@@ -516,16 +453,16 @@ export function SettingsView() {
                     {installedThemes.map((theme) => {
                       const isActive = activeThemeId === theme.id
                       return (
-                        <div 
+                        <div
                           key={theme.id}
-                          className={`p-3.5 rounded-xl border transition-all flex items-center justify-between ${
-                            isActive 
-                              ? 'bg-white/[0.06] border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.04)]' 
-                              : 'bg-[#0f1015] border-white/10 hover:border-white/20'
+                          className={`settings-glass-card p-3.5 rounded-xl border transition-all flex items-center justify-between ${
+                            isActive
+                              ? 'bg-white/[0.06] border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.04)]'
+                              : 'bg-white/[0.02] border-white/10 hover:border-white/20'
                           }`}
                         >
                           <div className="flex items-center gap-3.5 min-w-0 flex-1 pr-3">
-                            <div 
+                            <div
                               className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border border-white/20 shadow-inner"
                               style={{ backgroundColor: theme.accentColor || '#ffffff' }}
                             >
@@ -551,8 +488,8 @@ export function SettingsView() {
                             <button
                               onClick={() => toggleTheme(theme.id)}
                               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                                isActive 
-                                  ? 'bg-white text-black hover:bg-white/90 shadow-sm' 
+                                isActive
+                                  ? 'bg-white text-black hover:bg-white/90 shadow-sm'
                                   : 'bg-white/10 text-white/80 hover:text-white hover:bg-white/20'
                               }`}
                             >
@@ -574,34 +511,35 @@ export function SettingsView() {
                   </div>
                 )}
               </section>
-            </motion.div>
+            </div>
           )}
 
           {activeSettingsTab === 'clips' && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+            <div className="settings-clips-embedded">
               <ClipSettingsPanel />
-            </motion.div>
+            </div>
           )}
 
           {activeSettingsTab === 'downloads' && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-8">
-              
+            <div className="space-y-8">
+
               {/* ─── Download Location & Unpack Automation ─── */}
               <section>
                 <h2 className="text-lg font-bold text-white mb-1 tracking-tight">{language === 'de' ? 'Download- & Speicherort' : 'Download Directory & Storage'}</h2>
                 <p className="text-xs text-white/50 mb-4">{language === 'de' ? 'Standardordner für heruntergeladene Spiele und Entpack-Optionen' : 'Default directory for downloaded games and unpacking behavior'}</p>
-                
+
                 <div className="space-y-5">
                   <div>
                     <label className="block text-xs font-semibold text-white/70 uppercase tracking-wider mb-2">{language === 'de' ? 'Standard Download-Verzeichnis' : 'Default Download Folder'}</label>
                     <div className="flex items-center gap-3 max-w-xl">
-                      <input 
-                        type="text" 
+                      <input
+                        id="settings-download-path-readonly"
+                        type="text"
                         readOnly
-                        value={localSettings.downloadPath || 'C:\\Downloads'} 
-                        className="flex-1 bg-hub-elevated border border-white/10 rounded-lg py-2 px-4 text-xs font-mono text-white focus:outline-none"
+                        value={settings.downloadPath || 'C:\\Downloads'}
+                        className="flex-1 bg-white/[0.025] border border-white/10 rounded-lg py-2 px-4 text-xs font-mono text-white focus:outline-none"
                       />
-                      <button 
+                      <button
                         onClick={handleBrowsePath}
                         className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-all border border-white/10 flex items-center gap-2 cursor-pointer flex-shrink-0"
                       >
@@ -621,24 +559,22 @@ export function SettingsView() {
 
                   <div className="space-y-3.5 pt-2">
                     <CleanCheckbox
-                      checked={localSettings.autoExtractArchive ?? true}
+                      checked={settings.autoExtractArchive ?? true}
                       label={language === 'de' ? 'Archive nach Download automatisch mit 7-Zip entpacken' : 'Automatically extract archives with 7-Zip after download'}
                       description={language === 'de' ? 'Entpackt .zip, .rar und .7z Dateien direkt in einen sauberen Spielordner und erkennt die Haupt-Executable.' : 'Unpacks game archives automatically and detects the primary game executable.'}
                       onChange={() => {
-                        const val = !(localSettings.autoExtractArchive ?? true)
+                        const val = !(settings.autoExtractArchive ?? true)
                         set('autoExtractArchive', val)
-                        updateSettings({ autoExtractArchive: val })
                       }}
                     />
 
                     <CleanCheckbox
-                      checked={localSettings.autoDeleteArchive ?? false}
+                      checked={settings.autoDeleteArchive ?? false}
                       label={language === 'de' ? 'Archivdateien nach erfolgreichem Entpacken löschen' : 'Delete archive files after successful extraction'}
                       description={language === 'de' ? 'Spart Festplattenspeicher, indem die heruntergeladenen .zip/.rar/.7z Archive nach dem Entpacken entfernt werden.' : 'Saves disk space by deleting original compressed files after extraction.'}
                       onChange={() => {
-                        const val = !(localSettings.autoDeleteArchive ?? false)
+                        const val = !(settings.autoDeleteArchive ?? false)
                         set('autoDeleteArchive', val)
-                        updateSettings({ autoDeleteArchive: val })
                       }}
                     />
                   </div>
@@ -659,13 +595,13 @@ export function SettingsView() {
 
                   <div className="flex items-center gap-2">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
-                      vpnStatus.isConnected 
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                      vpnStatus.isConnected
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                         : 'bg-white/[0.04] text-white/50 border-white/10'
                     }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${vpnStatus.isConnected ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]' : 'bg-white/30'}`} />
-                      {vpnStatus.isConnected 
-                        ? `${t('vpnActive')} ${vpnStatus.vpnName || 'Connected'}` 
+                      {vpnStatus.isConnected
+                        ? `${t('vpnActive')} ${vpnStatus.vpnName || 'Connected'}`
                         : t('noVpnActive')}
                     </span>
 
@@ -686,19 +622,18 @@ export function SettingsView() {
                 <div className="space-y-4 max-w-xl">
                   <div className="space-y-3">
                     <CleanCheckbox
-                      checked={localSettings.autoVpnOnDownload ?? false}
+                      checked={settings.autoVpnOnDownload ?? false}
                       label={t('autoVpnLabel')}
                       description={t('autoVpnDesc')}
                       onChange={() => {
-                        const val = !(localSettings.autoVpnOnDownload ?? false)
+                        const val = !(settings.autoVpnOnDownload ?? false)
                         set('autoVpnOnDownload', val)
-                        updateSettings({ autoVpnOnDownload: val })
                       }}
                     />
                   </div>
 
                   {/* Detected VPNs List / Card */}
-                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-4 space-y-3">
+                  <div className="settings-glass-card bg-white/[0.02] border border-white/10 rounded-xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-xs text-white/80 uppercase tracking-wider">
                         {t('detectedVpnsHeader')}
@@ -715,17 +650,16 @@ export function SettingsView() {
                     ) : (
                       <div className="space-y-2">
                         {detectedVpns.map((vpn) => {
-                          const isSelected = (localSettings.selectedVpnProvider || detectedVpns[0]?.id) === vpn.id
+                          const isSelected = (settings.selectedVpnProvider || detectedVpns[0]?.id) === vpn.id
                           return (
-                            <div 
+                            <div
                               key={vpn.id}
                               onClick={() => {
                                 set('selectedVpnProvider', vpn.id)
-                                updateSettings({ selectedVpnProvider: vpn.id })
                               }}
                               className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                                isSelected 
-                                  ? 'bg-white/[0.08] border-white/20 text-white' 
+                                isSelected
+                                  ? 'bg-white/[0.08] border-white/20 text-white'
                                   : 'bg-white/[0.02] border-white/[0.06] text-white/60 hover:bg-white/[0.04]'
                               }`}
                             >
@@ -760,7 +694,7 @@ export function SettingsView() {
                           onClick={async () => {
                             setIsConnectingVpn(true)
                             try {
-                              const res = await window.electronAPI?.connectVpn?.(localSettings.selectedVpnProvider)
+                              const res = await window.electronAPI?.connectVpn?.(settings.selectedVpnProvider)
                               if (res?.success) {
                                 if (res.isCLI || res.isNative) {
                                   showNotification(`${t('vpnConnectedSuccess')} ${res.vpnName || ''}`, 'success')
@@ -797,20 +731,20 @@ export function SettingsView() {
                   </span>
                 </div>
                 <p className="text-xs text-white/50 mb-4">
-                  {language === 'de' 
-                    ? 'Verbinde Real-Debrid oder TorBox, um Host-Links (1fichier, Rapidgator etc.) mit ungedrosselter Gigabit-Geschwindigkeit direkt im Launcher herunterzuladen.' 
+                  {language === 'de'
+                    ? 'Verbinde Real-Debrid oder TorBox, um Host-Links (1fichier, Rapidgator etc.) mit ungedrosselter Gigabit-Geschwindigkeit direkt im Launcher herunterzuladen.'
                     : 'Connect Real-Debrid or TorBox to download hoster links (1fichier, Rapidgator, etc.) at unthrottled maximum speeds.'}
                 </p>
 
                 <div className="space-y-4 max-w-xl">
                   {/* Real-Debrid */}
-                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-4 space-y-3">
+                  <div className="settings-glass-card bg-white/[0.02] border border-white/10 rounded-xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-white">Real-Debrid API Key</span>
+                        <span className="font-bold text-sm text-white">{t('uiRealDebridKey')}</span>
                       </div>
-                      <a 
-                        href="#" 
+                      <a
+                        href="#"
                         onClick={(e) => { e.preventDefault(); if (window.electronAPI?.openUrl) window.electronAPI.openUrl('https://real-debrid.com/apitoken') }}
                         className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
                       >
@@ -818,28 +752,27 @@ export function SettingsView() {
                       </a>
                     </div>
                     <div className="flex gap-2">
-                      <input 
-                        type="password" 
-                        placeholder="Hier Real-Debrid API Token einfügen..."
-                        value={localSettings.realDebridKey || ''}
+                      <input
+                        type="password"
+                        placeholder={t('uiRealDebridToken')}
+                        value={settings.realDebridKey || ''}
                         onChange={e => {
                           set('realDebridKey', e.target.value)
-                          updateSettings({ realDebridKey: e.target.value })
                         }}
-                        className="flex-1 bg-hub-base border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-white/30"
+                        className="flex-1 bg-white/[0.025] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-white/30"
                       />
-                      <button 
+                      <button
                         onClick={async () => {
-                          if (!localSettings.realDebridKey?.trim()) {
+                          if (!settings.realDebridKey?.trim()) {
                             showNotification(language === 'de' ? 'Bitte gib zuerst einen Real-Debrid Key ein.' : 'Please enter a Real-Debrid key first.', 'info')
                             return
                           }
                           if (window.electronAPI?.testDebridKey) {
-                            const res = await window.electronAPI.testDebridKey('realDebrid', localSettings.realDebridKey.trim())
+                            const res = await window.electronAPI.testDebridKey('realDebrid', settings.realDebridKey.trim())
                             if (res.success) {
                               showNotification(language === 'de' ? `Real-Debrid verbunden: ${res.username} (${res.type})` : `Connected as ${res.username}`, 'success')
                             } else {
-                              showNotification(res.error || 'Ungültiger Real-Debrid Key', 'error')
+                              showNotification(res.error || t('uiInvalidRealDebridKey'), 'error')
                             }
                           }
                         }}
@@ -851,13 +784,13 @@ export function SettingsView() {
                   </div>
 
                   {/* TorBox */}
-                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-4 space-y-3">
+                  <div className="settings-glass-card bg-white/[0.02] border border-white/10 rounded-xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-white">TorBox API Key</span>
+                        <span className="font-bold text-sm text-white">{t('uiTorBoxKey')}</span>
                       </div>
-                      <a 
-                        href="#" 
+                      <a
+                        href="#"
                         onClick={(e) => { e.preventDefault(); if (window.electronAPI?.openUrl) window.electronAPI.openUrl('https://torbox.app/settings') }}
                         className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
                       >
@@ -865,28 +798,27 @@ export function SettingsView() {
                       </a>
                     </div>
                     <div className="flex gap-2">
-                      <input 
-                        type="password" 
-                        placeholder="Hier TorBox API Token einfügen..."
-                        value={localSettings.torboxKey || ''}
+                      <input
+                        type="password"
+                        placeholder={t('uiTorBoxToken')}
+                        value={settings.torboxKey || ''}
                         onChange={e => {
                           set('torboxKey', e.target.value)
-                          updateSettings({ torboxKey: e.target.value })
                         }}
-                        className="flex-1 bg-hub-base border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-white/30"
+                        className="flex-1 bg-white/[0.025] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-white/30"
                       />
-                      <button 
+                      <button
                         onClick={async () => {
-                          if (!localSettings.torboxKey?.trim()) {
+                          if (!settings.torboxKey?.trim()) {
                             showNotification(language === 'de' ? 'Bitte gib zuerst einen TorBox Key ein.' : 'Please enter a TorBox key first.', 'info')
                             return
                           }
                           if (window.electronAPI?.testDebridKey) {
-                            const res = await window.electronAPI.testDebridKey('torbox', localSettings.torboxKey.trim())
+                            const res = await window.electronAPI.testDebridKey('torbox', settings.torboxKey.trim())
                             if (res.success) {
                               showNotification(language === 'de' ? `TorBox verbunden: ${res.username}` : `Connected as ${res.username}`, 'success')
                             } else {
-                              showNotification(res.error || 'Ungültiger TorBox Key', 'error')
+                              showNotification(res.error || t('uiInvalidTorBoxKey'), 'error')
                             }
                           }
                         }}
@@ -901,46 +833,24 @@ export function SettingsView() {
 
               <hr className="border-white/[0.08]" />
 
-              {/* ─── Hydra Sources Management ─── */}
-              <section>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              {/* Download sources */}
+              <section className="settings-sources">
+                <div className="settings-sources-header">
                   <div>
-                    <h2 className="text-lg font-bold text-white tracking-tight">{t('downloadSourcesManagement')}</h2>
-                    <p className="text-xs text-hub-muted mt-0.5">
-                      {language === 'de' 
-                        ? 'Download-Quellen (JSON) für automatische Repack- und Direct-Download-Optionen im Launcher.' 
-                        : 'Download sources (JSON) for automatic repacks and direct download options.'}
-                    </p>
-                              <button 
-                      onClick={() => {
-                        const url = 'https://eclipselauncher.pages.dev/#/downloads'
-                        if (window.electronAPI?.openUrl) {
-                          window.electronAPI.openUrl(url)
-                        } else {
-                          window.open(url, '_blank')
-                        }
-                      }}
-                      className="px-3.5 py-1.5 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
-                    >
-                      <ExternalLink size={12} className="text-black" />
-                      {language === 'de' ? 'Web Store Quellen' : 'Web Store Sources'}
-                    </button>
-                    {sources.length > 0 && (
-                      <>
-                        <button onClick={() => syncAll()} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-all border border-white/10 cursor-pointer">
-                          {t('syncSources')}
-                        </button>
-                        <button onClick={() => removeAllSources()} className="px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg text-xs font-semibold transition-all cursor-pointer">
-                          {t('removeAllSources')}
-                        </button>
-                      </>
-                    )}
+                    <h2>{de ? 'Download-Quellen' : 'Download sources'}</h2>
+                    <p>{de ? 'Verwalte die Kataloge für deine verfügbaren Downloads.' : 'Manage the catalogs used to find available downloads.'}</p>
+                  </div>
+                  <div className="settings-sources-actions">
+                    <button type="button" onClick={() => { const url = 'https://eclipselauncher.pages.dev/#/downloads'; if (window.electronAPI?.openUrl) void window.electronAPI.openUrl(url); else window.open(url, '_blank', 'noopener,noreferrer') }}><ExternalLink size={13} />{de ? 'Quellen entdecken' : 'Browse sources'}</button>
+                    {sources.length > 0 && <>
+                      <button type="button" disabled={sources.some(source => source.status === 'syncing')} onClick={() => { void syncAll() }}><RefreshCw size={13} className={sources.some(source => source.status === 'syncing') ? 'animate-spin' : ''} />{de ? 'Alle synchronisieren' : 'Sync all'}</button>
+                      <button type="button" className="settings-source-remove-all" onClick={() => removeAllSources()} aria-label={t('removeAllSources')} title={t('removeAllSources')}><Trash2 size={14} /></button>
+                    </>}
                   </div>
                 </div>
-
-                <div className="space-y-3 mt-4">
+                <div className="settings-source-list">
                   {sources.length === 0 && !showAddSource && (
-                    <div className="bg-[#0f1015] border border-white/10 rounded-2xl p-6 text-center space-y-3">
+                    <div className="settings-glass-card bg-white/[0.02] border border-white/10 rounded-2xl p-6 text-center space-y-3">
                       <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 mx-auto flex items-center justify-center text-white/60">
                         <Download size={18} />
                       </div>
@@ -949,7 +859,7 @@ export function SettingsView() {
                           {language === 'de' ? 'Keine Download-Quellen hinterlegt' : 'No Download Sources Configured'}
                         </h3>
                         <p className="text-xs text-hub-muted mt-1 max-w-md mx-auto leading-relaxed">
-                          {language === 'de' 
+                          {language === 'de'
                             ? 'Hole dir geprüfte Download-Quellen aus dem offiziellen Eclipse Web Store oder füge eigene JSON-Links ein.'
                             : 'Get verified download sources from the official Eclipse Web Store or add your custom JSON links.'}
                         </p>
@@ -981,52 +891,43 @@ export function SettingsView() {
                   )}
 
                   {sources.map(source => (
-                    <div key={source.url} className="bg-[#0f1015] border border-white/10 rounded-xl p-3.5 flex flex-col gap-2.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <h3 className="font-semibold text-white text-sm">{source.name}</h3>
+                    <div key={source.url} className="settings-source-row">
+                      <div className="settings-source-heading">
+                        <div className="settings-source-name">
+                          <h3>{source.name}</h3>
                           <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
                             source.status === 'up_to_date' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' :
                             source.status === 'syncing' ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' :
+                            source.status === 'cached' ? 'bg-amber-500/10 text-amber-300 border-amber-500/20' :
                             source.status === 'error' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
                             'bg-white/5 text-white/50 border-white/10'
                           }`}>
                             {source.status === 'up_to_date' ? t('upToDate') :
                              source.status === 'syncing' ? t('syncing') :
+                             source.status === 'cached' ? (language === 'de' ? 'Im Cache' : 'Cached') :
                              source.status === 'error' ? t('error') : t('pending')}
                           </span>
                         </div>
-                        <span className="text-xs text-hub-muted font-medium">{source.optionsCount} {t('downloadOptions')}</span>
+                        <span className="settings-source-count">{(source.optionsCount || 0).toLocaleString(de ? 'de-DE' : 'en-US')} <small>{de ? 'Einträge' : 'entries'}</small></span>
                       </div>
-                      <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          readOnly 
-                          value={source.url} 
-                          className="flex-1 bg-hub-base border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white/70 font-mono focus:outline-none"
-                        />
-                        <button onClick={() => syncSource(source.url)} className="p-1.5 text-white/70 hover:text-white bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 cursor-pointer">
-                          <RefreshCw size={14} className={source.status === 'syncing' ? 'animate-spin' : ''} />
-                        </button>
-                        <button onClick={() => removeSource(source.url)} className="p-1.5 text-red-400 hover:text-red-300 bg-red-500/10 rounded-lg border border-red-500/20 hover:bg-red-500/20 cursor-pointer">
-                          <Trash size={14} />
-                        </button>
-                      </div>
+                      <SourceConnection source={source} language={language} />
                     </div>
                   ))}
 
                   {showAddSource ? (
-                    <div className="bg-hub-surface border border-white/20 rounded-xl p-4 flex gap-2">
-                      <input 
-                        type="text" 
+                    <div className="settings-glass-card bg-white/[0.02] border border-white/20 rounded-xl p-4 flex flex-wrap gap-2">
+                      <textarea
+                        rows={3}
+                        disabled={importingSources}
+                        aria-label={language === 'de' ? 'Quellen-URLs oder JSON' : 'Source URLs or JSON'}
                         value={newSourceUrl}
                         onChange={e => setNewSourceUrl(e.target.value)}
-                        placeholder="URL oder roher JSON Code einfügen..."
-                        className="flex-1 bg-hub-base border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-white/30"
+                        placeholder={language === 'de' ? 'Eine Quellen-URL pro Zeile oder JSON einfügen…' : 'Paste source URLs, one per line, or JSON…'}
+                        className="w-full min-w-0 bg-white/[0.025] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 disabled:opacity-60"
                         autoFocus
-                        onKeyDown={e => e.key === 'Enter' && handleAddSource()}
+                        onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void handleAddSource() } }}
                       />
-                      <button onClick={handleAddSource} className="px-4 py-1.5 bg-white text-black hover:bg-white/90 rounded-lg text-xs font-semibold shadow-sm cursor-pointer">{t('add')}</button>
+                      <button disabled={importingSources} onClick={handleAddSource} className="px-4 py-1.5 bg-white text-black hover:bg-white/90 rounded-lg text-xs font-semibold shadow-sm cursor-pointer disabled:opacity-50">{importingSources ? (language === 'de' ? 'Wird importiert…' : 'Importing…') : t('add')}</button>
                       <button onClick={handleImportFile} className="px-4 py-1.5 bg-hub-base hover:bg-white/10 text-white rounded-lg text-xs font-semibold border border-white/20 cursor-pointer flex items-center gap-1.5">
                         <Download size={14} />
                         {language === 'de' ? 'Datei öffnen' : 'Open File'}
@@ -1041,21 +942,22 @@ export function SettingsView() {
                   ) : null}
                 </div>
               </section>
-            </motion.div>
+            </div>
           )}
 
           {activeSettingsTab === 'storage' && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+            <div>
               <StorageManagerView />
-            </motion.div>
+            </div>
           )}
 
           {activeSettingsTab === 'notifications' && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-8">
+            <div className="settings-notification-sections space-y-8">
+              <ChatNotificationSettings/>
               <section>
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-lg font-bold text-white tracking-tight">{language === 'de' ? 'Benachrichtigungen' : 'Notifications'}</h2>
+                    <h2 className="text-lg font-bold text-white tracking-tight">{language === 'de' ? 'Hinweise und Töne' : 'Alerts & sound'}</h2>
                     <p className="text-xs text-white/50 mt-0.5">{language === 'de' ? 'Benachrichtigungen im Client, Update-Hinweise und Audio-Feedback' : 'In-client alerts, update notices, and audio feedback'}</p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1087,6 +989,13 @@ export function SettingsView() {
                 </div>
 
                 <div className="space-y-5">
+                  <CleanCheckbox
+                    checked={settings.freeGamesNotifications ?? true}
+                    label={t('freeGamesNotifications')}
+                    description={t('freeGamesNotificationsDesc')}
+                    onChange={() => set('freeGamesNotifications', !(settings.freeGamesNotifications ?? true))}
+                  />
+
                   <CleanCheckbox
                     checked={settings.desktopNotifications ?? true}
                     label={language === 'de' ? 'Benachrichtigungen' : 'Notifications'}
@@ -1122,7 +1031,7 @@ export function SettingsView() {
                         {getSoundPresets(language).map((preset) => {
                           const isSelected = (settings.notificationSound || 'eclipse_calm') === preset.id
                           return (
-                            <div
+                            <div data-selected={isSelected || undefined}
                               key={preset.id}
                               onClick={() => {
                                 updateSettings({ notificationSound: preset.id })
@@ -1131,10 +1040,10 @@ export function SettingsView() {
                                 }
                                 playNotificationSound(preset.id)
                               }}
-                              className={`group p-3 rounded-xl border transition-all duration-150 cursor-pointer flex items-center justify-between ${
+                              className={`settings-glass-card group p-3 rounded-xl border transition-all duration-150 cursor-pointer flex items-center justify-between ${
                                 isSelected
                                   ? 'bg-white/10 border-white text-white shadow-sm'
-                                  : 'bg-hub-surface border-white/10 text-white/70 hover:border-white/20 hover:text-white'
+                                  : 'bg-white/[0.02] border-white/10 text-white/70 hover:border-white/20 hover:text-white'
                               }`}
                             >
                               <div className="min-w-0 pr-2">
@@ -1149,7 +1058,7 @@ export function SettingsView() {
                                   playNotificationSound(preset.id)
                                 }}
                                 className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-white/15 border border-white/10 flex items-center justify-center flex-shrink-0 text-white/70 hover:text-white transition-all cursor-pointer"
-                                aria-label="Play sound preview"
+                                aria-label={t('uiSoundPreview')}
                               >
                                 <Volume2 size={12} />
                               </button>
@@ -1161,24 +1070,21 @@ export function SettingsView() {
                   )}
                 </div>
               </section>
-            </motion.div>
+            </div>
           )}
 
           {activeSettingsTab === 'integrations' && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-8">
+            <div className="space-y-8">
               <section>
                 <h2 className="text-lg font-bold text-white mb-4 tracking-tight">{t('integrations') || 'Discord & Integrations'}</h2>
                 <div className="space-y-4">
                   <CleanCheckbox
                     checked={settings.discordRpc ?? true}
                     label="Discord Rich Presence"
-                    description={language === 'de' ? 'Zeigt dein aktuell gespieltes Spiel automatisch als Status auf Discord an.' : 'Automatically show your currently played game as a status on Discord.'}
+                    description={language === 'de' ? 'Aktiviert den Eclipse-Status auf Discord. Ausschalten entfernt auch Idle- und Download-Status.' : 'Enable Eclipse activity on Discord. Turning this off also hides idle and download status.'}
                     onChange={() => {
                       const val = !(settings.discordRpc ?? true)
-                      updateSettings({ discordRpc: val })
-                      if (window.electronAPI) {
-                        window.electronAPI.setSettings({ discordRpc: val })
-                      }
+                      persistSettings({ discordRpc: val })
                     }}
                     rightElement={
                       <div className="inline-flex p-1 rounded-lg bg-black/40 border border-white/10 flex-shrink-0 backdrop-blur-md">
@@ -1188,10 +1094,7 @@ export function SettingsView() {
                             e.stopPropagation()
                             const current = settings.discordActivityStyle || settings.discordRpcActivityStyle || 'clipping'
                             if (current !== 'playing') {
-                              updateSettings({ discordActivityStyle: 'playing', discordRpcActivityStyle: 'playing' })
-                              if (window.electronAPI) {
-                                window.electronAPI.setSettings({ discordActivityStyle: 'playing', discordRpcActivityStyle: 'playing' })
-                              }
+                              persistSettings({ discordActivityStyle: 'playing', discordRpcActivityStyle: 'playing' })
                             }
                           }}
                           className={`px-3 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
@@ -1201,7 +1104,7 @@ export function SettingsView() {
                           }`}
                         >
                           <Gamepad2 size={12} className={((settings.discordActivityStyle || settings.discordRpcActivityStyle) === 'playing') ? 'text-black' : 'text-white/60'} />
-                          <span>Playing</span>
+                          <span>{t('uiPlaying')}</span>
                         </button>
 
                         <button
@@ -1210,10 +1113,7 @@ export function SettingsView() {
                             e.stopPropagation()
                             const current = settings.discordActivityStyle || settings.discordRpcActivityStyle || 'clipping'
                             if (current !== 'clipping') {
-                              updateSettings({ discordActivityStyle: 'clipping', discordRpcActivityStyle: 'clipping' })
-                              if (window.electronAPI) {
-                                window.electronAPI.setSettings({ discordActivityStyle: 'clipping', discordRpcActivityStyle: 'clipping' })
-                              }
+                              persistSettings({ discordActivityStyle: 'clipping', discordRpcActivityStyle: 'clipping' })
                             }
                           }}
                           className={`px-3 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
@@ -1223,7 +1123,7 @@ export function SettingsView() {
                           }`}
                         >
                           <Film size={12} className={((settings.discordActivityStyle || settings.discordRpcActivityStyle) !== 'playing') ? 'text-black' : 'text-white/60'} />
-                          <span>Clipping</span>
+                          <span>{t('uiClipping')}</span>
                         </button>
                       </div>
                     }
@@ -1235,10 +1135,7 @@ export function SettingsView() {
                     description={language === 'de' ? 'Erkennt das exakte Roblox-Spiel (z. B. Blox Fruits) samt individuellem Thumbnail auf Discord statt nur das Standard Roblox-Logo.' : 'Detects the exact Roblox game (e.g. Blox Fruits) with official thumbnail instead of only standard Roblox.'}
                     onChange={() => {
                       const val = !(settings.discordRpcRobloxSubGame ?? true)
-                      updateSettings({ discordRpcRobloxSubGame: val })
-                      if (window.electronAPI) {
-                        window.electronAPI.setSettings({ discordRpcRobloxSubGame: val })
-                      }
+                      persistSettings({ discordRpcRobloxSubGame: val })
                     }}
                   />
 
@@ -1248,37 +1145,35 @@ export function SettingsView() {
                     description={language === 'de' ? 'Animiert die Statuszeilen und Untertitel deines Discord-Status dynamisch in Echtzeit mit wechselnden Effekten und Glyphen.' : 'Dynamically animates the status lines and subtitles of your Discord status in real-time with cycling effects.'}
                     onChange={() => {
                       const val = !(settings.discordRpcAnimatedText ?? false)
-                      updateSettings({ discordRpcAnimatedText: val })
-                      if (window.electronAPI) {
-                        window.electronAPI.setSettings({ discordRpcAnimatedText: val })
-                      }
+                      persistSettings({ discordRpcAnimatedText: val })
                     }}
                   />
 
                   <CleanCheckbox
-                    checked={settings.discordRpcIdle ?? false}
+                    checked={settings.discordRpcIdle ?? true}
                     label={language === 'de' ? 'Idle-Status anzeigen' : 'Show Idle Status'}
                     description={language === 'de' ? 'Zeigt „Stöbert in der Bibliothek“ auf Discord an, wenn kein Spiel aktiv ist.' : 'Show \'Browsing Library\' on Discord when you are not playing any game.'}
                     onChange={() => {
-                      const val = !(settings.discordRpcIdle ?? false)
-                      updateSettings({ discordRpcIdle: val })
-                      if (window.electronAPI) {
-                        window.electronAPI.setSettings({ discordRpcIdle: val })
-                      }
+                      const val = !(settings.discordRpcIdle ?? true)
+                      persistSettings({ discordRpcIdle: val })
                     }}
                   />
 
                   <CleanCheckbox
                     checked={settings.discordRpcShowDownloads ?? true}
                     label={language === 'de' ? 'Aktive Downloads anzeigen' : 'Show Active Downloads'}
-                    description={language === 'de' ? 'Zeigt Download-Fortschritt und Geschwindigkeit auf Discord beim Herunterladen von Spielen an.' : 'Display download progress and speed on Discord when downloading games.'}
+                    description={language === 'de' ? 'Zeigt aktive Downloads aus Eclipse und Steam mit Quelle, Fortschritt und Installationsphase an, solange kein Spiel läuft.' : 'Show active Eclipse and Steam downloads with their source, available progress and installation phase while no game is running.'}
                     onChange={() => {
                       const val = !(settings.discordRpcShowDownloads ?? true)
-                      updateSettings({ discordRpcShowDownloads: val })
-                      if (window.electronAPI) {
-                        window.electronAPI.setSettings({ discordRpcShowDownloads: val })
-                      }
+                      persistSettings({ discordRpcShowDownloads: val })
                     }}
+                  />
+
+                  <CleanCheckbox
+                    checked={settings.discordRpcShowVersion === true}
+                    label={language === 'de' ? 'Eclipse-Version anzeigen' : 'Show Eclipse version'}
+                    description={language === 'de' ? 'Zeigt deine aktuelle Eclipse-Version zusätzlich im Discord-Status an.' : 'Include your current Eclipse version in your Discord activity.'}
+                    onChange={() => persistSettings({ discordRpcShowVersion: settings.discordRpcShowVersion !== true })}
                   />
 
                   <CleanCheckbox
@@ -1287,15 +1182,12 @@ export function SettingsView() {
                     description={language === 'de' ? 'Versteckt Spieltitel auf Discord und zeigt stattdessen nur „Spielt ein Spiel“ an.' : 'Hide specific game titles on Discord and show \'Playing a Game\' instead.'}
                     onChange={() => {
                       const val = !(settings.discordRpcPrivacyMode ?? false)
-                      updateSettings({ discordRpcPrivacyMode: val })
-                      if (window.electronAPI) {
-                        window.electronAPI.setSettings({ discordRpcPrivacyMode: val })
-                      }
+                      persistSettings({ discordRpcPrivacyMode: val })
                     }}
                   />
                 </div>
               </section>
-            </motion.div>
+            </div>
           )}
 
           {activeSettingsTab === 'gameplay' && (
@@ -1303,58 +1195,52 @@ export function SettingsView() {
           )}
 
           {activeSettingsTab === 'profile' && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-8">
+            <div className="settings-profile-sections space-y-8">
               <section>
                 <h2 className="text-lg font-bold text-white mb-4 tracking-tight">{t('profileSettings') || 'Profile Settings'}</h2>
                 <div className="space-y-6">
                   {/* Steam Sync Section */}
-                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-5 relative overflow-hidden">
+                  <div className="settings-glass-card bg-white/[0.02] border border-white/10 rounded-xl p-5 relative overflow-hidden">
                     <h3 className="font-semibold text-white mb-2 flex items-center gap-2"><User size={16} className="text-white"/> {language === 'de' ? 'Steam-Integration' : 'Steam Integration'}</h3>
                     <p className="text-xs text-hub-muted mb-4">{language === 'de' ? 'Verknüpfe dein Steam-Profil, um Avatar, Benutzernamen, Level und Statistiken automatisch zu synchronisieren.' : 'Link your Steam profile to automatically sync your avatar, username, level, and library stats.'}</p>
-                    
+
                     <label className="block text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-2">{language === 'de' ? 'Steam Profil-URL oder ID' : 'Steam Profile URL or ID'}</label>
                     <div className="flex gap-2">
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder={language === 'de' ? 'https://steamcommunity.com/id/... oder deine SteamID64' : 'https://steamcommunity.com/id/... or your SteamID64'}
-                        value={localSettings.steamProfileUrl || ''}
+                        aria-label={de ? 'Steam Profil-URL oder ID' : 'Steam Profile URL or ID'}
+                        id="settings-steam-profile-url"
+                        value={settings.steamProfileUrl || ''}
                         onChange={e => set('steamProfileUrl', e.target.value)}
-                        className="flex-1 bg-[#16181c] border border-white/10 rounded-lg py-2 px-4 text-xs text-white focus:outline-none focus:border-white/30"
+                        className="flex-1 bg-white/[0.025] border border-white/10 rounded-lg py-2 px-4 text-xs text-white focus:outline-none focus:border-white/30"
                       />
-                      <button 
+                      <button
                         onClick={async () => {
-                          if (!localSettings.steamProfileUrl) return
-                          
-                          const profile = await fetchSteamUserProfile(localSettings.steamProfileUrl)
+                          if (!settings.steamProfileUrl) return
+
+                          const profile = await fetchSteamUserProfile(settings.steamProfileUrl)
                           if (profile) {
-                            set('username', profile.username)
-                            set('avatarUrl', profile.avatarFull)
-                            set('steamLevel', profile.steamLevel ?? 0)
-                            set('steamGamesCount', profile.steamGamesCount ?? 0)
-                            set('steamBadgesCount', profile.steamBadgesCount ?? 0)
-                            set('steamRecentGames', profile.steamRecentGames)
-                            set('steamFavoriteBadge', profile.steamFavoriteBadge)
-                            
+
                             const newSettings = {
                               username: profile.username,
                               avatarUrl: profile.avatarFull,
-                              steamProfileUrl: localSettings.steamProfileUrl,
+                              steamAvatarFrameUrl: profile.steamAvatarFrameUrl ?? null,
+                              steamAvatarFrameStaticUrl: profile.steamAvatarFrameStaticUrl ?? null,
+                              steamProfileUrl: settings.steamProfileUrl,
                               steamLevel: profile.steamLevel ?? 0,
                               steamGamesCount: profile.steamGamesCount ?? 0,
                               steamBadgesCount: profile.steamBadgesCount ?? 0,
                               steamRecentGames: profile.steamRecentGames,
                               steamFavoriteBadge: profile.steamFavoriteBadge
                             }
-                            
-                            updateSettings(newSettings)
-                            if (window.electronAPI) {
-                              window.electronAPI.setSettings(newSettings)
-                            }
+
+                            persistSettings(newSettings)
                             if ((window as any).electronAPI?.account?.saveIdentity) {
                               (window as any).electronAPI.account.saveIdentity({ username: profile.username }).catch(() => {})
                             }
                             import('../../services/socialService').then(({ syncMyProfile }) => syncMyProfile().catch(() => {}))
-                            
+
                             showNotification(language === 'de' ? 'Steam-Profil synchronisiert!' : 'Steam profile synced!', 'success')
                           } else {
                             showNotification(language === 'de' ? 'Fehler beim Synchronisieren des Steam-Profils.' : 'Failed to sync Steam profile.', 'error')
@@ -1368,171 +1254,38 @@ export function SettingsView() {
                   </div>
 
                   {/* Privacy Section */}
-                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-5 space-y-4">
+                  <div className="settings-glass-card bg-white/[0.02] border border-white/10 rounded-xl p-5 space-y-4">
                     <h3 className="font-semibold text-white text-sm flex items-center gap-2"><Shield size={16} className="text-white"/> {language === 'de' ? 'Privatsphäre-Einstellungen' : 'Profile Privacy'}</h3>
-                    
+
                     <CleanCheckbox
-                      checked={localSettings.profileShowPlaytime !== false}
+                      checked={settings.profileShowPlaytime !== false}
                       label={language === 'de' ? 'Gesamte Spielzeit anzeigen' : 'Show Total Playtime'}
                       description={language === 'de' ? 'Zeigt deine gesamte Spielzeit über alle Spiele auf deinem Profil an.' : 'Display your accumulated playtime across all games on your profile.'}
                       onChange={() => {
-                        const val = !(localSettings.profileShowPlaytime !== false)
+                        const val = !(settings.profileShowPlaytime !== false)
                         set('profileShowPlaytime', val)
-                        updateSettings({ profileShowPlaytime: val })
-                        if (window.electronAPI) window.electronAPI.setSettings({ profileShowPlaytime: val })
                       }}
                     />
 
                     <CleanCheckbox
-                      checked={localSettings.profileShowSteamStats !== false}
+                      checked={settings.profileShowSteamStats !== false}
                       label={language === 'de' ? 'Steam-Abzeichen anzeigen' : 'Show Steam Badges'}
                       description={language === 'de' ? 'Zeigt dein synchronisiertes Steam-Level, Spiele und Abzeichen auf deinem Profil an.' : 'Display your synced Steam Level, Games, and Badges on your profile.'}
                       onChange={() => {
-                        const val = !(localSettings.profileShowSteamStats !== false)
+                        const val = !(settings.profileShowSteamStats !== false)
                         set('profileShowSteamStats', val)
-                        updateSettings({ profileShowSteamStats: val })
-                        if (window.electronAPI) window.electronAPI.setSettings({ profileShowSteamStats: val })
                       }}
                     />
                   </div>
 
-                  {/* Account Protection & Permanent Retention Card */}
-                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-5 space-y-4 relative overflow-hidden">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <ShieldCheck size={18} className="text-emerald-400" />
-                          <h3 className="font-semibold text-white text-sm">
-                            {language === 'de' ? 'Account-Schutz & Permanente Identität' : 'Account Protection & Permanent Identity'}
-                          </h3>
-                          <span className="text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/20 flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                            {language === 'de' ? 'Deinstallations-geschützt' : 'Uninstall-Protected'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-hub-muted leading-relaxed max-w-xl">
-                          {language === 'de' 
-                            ? 'Dein Account, Freundes-Code und deine Freundesliste sind hardware-gebunden und 3-fach gesichert (Windows Registry, UserProfile & Cloud-Hardware-Anker). Selbst wenn du Eclipse Launcher komplett deinstallierst und neu installierst, wird dein Profil auf diesem PC automatisch wiederhergestellt!'
-                            : 'Your account, friend code, and friends list are hardware-anchored and 3-tier backed up (Windows Registry, UserProfile & Cloud Hardware Anchor). Even if you completely uninstall and reinstall Eclipse Launcher, your profile is automatically restored on this PC!'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Display Friend Code & Secret Key */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                      <div className="bg-[#16181c] border border-white/[0.08] rounded-lg p-3">
-                        <span className="text-[10px] uppercase font-semibold text-white/40 tracking-wider block mb-1">
-                          {language === 'de' ? 'Dein Freundes-Code' : 'Your Friend Code'}
-                        </span>
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-sm font-bold text-white tracking-wider">
-                            {effectiveFriendCode || 'ECL-XXXXX'}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const codeToCopy = effectiveFriendCode || localSettings.friendCode
-                              if (codeToCopy) {
-                                navigator.clipboard.writeText(codeToCopy)
-                                showNotification(language === 'de' ? 'Freundes-Code kopiert!' : 'Friend Code copied!', 'success')
-                              }
-                            }}
-                            className="p-1.5 hover:bg-white/10 text-white/60 hover:text-white rounded transition-colors"
-                            title="Kopieren"
-                          >
-                            <Copy size={13} />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="bg-[#16181c] border border-white/[0.08] rounded-lg p-3">
-                        <span className="text-[10px] uppercase font-semibold text-white/40 tracking-wider block mb-1">
-                          {language === 'de' ? 'Wiederherstellungs-Schlüssel (PC-Wechsel)' : 'Recovery Key (PC Switch)'}
-                        </span>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-xs font-semibold text-white/80 truncate">
-                            {showSecretKey ? (effectiveSecret || 'ECL-SEC-...') : '••••••••••••••••••••••••'}
-                          </span>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => setShowSecretKey(!showSecretKey)}
-                              className="p-1.5 hover:bg-white/10 text-white/60 hover:text-white rounded transition-colors"
-                              title={showSecretKey ? 'Verstecken' : 'Anzeigen'}
-                            >
-                              {showSecretKey ? <EyeOff size={13} /> : <Eye size={13} />}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const sec = effectiveSecret || localSettings.accountSecret
-                                if (sec) {
-                                  navigator.clipboard.writeText(sec)
-                                  showNotification(language === 'de' ? 'Wiederherstellungs-Schlüssel kopiert!' : 'Recovery Key copied!', 'success')
-                                }
-                              }}
-                              className="p-1.5 hover:bg-white/10 text-white/60 hover:text-white rounded transition-colors"
-                              title="Kopieren"
-                            >
-                              <Copy size={13} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Manual Restore Option */}
-                    <div className="pt-3 border-t border-white/[0.06]">
-                      <label className="block text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-2">
-                        {language === 'de' ? 'Account von anderem PC wiederherstellen' : 'Restore Account from another PC'}
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder={language === 'de' ? 'Wiederherstellungs-Schlüssel (z. B. ECL-SEC-...) oder Freundes-Code' : 'Recovery Key (e.g. ECL-SEC-...) or Friend Code'}
-                          value={restoreInput}
-                          onChange={e => setRestoreInput(e.target.value)}
-                          className="flex-1 bg-[#16181c] border border-white/10 rounded-lg py-2 px-4 text-xs text-white focus:outline-none focus:border-white/30 font-mono"
-                        />
-                        <button
-                          type="button"
-                          disabled={isRestoring || !restoreInput.trim()}
-                          onClick={async () => {
-                            if (!restoreInput.trim()) return
-                            setIsRestoring(true)
-                            try {
-                              const res = await restoreAccountBySecret(restoreInput.trim())
-                              if (res.success) {
-                                showNotification(res.message || 'Account erfolgreich wiederhergestellt!', 'success')
-                                setRestoreInput('')
-                              } else {
-                                showNotification(res.error || 'Wiederherstellung fehlgeschlagen.', 'error')
-                              }
-                            } catch (e: any) {
-                              showNotification(e.message || 'Fehler bei der Wiederherstellung', 'error')
-                            } finally {
-                              setIsRestoring(false)
-                            }
-                          }}
-                          className={`px-4 py-2 bg-white text-black hover:bg-white/90 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 whitespace-nowrap shadow-sm hover:scale-[1.01] ${
-                            isRestoring || !restoreInput.trim() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                          }`}
-                        >
-                          {isRestoring ? <Loader2 size={13} className="animate-spin text-black" /> : <Key size={13} className="text-black" />}
-                          {isRestoring 
-                            ? (language === 'de' ? 'Stelle wieder her...' : 'Restoring...') 
-                            : (language === 'de' ? 'Account wiederherstellen' : 'Restore Account')}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <AccountProtection settings={settings} />
                 </div>
               </section>
-            </motion.div>
+            </div>
           )}
 
           {activeSettingsTab === 'system' && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-6">
+            <div className="settings-system-sections space-y-6">
               <section>
                 <div className="flex items-center gap-2.5 mb-5">
                   <div className="p-2 rounded-xl bg-white/5 text-white/80 border border-white/10">
@@ -1540,76 +1293,60 @@ export function SettingsView() {
                   </div>
                   <div>
                     <h2 className="text-lg font-bold text-white tracking-tight">
-                      {language === 'de' ? 'System & Performance' : 'System & Performance'}
+                      {t('system')}
                     </h2>
                     <p className="text-xs text-white/50">
-                      {language === 'de' 
-                        ? 'Grafikbeschleunigung, Rendering-Pipeline und Systemressourcen-Einstellungen.'
-                        : 'Hardware graphics acceleration, rendering pipeline, and performance settings.'}
+                      {language === 'de'
+                        ? 'Hintergrundbeleuchtung, Grafikbeschleunigung und Systemressourcen.'
+                        : 'Background lighting, graphics acceleration and system resources.'}
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-
-                  {/* ─── Performance Mode Card (Minimalist & Clean) ─── */}
-                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-5">
+                  {/* Background illumination */}
+                  <div className="settings-glass-card bg-white/[0.02] border border-white/10 rounded-xl p-5">
                     <div className="flex items-start justify-between gap-6">
                       <div className="space-y-1.5 flex-1">
                         <div className="flex items-center gap-2.5">
                           <h3 className="font-semibold text-white text-sm tracking-wide">
-                            {language === 'de' ? 'Performance-Modus' : 'Performance Mode'}
+                            {language === 'de' ? 'Hintergrundbeleuchtung' : 'Background lighting'}
                           </h3>
                           <span className={`text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full border ${
-                            localSettings.performanceMode
+                            settings.backgroundLighting !== false
                               ? 'bg-white/10 text-white border-white/20'
                               : 'bg-white/5 text-white/40 border-white/10'
                           }`}>
-                            {localSettings.performanceMode 
-                              ? (language === 'de' ? 'Aktiv' : 'Active')
+                            {settings.backgroundLighting !== false
+                              ? (language === 'de' ? 'An' : 'On')
                               : (language === 'de' ? 'Aus' : 'Off')}
                           </span>
                         </div>
                         <p className="text-xs text-hub-muted leading-relaxed max-w-xl">
                           {language === 'de'
-                            ? 'Deaktiviert GPU-Blur-Shader, rechenintensive Effekte und drosselt Hintergrund-Abfragen für maximale Gaming-Leistung und 0% FPS-Verlust.'
-                            : 'Disables GPU blur shaders, heavy effects, and throttles background polling for maximum gaming performance and 0% FPS loss.'}
+                            ? 'Dezente orange Beleuchtung hinter der Oberfläche. Im Hintergrund wird sie automatisch dunkler und pausiert.'
+                            : 'Subtle orange lighting behind the interface. It automatically dims and pauses when Eclipse is in the background.'}
                         </p>
                       </div>
 
                       {/* Pure White & Black Toggle Switch */}
                       <button
+                        id="settings-background-lighting"
                         type="button"
                         role="switch"
-                        aria-checked={Boolean(localSettings.performanceMode)}
+                        aria-label={language === 'de' ? 'Hintergrundbeleuchtung' : 'Background lighting'}
+                        aria-checked={settings.backgroundLighting !== false}
                         onClick={() => {
-                          const val = !Boolean(localSettings.performanceMode)
-                          set('performanceMode', val)
-                          updateSettings({ performanceMode: val })
-                          if (window.electronAPI) {
-                            window.electronAPI.setSettings({ performanceMode: val })
-                            if (window.electronAPI.setMediaPerformanceMode) {
-                              window.electronAPI.setMediaPerformanceMode(val)
-                            }
-                            if (val && window.electronAPI.flushRam) {
-                              window.electronAPI.flushRam().catch(() => {})
-                            }
-                          }
-                          showNotification(
-                            val 
-                              ? (language === 'de' ? 'Performance-Modus aktiviert' : 'Performance Mode enabled')
-                              : (language === 'de' ? 'Performance-Modus deaktiviert' : 'Performance Mode disabled'),
-                            'info'
-                          )
+                          set('backgroundLighting', settings.backgroundLighting === false)
                         }}
                         className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          localSettings.performanceMode ? 'bg-white' : 'bg-white/15'
+                          settings.backgroundLighting !== false ? 'bg-white' : 'bg-white/15'
                         }`}
                       >
                         <span
                           aria-hidden="true"
                           className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
-                            localSettings.performanceMode
+                            settings.backgroundLighting !== false
                               ? 'translate-x-5 bg-black'
                               : 'translate-x-0 bg-white/70'
                           }`}
@@ -1633,7 +1370,7 @@ export function SettingsView() {
                               const res = await window.electronAPI.flushRam()
                               if (res && res.freedMB > 0) {
                                 showNotification(
-                                  language === 'de' 
+                                  language === 'de'
                                     ? `RAM bereinigt! ${res.freedMB} MB freigegeben (${res.currentFreeGB} GB frei)`
                                     : `RAM cleaned! ${res.freedMB} MB freed (${res.currentFreeGB} GB free)`,
                                   'success'
@@ -1665,15 +1402,15 @@ export function SettingsView() {
                         ) : (
                           <RotateCcw size={12} className="text-white" />
                         )}
-                        {isCleaningRam 
-                          ? (language === 'de' ? 'Wird bereinigt...' : 'Cleaning...') 
+                        {isCleaningRam
+                          ? (language === 'de' ? 'Wird bereinigt...' : 'Cleaning...')
                           : (language === 'de' ? 'RAM bereinigen' : 'Clean RAM')}
                       </button>
                     </div>
                   </div>
 
                   {/* GPU Hardware Acceleration Card */}
-                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-5">
+                  <div className="settings-glass-card bg-white/[0.02] border border-white/10 rounded-xl p-5">
                     <div className="flex items-start justify-between gap-6">
                       <div className="space-y-1.5 flex-1">
                         <div className="flex items-center gap-2.5">
@@ -1681,11 +1418,11 @@ export function SettingsView() {
                             {t('hardwareAcceleration') || 'GPU-Hardwarebeschleunigung'}
                           </h3>
                           <span className={`text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full border ${
-                            localSettings.hardwareAcceleration !== false
+                            settings.hardwareAcceleration !== false
                               ? 'bg-white/10 text-white border-white/20'
                               : 'bg-white/5 text-white/40 border-white/10'
                           }`}>
-                            {localSettings.hardwareAcceleration !== false ? '60 – 120+ FPS' : 'Software CPU'}
+                            {settings.hardwareAcceleration !== false ? '60 – 120+ FPS' : 'Software CPU'}
                           </span>
                         </div>
                         <p className="text-xs text-hub-muted leading-relaxed max-w-xl">
@@ -1697,23 +1434,20 @@ export function SettingsView() {
                       <button
                         type="button"
                         role="switch"
-                        aria-checked={localSettings.hardwareAcceleration !== false}
+                        aria-label={t('hardwareAcceleration')}
+                        aria-checked={settings.hardwareAcceleration !== false}
                         onClick={() => {
-                          const val = !(localSettings.hardwareAcceleration !== false)
+                          const val = !(settings.hardwareAcceleration !== false)
                           set('hardwareAcceleration', val)
-                          updateSettings({ hardwareAcceleration: val })
-                          if (window.electronAPI) {
-                            window.electronAPI.setSettings({ hardwareAcceleration: val })
-                          }
                         }}
                         className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          localSettings.hardwareAcceleration !== false ? 'bg-white' : 'bg-white/15'
+                          settings.hardwareAcceleration !== false ? 'bg-white' : 'bg-white/15'
                         }`}
                       >
                         <span
                           aria-hidden="true"
                           className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
-                            localSettings.hardwareAcceleration !== false
+                            settings.hardwareAcceleration !== false
                               ? 'translate-x-5 bg-black'
                               : 'translate-x-0 bg-white/70'
                           }`}
@@ -1729,7 +1463,7 @@ export function SettingsView() {
                       </p>
                       <button
                         onClick={async () => {
-                          const newSettings = { ...localSettings }
+                          const newSettings = { ...settings }
                           updateSettings(newSettings)
                           if (window.electronAPI) {
                             await window.electronAPI.setSettings(newSettings)
@@ -1751,18 +1485,18 @@ export function SettingsView() {
                   </div>
 
                   {/* Clean Minimalist Pipeline Details */}
-                  <div className="bg-[#0f1015] border border-white/10 rounded-xl p-4">
+                  <div className="settings-glass-card bg-white/[0.02] border border-white/10 rounded-xl p-4">
                     <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/[0.08]">
                       <div className="py-2 sm:py-0 sm:px-4 first:pl-0">
                         <span className="text-[10px] uppercase font-semibold text-white/40 tracking-wider block mb-1">Pipeline</span>
                         <span className="text-xs font-medium text-white">Direct3D 11 / ANGLE</span>
                       </div>
                       <div className="py-2 sm:py-0 sm:px-4">
-                        <span className="text-[10px] uppercase font-semibold text-white/40 tracking-wider block mb-1">High-DPI Skalierung</span>
-                        <span className="text-xs font-medium text-white">Native DPI (Aktiv)</span>
+                        <span className="text-[10px] uppercase font-semibold text-white/40 tracking-wider block mb-1">{t('uiDpiScaling')}</span>
+                        <span className="text-xs font-medium text-white">{t('uiNativeDpi')}</span>
                       </div>
                       <div className="py-2 sm:py-0 sm:px-4 last:pr-0">
-                        <span className="text-[10px] uppercase font-semibold text-white/40 tracking-wider block mb-1">Bildwiederholrate</span>
+                        <span className="text-[10px] uppercase font-semibold text-white/40 tracking-wider block mb-1">{t('uiRefreshRate')}</span>
                         <div className="flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                           <span className="text-xs font-medium text-white">60 FPS – 240Hz+</span>
@@ -1771,46 +1505,73 @@ export function SettingsView() {
                     </div>
                   </div>
 
+                  {/* ─── Steam Traffic & Rate-Limit Inspector Card ─── */}
+                  <div className="settings-glass-card bg-white/[0.02] border border-white/10 rounded-xl p-5">
+                    <div className="flex items-start justify-between gap-6">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2.5">
+                          <h3 className="font-semibold text-white text-sm tracking-wide flex items-center gap-2">
+                            <Activity size={16} className="text-emerald-400" />
+
+                            {t('uiTrafficInspector')}
+                          </h3>
+                          <span className={`text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full border ${
+                            isSteamMonitorOpen
+                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                              : 'bg-white/5 text-white/40 border-white/10'
+                          }`}>
+                            {isSteamMonitorOpen ? 'Visible' : 'Hidden'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-hub-muted leading-relaxed max-w-xl font-sans">
+
+                          {t('uiTrafficIntro')} <strong>F9</strong>.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.electronAPI?.toggleSteamMonitorWindow) {
+                              window.electronAPI.toggleSteamMonitorWindow()
+                            } else if (window.electronAPI?.openSteamMonitorWindow) {
+                              window.electronAPI.openSteamMonitorWindow()
+                            }
+                          }}
+                          className="px-3.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 text-xs font-semibold transition-all flex items-center gap-1.5"
+                          title={t('uiToggleInspector')}
+                        >
+                          <Activity size={13} />
+                          <span>{t('uiLaunchInspector')}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </section>
-            </motion.div>
+            </div>
           )}
 
           {activeSettingsTab === 'plugins' && (
             <PluginsSettingsTab />
           )}
 
+          {activeSettingsTab === 'addons' && (
+            <AddonsSettingsTab />
+          )}
+
           {/* Fallback for empty tabs */}
-          {!['general', 'clips', 'downloads', 'notifications', 'integrations', 'gameplay', 'profile', 'system', 'storage', 'plugins'].includes(activeSettingsTab) && (
+          {!['general', 'clips', 'downloads', 'notifications', 'integrations', 'gameplay', 'profile', 'system', 'storage', 'plugins', 'addons'].includes(activeSettingsTab) && (
             <div className="flex flex-col items-center justify-center h-64 text-hub-muted">
               <SettingsIcon size={32} className="mb-4 opacity-50" />
               <p>{t('settingsUnderConstruction')}</p>
             </div>
           )}
 
-        </div>
-      </div>
-
-      {/* Floating Save Button */}
-      <div className="absolute bottom-6 right-8 z-30">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={save}
-          disabled={isSaving}
-          className={`px-5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center gap-2.5 shadow-2xl cursor-pointer border ${
-            saveState === 'saved'
-              ? 'bg-white text-black border-white'
-              : 'bg-white text-black hover:bg-white/90 border-white/20'
-          }`}
-        >
-          {saveState === 'saving' && <Loader2 size={14} className="animate-spin text-black" />}
-          {saveState === 'saved' && <Check size={14} strokeWidth={3} className="text-black" />}
-          {saveState === 'idle' && <Save size={14} className="text-black" />}
-          <span>
-            {saveState === 'saving' ? (t('saving') || 'Speichern...') : saveState === 'saved' ? 'Gespeichert' : (t('saveSettings') || 'Einstellungen speichern')}
-          </span>
-        </motion.button>
+          </div>
+        </SceneTransition>
       </div>
 
     </div>

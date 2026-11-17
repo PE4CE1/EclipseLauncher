@@ -1,0 +1,66 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  overflow: hidden;
+  user-select: none;
+}
+.controller {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Base structural layout */
+.controller .triggers { position: absolute; width: 100%; top: 0; }
+.controller .trigger { position: absolute; opacity: 0; }
+.controller .bumpers { position: absolute; width: 100%; }
+.controller .bumper { position: absolute; opacity: 0; }
+.controller .arrows { position: absolute; }
+.controller .back, .controller .start { position: absolute; opacity: 0; }
+.controller .abxy { position: absolute; }
+.controller .button { position: absolute; opacity: 1; }
+.controller .dpad { position: absolute; }
+.controller .face { position: absolute; }
+.controller .sticks { position: absolute; }
+.controller .stick { position: absolute; opacity: 1; }
+
+
+.controller.ds4 {
+  background: url(https://gamepadviewer.com/ps4-assets/base.svg) no-repeat 0 0;
+  width: 806px;
+  height: 598px;
+}
+.ds4 .triggers { width: 588px; height: 90px; top: 0; left: 109px; position: absolute; }
+.ds4 .trigger { background: url(https://gamepadviewer.com/ps4-assets/triggers.svg) no-repeat; width: 99px; height: 90px; opacity: 0; position: absolute; }
+.ds4 .trigger.left { left: 0; }
+.ds4 .trigger.right { right: 0; background-position: -100px 0; }
+.ds4 .bumpers { width: 588px; height: 23px; top: 94px; left: 109px; position: absolute; }
+.ds4 .bumper { background: url(https://gamepadviewer.com/ps4-assets/bumper.svg) no-repeat; width: 99px; height: 23px; opacity: 0; position: absolute; }
+.ds4 .bumper.left { left: 0; }
+.ds4 .bumper.right { right: 0; transform: rotateY(180deg); }
+.ds4 .arrows { width: 352px; height: 46px; top: 142px; left: 227px; position: absolute; }
+.ds4 .back, .ds4 .start { background: url(https://gamepadviewer.com/ps4-assets/start.svg) no-repeat; width: 28px; height: 46px; opacity: 0; position: absolute; }
+.ds4 .back { left: 0; }
+.ds4 .start { right: 0; transform: rotateY(180deg); }
+.ds4 .abxy { width: 170px; height: 171px; top: 159px; left: 567px; position: absolute; }
+.ds4 .button { width: 56px; height: 56px; background: url(https://gamepadviewer.com/ps4-assets/face.svg) no-repeat; position: absolute; opacity: 1 !important; }
+.ds4 .button.pressed { background-position-y: -56px; }
+.ds4 .button.a { background-position-x: 0; bottom: 0; left: 57px; }
+.ds4 .button.b { background-position-x: -56px; top: 57px; right: 0px; }
+.ds4 .button.x { background-position-x: -112px; top: 57px; left: 0px; }
+.ds4 .button.y { background-position-x: -168px; left: 57px; top: 0px; }
+.ds4 .sticks { width: 350px; height: 105px; top: 309px; left: 228px; position: absolute; }
+.ds4 .stick { background: url(https://gamepadviewer.com/ps4-assets/sticks.svg) no-repeat; height: 94px; width: 94px; position: absolute; opacity: 1 !important; }
+.ds4 .stick.pressed.left { background-position-x: -96px; }
+.ds4 .stick.pressed.right { background-position-x: -192px; }
+.ds4 .stick.left { top: 0; left: 0; }
+.ds4 .stick.right { top: 0; left: 256px; }
+.ds4 .dpad { width: 125px; height: 126px; top: 181px; left: 92px; position: absolute; }
+.ds4 .face { background: url(https://gamepadviewer.com/ps4-assets/dpad.svg) no-repeat; position: absolute; opacity: 1 !important; }
+.ds4 .face.up { width: 36px; height: 52px; left: 44px; top: 0; background-position: -36px 0; }
+.ds4 .face.down { width: 36px; height: 52px; left: 44px; bottom: 0; background-position: 0 0; }
+.ds4 .face.left { width: 52px; height: 36px; top: 45px; left: 0; background-position: -126px 0; }
+.ds4 .face.right { width: 52px; height: 36px; top: 45px; right: 0; background-position: -73px 0; }
+.ds4 .face.pressed { background-position-y: -52px; }

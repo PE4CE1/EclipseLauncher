@@ -1,4 +1,6 @@
-export const APP_VERSION = '1.2.8'
+import { desktopFetch as fetch } from './httpClient'
+import { APP_VERSION } from './appVersion'
+export { APP_VERSION, APP_DISPLAY_VERSION } from './appVersion'
 export const GITHUB_REPO = 'PE4CE1/EclipseLauncher'
 
 export interface AppReleaseInfo {
@@ -10,56 +12,92 @@ export interface AppReleaseInfo {
   isNewer: boolean
 }
 
+type ParsedVersion = { core: number[]; prerelease: string[] }
+
+function parseVersion(value: string): ParsedVersion | null {
+  if (typeof value !== 'string') return null
+  const match = /^[vV]?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([\da-zA-Z-]+(?:\.[\da-zA-Z-]+)*))?(?:\+[\da-zA-Z-]+(?:\.[\da-zA-Z-]+)*)?$/.exec(value.trim())
+  if (!match) return null
+  const core = match.slice(1, 4).map(Number)
+  const prerelease = match[4]?.split('.') || []
+  if (core.some(part => !Number.isSafeInteger(part)) || prerelease.some(part => /^0\d+$/.test(part))) return null
+  return { core, prerelease }
+}
+
 export function isNewerVersion(remoteTag: string, currentVersion: string = APP_VERSION): boolean {
-  try {
-    const cleanRemote = remoteTag.replace(/^[vV]/, '').trim()
-    const cleanCurrent = currentVersion.replace(/^[vV]/, '').trim()
-
-    const rParts = cleanRemote.split('.').map(n => parseInt(n, 10) || 0)
-    const cParts = cleanCurrent.split('.').map(n => parseInt(n, 10) || 0)
-
-    for (let i = 0; i < Math.max(rParts.length, cParts.length); i++) {
-      const r = rParts[i] ?? 0
-      const c = cParts[i] ?? 0
-      if (r > c) return true
-      if (r < c) return false
-    }
-  } catch (e) {
-    console.warn('[UpdateService] Version compare error:', e)
+  const remote = parseVersion(remoteTag)
+  const current = parseVersion(currentVersion)
+  if (!remote || !current) return false
+  for (let index = 0; index < 3; index++) {
+    if (remote.core[index] !== current.core[index]) return remote.core[index] > current.core[index]
+  }
+  if (remote.prerelease.length === 0 || current.prerelease.length === 0) {
+    return remote.prerelease.length === 0 && current.prerelease.length > 0
+  }
+  for (let index = 0; index < Math.max(remote.prerelease.length, current.prerelease.length); index++) {
+    const left = remote.prerelease[index]
+    const right = current.prerelease[index]
+    if (left === undefined || right === undefined) return left !== undefined
+    if (left === right) continue
+    const leftNumeric = /^\d+$/.test(left)
+    const rightNumeric = /^\d+$/.test(right)
+    if (leftNumeric && rightNumeric) return left.length === right.length ? left > right : left.length > right.length
+    if (leftNumeric !== rightNumeric) return !leftNumeric
+    return left > right
   }
   return false
 }
 
-export async function checkForAppUpdates(): Promise<AppReleaseInfo | null> {
-  try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 4000)
+let updateCheckInFlight: Promise<AppReleaseInfo | null> | null = null
+let startupUpdateCheck: Promise<AppReleaseInfo | null> | null = null
 
+export function checkStartupUpdates(autoCheckEnabled: boolean): Promise<AppReleaseInfo | null> {
+  if (!autoCheckEnabled) return Promise.resolve(null)
+  if (!startupUpdateCheck) {
+    startupUpdateCheck = Promise.resolve().then(() => {
+      if (typeof window !== 'undefined' && window.electronAPI?.checkUpdate) {
+        void Promise.resolve().then(() => window.electronAPI.checkUpdate())
+          .catch(error => console.warn('[UpdateService] Native check failed:', error))
+      }
+      return checkForAppUpdates()
+    })
+  }
+  return startupUpdateCheck
+}
+
+export function checkForAppUpdates(): Promise<AppReleaseInfo | null> {
+  if (!updateCheckInFlight) {
+    updateCheckInFlight = fetchLatestRelease().finally(() => { updateCheckInFlight = null })
+  }
+  return updateCheckInFlight
+}
+
+async function fetchLatestRelease(): Promise<AppReleaseInfo | null> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 4000)
+  try {
     const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
       signal: controller.signal,
       headers: { 'Accept': 'application/vnd.github.v3+json' }
     })
-    clearTimeout(timeoutId)
-
     if (!response.ok) return null
-
     const data = await response.json()
-    const tag = data.tag_name || data.name || ''
-    const isNewer = isNewerVersion(tag, APP_VERSION)
-
-    const exeAsset = data.assets?.find((a: any) => a.name?.endsWith('.exe'))
-    const downloadUrl = exeAsset?.browser_download_url || data.html_url || `https://github.com/${GITHUB_REPO}/releases/latest`
-
+    if (controller.signal.aborted || !data || data.draft || data.prerelease || !parseVersion(data.tag_name)) return null
+    const tag: string = data.tag_name
+    const assets: { name?: string; browser_download_url?: string }[] = Array.isArray(data.assets) ? data.assets : []
+    const exeAsset = assets.find(asset => typeof asset?.name === 'string' && asset.name.toLowerCase().endsWith('.exe'))
     return {
       version: tag.replace(/^[vV]/, ''),
-      name: data.name || tag,
-      notes: data.body || '',
-      publishedAt: data.published_at || '',
-      downloadUrl,
-      isNewer,
+      name: typeof data.name === 'string' ? data.name : tag,
+      notes: typeof data.body === 'string' ? data.body : '',
+      publishedAt: typeof data.published_at === 'string' ? data.published_at : '',
+      downloadUrl: exeAsset?.browser_download_url || `https://github.com/${GITHUB_REPO}/releases/latest`,
+      isNewer: isNewerVersion(tag, APP_VERSION),
     }
-  } catch (err) {
-    console.warn('[UpdateService] Update check failed or timed out:', err)
+  } catch (error) {
+    console.warn('[UpdateService] Update check failed or timed out:', error)
     return null
+  } finally {
+    clearTimeout(timeoutId)
   }
 }

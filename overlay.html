@@ -2,6 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="preload" href="/fonts/Inter-Latin-Variable.woff2" as="font" type="font/woff2" crossorigin />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https:; img-src 'self' local-media: blob: data: https: http:; media-src 'self' local-media: blob: https: http:; connect-src 'self' https: http: ws: wss:; font-src 'self' data: https:; worker-src 'self' blob:; frame-src 'self' eclipse-asset: https:; object-src 'none'; base-uri 'none'; form-action 'none';" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Eclipse Overlay</title>
     <style>
@@ -16,7 +18,6 @@
         font-family: 'Inter', system-ui, sans-serif;
       }
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="overlay-root"></div>

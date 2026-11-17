@@ -1,0 +1,12 @@
+const test=require('node:test'),assert=require('node:assert/strict'),loadTs=require('./download-loader.cjs')
+test('discovery refresh has bounded automatic intervals without expiring unrelated data',()=>{
+ const {discoveryRefreshInterval,isDiscoveryRefreshDue:due}=loadTs()('src/services/discoveryRefresh.ts')
+ assert.equal(discoveryRefreshInterval(['steam','home-discovery']),600000)
+ assert.equal(discoveryRefreshInterval(['steam','release-calendar']),900000)
+ assert.equal(discoveryRefreshInterval(['steam','detail']),undefined)
+ assert.equal(due(['steam','home-recommendations'],1000,0,false,601000),true)
+ assert.equal(due(['steam','release-calendar'],1000,0,false,601000),false)
+ assert.equal(due(['steam','home-discovery'],1000,0,true,601000),false)
+ assert.equal(due(['steam','home-discovery'],1000,600000,false,601000),false,'Errors back off instead of retrying every minute')
+ assert.equal(due(['steam','home-discovery'],0,0,false,601000),false,'Initial queries start through their own query lifecycle')
+})

@@ -1,0 +1,38 @@
+{
+  "name": "eclipse-clip-sharing",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  },
+  "vars": {
+    "FIREBASE_PROJECT_ID": "eclipse-launcher-d4cd3",
+    "MAX_CLIP_BYTES": "100000000",
+    "MAX_OWNER_BYTES": "500000000",
+    "MAX_TOTAL_BYTES": "5000000000"
+  },
+  "r2_buckets": [
+    {
+      "binding": "CLIPS",
+      "bucket_name": "eclipse-clips"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "eclipse-clips",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "17 * * * *"
+    ]
+  }
+}

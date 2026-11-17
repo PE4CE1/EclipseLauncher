@@ -13,11 +13,12 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-UID',
 };
 
-function json(data: any, status = 200): Response {
+function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
       ...CORS_HEADERS,
     },
   });
@@ -25,6 +26,52 @@ function json(data: any, status = 200): Response {
 
 function error(message: string, status = 400): Response {
   return json({ success: false, error: message }, status);
+}
+
+class RequestError extends Error {
+  constructor(message: string, readonly status = 400) { super(message); }
+}
+
+async function readBody(request: Request): Promise<Record<string, any>> {
+  const reader = request.body?.getReader();
+  if (!reader) throw new RequestError('Missing JSON request body');
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 64 * 1024) {
+        await reader.cancel();
+        throw new RequestError('Request body too large', 413);
+      }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  let body: unknown;
+  try { body = JSON.parse(new TextDecoder().decode(bytes)); }
+  catch { throw new RequestError('Invalid JSON request body'); }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) throw new RequestError('Expected a JSON object');
+  return body as Record<string, any>;
+}
+
+function requireStrings(body: Record<string, unknown>, ...fields: string[]) {
+  for (const field of fields) {
+    if (typeof body[field] !== 'string' || !body[field].trim() || body[field].length > 256) {
+      throw new RequestError(`Invalid or missing field: ${field}`);
+    }
+  }
+}
+
+function validatePresence(status: unknown, currentGame: unknown) {
+  if (!['online', 'ingame', 'offline'].includes(String(status)) ||
+    (currentGame !== null && (typeof currentGame !== 'string' || currentGame.length > 512))) {
+    throw new RequestError('Invalid presence');
+  }
 }
 
 export default {
@@ -44,7 +91,8 @@ export default {
 
       // 2. Profile Sync: POST /api/user/sync
       if (pathname === '/api/user/sync' && request.method === 'POST') {
-        const body: any = await request.json();
+        const body = await readBody(request);
+        requireStrings(body, 'uid', 'friendCode', 'username');
         const {
           uid,
           friendCode,
@@ -66,9 +114,14 @@ export default {
           topPlayedGames = [],
         } = body;
 
-        if (!uid || !friendCode || !username) {
-          return error('Missing required user fields (uid, friendCode, username)');
+        validatePresence(status, currentGame);
+        for (const value of [level, steamLevel, steamGamesCount, steamBadgesCount, totalPlaytimeMins, totalLibraryCount, totalInstalledCount]) {
+          if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) throw new RequestError('Invalid profile count');
         }
+        for (const value of [avatarUrl, steamProfileUrl, totalPlaytimeHours]) {
+          if (typeof value !== 'string' || value.length > 2048) throw new RequestError('Invalid profile text');
+        }
+        if (!Array.isArray(steamRecentGames) || !Array.isArray(topPlayedGames)) throw new RequestError('Invalid profile game list');
 
         const now = Date.now();
         const cleanCode = friendCode.toUpperCase().trim();
@@ -112,7 +165,7 @@ export default {
           steamProfileUrl,
           steamGamesCount,
           steamBadgesCount,
-          steamFavoriteBadge,
+          steamFavoriteBadge !== null && typeof steamFavoriteBadge === 'object' ? JSON.stringify(steamFavoriteBadge) : steamFavoriteBadge,
           JSON.stringify(steamRecentGames),
           totalPlaytimeMins,
           totalPlaytimeHours,
@@ -131,7 +184,10 @@ export default {
         const rawParam = pathname.replace('/api/user/', '').trim();
         if (!rawParam) return error('Missing parameter');
 
-        const cleanParam = decodeURIComponent(rawParam).trim();
+        let cleanParam: string;
+        try { cleanParam = decodeURIComponent(rawParam).trim(); }
+        catch { throw new RequestError('Invalid user parameter'); }
+        if (cleanParam.length > 256) throw new RequestError('Invalid user parameter');
         const upper = cleanParam.toUpperCase();
         const withPrefix = upper.startsWith('ECL-') ? upper : `ECL-${upper}`;
         const withoutPrefix = upper.replace(/^ECL-/, '');
@@ -152,9 +208,10 @@ export default {
 
       // 4. Live Presence Heartbeat: POST /api/user/heartbeat
       if (pathname === '/api/user/heartbeat' && request.method === 'POST') {
-        const body: any = await request.json();
+        const body = await readBody(request);
+        requireStrings(body, 'uid');
         const { uid, status = 'online', currentGame = null } = body;
-        if (!uid) return error('Missing uid');
+        validatePresence(status, currentGame);
 
         const now = Date.now();
         await env.DB.prepare(
@@ -166,7 +223,8 @@ export default {
 
       // 5. Send Friend Request: POST /api/friends/request
       if (pathname === '/api/friends/request' && request.method === 'POST') {
-        const body: any = await request.json();
+        const body = await readBody(request);
+        requireStrings(body, 'fromUid', 'toCodeOrUid');
         const { fromUid, toCodeOrUid } = body;
         if (!fromUid || !toCodeOrUid) return error('Missing fromUid or toCodeOrUid');
 
@@ -229,7 +287,7 @@ export default {
         const fromAvatarUrl = (requester?.avatar_url as string) || '';
         const fromFriendCode = (requester?.friend_code as string) || '';
 
-        const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+        const requestId = `req_${crypto.randomUUID()}`;
         const now = Date.now();
 
         await env.DB.prepare(`
@@ -245,15 +303,21 @@ export default {
 
       // 6. Accept Friend Request: POST /api/friends/accept
       if (pathname === '/api/friends/accept' && request.method === 'POST') {
-        const body: any = await request.json();
+        const body = await readBody(request);
+        requireStrings(body, 'myUid', 'fromUid');
         const { myUid, fromUid } = body;
-        if (!myUid || !fromUid) return error('Missing myUid or fromUid');
+        if (myUid === fromUid) return error('Cannot befriend yourself');
+
+        const pending = await env.DB.prepare(
+          "SELECT 1 FROM friend_requests WHERE from_uid = ? AND to_uid = ? AND status = 'pending'"
+        ).bind(fromUid, myUid).first();
+        if (!pending) return error('No pending friend request', 404);
 
         const now = Date.now();
         await env.DB.batch([
-          env.DB.prepare('INSERT OR IGNORE INTO friends (user_id, friend_id, created_at) VALUES (?, ?, ?)').bind(myUid, fromUid, now),
-          env.DB.prepare('INSERT OR IGNORE INTO friends (user_id, friend_id, created_at) VALUES (?, ?, ?)').bind(fromUid, myUid, now),
-          env.DB.prepare("UPDATE friend_requests SET status = 'accepted' WHERE from_uid = ? AND to_uid = ?").bind(fromUid, myUid),
+          env.DB.prepare("INSERT OR IGNORE INTO friends (user_id, friend_id, created_at) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM friend_requests WHERE from_uid = ? AND to_uid = ? AND status = 'pending')").bind(myUid, fromUid, now, fromUid, myUid),
+          env.DB.prepare("INSERT OR IGNORE INTO friends (user_id, friend_id, created_at) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM friend_requests WHERE from_uid = ? AND to_uid = ? AND status = 'pending')").bind(fromUid, myUid, now, fromUid, myUid),
+          env.DB.prepare("UPDATE friend_requests SET status = 'accepted' WHERE from_uid = ? AND to_uid = ? AND status = 'pending'").bind(fromUid, myUid),
         ]);
 
         return json({ success: true });
@@ -261,12 +325,13 @@ export default {
 
       // 7. Decline Friend Request: POST /api/friends/decline
       if (pathname === '/api/friends/decline' && request.method === 'POST') {
-        const body: any = await request.json();
+        const body = await readBody(request);
+        requireStrings(body, 'myUid', 'fromUid');
         const { myUid, fromUid } = body;
         if (!myUid || !fromUid) return error('Missing myUid or fromUid');
 
         await env.DB.prepare(
-          "UPDATE friend_requests SET status = 'declined' WHERE from_uid = ? AND to_uid = ?"
+          "UPDATE friend_requests SET status = 'declined' WHERE from_uid = ? AND to_uid = ? AND status = 'pending'"
         ).bind(fromUid, myUid).run();
 
         return json({ success: true });
@@ -371,8 +436,9 @@ export default {
 
       return error('Endpoint not found', 404);
     } catch (err: any) {
+      if (err instanceof RequestError) return error(err.message, err.status);
       console.error('[Worker Error]', err);
-      return error(err.message || 'Internal Server Error', 500);
+      return error('Internal Server Error', 500);
     }
   },
 };

@@ -1,0 +1,59 @@
+@keyframes scene-arrive { from { opacity: .35; } to { opacity: 1; } }
+@keyframes hero-copy-arrive { from { opacity: .15; } to { opacity: 1; } }
+.game-detail-modal-overlay { animation: scene-arrive 280ms cubic-bezier(.22,.61,.36,1); }
+.hero-copy { animation: hero-copy-arrive 240ms cubic-bezier(.22,.61,.36,1); }
+.home-view, .game-detail-scroll, .settings-scroll, .view-scroll {
+  scrollbar-gutter: stable;
+  overflow-anchor: none;
+}
+.hero-genres { min-height: 28px; }
+/* Outer cards retain their real flow size. Culling the fixed-aspect artwork
+   avoids guessed row heights and hundreds of permanently promoted textures. */
+.store-game-card, .library-grid-card { content-visibility: visible; contain-intrinsic-size: none; }
+.store-card-art, .library-card-art, .library-list-art { content-visibility: auto; contain-intrinsic-size: auto none; }
+.hero-meta { min-height: 20px; }
+.hero-description { height: 46px; }
+.hero-actions { min-height: 42px; }
+.hero-actions > button { height: 42px; transition-property: background-color, color, border-color; }
+.hero-actions > .btn-primary:hover { transform: none; }
+.game-detail-hero { container-type: inline-size; }
+.game-detail-scenery {
+  --game-edge-fade: clamp(80px, 9vw, 144px);
+  mask-image: linear-gradient(to right, transparent, #000 var(--game-edge-fade)), linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+  mask-composite: intersect;
+}
+.game-heading { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+.game-identity { width: 100%; min-width: 0; }
+.game-title-slot { position: relative; height: 104px; }
+.game-title-slot > img { position: absolute; inset: 0; height: 100%; width: 100%; object-fit: contain; object-position: left bottom; }
+.game-title-slot > h1 { position: absolute; bottom: 0; left: 0; width: 100%; font-size: clamp(30px, 4.5cqw, 46px); line-height: 1.12; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.game-heading .game-facts { height: 34px; overflow: hidden; row-gap: 2px; align-content: center; }
+.game-quick-actions { width: 100%; min-width: 0; container: game-shortcuts / inline-size; }
+.game-heading .game-badges { min-height: 32px; height: auto; flex-wrap: nowrap; gap: 5px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+/* Keep the same compact shortcuts at every width and installation state. */
+.game-badges > :is(button, div) { flex-shrink: 0; white-space: nowrap; }
+.game-badges :is(svg, img) { flex-shrink: 0; }
+.game-quick-link--compact-icon .game-quick-label, .game-quick-link--compact-icon .game-quick-extra, .game-playtime-full { display: none; }
+.game-playtime-short { display: inline; }
+.game-quick-link { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 28px; padding: 0 11px; border: 1px solid #ffffff1a; border-radius: 6px; background: #ffffff09; color: #d0cbc4; font-size: 11px; font-weight: 550; line-height: 1; white-space: nowrap; cursor: pointer; }
+.game-quick-link:hover { background: #ffffff12; color: #f0ebe5; border-color: #ffffff2b; }
+.game-badges .game-quick-link, .game-badges .game-playtime { padding-inline: 7px; gap: 5px; font-size: 10px; }
+.game-quick-link--steam:hover { background: #1b2838; border-color: #66c0f450; color: #a0c6df; }
+.game-badges .game-quick-link--keys { padding-right: 5px; }
+.game-quick-link--keys > svg { color: #bd976f; }
+.game-quick-link--keys:hover { border-color: #c3976845; }
+.game-key-price { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 5px; min-width: 80px; height: 18px; padding: 0 6px; border: 1px solid #ca9d6e24; border-radius: 3px; background: #b47b3d0c; color: #d0ad85; font-size: 9px; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.game-key-price > span { color: #b09a82; }
+.game-key-price > strong { font-weight: 600; }
+.game-key-price--pending { color: #9f9385; }
+.game-actions { min-height: 40px; }
+.game-heading button { transition-property: background-color, color, border-color, opacity, box-shadow; }
+.game-detail-hero .game-heading button:is(:hover, :active) { transform: none; }
+.gameplay-overlay-tab { overflow-anchor: none; }
+@container (min-width: 960px) {
+  .game-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-detail-modal-overlay, .hero-copy { animation: none; }
+  .game-title-slot > h1, .game-title-slot > img { transition: none; }
+}

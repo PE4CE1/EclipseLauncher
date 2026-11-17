@@ -1,4 +1,7 @@
-import { ipcMain, BrowserWindow, shell } from 'electron'
+import { openExternalPath } from './externalLaunch'
+import { ipcMain } from './ipcSecurity'
+import { downloadServiceFile } from './serviceDownload'
+import { BrowserWindow, shell } from 'electron'
 import { spawn } from 'child_process'
 import * as path from 'path'
 import * as standardFs from 'fs'
@@ -169,50 +172,14 @@ async function fetchLatestVencordVersion(): Promise<string> {
 /**
  * Downloads a file over HTTPS with redirect support
  */
-function downloadFile(url: string, destPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const follow = (targetUrl: string, maxRedirects = 5) => {
-      if (maxRedirects <= 0) {
-        resolve(false)
-        return
-      }
-
-      const req = https.get(targetUrl, {
-        headers: {
-          'User-Agent': 'EclipseLauncher'
-        },
-        timeout: 20000,
-      }, (res) => {
-        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          follow(res.headers.location, maxRedirects - 1)
-          return
-        }
-
-        if (res.statusCode !== 200) {
-          resolve(false)
-          return
-        }
-
-        const fileStream = fs.createWriteStream(destPath)
-        res.pipe(fileStream)
-        fileStream.on('finish', () => {
-          fileStream.close(() => resolve(true))
-        })
-        fileStream.on('error', () => {
-          try { fs.unlinkSync(destPath) } catch (_) {}
-          resolve(false)
-        })
-      })
-
-      req.on('error', () => resolve(false))
-      req.on('timeout', () => {
-        req.destroy()
-        resolve(false)
-      })
-    }
-
-    follow(url)
-  })
+async function downloadFile(url: string, destPath: string): Promise<boolean> {
+  try {
+    await downloadServiceFile(url, destPath)
+    return true
+  } catch (error) {
+    console.warn('[Addons] Download failed:', error)
+    return false
+  }
 }
 
 /**
@@ -402,7 +369,7 @@ export function initVencordIPC(getWindows: () => BrowserWindow[]) {
       if (!fs.existsSync(themesDir)) {
         fs.mkdirSync(themesDir, { recursive: true })
       }
-      await shell.openPath(themesDir)
+      await openExternalPath(themesDir)
       return { success: true }
     } catch (e: any) {
       return { success: false, error: e?.message }
@@ -416,7 +383,7 @@ export function initVencordIPC(getWindows: () => BrowserWindow[]) {
       if (!fs.existsSync(vencordDir)) {
         fs.mkdirSync(vencordDir, { recursive: true })
       }
-      await shell.openPath(vencordDir)
+      await openExternalPath(vencordDir)
       return { success: true }
     } catch (e: any) {
       return { success: false, error: e?.message }

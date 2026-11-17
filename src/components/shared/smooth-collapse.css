@@ -1,0 +1,10 @@
+.smooth-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 260ms cubic-bezier(.4,0,.2,1);
+}
+.smooth-collapse[data-open] { grid-template-rows: 1fr; }
+.smooth-collapse__clip { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .smooth-collapse { transition: none; }
+}

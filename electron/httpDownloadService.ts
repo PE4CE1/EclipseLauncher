@@ -1,13 +1,16 @@
-import { ipcMain } from 'electron'
+import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
-import { app } from 'electron'
 import crypto from 'crypto'
-import https from 'https'
-import http from 'http'
-import { URL } from 'url'
-import { resolveDownloadLink, resolveHeadlessStream } from './linkResolverService'
+import { Transform } from 'stream'
+import { pipeline } from 'stream/promises'
+import { downloadCandidates, prepareDownloadMirror } from './downloadMirrors'
 import { extractArchive } from './extractService'
+import { downloadUrl, safeDownloadName } from './downloadPaths'
+import { downloadIssue, DownloadResolverError } from './downloadErrors'
+import type { DownloadIssue, DownloadIssueCode } from '../src/types/downloads'
+import { inspectDownloadLink } from './downloadLinkStatus'
+import { requestDownloadStream, type DownloadRequest, type DownloadStream } from './downloadTransport'
 
 function getDefaultDownloadPath(): string {
   try {
@@ -29,450 +32,412 @@ export type HttpDownloadPayload = {
   mainExe?: string | null
   installPath?: string
   errorMessage?: string
+  resolution?: { attempt: number; total: number; host: string }
+  mirrorFailures?: DownloadIssue[]
+  errorCode?: DownloadIssueCode
 }
 
-class HttpDownloader {
-  public id: string
-  public url: string
-  public name: string
+class DownloadResponseError extends Error {}
+
+export class HttpDownloader {
   public targetPath: string
-  public targetDir: string
-  public downloaded: number = 0
-  public length: number = 0
-  public status: 'downloading' | 'paused' | 'extracting' | 'done' | 'error' = 'downloading'
-  public autoExtract: boolean = true
-  public autoDelete: boolean = false
+  public downloaded = 0
+  public length = 0
+  public status: HttpDownloadPayload['status'] = 'downloading'
   public mainExe: string | null = null
-  public customHeaders: Record<string, string> = {}
   public errorMessage?: string
-  
-  private req: any = null
+  public errorCode?: DownloadIssueCode
+  public downloadSpeed = 0
+
+  private req: DownloadRequest | null = null
+  private response: DownloadStream | null = null
   private fileStream: fs.WriteStream | null = null
-  private lastTime: number = Date.now()
-  private lastDownloaded: number = 0
-  public downloadSpeed: number = 0
+  private fileClosed: Promise<void> = Promise.resolve()
+  private interval: NodeJS.Timeout | null = null
+  private retryTimer: NodeJS.Timeout | null = null
+  private generation = 0
+  private lastTime = Date.now()
+  private lastDownloaded = 0
   private onProgressCallback: ((payload: HttpDownloadPayload) => void) | null = null
-  private retryCount: number = 0
+  private retries = 0
+  private extractionAbort: AbortController | null = null
+  private installPath: string
 
-  constructor(id: string, url: string, name: string, targetDir: string, autoExtract: boolean, autoDelete: boolean, customHeaders: Record<string, string> = {}) {
-    this.id = id
-    this.url = url
-    this.name = name
-    this.targetDir = targetDir
-    this.autoExtract = autoExtract
-    this.autoDelete = autoDelete
-    this.customHeaders = customHeaders
+  constructor(
+    public id: string,
+    public url: string,
+    public name: string,
+    public targetDir: string,
+    public autoExtract: boolean,
+    public autoDelete: boolean,
+    public customHeaders: Record<string, string> = {},
+    fileName?: string,
+    private partition?: string
+  ) {
+    const pathname = (fileName || downloadUrl(url).pathname).toLowerCase()
+    const ext = /\.(zip|rar|7z|exe|msi|iso|bin)$/.exec(pathname)?.[1] || 'zip'
+    this.targetPath = path.join(targetDir, `${safeDownloadName(name)}-${id.slice(0, 8)}.${ext}`)
+    this.installPath = targetDir
+  }
 
-    const cleanName = name.replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim() || 'game_download'
-    const ext = url.includes('.rar') ? '.rar' : url.includes('.7z') ? '.7z' : '.zip'
-    this.targetPath = path.join(targetDir, `${cleanName}${ext}`)
+  private emit(progress?: number) {
+    this.onProgressCallback?.({
+      infoHash: this.id,
+      name: this.name,
+      progress: progress ?? (this.length > 0 ? Math.min(1, this.downloaded / this.length) : 0),
+      downloadSpeed: this.downloadSpeed,
+      timeRemaining: this.downloadSpeed > 0 ? Math.max(0, this.length - this.downloaded) / this.downloadSpeed * 1000 : Infinity,
+      downloaded: this.downloaded,
+      length: this.length,
+      status: this.status,
+      mainExe: this.mainExe,
+      installPath: this.installPath,
+      errorMessage: this.errorMessage,
+      errorCode: this.errorCode,
+      resolution: undefined,
+    })
+  }
+
+  private clearTimers() {
+    if (this.interval) clearInterval(this.interval)
+    if (this.retryTimer) clearTimeout(this.retryTimer)
+    this.interval = null
+    this.retryTimer = null
   }
 
   public start(onProgress: (payload: HttpDownloadPayload) => void) {
     this.onProgressCallback = onProgress
-    this.status = 'downloading'
-    this.download()
-
-    const interval = setInterval(() => {
-      if (this.status === 'done' || this.status === 'paused' || this.status === 'error') {
-        clearInterval(interval)
-      }
-      
-      const now = Date.now()
-      const timeDiff = (now - this.lastTime) / 1000
-      if (timeDiff > 0) {
-        const bytesDiff = this.downloaded - this.lastDownloaded
-        this.downloadSpeed = Math.max(0, bytesDiff / timeDiff)
-      }
-      this.lastTime = now
-      this.lastDownloaded = this.downloaded
-
-      const timeRemaining = this.downloadSpeed > 0 && this.length > this.downloaded 
-        ? (this.length - this.downloaded) / this.downloadSpeed 
-        : Infinity
-      const progress = this.length > 0 ? Math.min(1, this.downloaded / this.length) : 0
-
-      onProgress({
-        infoHash: this.id,
-        name: this.name,
-        progress,
-        downloadSpeed: this.downloadSpeed,
-        timeRemaining,
-        downloaded: this.downloaded,
-        length: this.length,
-        status: this.status,
-        mainExe: this.mainExe,
-        installPath: this.targetDir,
-        errorMessage: this.errorMessage
-      })
-    }, 1000)
+    this.begin()
   }
 
-  private download() {
+  private begin() {
+    this.clearTimers()
+    this.status = 'downloading'
+    this.errorMessage = undefined
+    this.errorCode = undefined
+    this.lastTime = Date.now()
+    this.lastDownloaded = this.downloaded
+    const generation = ++this.generation
+    this.interval = setInterval(() => {
+      const now = Date.now()
+      const elapsed = (now - this.lastTime) / 1000
+      this.downloadSpeed = this.status === 'downloading' && elapsed > 0
+        ? Math.max(0, (this.downloaded - this.lastDownloaded) / elapsed) : 0
+      this.lastTime = now
+      this.lastDownloaded = this.downloaded
+      this.emit()
+    }, 1000)
+    this.emit()
+    void this.download(generation)
+  }
+
+  private async download(generation: number) {
     try {
-      const parsedUrl = new URL(this.url)
-      const client = parsedUrl.protocol === 'https:' ? https : http
-
-      const headers: Record<string, string> = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': '*/*',
-        'Connection': 'keep-alive',
-        ...this.customHeaders
-      }
-
-      // Check existing partial file for Resume support
-      if (fs.existsSync(this.targetPath)) {
-        const stats = fs.statSync(this.targetPath)
-        if (stats.size > 0) {
-          this.downloaded = stats.size
-          headers['Range'] = `bytes=${stats.size}-`
+      // A destroyed stream can still have an outstanding disk write. Wait for
+      // close before inspecting the partial file or opening it for append.
+      await this.fileClosed
+      if (generation !== this.generation) return
+      let redirects = 0
+      while (generation === this.generation) {
+        const currentUrl = downloadUrl(this.url)
+        const offset = (await fs.promises.stat(this.targetPath).catch(() => null))?.size || 0
+        if (generation !== this.generation) return
+        this.downloaded = offset
+        const headers: Record<string, string> = {
+          'User-Agent': 'Mozilla/5.0', Accept: '*/*', ...this.customHeaders,
         }
-      }
+        for (const key of Object.keys(headers)) {
+          if (/^(range|accept-encoding)$/i.test(key)) delete headers[key]
+        }
+        headers['Accept-Encoding'] = 'identity'
+        if (offset > 0) headers.Range = `bytes=${offset}-`
 
-      this.req = client.get(this.url, { headers }, async (res) => {
-        // Handle 3xx Redirects
-        if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 303 || res.statusCode === 307 || res.statusCode === 308) {
-          if (res.headers.location) {
-            let nextUrl = res.headers.location
-            if (!nextUrl.startsWith('http')) {
-              nextUrl = new URL(nextUrl, this.url).toString()
+        const response = await new Promise<DownloadStream>((resolve, reject) => {
+          const req = requestDownloadStream(currentUrl, headers, resolve, this.partition)
+          this.req = req
+          req.on('error', reject)
+          req.setTimeout(35000, () => req.destroy(new Error('Download connection timed out')))
+        })
+        this.response = response
+        // Redirect/landing-page bodies are drained without a pipeline. Their
+        // socket errors must still be consumed while resolution continues.
+        response.on('error', () => {})
+        if (generation !== this.generation) { response.destroy(); return }
+        const status = response.statusCode || 0
+        if ([301, 302, 303, 307, 308].includes(status)) {
+          response.resume()
+          if (!response.headers.location || ++redirects > 10) throw new DownloadResponseError('Invalid or excessive download redirects')
+          const next = downloadUrl(new URL(response.headers.location, currentUrl).href)
+          if (next.origin !== currentUrl.origin) {
+            for (const key of Object.keys(this.customHeaders)) {
+              if (/^(authorization|cookie|proxy-authorization)$/i.test(key)) delete this.customHeaders[key]
             }
-            this.url = nextUrl
-            this.download()
-            return
           }
+          this.url = next.href
+          continue
         }
-
-        if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 400)) {
-          console.error(`[HttpDownloader] Server responded with HTTP status ${res.statusCode}`)
-          this.status = 'error'
-          this.errorMessage = `HTTP Fehler ${res.statusCode}`
-          if (this.onProgressCallback) {
-            this.onProgressCallback({
-              infoHash: this.id,
-              name: this.name,
-              progress: 0,
-              downloadSpeed: 0,
-              timeRemaining: 0,
-              downloaded: 0,
-              length: 0,
-              status: 'error',
-              installPath: this.targetDir
-            })
-          }
+        if (status === 416 && offset > 0 && Number(/^bytes \*\/(\d+)$/.exec(String(response.headers['content-range']))?.[1]) === offset) {
+          response.resume()
+          this.length = offset
+          await this.finishFile(generation)
           return
         }
-
-        const contentType = (res.headers['content-type'] || '').toLowerCase()
-        let totalContentLength = parseInt(res.headers['content-length'] || '0', 10)
-        
-        if (!totalContentLength && res.headers['content-range']) {
-          const rangeMatch = String(res.headers['content-range']).match(/\/(\d+)/)
-          if (rangeMatch) {
-            totalContentLength = parseInt(rangeMatch[1], 10)
-          }
+        if (status < 200 || status >= 300) {
+          response.resume()
+          throw new DownloadResolverError([404,410].includes(status) ? 'unavailable' : status === 429 ? 'rate-limit' : [401,403].includes(status) ? 'forbidden' : 'network', `Download returned HTTP ${status}`, status)
+        }
+        if (/html|json|image\//i.test(String(response.headers['content-type']))) {
+          response.resume()
+          throw new DownloadResponseError('Mirror returned a webpage instead of a download file')
         }
 
-        // Validation: If server returned HTML page under 500KB, it's not the game binary!
-        if (contentType.includes('text/html') && totalContentLength > 0 && totalContentLength < 500000 && this.retryCount === 0) {
-          console.warn(`[HttpDownloader] Server returned HTML page (${totalContentLength} bytes) instead of binary. Trying headless sniffer...`)
-          this.retryCount++
-          const headless = await resolveHeadlessStream(this.url, 12000)
-          if (headless && headless.streamUrl) {
-            this.url = headless.streamUrl
-            if (headless.headers) this.customHeaders = { ...this.customHeaders, ...headless.headers }
-            this.download()
-            return
-          } else {
-            console.error('[HttpDownloader] Could not resolve binary stream from landing page. Opening in browser...')
-            this.status = 'error'
-            this.errorMessage = 'Dieser Hoster erfordert ein Debrid-Konto oder den Browser-Download'
-            try {
-              const { shell } = require('electron')
-              shell.openExternal(this.url)
-            } catch (e) {}
-            if (this.onProgressCallback) {
-              this.onProgressCallback({
-                infoHash: this.id,
-                name: this.name,
-                progress: 0,
-                downloadSpeed: 0,
-                timeRemaining: 0,
-                downloaded: 0,
-                length: 0,
-                status: 'error',
-                installPath: this.targetDir
-              })
-            }
-            return
-          }
+        const range = /^bytes (\d+)-(\d+)\/(\d+|\*)$/i.exec(String(response.headers['content-range'] || ''))
+        const contentLength = Number(response.headers['content-length']) || 0
+        if (status === 206 && (!range || Number(range[1]) !== offset || Number(range[2]) < offset ||
+            (range[3] !== '*' && Number(range[2]) >= Number(range[3])) ||
+            (contentLength > 0 && contentLength !== Number(range[2]) - offset + 1))) {
+          response.resume()
+          throw new DownloadResponseError('Server returned an invalid partial download range')
         }
-
-        if (res.statusCode === 206) {
-          this.length = totalContentLength > 0 ? this.downloaded + totalContentLength : this.length
-          this.fileStream = fs.createWriteStream(this.targetPath, { flags: 'a' })
+        if (status === 206) {
+          this.length = range![3] !== '*' ? Number(range![3]) : offset + contentLength
         } else {
-          this.length = totalContentLength
           this.downloaded = 0
-          this.fileStream = fs.createWriteStream(this.targetPath)
+          this.lastDownloaded = 0
+          this.length = contentLength
         }
-
-        res.on('data', (chunk) => {
-          if (this.status === 'paused') {
-            res.destroy()
-            return
-          }
-          this.downloaded += chunk.length
-          if (this.length > 0 && this.downloaded > this.length) {
-            this.length = this.downloaded
-          }
-          this.fileStream?.write(chunk)
-        })
-
-        res.on('end', async () => {
-          this.fileStream?.end()
-          if (this.status === 'paused') return
-
-          this.downloadSpeed = 0
-          this.downloaded = this.length
-
-          // Auto-Extract Phase
-          if (this.autoExtract && (this.targetPath.endsWith('.zip') || this.targetPath.endsWith('.rar') || this.targetPath.endsWith('.7z'))) {
-            this.status = 'extracting'
-            if (this.onProgressCallback) {
-              this.onProgressCallback({
-                infoHash: this.id,
-                name: this.name,
-                progress: 1,
-                downloadSpeed: 0,
-                timeRemaining: 0,
-                downloaded: this.length,
-                length: this.length,
-                status: 'extracting',
-                installPath: this.targetDir
-              })
+        const disk = typeof fs.promises.statfs === 'function' ? await fs.promises.statfs(this.targetDir).catch(() => null) : null
+        if (generation !== this.generation) { response.destroy(); return }
+        if (disk && this.length > 0 && disk.bavail * disk.bsize < Math.max(0, this.length - offset)) {
+          throw new DownloadResolverError('storage', 'Not enough free space on the destination drive')
+        }
+        this.fileStream = fs.createWriteStream(this.targetPath, { flags: status === 206 ? 'a' : 'w' })
+        this.fileClosed = new Promise(resolve => this.fileStream!.once('close', resolve))
+        const counter = new Transform({
+          transform: (chunk, _encoding, callback) => {
+            this.req?.touch?.()
+            if (this.downloaded === 0 && /^\s*(?:<!doctype\s+html|<html\b|<\?xml)/i.test(chunk.subarray(0, 256).toString('utf8'))) {
+              callback(new DownloadResponseError('Mirror returned a webpage instead of a download file'))
+              return
             }
-
-            try {
-              const cleanGameDir = path.join(this.targetDir, this.name.replace(/[^a-zA-Z0-9.\-_ ]/g, '').trim())
-              const result = await extractArchive(
-                this.targetPath, 
-                cleanGameDir, 
-                (extractPercent) => {
-                  if (this.onProgressCallback) {
-                    this.onProgressCallback({
-                      infoHash: this.id,
-                      name: this.name,
-                      progress: extractPercent / 100,
-                      downloadSpeed: 0,
-                      timeRemaining: 0,
-                      downloaded: this.length,
-                      length: this.length,
-                      status: 'extracting',
-                      installPath: cleanGameDir
-                    })
-                  }
-                },
-                this.autoDelete
-              )
-
-              this.mainExe = result.mainExe
-              this.status = 'done'
-              console.log(`[HttpDownloader] Finished & extracted game to: ${result.targetDir}, Main Exe: ${result.mainExe}`)
-            } catch (extractErr) {
-              console.error('[HttpDownloader] Extraction error:', extractErr)
-              this.status = 'done'
-            }
-          } else {
-            this.status = 'done'
-          }
-
-          if (this.onProgressCallback) {
-            this.onProgressCallback({
-              infoHash: this.id,
-              name: this.name,
-              progress: 1,
-              downloadSpeed: 0,
-              timeRemaining: 0,
-              downloaded: this.length,
-              length: this.length,
-              status: this.status,
-              mainExe: this.mainExe,
-              installPath: this.targetDir
-            })
-          }
+            this.downloaded += chunk.length
+            callback(null, chunk)
+          },
         })
-
-        res.on('error', (err: any) => {
-          console.error('[HttpDownloader] Response error:', err)
-          if (this.retryCount < 3 && this.status !== 'paused') {
-            this.retryCount++
-            console.log(`[HttpDownloader] Auto-resuming download after socket drop (retry ${this.retryCount}/3)...`)
-            setTimeout(() => this.download(), 1500)
-            return
-          }
-          this.status = 'error'
-          this.errorMessage = err.message
-        })
-      })
-
-      this.req.on('error', (err: any) => {
-        console.error('[HttpDownloader] Request error:', err)
-        this.status = 'error'
-        this.errorMessage = err.message
-      })
-
-      this.req.setTimeout(35000, () => {
-        console.warn('[HttpDownloader] Connection timeout')
-        this.req.destroy()
-        this.status = 'paused'
-      })
-    } catch (e: any) {
-      console.error('[HttpDownloader] Unexpected download error:', e)
+        // pipeline applies disk backpressure, forwards disk/socket failures and
+        // resolves only after all file writes have finished.
+        await pipeline(response, counter, this.fileStream)
+        if (generation !== this.generation) return
+        if (this.downloaded === 0) throw new DownloadResolverError('no-file', 'Download server returned an empty file')
+        if (this.length > 0 && this.downloaded !== this.length) throw new Error('Download ended before the complete file was received')
+        this.length = this.downloaded
+        await this.finishFile(generation)
+        return
+      }
+    } catch (error) {
+      if (generation !== this.generation) return
+      this.response?.destroy()
+      this.fileStream?.destroy()
+      const errorCode = (error as NodeJS.ErrnoException)?.code
+      const canRetry = errorCode
+        ? ['ECONNRESET', 'ETIMEDOUT', 'EPIPE', 'EAI_AGAIN', 'ENOTFOUND', 'ERR_STREAM_PREMATURE_CLOSE'].includes(errorCode)
+        : /complete file|timed out|net::ERR_(?:CONNECTION_(?:RESET|CLOSED|ABORTED)|NETWORK_CHANGED|TIMED_OUT|NAME_NOT_RESOLVED|CONTENT_LENGTH_MISMATCH|INCOMPLETE_CHUNKED_ENCODING)/i.test(error instanceof Error ? error.message : '')
+      if (!(error instanceof DownloadResponseError) && canRetry && this.retries++ < 3 && this.status === 'downloading') {
+        this.retryTimer = setTimeout(() => { void this.download(generation) }, 1500)
+        return
+      }
+      this.clearTimers()
       this.status = 'error'
-      this.errorMessage = e.message
+      this.downloadSpeed = 0
+      this.errorMessage = error instanceof Error ? error.message : String(error)
+      this.errorCode = downloadIssue(error).code
+      this.emit()
     }
+  }
+
+  private async finishFile(generation: number) {
+    this.downloadSpeed = 0
+    if (this.autoExtract && /\.(zip|rar|7z)$/i.test(this.targetPath)) {
+      this.status = 'extracting'
+      this.installPath = path.join(this.targetDir, safeDownloadName(this.name))
+      this.emit(0)
+      this.extractionAbort = new AbortController()
+      try {
+        const result = await extractArchive(this.targetPath, this.installPath, percent => {
+          if (generation === this.generation) this.emit(percent / 100)
+        }, this.autoDelete, this.extractionAbort.signal)
+        if (generation !== this.generation) return
+        this.mainExe = result.mainExe
+        this.installPath = result.targetDir
+      } catch (error) {
+        throw new DownloadResponseError(`Entpacken fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+    this.status = 'done'
+    this.clearTimers()
+    this.emit(1)
   }
 
   public pause() {
+    if (this.status !== 'downloading') return
+    this.stop()
+    this.emit()
+  }
+
+  public stop() {
+    ++this.generation
+    this.clearTimers()
     this.status = 'paused'
-    if (this.req) this.req.destroy()
-    if (this.fileStream) this.fileStream.close()
+    this.downloadSpeed = 0
+    this.req?.destroy()
+    this.response?.destroy()
+    this.fileStream?.destroy()
+    this.extractionAbort?.abort()
   }
 
   public resume() {
-    if (this.status === 'paused') {
-      this.status = 'downloading'
-      this.download()
-    }
+    if (this.status !== 'paused' && this.status !== 'error') return
+    this.retries = 0
+    this.begin()
   }
 
-  public cancel() {
-    this.status = 'paused'
-    if (this.req) this.req.destroy()
-    if (this.fileStream) {
-      this.fileStream.close()
-    }
-    try {
-      if (fs.existsSync(this.targetPath)) {
-        fs.unlinkSync(this.targetPath)
-      }
-    } catch (e) {}
+  public async cancel() {
+    this.stop()
+    await this.fileClosed
+    await fs.promises.unlink(this.targetPath).catch(() => {})
   }
 }
 
 const activeHttpDownloads = new Map<string, HttpDownloader>()
+type HttpDownloadJob = {
+  paused: boolean; failed: boolean; resolving: boolean; version: number; controller: AbortController; cursor: number; failures: DownloadIssue[]; last: HttpDownloadPayload; run: () => Promise<void>
+}
+const pendingResolutions = new Map<string, HttpDownloadJob>()
+export const hasHttpDownloadWork = () => activeHttpDownloads.size > 0 || pendingResolutions.size > 0
+
+export function stopHttpDownloads() {
+  for (const job of pendingResolutions.values()) job.controller.abort()
+  pendingResolutions.clear()
+  for (const downloader of activeHttpDownloads.values()) downloader.stop()
+  activeHttpDownloads.clear()
+}
 
 export function initHttpDownloadIPC(ipcMain: Electron.IpcMain, mainWindow: Electron.BrowserWindow) {
-  
-  // Return default downloads directory
-  ipcMain.handle('app:get-default-download-path', () => {
-    return getDefaultDownloadPath()
-  })
-
-  // Smart Native Start Download
-  // ── IMPORTANT: Returns IMMEDIATELY with { resolving: true } so the renderer
-  // never freezes while waiting for the browser resolver (up to 120s).
-  // The actual download starts in the background and sends torrent:progress events.
-  ipcMain.handle('http-download:start', async (_event, rawUrl: string, gameTitle: string, customDownloadPath?: string, autoExtract = true, autoDelete = false) => {
-    const targetDir = customDownloadPath || getDefaultDownloadPath()
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true })
-    }
-
-    const downloadId = crypto.createHash('md5').update(rawUrl).digest('hex')
-
-    if (activeHttpDownloads.has(downloadId)) {
-      return { success: true, infoHash: downloadId }
-    }
-
-    // Send an immediate "resolving" progress update so the UI shows a spinner
-    // instead of freezing while we wait for the browser resolver window.
-    const sendProgress = (payload: any) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('torrent:progress', payload)
-      }
-    }
-
-    const resolveState: any = {
-      infoHash: downloadId,
-      name: gameTitle,
-      progress: 0,
-      downloadSpeed: 0,
-      timeRemaining: Infinity,
-      downloaded: 0,
-      length: 0,
-      status: 'downloading',
-      installPath: targetDir
-    }
-    sendProgress(resolveState)
-
-    // ── Run resolution + download entirely in background ─────────────────────
-    // We do NOT await here – the IPC call returns immediately below.
-    ;(async () => {
-      console.log(`[HttpDownload] Resolving link for "${gameTitle}": ${rawUrl}`)
-
-      let resolved
-      try {
-        resolved = await resolveDownloadLink(rawUrl, gameTitle)
-      } catch (resolveErr: any) {
-        console.warn(`[HttpDownload] Resolver threw: ${resolveErr?.message}`)
-        sendProgress({ ...resolveState, status: 'error', errorMessage: resolveErr?.message || 'Link konnte nicht aufgelöst werden.' })
-        return
-      }
-
-      // Guard: ensure URL is valid
-      if (!resolved.streamUrl || resolved.streamUrl.includes('undefined') ||
-          (!resolved.streamUrl.startsWith('http') && !resolved.streamUrl.startsWith('magnet:'))) {
-        console.error(`[HttpDownload] Resolved URL is invalid: "${resolved.streamUrl}" – aborting`)
-        sendProgress({ ...resolveState, status: 'error', errorMessage: 'Link konnte nicht aufgelöst werden.' })
-        return
-      }
-
-      const downloader = new HttpDownloader(
-        downloadId,
-        resolved.streamUrl,
-        gameTitle,
-        targetDir,
-        autoExtract,
-        autoDelete,
-        resolved.headers || {}
-      )
-
-      activeHttpDownloads.set(downloadId, downloader)
-      downloader.start(sendProgress)
-    })()
-
-    // Return IMMEDIATELY so the renderer stays responsive
-    return { success: true, infoHash: downloadId, resolving: true }
-  })
-
-  ipcMain.handle('http-download:pause', async (_event, infoHash: string) => {
-    const d = activeHttpDownloads.get(infoHash)
-    if (d) d.pause()
-  })
-
-  ipcMain.handle('http-download:resume', async (_event, infoHash: string) => {
-    const d = activeHttpDownloads.get(infoHash)
-    if (d) d.resume()
-  })
-
-  ipcMain.handle('http-download:cancel', async (_event, infoHash: string) => {
-    const d = activeHttpDownloads.get(infoHash)
-    if (d) {
-      d.cancel()
-      activeHttpDownloads.delete(infoHash)
-    }
-  })
-
-  ipcMain.handle('link:check', async (_event, url: string) => {
+  const sendProgress = (payload: HttpDownloadPayload) => {
+    if (!mainWindow.isDestroyed()) mainWindow.webContents.send('torrent:progress', payload)
+  }
+  ipcMain.handle('app:get-default-download-path', () => getDefaultDownloadPath())
+  ipcMain.handle('http-download:start', async (_event, rawUrl: string, gameTitle: string, customDownloadPath?: string, autoExtract = true, autoDelete = false, mirrors: unknown = []) => {
     try {
-      if (url.startsWith('magnet:')) return true
-      if (url.includes('pixeldrain.com') || url.includes('gofile.io') || url.includes('buzzheavier.com')) return true
-      const res = await fetch(url, { method: 'HEAD', headers: { 'User-Agent': 'Mozilla/5.0' } })
-      return res.ok || res.status === 405 || res.status === 403
-    } catch {
-      return true
-    }
+      const candidates = downloadCandidates(rawUrl, mirrors)
+      const targetDir = customDownloadPath || getDefaultDownloadPath()
+      if (!path.isAbsolute(targetDir)) throw new Error('Download destination must be an absolute path')
+      await fs.promises.mkdir(targetDir, { recursive: true })
+      const downloadId = crypto.createHash('md5').update(rawUrl).digest('hex')
+      const previousJob = pendingResolutions.get(downloadId)
+      if (previousJob?.failed && !activeHttpDownloads.has(downloadId)) {
+        previousJob.controller.abort()
+        pendingResolutions.delete(downloadId)
+      }
+      if (activeHttpDownloads.has(downloadId) || pendingResolutions.has(downloadId)) return { success: true, infoHash: downloadId }
+      const initial: HttpDownloadPayload = { infoHash: downloadId, name: gameTitle, progress: 0, downloadSpeed: 0, timeRemaining: Infinity, downloaded: 0, length: 0, status: 'downloading', installPath: targetDir }
+      const job: HttpDownloadJob = { paused: false, failed: false, resolving: false, version: 0, controller: new AbortController(), cursor: 0, failures: [], last: initial, run: async () => {} }
+      pendingResolutions.set(downloadId, job)
+      const progress = (payload: HttpDownloadPayload) => { job.last = payload; sendProgress(payload) }
+      job.run = async () => {
+        const version = ++job.version, controller = job.controller
+        const live = () => pendingResolutions.get(downloadId) === job && job.version === version && !controller.signal.aborted
+        job.resolving = true
+        while (job.cursor < candidates.length && live() && !job.paused) {
+          const url = candidates[job.cursor++], host = new URL(url).hostname
+          progress({ ...initial, mirrorFailures: [...job.failures], status: job.paused ? 'paused' : 'downloading', resolution: { attempt: job.cursor, total: candidates.length, host } })
+          try {
+            const resolved = await prepareDownloadMirror(url, gameTitle, controller.signal)
+            if (!live()) return
+            job.resolving = false
+            const downloader = new HttpDownloader(downloadId, resolved.streamUrl, gameTitle, targetDir, autoExtract, autoDelete, resolved.headers || {}, resolved.fileName, resolved.partition)
+            activeHttpDownloads.set(downloadId, downloader)
+            downloader.start(payload => {
+              if (!live()) return
+              if (payload.status === 'error') job.failures.push({ host, url, code: payload.errorCode || 'unknown' })
+              if (payload.status === 'error' && payload.downloaded === 0 && !['storage', 'permission'].includes(payload.errorCode || '')) {
+                activeHttpDownloads.delete(downloadId)
+                // Wait for the empty file to close before another mirror reuses
+                // this destination. Never splice two mirrors into a partial file.
+                void downloader.cancel().then(() => {
+                  if (!live()) return
+                  if (job.cursor < candidates.length) return job.run()
+                  job.failed = true
+                  progress({ ...payload, mirrorFailures: [...job.failures] })
+                })
+                return
+              }
+              progress({ ...payload, mirrorFailures: [...job.failures] })
+              if (payload.status === 'done') { pendingResolutions.delete(downloadId); activeHttpDownloads.delete(downloadId) }
+            })
+            if (job.paused) downloader.pause()
+            return
+          } catch (error) {
+            if (!live()) return
+            job.failures.push(downloadIssue(error, url))
+          }
+        }
+        if (live() && !job.paused) {
+          job.resolving = false
+          job.failed = true
+          progress({ ...initial, status: 'error', resolution: undefined, errorMessage: 'No automatic mirror was available.', errorCode: 'no-file', mirrorFailures: [...job.failures] })
+        }
+      }
+      sendProgress(initial)
+      void job.run()
+      return { success: true, infoHash: downloadId, resolving: true }
+    } catch (error) { return { success: false, error: error instanceof Error ? error.message : String(error) } }
   })
+  ipcMain.handle('http-download:pause', (_event, id: string) => {
+    const job = pendingResolutions.get(id), downloader = activeHttpDownloads.get(id)
+    if (!job && !downloader) return { handled: false }
+    if (downloader?.status === 'extracting') return { handled: true, success: false, error: 'Extraction cannot be paused' }
+    if (job && !job.paused) {
+      job.paused = true
+      if (!downloader && !job.failed) {
+        if (job.resolving) job.cursor = Math.max(0, job.cursor - 1)
+        job.resolving = false; ++job.version; job.controller.abort()
+        job.last = { ...job.last, status: 'paused', downloadSpeed: 0, timeRemaining: Infinity }
+        sendProgress(job.last)
+      }
+    }
+    downloader?.pause()
+    return { handled: true, success: true }
+  })
+  ipcMain.handle('http-download:resume', (_event, id: string) => {
+    const job = pendingResolutions.get(id), downloader = activeHttpDownloads.get(id)
+    if (!job && !downloader) return { handled: false }
+    if (job && (job.paused || job.failed)) {
+      job.paused = false
+      if (!downloader) {
+        if (job.failed) { job.failed = false; job.cursor = 0; job.failures = [] }
+        job.controller = new AbortController()
+        void job.run()
+      }
+    }
+    downloader?.resume()
+    return { handled: true, success: true }
+  })
+  ipcMain.handle('http-download:cancel', async (_event, id: string) => {
+    const job = pendingResolutions.get(id), downloader = activeHttpDownloads.get(id)
+    if (!job && !downloader) return { handled: false }
+    job?.controller.abort()
+    pendingResolutions.delete(id); activeHttpDownloads.delete(id)
+    await downloader?.cancel()
+    return { handled: true, success: true }
+  })
+  ipcMain.handle('link:check', async (_event, rawUrl: string) => {
+    try {
+      if (rawUrl.startsWith('magnet:')) return true
+      const url = downloadUrl(rawUrl)
+      const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(15000), headers: { 'User-Agent': 'Mozilla/5.0' } })
+      return response.ok || [405, 403].includes(response.status)
+    } catch { return false }
+  })
+  ipcMain.handle('link:inspect', (_event, rawUrl: string) => inspectDownloadLink(rawUrl))
 }

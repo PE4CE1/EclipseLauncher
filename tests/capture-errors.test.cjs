@@ -1,0 +1,23 @@
+const test=require('node:test'),assert=require('node:assert/strict'),load=require('./download-loader.cjs')
+const {captureErrorMessage,nativeFailureNeedsRestart}=load()('src/services/captureErrors.ts')
+test('native source failures explain unavailable windows and encoders in the selected language',()=>{
+  assert.match(captureErrorMessage('window-capture-unavailable',true),/Windows-Aufnahme/)
+  assert.match(captureErrorMessage('window-capture-unavailable',false),/Windows capture/)
+  assert.match(captureErrorMessage('selected-window-unavailable',false),/Open the selected window/)
+  assert.match(captureErrorMessage('selected-window-closed',true),/geschlossen/)
+  assert.match(captureErrorMessage('hardware-encoder-unavailable',false),/GPU encoder/)
+  assert.match(captureErrorMessage('microphone-selection-unavailable',false),/microphone again/)
+  assert.match(captureErrorMessage('native-api-unavailable',false),/restart Eclipse/)
+  assert.doesNotMatch(captureErrorMessage('INTERNAL PATH PRIVATE DEVICE DETAILS',false),/PRIVATE/)
+})
+
+test('snapshot interruptions recover, while full storage, permissions and user cancellations remain actionable',()=>{
+  for(const code of ['native-replay-timeout','native-replay-gap','Native replay is still buffering','native-capture-stopped','Unexpected snapshot writer failure'])assert.equal(nativeFailureNeedsRestart(code,'snapshot'),true)
+  for(const code of ['ENOSPC: no space left','EACCES: permission denied','Access is denied','clip-queue-full','capture-cancelled','selected-window-closed'])assert.equal(nativeFailureNeedsRestart(code,'snapshot'),false)
+  assert.equal(nativeFailureNeedsRestart('FFmpeg: Invalid data found when processing input','save'),true)
+  assert.equal(nativeFailureNeedsRestart('Unknown export destination error','save'),false)
+  assert.match(captureErrorMessage('native-replay-gap',false),/recording gap/)
+  assert.match(captureErrorMessage('native-replay-timeout',true),/Videodaten/)
+  assert.match(captureErrorMessage('ENOSPC',false),/disk space/)
+  assert.match(captureErrorMessage('EACCES',true),/Berechtigungen/)
+})

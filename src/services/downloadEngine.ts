@@ -1,5 +1,8 @@
+import { normalizeGameName } from './gameDeduplication'
 import { useSourceStore } from '../store/sourceStore'
 import type { HydraDownload } from '../types/source'
+import { LruCache } from './lruCache'
+import { registerMemoryResource } from './memoryResources'
 
 export interface MatchedDownload extends HydraDownload {
   sourceName: string;
@@ -10,26 +13,43 @@ export interface MatchedDownload extends HydraDownload {
  * Strips special characters and spaces for robust substring matching.
  */
 function normalizeString(str: string): string {
-  return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return normalizeGameName(str);
 }
 
 // Caching structure
 let lastSourcesRef: any = null;
-let sourceTitlesByName: Record<string, string[]> = {};
-let gameSourceCache = new Map<string, Record<string, boolean>>();
+const sourceTitlesByName = new Map<string, string[]>();
+let indexedDownloads: { title: string; download: HydraDownload; sourceName: string; sourceUrl: string }[] = [];
+const gameSourceCache = new LruCache<string, Record<string, boolean>>(4096);
+const downloadResultsCache = new LruCache<string, MatchedDownload[]>(64);
+
+export function releaseDownloadLookupCache(includeIndex = true): void {
+  gameSourceCache.clear(); downloadResultsCache.clear();
+  if (!includeIndex) return;
+  indexedDownloads = []; sourceTitlesByName.clear(); lastSourcesRef = null;
+}
+registerMemoryResource('download-lookups', context => releaseDownloadLookupCache(!context.catalogueActive))
 
 function ensureIndex() {
   const sources = useSourceStore.getState().sources;
   if (lastSourcesRef === sources) return;
   
-  sourceTitlesByName = {};
+  sourceTitlesByName.clear();
+  indexedDownloads = [];
   gameSourceCache.clear();
+  downloadResultsCache.clear();
   
   for (const source of sources) {
     if (!source.data || source.data.length === 0) continue;
-    sourceTitlesByName[source.name] = source.data
-      .map(dl => dl.title ? normalizeString(dl.title) : '')
-      .filter(Boolean);
+    const titles = sourceTitlesByName.get(source.name) || [];
+    for (const download of source.data) {
+      if (!download || typeof download.title !== 'string') continue;
+      const title = normalizeString(download.title);
+      if (!title) continue;
+      titles.push(title);
+      indexedDownloads.push({ title, download, sourceName: source.name, sourceUrl: source.url });
+    }
+    sourceTitlesByName.set(source.name, titles);
   }
   lastSourcesRef = sources;
 }
@@ -42,10 +62,11 @@ export function hasGameInSource(gameName: string, sourceName: string): boolean {
   ensureIndex();
   
   const normalizedGameName = normalizeString(gameName);
+  if (!normalizedGameName) return false;
   
   let gameCache = gameSourceCache.get(normalizedGameName);
   if (!gameCache) {
-    gameCache = {};
+    gameCache = Object.create(null) as Record<string, boolean>;
     gameSourceCache.set(normalizedGameName, gameCache);
   }
   
@@ -53,7 +74,7 @@ export function hasGameInSource(gameName: string, sourceName: string): boolean {
     return gameCache[sourceName];
   }
   
-  const titles = sourceTitlesByName[sourceName];
+  const titles = sourceTitlesByName.get(sourceName);
   if (!titles || titles.length === 0) {
     gameCache[sourceName] = false;
     return false;
@@ -70,33 +91,17 @@ export function hasGameInSource(gameName: string, sourceName: string): boolean {
  */
 export function getDownloadsForGame(gameName: string): MatchedDownload[] {
   if (!gameName) return [];
+  ensureIndex();
   
-  const sources = useSourceStore.getState().sources;
   const normalizedGameName = normalizeString(gameName);
-  
-  const matches: MatchedDownload[] = [];
+  if (!normalizedGameName) return [];
+  const cached = downloadResultsCache.get(normalizedGameName);
+  if (cached) return cached;
 
-  for (const source of sources) {
-    if (!source.data || source.data.length === 0) continue;
+  const matches = indexedDownloads
+    .filter(entry => entry.title.includes(normalizedGameName))
+    .map(entry => ({ ...entry.download, sourceName: entry.sourceName, sourceUrl: entry.sourceUrl }));
 
-    for (const dl of source.data) {
-      if (!dl.title) continue;
-      
-      const normalizedTitle = normalizeString(dl.title);
-      
-      // Simple inclusion match. 
-      // e.g. "cyberpunk2077" is inside "cyberpunk2077v16alldlcs"
-      if (normalizedTitle.includes(normalizedGameName)) {
-        matches.push({
-          ...dl,
-          sourceName: source.name,
-          sourceUrl: source.url
-        });
-      }
-    }
-  }
-
-  // Sort matches so that exact prefixes might appear first, or sort by file size, etc.
-  // We'll leave it in the order they were found (grouped by source)
+  downloadResultsCache.set(normalizedGameName, matches);
   return matches;
 }

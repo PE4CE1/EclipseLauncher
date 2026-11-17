@@ -92,6 +92,41 @@ function escapeXml(unsafe: string): string {
 }
 
 /**
+ * Sleek mini game preview artwork for games without an icon.
+ * Returns an SVG data URI with a modern frosted dark gaming controller aesthetic.
+ */
+export function getMiniGamePreview(name?: string): string {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#18181b"/>
+          <stop offset="50%" stop-color="#111216"/>
+          <stop offset="100%" stop-color="#09090b"/>
+        </linearGradient>
+        <radialGradient id="glow" cx="50%" cy="40%" r="50%">
+          <stop offset="0%" stop-color="rgba(99, 102, 241, 0.25)"/>
+          <stop offset="100%" stop-color="rgba(0, 0, 0, 0)"/>
+        </radialGradient>
+      </defs>
+      <rect width="96" height="96" rx="16" fill="url(#bg)"/>
+      <rect width="96" height="96" rx="16" fill="url(#glow)"/>
+      <rect x="1" y="1" width="94" height="94" rx="15" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
+      <!-- Gamepad Vector Glyph -->
+      <g transform="translate(24, 28) scale(2)" stroke="rgba(255,255,255,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <rect width="20" height="12" x="2" y="6" rx="3" fill="rgba(255,255,255,0.06)"/>
+        <line x1="6" x2="10" y1="12" y2="12"/>
+        <line x1="8" x2="8" y1="10" y2="14"/>
+        <line x1="15" x2="15.01" y1="13" y2="13" stroke-width="2.2"/>
+        <line x1="18" x2="18.01" y1="11" y2="11" stroke-width="2.2"/>
+      </g>
+    </svg>
+  `.trim()
+
+  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`
+}
+
+/**
  * Minimalist game cover placeholder — sleek obsidian gaming card with frosted emblem,
  * subtle depth texture, and modern typography.
  */

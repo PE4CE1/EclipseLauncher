@@ -1,0 +1,67 @@
+.gameplay-overlay-tab { container:overlay-settings / inline-size; max-width:980px; }
+.overlay-settings-header { display:flex; gap:20px; justify-content:space-between; align-items:center; padding:0 0 23px; border-bottom:1px solid #ffffff0c; }
+.overlay-settings-eyebrow { display:block; font-size:9px; font-weight:600; letter-spacing:1.8px; color:#a4836b; margin-bottom:10px; }
+.overlay-settings-header h2 { font-size:24px; line-height:1.3; font-weight:650; letter-spacing:-.7px; }
+.overlay-settings-header p { font-size:12px; margin-top:8px; line-height:1.8; color:#89888e; }
+.overlay-settings-actions { display:flex; flex-direction:column; gap:11px; align-items:flex-end; flex-shrink:0; }
+.overlay-layout-button { display:flex; align-items:center; gap:8px; padding:9px 13px; border:1px solid #ffffff16; border-radius:5px; font-size:11px; color:#dedbd8; background:#ffffff05; }
+.overlay-layout-button:hover { border-color:#ffffff30; background:#ffffff09; }
+.overlay-settings-count { display:flex; gap:7px; align-items:center; color:#8c8987; font-size:10px; }
+.overlay-settings-count>div { box-shadow:none!important; background:#bd9476; }
+.overlay-settings-scope { display:flex; align-items:center; justify-content:space-between; gap:20px; margin:0 0 20px; padding:0 0 19px; border-bottom:1px solid #ffffff09; }
+.overlay-settings-scope p { font-size:10px; color:#85838a; line-height:1.8; margin-top:5px; }
+.overlay-settings-scope strong { color:#c9c6c4; font-size:12px; font-weight:550; }
+.overlay-settings-scope [role=group] { display:flex; gap:3px; padding:3px; border:1px solid #ffffff12; border-radius:5px; background:#ffffff03; flex-shrink:0; }
+.overlay-settings-scope [role=group]>button { font-size:11px; padding:7px 13px; border-radius:3px; color:#86838a; }
+.overlay-settings-scope [role=group]>button[aria-pressed=true] { background:#d9d3cc; color:#262321; }
+.overlay-settings-list { border-top:1px solid #ffffff0b; }
+.overlay-settings-list>.settings-glass-card { border:0!important; border-bottom:1px solid #ffffff0b!important; border-radius:0!important; background:transparent!important; box-shadow:none; }
+.overlay-settings-list>.settings-glass-card>div:first-child { min-height:73px; padding:17px 2px; gap:15px; }
+.overlay-settings-list>.settings-glass-card>div:first-child>div:first-child>div:first-child { width:30px; height:30px; border-radius:6px; background:#ffffff04; color:#8d8988; }
+.overlay-settings-list>.settings-glass-card:has(>div:first-child [role=switch][aria-checked=true])>div:first-child>div:first-child>div:first-child { color:#d3a783; background:#bd885b0c; }
+.gameplay-overlay-tab .gameplay-overlay-switch { display:inline-flex; flex-shrink:0; width:38px; height:22px; position:relative; padding:0; border-radius:9999px; background:rgba(255,255,255,.15); cursor:pointer; transition:background-color 140ms linear; }
+.gameplay-overlay-tab .gameplay-overlay-switch>span { display:block; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:9999px; background:#b8b6b3; pointer-events:none; transform:translateX(0); transition:transform 140ms cubic-bezier(.2,.75,.25,1),background-color 140ms linear; box-shadow:none; }
+.gameplay-overlay-tab .gameplay-overlay-switch[aria-checked=true] { background:#d6d1cb; }
+.gameplay-overlay-tab .gameplay-overlay-switch[aria-checked=true]>span { transform:translateX(16px); background:#262526; }
+.gameplay-overlay-tab :is(button,[role=button]):focus-visible { outline:2px solid #c89971; outline-offset:3px; }
+.overlay-settings-game-list>.settings-glass-card { border-radius:6px!important; }
+.game-crosshair-settings{border:1px solid #ffffff0b;background:#ffffff02;overflow:visible}
+.game-crosshair-settings .crosshair-settings{margin:0 14px 14px;border:1px solid #ffffff0b!important;border-radius:6px!important;background:transparent!important}
+.game-crosshair-settings .crosshair-designer{padding:16px!important;min-width:0}
+.game-crosshair-settings .crosshair-controls,.game-crosshair-settings .crosshair-preview-panel{min-width:0}
+.game-crosshair-settings .crosshair-section-header{padding:12px}
+.game-crosshair-header{display:flex;align-items:center;gap:12px;padding:12px 16px}
+.game-crosshair-trigger{display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-align:left}
+.game-crosshair-icon{display:grid;place-items:center;width:36px;height:36px;flex-shrink:0;border:1px solid #ffffff0a;border-radius:8px;background:#ffffff03}
+.game-crosshair-icon img{width:25px;height:25px;object-fit:contain}
+.game-crosshair-icon--fortnite img{filter:none!important;height:23px}
+.game-crosshair-icon--cs2 img{border-radius:4px}
+.game-crosshair-title{min-width:0}
+.game-crosshair-title strong{display:block;color:#fff;font-size:13px;font-weight:600;line-height:1.5}
+.game-crosshair-title small{display:block;color:rgb(255 255 255 / .5);font-size:11px;font-weight:400;line-height:1.5}
+.game-crosshair-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.game-crosshair-info{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:0 16px;padding:14px 0;border-top:1px solid #ffffff0a}
+.game-crosshair-info p{font-size:10px;color:#8d8585;line-height:1.8;max-width:510px}
+.game-crosshair-info .overlay-layout-button{flex-shrink:0}
+.game-crosshair-info button:disabled{opacity:.35;cursor:default}
+.cs2-stats-settings{margin:0 14px 14px;border:1px solid #ffffff0b;border-radius:6px}
+.gameplay-overlay-tab .crosshair-settings--embedded{background:none!important;border:0!important;border-radius:0!important}
+@container overlay-settings (max-width:620px){.game-crosshair-info{align-items:flex-start;flex-direction:column;gap:12px}.game-crosshair-header{gap:8px;padding-inline:12px}.game-crosshair-actions{gap:8px}}
+.overlay-settings-note { color:#7c797f; font-size:11px; line-height:1.8; }
+@container overlay-settings (max-width:620px) {
+  .overlay-settings-header { align-items:flex-start; flex-wrap:wrap; }
+  .overlay-settings-actions { align-items:flex-start; flex-direction:row; flex-wrap:wrap; }
+  .overlay-settings-scope { align-items:flex-start; flex-direction:column; gap:12px; }
+  .overlay-settings-scope [role=group] { width:100%; }
+  .overlay-settings-scope [role=group]>button { flex:1; }
+  .gameplay-overlay-tab .flex-nowrap { flex-wrap:wrap; }
+}
+@media(prefers-reduced-motion:reduce){.gameplay-overlay-tab .gameplay-overlay-switch,.gameplay-overlay-tab .gameplay-overlay-switch>span{transition:none}}
+.performance-surface-settings{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px}
+.performance-surface-settings strong{font-size:12px;font-weight:550;color:#d4d0cb}
+.performance-surface-settings p{font-size:11px;line-height:1.6;color:#817d7b;margin-top:5px}
+.performance-surface-settings [role=group]{display:flex;gap:3px;padding:3px;border:1px solid #ffffff10;border-radius:6px;flex-shrink:0;background:#ffffff02}
+.performance-surface-settings button{padding:7px 10px;border-radius:3px;color:#918982;font-size:11px}
+.performance-surface-settings button[aria-pressed=true]{background:#ffffff10;color:#e1d3c6}
+.performance-surface-settings button:hover{color:#f0e4da}
+@media(max-width:600px){.performance-surface-settings{align-items:flex-start;flex-direction:column;gap:11px}}

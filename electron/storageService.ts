@@ -1,5 +1,7 @@
-import { ipcMain, shell } from 'electron'
-import { exec } from 'child_process'
+import { openExternalPath } from './externalLaunch'
+import { shell } from 'electron'
+import { ipcMain } from './ipcSecurity'
+import { execFile } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -27,12 +29,14 @@ export interface GameStorageItem {
 let cachedDrives: DriveInfo[] = []
 let lastDriveFetch = 0
 const gameSizeCache = new Map<string, { size: number; timestamp: number }>()
+const pendingSizes = new Map<string, Promise<number>>()
+let pendingDriveQuery: Promise<DriveInfo[]> | null = null
 
 function formatBytes(bytes: number): string {
-  if (bytes <= 0) return '0 B'
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  const i = Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(k)))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
@@ -41,7 +45,7 @@ function formatBytes(bytes: number): string {
  * Reads SizeOnDisk directly from steamapps/appmanifest_<appId>.acf
  */
 function getSteamSizeFromManifest(installPath: string, steamId?: number): number {
-  if (!installPath && !steamId) return 0
+  if (!installPath) return 0
   try {
     const parentDir = path.dirname(installPath) // .../steamapps/common
     const steamappsDir = path.dirname(parentDir) // .../steamapps
@@ -65,7 +69,7 @@ function getSteamSizeFromManifest(installPath: string, steamId?: number): number
         if (f.startsWith('appmanifest_') && f.endsWith('.acf')) {
           const acfPath = path.join(steamappsDir, f)
           const content = fs.readFileSync(acfPath, 'utf8')
-          if (content.toLowerCase().includes(`"installdir"\t\t"${folderName}"`) || content.toLowerCase().includes(`"installdir"\t"${folderName}"`)) {
+          if (content.match(/"installdir"\s+"([^"]+)"/i)?.[1].toLowerCase() === folderName) {
             const match = content.match(/"SizeOnDisk"\s+"(\d+)"/i)
             if (match && match[1]) {
               return parseInt(match[1], 10)
@@ -81,28 +85,33 @@ function getSteamSizeFromManifest(installPath: string, steamId?: number): number
 /**
  * Asynchronous non-blocking directory size calculation
  */
-async function getFolderSizeAsync(dirPath: string): Promise<number> {
+export async function getFolderSizeAsync(dirPath: string): Promise<number> {
   let total = 0
   try {
-    if (!fs.existsSync(dirPath)) return 0
-    const stat = await fs.promises.stat(dirPath)
+    const stat = await fs.promises.lstat(dirPath)
+    if (stat.isSymbolicLink()) return 0
     if (!stat.isDirectory()) return stat.size
-
-    const entries = await fs.promises.readdir(dirPath, { withFileTypes: true })
-    for (const entry of entries) {
-      const fullPath = path.join(dirPath, entry.name)
+    const directories = [dirPath]
+    while (directories.length > 0) {
+      const current = directories.pop()!
       try {
-        if (entry.isDirectory()) {
-          const subEntries = await fs.promises.readdir(fullPath, { withFileTypes: true })
-          for (const sub of subEntries) {
-            if (!sub.isDirectory()) {
-              const subStat = await fs.promises.stat(path.join(fullPath, sub.name))
-              total += subStat.size
-            }
-          }
-        } else {
-          const fileStat = await fs.promises.stat(fullPath)
-          total += fileStat.size
+        const entries = await fs.promises.readdir(current, { withFileTypes: true })
+        const files: string[] = []
+        for (const entry of entries) {
+          if (entry.isSymbolicLink()) continue
+          const fullPath = path.join(current, entry.name)
+          if (entry.isDirectory()) directories.push(fullPath)
+          else if (entry.isFile()) files.push(fullPath)
+        }
+        // Bound filesystem concurrency independently of directory size.
+        for (let index = 0; index < files.length; index += 32) {
+          const sizes = await Promise.all(files.slice(index, index + 32).map(async file => {
+            try {
+              const fileStat = await fs.promises.lstat(file)
+              return fileStat.isFile() ? fileStat.size : 0
+            } catch { return 0 }
+          }))
+          total += sizes.reduce((sum, size) => sum + size, 0)
         }
       } catch (_) {}
     }
@@ -117,9 +126,11 @@ export function queryDrives(): Promise<DriveInfo[]> {
     return Promise.resolve(cachedDrives)
   }
 
-  return new Promise((resolve) => {
+  if (pendingDriveQuery) return pendingDriveQuery
+  pendingDriveQuery = new Promise<DriveInfo[]>((resolve) => {
     const cmd = `Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Select-Object DeviceId, VolumeName, Size, FreeSpace | ConvertTo-Json`
-    exec(`powershell -NoProfile -NonInteractive -Command "${cmd}"`, { windowsHide: true }, (err, stdout) => {
+    const encoded = Buffer.from(cmd, 'utf16le').toString('base64')
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], { windowsHide: true, timeout: 15000 }, (err, stdout) => {
       if (err || !stdout) {
         resolve(cachedDrives)
         return
@@ -150,7 +161,8 @@ export function queryDrives(): Promise<DriveInfo[]> {
         resolve(cachedDrives)
       }
     })
-  })
+  }).finally(() => { pendingDriveQuery = null })
+  return pendingDriveQuery
 }
 
 export async function calculateGameSizes(games: any[]): Promise<GameStorageItem[]> {
@@ -159,8 +171,9 @@ export async function calculateGameSizes(games: any[]): Promise<GameStorageItem[
   const results: GameStorageItem[] = []
 
   for (const g of games) {
-    const installPath = g.installPath || ''
-    let size = g.sizeBytes || 0
+    if (!g || typeof g !== 'object') continue
+    const installPath = typeof g.installPath === 'string' ? g.installPath : ''
+    let size = Number.isFinite(g.sizeBytes) && g.sizeBytes > 0 ? g.sizeBytes : 0
     let drive = 'C:'
 
     if (installPath) {
@@ -173,14 +186,20 @@ export async function calculateGameSizes(games: any[]): Promise<GameStorageItem[
         size = cached.size
       } else if (!size) {
         // Fast manifest read
-        size = getSteamSizeFromManifest(installPath, g.steamId)
+        size = g.platform === 'steam' ? getSteamSizeFromManifest(installPath, g.steamId) : 0
 
         // If manifest didn't give size, compute asynchronously without freezing UI
-        if (!size && fs.existsSync(installPath)) {
-          size = await getFolderSizeAsync(installPath)
+        if (!size) {
+          let pending = pendingSizes.get(installPath)
+          if (!pending) {
+            pending = getFolderSizeAsync(installPath).finally(() => pendingSizes.delete(installPath))
+            pendingSizes.set(installPath, pending)
+          }
+          size = await pending
         }
 
         if (size > 0) {
+          if (gameSizeCache.size >= 1000) gameSizeCache.delete(gameSizeCache.keys().next().value!)
           gameSizeCache.set(installPath, { size, timestamp: Date.now() })
         }
       }
@@ -213,8 +232,8 @@ export function initStorageIPC() {
     if (!folderPath) return { success: false }
     try {
       const p = fs.existsSync(folderPath) ? folderPath : path.dirname(folderPath)
-      await shell.openPath(p)
-      return { success: true }
+      const error = await openExternalPath(p)
+      return { success: !error, ...(error ? { error } : {}) }
     } catch (err) {
       console.error('[StorageService] Failed to open folder:', err)
       return { success: false }

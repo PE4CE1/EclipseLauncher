@@ -1,3 +1,32 @@
+# Legacy Cloudflare social backend
+
+The launcher currently uses Firebase Auth and Firestore through
+`src/services/socialService.ts`. This Worker is retained for reference and is
+not used by the current app.
+
+**Do not expose this legacy API publicly as-is.** It accepts client-supplied
+UIDs and does not verify authentication or authorize ownership of profiles,
+presence, friends, or requests. CORS and `X-User-UID` do not provide
+authentication. Before reactivating it, verify Firebase ID tokens on the server
+and derive the acting UID from the verified token for every protected operation.
+See the [Firebase token verification documentation](https://firebase.google.com/docs/auth/admin/verify-id-tokens).
+That requires a coordinated client migration and a separate deployment; the
+local fixes in this repository do not secure an already deployed Worker.
+
+The setup instructions below describe the legacy architecture only.
+
+Local verification requires Node.js 22 or newer:
+
+```powershell
+cd worker
+npm ci
+npm run typecheck
+```
+
+Wrangler 4 and current Workers declarations are locked in `package-lock.json`.
+TypeScript stays on the same 5.9 release line as the launcher. Dependency
+installation and type checking do not deploy the Worker or access D1 data.
+
 # 🚀 Eclipse Launcher – Cloudflare D1 & Worker Backend Setup
 
 Diese Anleitung zeigt dir Schritt für Schritt, wie du die Cloudflare D1 Datenbank und den Cloudflare Worker in weniger als 3 Minuten kostenlos erstellst und bereitstellst.

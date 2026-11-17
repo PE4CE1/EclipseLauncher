@@ -1,279 +1,181 @@
-import { app, BrowserWindow, session, net } from 'electron'
+import { app, BrowserWindow, session } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
+import { APP_VERSION } from '../src/services/appVersion'
+import { parseHydraSource } from '../src/services/sourceValidation'
+import { normalizeSourceUrl, sourceKey } from '../src/services/sourceUrls'
+import { isSourceTlsError } from '../src/services/sourceErrors'
+import { createConcurrentQueue } from '../src/services/concurrentQueue'
+import type { FetchSourceResult, HydraDownload } from '../src/types/source'
 
-export interface CachedSource {
-  url: string
-  name: string
-  lastSynced: number
-  data: any[]
-}
-
+export interface CachedSource { url: string; name: string; lastSynced: number; data: HydraDownload[] }
 const CACHE_DIR = path.join(app.getPath('userData'), 'sources_cache')
+const MAX_SOURCE_BYTES = 80 * 1024 * 1024
+const requests = new Map<string, Promise<FetchSourceResult>>()
+const downloads = createConcurrentQueue(2), verification = createConcurrentQueue(1)
+const fileFor = (url: string) => path.join(CACHE_DIR, crypto.createHash('md5').update(url.trim()).digest('hex') + '.json')
+const errorText = (error: unknown) => error instanceof Error ? error.message : 'Source request failed'
+class SourcePayloadError extends Error {}
+const cancelBody = (response: Response) => { try { void Promise.resolve(response.body?.cancel()).catch(() => {}) } catch {} }
 
-function ensureCacheDir() {
-  if (!fs.existsSync(CACHE_DIR)) {
-    try {
-      fs.mkdirSync(CACHE_DIR, { recursive: true })
-    } catch (e) {
-      console.error('[SourceFetcher] Failed to create cache directory:', e)
-    }
-  }
+function parseCached(value: unknown): CachedSource | null {
+  if (!value || typeof value !== 'object') return null
+  const cached = value as CachedSource
+  if (typeof cached.url !== 'string' || !Number.isFinite(cached.lastSynced)) return null
+  const parsed = parseHydraSource({ name: cached.name, downloads: cached.data })
+  return { url: sourceKey(cached.url), name: parsed.name, lastSynced: cached.lastSynced, data: parsed.downloads }
 }
-
-function getCacheFilePath(url: string): string {
-  const hash = crypto.createHash('md5').update(url.trim()).digest('hex')
-  return path.join(CACHE_DIR, `${hash}.json`)
-}
-
-export function getCachedSource(url: string): CachedSource | null {
+export function getCachedSource(rawUrl: string): CachedSource | null {
   try {
-    ensureCacheDir()
-    const filePath = getCacheFilePath(url)
-    if (fs.existsSync(filePath)) {
-      const raw = fs.readFileSync(filePath, 'utf-8')
-      const parsed = JSON.parse(raw)
-      if (parsed && Array.isArray(parsed.data)) {
-        return parsed
-      }
-    }
-  } catch (e) {
-    console.warn(`[SourceFetcher] Could not read cache for ${url}:`, e)
-  }
-  return null
-}
-
-export function getAllCachedSources(): CachedSource[] {
-  try {
-    ensureCacheDir()
-    const files = fs.readdirSync(CACHE_DIR)
-    const results: CachedSource[] = []
-    for (const f of files) {
-      if (f.endsWith('.json')) {
-        try {
-          const raw = fs.readFileSync(path.join(CACHE_DIR, f), 'utf-8')
-          const parsed = JSON.parse(raw)
-          if (parsed && parsed.url && Array.isArray(parsed.data)) {
-            results.push(parsed)
-          }
-        } catch {}
-      }
-    }
-    return results
-  } catch (e) {
-    console.error('[SourceFetcher] Failed to get all cached sources:', e)
-    return []
-  }
-}
-
-export function saveCachedSource(url: string, name: string, data: any[]): void {
-  try {
-    ensureCacheDir()
-    const filePath = getCacheFilePath(url)
-    const payload: CachedSource = {
-      url: url.trim(),
-      name: name || 'Source',
-      lastSynced: Date.now(),
-      data: Array.isArray(data) ? data : []
-    }
-    fs.writeFileSync(filePath, JSON.stringify(payload), 'utf-8')
-    console.log(`[SourceFetcher] Cached ${payload.data.length} items for ${url} -> ${filePath}`)
-  } catch (e) {
-    console.error(`[SourceFetcher] Failed to write cache for ${url}:`, e)
-  }
-}
-
-export function removeCachedSource(url: string): void {
-  try {
-    const filePath = getCacheFilePath(url)
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath)
+    const key = sourceKey(rawUrl)
+    for (const file of new Set([fileFor(key), fileFor(rawUrl)])) {
+      if (!fs.existsSync(file)) continue
+      const cached = parseCached(JSON.parse(fs.readFileSync(file, 'utf8')))
+      if (cached?.url === key) return cached
     }
   } catch {}
+  return null
+}
+export function getAllCachedSources(): CachedSource[] {
+  if (!fs.existsSync(CACHE_DIR)) return []
+  const results = new Map<string, CachedSource>()
+  for (const file of fs.readdirSync(CACHE_DIR)) {
+    if (!/^[a-f0-9]{32}\.json$/.test(file)) continue
+    try {
+      const cached = parseCached(JSON.parse(fs.readFileSync(path.join(CACHE_DIR, file), 'utf8')))
+      if (cached && (!results.has(cached.url) || results.get(cached.url)!.lastSynced < cached.lastSynced)) results.set(cached.url, cached)
+    } catch {}
+  }
+  return [...results.values()]
+}
+export function saveCachedSource(rawUrl: string, name: string, data: HydraDownload[]): number {
+  const url = sourceKey(rawUrl), source = parseHydraSource({ name, downloads: data })
+  fs.mkdirSync(CACHE_DIR, { recursive: true })
+  const lastSynced = Date.now(), file = fileFor(url), temporary = file + '.' + crypto.randomUUID() + '.tmp'
+  try { fs.writeFileSync(temporary, JSON.stringify({ url, name: source.name, lastSynced, data: source.downloads }), 'utf8'); fs.renameSync(temporary, file) }
+  finally { try { fs.unlinkSync(temporary) } catch {} }
+  return lastSynced
+}
+export function removeCachedSource(rawUrl: string): void {
+  for (const file of new Set([fileFor(sourceKey(rawUrl)), fileFor(rawUrl)])) {
+    try { fs.unlinkSync(file) } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
+  }
+}
+export function clearCachedSources(): void {
+  if (!fs.existsSync(CACHE_DIR)) return
+  for (const file of fs.readdirSync(CACHE_DIR)) if (/^[a-f0-9]{32}\.json$/.test(file)) fs.unlinkSync(path.join(CACHE_DIR, file))
 }
 
-const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-
-let activeSolverWin: BrowserWindow | null = null
-
-/**
- * Robustly fetches and caches a Hydra JSON source.
- * Handles Cloudflare Turnstile challenges, persistent cookie sessions, and disk caching.
- */
-export async function fetchAndCacheSource(rawUrl: string): Promise<{ success: boolean; name?: string; data?: any[]; error?: string }> {
-  const url = rawUrl.trim()
-  if (!url) return { success: false, error: 'Empty URL' }
-
-  const ses = session.fromPartition('persist:hydra_sources')
-  ses.setUserAgent(CHROME_UA)
-
-  // 1. First attempt: Direct Chromium net.fetch with persistent session
-  try {
-    console.log(`[SourceFetcher] Attempting direct fetch for: ${url}`)
-    const response = await net.fetch(url, {
-      headers: {
-        'User-Agent': CHROME_UA,
-        'Accept': 'application/json, text/plain, */*',
-        'Sec-Ch-Ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"',
-        'Accept-Language': 'en-US,en;q=0.9,de;q=0.8'
-      }
-    })
-
-    if (response.ok) {
-      const text = await response.text()
-      if (text && (text.startsWith('{') || text.includes('"downloads"'))) {
-        try {
-          const json = JSON.parse(text)
-          const downloads = Array.isArray(json.downloads) ? json.downloads : []
-          const name = json.name || new URL(url).pathname.split('/').pop()?.replace('.json', '') || 'Source'
-          saveCachedSource(url, name, downloads)
-          return { success: true, name, data: downloads }
-        } catch (e) {
-          console.warn('[SourceFetcher] Failed to parse JSON from direct fetch')
-        }
-      }
-    } else {
-      console.log(`[SourceFetcher] Direct fetch HTTP status: ${response.status}`)
-    }
-  } catch (err) {
-    console.log(`[SourceFetcher] Direct fetch error:`, err)
+async function readSourceText(response: Response): Promise<string> {
+  if (Number(response.headers?.get?.('content-length') || 0) > MAX_SOURCE_BYTES) { cancelBody(response); throw new SourcePayloadError('Source exceeds the 80 MiB limit') }
+  if (!response.body?.getReader) {
+    const text = await response.text()
+    if (Buffer.byteLength(text) > MAX_SOURCE_BYTES) throw new SourcePayloadError('Source exceeds the 80 MiB limit')
+    return text
   }
+  const reader = response.body.getReader(), chunks: Buffer[] = []
+  let size = 0
+  try {
+    for (;;) {
+      const result = await reader.read()
+      if (result.done) break
+      size += result.value.byteLength
+      if (size > MAX_SOURCE_BYTES) { await reader.cancel(); throw new SourcePayloadError('Source exceeds the 80 MiB limit') }
+      chunks.push(Buffer.from(result.value))
+    }
+    return Buffer.concat(chunks, size).toString('utf8')
+  } finally { reader.releaseLock() }
+}
+function parseResponse(text: string, url: string) {
+  const value = JSON.parse(text.replace(/^\uFEFF/, '').trim())
+  const parsed = parseHydraSource(value, new URL(url).pathname.split('/').pop()?.replace(/\.json$/i, '') || 'Source')
+  if (value.downloads.length && !parsed.downloads.length) throw new Error('Source contains no usable download links')
+  return parsed
+}
+function freshResult(url: string, parsed: ReturnType<typeof parseResponse>): FetchSourceResult {
+  try { return { success: true, name: parsed.name, data: parsed.downloads, lastSynced: saveCachedSource(url, parsed.name, parsed.downloads) } }
+  catch { return { success: true, name: parsed.name, data: parsed.downloads, lastSynced: Date.now(), error: 'Source loaded, but its disk cache could not be saved' } }
+}
+const pause = (delay: number) => new Promise<void>(resolve => setTimeout(resolve, delay))
 
-  // 2. Second attempt: Interactive / Semi-Automatic Cloudflare Turnstile Solver
+async function verifySource(url: string): Promise<ReturnType<typeof parseResponse>> {
+  return verification.run(() => new Promise((resolve, reject) => {
+    const window = new BrowserWindow({ width: 620, height: 650, show: true, title: 'Eclipse — Source verification', autoHideMenuBar: true, webPreferences: { partition: 'persist:hydra_sources', nodeIntegration: false, contextIsolation: true, sandbox: true } })
+    let settled = false, checking = false
+    let poll: ReturnType<typeof setInterval> | undefined
+    const finish = (error?: Error, data?: ReturnType<typeof parseResponse>) => {
+      if (settled) return
+      settled = true; clearTimeout(timeout); clearInterval(poll)
+      if (!window.isDestroyed()) window.destroy()
+      if (error) reject(error); else resolve(data!)
+    }
+    const timeout = setTimeout(() => finish(new Error('Source verification timed out')), 90_000)
+    window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+    window.webContents.on('will-navigate', (event, destination) => { try { normalizeSourceUrl(destination) } catch { event.preventDefault() } })
+    window.on('closed', () => finish(new Error('Source verification was closed')))
+    const inspect = async () => {
+      if (settled || checking || window.isDestroyed()) return
+      checking = true
+      try {
+        const text = await window.webContents.executeJavaScript("(document.querySelector('pre')?.textContent || document.body?.innerText || '').slice(0, 83886081)")
+        if (settled || typeof text !== 'string' || !text.trimStart().replace(/^\uFEFF/, '').startsWith('{')) return
+        if (Buffer.byteLength(text) > MAX_SOURCE_BYTES) { finish(new Error('Source exceeds the 80 MiB limit')); return }
+        try { finish(undefined, parseResponse(text, url)) } catch (error) { finish(new Error('Invalid source JSON: ' + errorText(error))) }
+      } catch {} finally { checking = false }
+    }
+    window.webContents.on('did-finish-load', () => { void inspect(); if (!poll && !settled) poll = setInterval(() => { void inspect() }, 1000) })
+    void window.loadURL(url).catch(error => finish(new Error('Source verification could not load: ' + errorText(error))))
+  }))
+}
+
+async function fetchSource(url: string): Promise<FetchSourceResult> {
+  const sourceSession = session.fromPartition('persist:hydra_sources')
+  const userAgent = sourceSession.getUserAgent?.() || `Eclipse/${APP_VERSION}`
+  sourceSession.setUserAgent(userAgent)
+  sourceSession.setPermissionRequestHandler?.((_contents, _permission, callback) => callback(false))
+  sourceSession.setPermissionCheckHandler?.(() => false)
+  let failure = 'Source request failed', challenge = false
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController()
+    let timer = setTimeout(() => controller.abort(), 20_000)
+    try {
+      const response = await sourceSession.fetch(url, { signal: controller.signal, headers: { Accept: 'application/json, text/plain;q=0.9, */*;q=0.5' } })
+      clearTimeout(timer); timer = setTimeout(() => controller.abort(), 60_000)
+      if (response.status === 429 || response.status >= 500) {
+        failure = 'Source returned HTTP ' + response.status
+        cancelBody(response)
+        if (attempt === 0) { await pause(600); continue }
+        break
+      }
+      const text = await readSourceText(response)
+      challenge = text.replace(/^\uFEFF/, '').trimStart().startsWith('<') && /cf-chl-|challenge-platform|cf-turnstile|Just a moment|cf_clearance/i.test(text.slice(0, 60_000))
+      if (challenge) { failure = 'Source requires browser verification'; break }
+      if (!response.ok) { failure = 'Source returned HTTP ' + response.status; break }
+      try { return freshResult(url, parseResponse(text, url)) }
+      catch (error) { failure = 'Invalid source JSON: ' + errorText(error); break }
+    } catch (error) {
+      if (error instanceof SourcePayloadError) { failure = error.message; break }
+      failure = controller.signal.aborted ? 'Source request timed out' : 'Source could not be reached: ' + errorText(error)
+      if (isSourceTlsError(errorText(error))) break
+      if (attempt === 0 && !controller.signal.aborted) { await pause(400); continue }
+      break
+    } finally { clearTimeout(timer) }
+  }
+  if (challenge) {
+    try { return freshResult(url, await verifySource(url)) } catch (error) { failure = errorText(error) }
+  }
   const cached = getCachedSource(url)
+  return cached ? { success: true, name: cached.name, data: cached.data, stale: true, lastSynced: cached.lastSynced, error: failure } : { success: false, error: failure }
+}
 
-  try {
-    console.log(`[SourceFetcher] Spawning Cloudflare solver window for ${url}...`)
-    const solverResult = await new Promise<{ success: boolean; name?: string; data?: any[]; error?: string }>((resolve) => {
-      let resolved = false
-
-      if (activeSolverWin && !activeSolverWin.isDestroyed()) {
-        try { activeSolverWin.destroy() } catch {}
-      }
-
-      const solverWin = new BrowserWindow({
-        width: 480,
-        height: 520,
-        show: false,
-        paintWhenInitiallyHidden: true,
-        enableLargerThanScreen: true,
-        center: true,
-        title: 'Eclipse — Quelle wird verifiziert...',
-        alwaysOnTop: true,
-        autoHideMenuBar: true,
-        webPreferences: {
-          partition: 'persist:hydra_sources',
-          nodeIntegration: false,
-          contextIsolation: true,
-          sandbox: false,
-          disableBlinkFeatures: 'AutomationControlled',
-          
-          backgroundThrottling: false
-        }
-      })
-
-      activeSolverWin = solverWin
-
-      const cleanup = () => {
-        if (!solverWin.isDestroyed()) {
-          try { solverWin.destroy() } catch {}
-        }
-        if (activeSolverWin === solverWin) activeSolverWin = null
-      }
-
-      // Max 45 seconds before timeout
-      const timer = setTimeout(() => {
-        if (!resolved) {
-          resolved = true
-          cleanup()
-          if (cached) {
-            console.log(`[SourceFetcher] Verification timeout. Returning disk cached data for ${url}`)
-            resolve({ success: true, name: cached.name, data: cached.data })
-          } else {
-            resolve({ success: false, error: 'Verification timed out' })
-          }
-        }
-      }, 15000)
-
-      solverWin.on('closed', () => {
-        if (!resolved) {
-          resolved = true
-          clearTimeout(timer)
-          if (cached) {
-            console.log(`[SourceFetcher] Solver closed by user. Returning disk cached data for ${url}`)
-            resolve({ success: true, name: cached.name, data: cached.data })
-          } else {
-            resolve({ success: false, error: 'Verification window closed' })
-          }
-        }
-      })
-
-      let pollInterval: NodeJS.Timeout | null = null
-
-      const checkCompletion = async () => {
-        if (resolved || solverWin.isDestroyed()) {
-          if (pollInterval) clearInterval(pollInterval)
-          return
-        }
-
-        try {
-          
-          const content = await solverWin.webContents.executeJavaScript(`
-            (function() {
-              const pre = document.querySelector('pre');
-              if (pre && pre.textContent) return pre.textContent;
-              if (document.body && document.body.innerText && (document.body.innerText.startsWith('{') || document.body.innerText.includes('"downloads"'))) {
-                return document.body.innerText;
-              }
-              return '';
-            })()
-          `).catch(() => '')
-
-          if (content && (content.startsWith('{') || content.includes('"downloads"')) && content.length > 50) {
-            resolved = true
-            if (pollInterval) clearInterval(pollInterval)
-            clearTimeout(timer)
-            cleanup()
-
-            try {
-              const json = JSON.parse(content)
-              const downloads = Array.isArray(json.downloads) ? json.downloads : []
-              const name = json.name || new URL(url).pathname.split('/').pop()?.replace('.json', '') || 'Source'
-              saveCachedSource(url, name, downloads)
-              resolve({ success: true, name, data: downloads })
-            } catch (err: any) {
-              resolve({ success: false, error: err?.message || 'Failed to parse JSON' })
-            }
-          }
-        } catch {}
-      }
-
-      solverWin.webContents.on('did-finish-load', () => {
-        if (!pollInterval) {
-          pollInterval = setInterval(checkCompletion, 800)
-        }
-      })
-
-      solverWin.loadURL(url).catch((err) => {
-        console.warn('[SourceFetcher] Solver window loadURL error:', err)
-      })
-    })
-
-    if (solverResult.success) {
-      return solverResult
-    }
-  } catch (err) {
-    console.error('[SourceFetcher] Cloudflare solver error:', err)
-  }
-
-  // 3. Fallback to existing disk cache
-  if (cached) {
-    console.log(`[SourceFetcher] Using fallback disk cache for ${url} (${cached.data.length} games)`)
-    return { success: true, name: cached.name, data: cached.data }
-  }
-
-  return { success: false, error: 'Could not fetch or verify source' }
+export function fetchAndCacheSource(rawUrl: string): Promise<FetchSourceResult> {
+  let url: string
+  try { url = normalizeSourceUrl(typeof rawUrl === 'string' ? rawUrl : '') }
+  catch (error) { return Promise.resolve({ success: false, error: errorText(error) }) }
+  const existing = requests.get(url)
+  if (existing) return existing
+  const task = downloads.run(() => fetchSource(url)).catch(error => ({ success: false, error: errorText(error) })).finally(() => requests.delete(url))
+  requests.set(url, task)
+  return task
 }

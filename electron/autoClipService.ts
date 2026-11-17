@@ -1,433 +1,175 @@
-import fs from 'fs'
-import path from 'path'
-import os from 'os'
-import http from 'http'
-import { BrowserWindow } from 'electron'
-import { exec } from 'child_process'
-import { promisify } from 'util'
+import { app, type BrowserWindow } from 'electron'
+import fs from 'node:fs'
+import path from 'node:path'
+import http from 'node:http'
+import crypto from 'node:crypto'
+import { writeJsonAtomicSync } from './jsonStorage'
+import { cs2Session } from './cs2Stats'
+import { installGsiConfiguration } from './autoClipConfig'
+import { createLeagueLiveClient } from './leagueLiveClient'
+import { subscribeRocketLeagueStats } from './rocketLeagueClient'
+import { createRocketLeagueDetector } from './rocketLeagueEvents'
+import { autoClipGame, createCS2Detector, createDota2Detector, createLoLDetector } from './autoClipEvents'
+import type { AutoClipGameId, AutoClipOptions, AutoClipEvent, AutoClipStatus, AutoClipConnection, GsiGameId } from '../src/types/autoClips'
 
-const execAsync = promisify(exec)
+let getWindow: () => BrowserWindow | null = () => null
+let getRules: () => AutoClipOptions = () => ({ enabled:false })
+let wantsCS2Stats=()=>false
+let publishCS2Stats:()=>void=()=>{}
+const transportEnabled=(id:AutoClipGameId,rules:AutoClipOptions)=>enabled(id,rules)||(id==='cs2'&&wantsCS2Stats())
+let currentGame = '', signature = '', generation = 0, lastClip = -Infinity
+let server: http.Server | null = null, timer: ReturnType<typeof setTimeout> | undefined
+let league: ReturnType<typeof createLeagueLiveClient> | null = null
+let cachedToken: string | undefined
+let rocket: ReturnType<typeof subscribeRocketLeagueStats> | null = null
+let rocketLeaguePlayers: {id:string;name:string}[] = []
+const needsRestart = new Set<GsiGameId>()
+const ids: AutoClipGameId[] = ['cs2','dota2','lol','rocket-league','overwatch']
+const connections = Object.fromEntries(ids.map(id=>[id,{state:'disabled'}])) as Record<AutoClipGameId,AutoClipConnection>
+connections.overwatch = {state:'manual',detail:'no-api'}
 
-interface AutoClipEvent {
-  game: string
-  eventType: 'goal' | 'save' | 'demo' | 'win' | 'kill' | 'ace' | 'death'
-  title: string
-  details?: string
+function enabled(id: AutoClipGameId, rules: AutoClipOptions) {
+  return rules.enabled !== false && rules.autoClipEnabled === true &&
+    (id === 'cs2' ? rules.autoClipCS2Enabled !== false : id === 'dota2' ? rules.autoClipDota2Enabled === true : id === 'rocket-league' ? rules.autoClipRocketLeagueEnabled === true : id === 'lol' && rules.autoClipLoLEnabled === true)
 }
-
-let lastClipTimestamp = 0
-let rlLogInterval: NodeJS.Timeout | null = null
-let lastLogSize = 0
-let rlWatchStartTime = 0
-let gsiServer: http.Server | null = null
-let getWindowRef: () => BrowserWindow | null = () => null
-
-// CS2 State Tracking
-let lastCS2Kills: number | null = null
-let lastCS2Round = -1
-let lastCS2WinClipTimestamp = 0
-
-function canTriggerClip(cooldownSeconds: number = 15): boolean {
-  const now = Date.now()
-  if (now - lastClipTimestamp < cooldownSeconds * 1000) {
-    return false
+function token() {
+  if (cachedToken) return cachedToken
+  const file = path.join(app.getPath('userData'),'autoclip-auth.json')
+  try { const value=JSON.parse(fs.readFileSync(file,'utf8'));if(typeof value.token==='string'&&/^[a-f\d]{64}$/.test(value.token))return cachedToken=value.token } catch {}
+  cachedToken = crypto.randomBytes(32).toString('hex')
+  writeJsonAtomicSync(file,{token:cachedToken})
+  return cachedToken
+}
+function emit(id: AutoClipGameId, events: AutoClipEvent[], rules: AutoClipOptions) {
+  const cooldown = Math.max(5,Math.min(120,Number(rules.autoClipCooldownSeconds)||15))*1000
+  if (Date.now()-lastClip < cooldown) return
+  const priority = {ace:5,win:4,kill:3,goal:3,save:3,demo:2,death:1}
+  const event = [...events].sort((a,b)=>priority[b.eventType]-priority[a.eventType])[0]
+  const window = getWindow()
+  if (!event || !window || window.isDestroyed()) return
+  try {
+    window.webContents.send('clip:auto-triggered',{...event,timestamp:Date.now()})
+    lastClip = Date.now(); connections[id] = {...connections[id],lastEventAt:lastClip}
+  } catch {}
+}
+function requestHandler(id: GsiGameId, rules: AutoClipOptions | (()=>AutoClipOptions), expectedToken: string, active = () => true): http.RequestListener {
+  const detect = id === 'cs2' ? createCS2Detector() : createDota2Detector()
+  return (req,res) => {
+    if (req.method !== 'POST' || req.url !== '/') {res.writeHead(405);res.end();return}
+    if (req.headers.origin) {res.writeHead(403);res.end();return}
+    const chunks:Buffer[]=[];let size=0,oversized=false
+    req.on('error',()=>{if(!res.writableEnded){res.writeHead(400);res.end()}})
+    req.on('data',(chunk:Buffer)=>{
+      if(oversized)return
+      size+=chunk.length
+      if(size>256*1024){oversized=true;chunks.length=0;res.writeHead(413);res.end();return}
+      chunks.push(chunk)
+    })
+    req.on('end',()=>{
+      if(oversized||res.writableEnded)return
+      try {
+        const data=JSON.parse(Buffer.concat(chunks).toString('utf8')),received=data?.auth?.token
+        if(typeof received!=='string'||Buffer.byteLength(received)!==Buffer.byteLength(expectedToken)||!crypto.timingSafeEqual(Buffer.from(received),Buffer.from(expectedToken))){res.writeHead(403);res.end();return}
+        const settings=typeof rules==='function'?rules():rules
+        if(active()&&transportEnabled(id,settings)){
+          if(id==='cs2'&&wantsCS2Stats()&&cs2Session.ingest(data))publishCS2Stats()
+          const result=detect(data,settings)
+          if(result.valid){needsRestart.delete(id);connections[id]={...connections[id],state:'connected',detail:undefined,lastSeenAt:Date.now()};if(enabled(id,settings))emit(id,result.events,settings)}
+        }
+        res.writeHead(200);res.end('OK')
+      }catch{res.writeHead(400);res.end()}
+    })
   }
-  lastClipTimestamp = now
-  return true
 }
+export const createCS2RequestHandler = (rules: AutoClipOptions, expectedToken: string) => requestHandler('cs2',rules,expectedToken)
+export const createDota2RequestHandler = (rules: AutoClipOptions, expectedToken: string) => requestHandler('dota2',rules,expectedToken)
 
-function emitAutoClip(event: AutoClipEvent) {
-  const win = getWindowRef()
-  if (!win || win.isDestroyed()) return
-
-  console.log(`[AutoClip] 🎬 Triggered Auto-Clip event: [${event.game}] ${event.eventType} - ${event.title}`)
-  win.webContents.send('clip:auto-triggered', {
-    ...event,
-    timestamp: Date.now()
+function stopTransport() {
+  if(timer)clearTimeout(timer);timer=undefined
+  league?.close();league=null
+  rocket?.close();rocket=null;rocketLeaguePlayers=[]
+  if(server){server.closeAllConnections();try{server.close()}catch{}server=null}
+}
+function startRocketLeague(version:number) {
+  let detect=createRocketLeagueDetector()
+  rocket=subscribeRocketLeagueStats(message=>{
+    if(version!==generation)return
+    const rules=getRules()
+    if(!enabled('rocket-league',rules))return
+    const result=detect(message,rules)
+    if(!result.valid)return
+    rocketLeaguePlayers=result.players || []
+    connections['rocket-league']={...connections['rocket-league'],state:'connected',lastSeenAt:Date.now(),detail:rocketLeaguePlayers.some(player=>player.id===rules.autoClipRocketLeaguePlayerId)?undefined:'select-player'}
+    emit('rocket-league',result.events,rules)
+  },connected=>{
+    if(connected)return
+    if(version!==generation)return
+    detect=createRocketLeagueDetector();rocketLeaguePlayers=[]
+    connections['rocket-league']={state:'waiting',detail:'connection'}
   })
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-// 1. ROCKET LEAGUE HIGHLIGHT DETECTOR (100% Accurate & Anti-Cheat Safe)
-// ══════════════════════════════════════════════════════════════════════════════
-
-function getRLLogPaths(): string[] {
-  const docs = path.join(os.homedir(), 'Documents')
-  const oneDriveDocs = path.join(os.homedir(), 'OneDrive', 'Documents')
-  const logBase = path.join('My Games', 'Rocket League', 'TAGame', 'Logs', 'Launch.log')
-  return [path.join(docs, logBase), path.join(oneDriveDocs, logBase)]
-}
-
-export function startRLAutoClipWatcher(settings: any) {
-  stopRLAutoClipWatcher()
-
-  const logPaths = getRLLogPaths()
-  const activeLogPath = logPaths.find(p => fs.existsSync(p))
-  if (!activeLogPath) {
-    console.log('[AutoClip] Rocket League log file not found, waiting for game...')
-    return
-  }
-
-  rlWatchStartTime = Date.now()
+async function startGsi(id: GsiGameId, version: number) {
   try {
-    const stat = fs.statSync(activeLogPath)
-    // Seek to the end of the file on game startup so past sessions and startup loading are ignored
-    lastLogSize = stat.size
-  } catch {
-    lastLogSize = 0
-  }
-
-  console.log(`[AutoClip] Watching Rocket League log for highlights (Safe & Verified): ${activeLogPath}`)
-
-  rlLogInterval = setInterval(() => {
+    const auth=token()
+    const result=await installGsiConfiguration(id,auth,undefined,()=>version===generation)
+    if(version!==generation)return
+    if(!result.success){connections[id]={state:'error',detail:result.error==='not-installed'?'not-installed':'connection'};return}
+    if(result.changed)needsRestart.add(id)
+    const active=http.createServer(requestHandler(id,getRules,auth,()=>version===generation));server=active
+    active.requestTimeout=10000;active.headersTimeout=10000;active.maxConnections=4
+    active.on('error',error=>{if(server===active){server=null;connections[id]={state:'error',detail:(error as NodeJS.ErrnoException).code==='EADDRINUSE'?'port-busy':'connection'}}})
+    active.listen(id==='cs2'?13371:13372,'127.0.0.1',()=>{if(version===generation)connections[id]={state:'listening',detail:needsRestart.has(id)?'restart':undefined}})
+  }catch{if(version===generation)connections[id]={state:'error',detail:'connection'}}
+}
+function startLeague(version: number) {
+  const client=createLeagueLiveClient(),detect=createLoLDetector();league=client
+  const poll=async()=>{
     try {
-      if (!fs.existsSync(activeLogPath)) return
-      const stat = fs.statSync(activeLogPath)
-
-      // Handle log truncation on new launch
-      if (stat.size < lastLogSize) {
-        lastLogSize = stat.size
-        return
-      }
-
-      if (stat.size === lastLogSize) return
-
-      // Ignore log noise during the first 12 seconds of game launch
-      if (Date.now() - rlWatchStartTime < 12000) {
-        lastLogSize = stat.size
-        return
-      }
-
-      const diffSize = stat.size - lastLogSize
-      const readSize = Math.min(diffSize, 65536)
-      const buf = Buffer.alloc(readSize)
-      const fd = fs.openSync(activeLogPath, 'r')
-      fs.readSync(fd, buf, 0, readSize, stat.size - readSize)
-      fs.closeSync(fd)
-      lastLogSize = stat.size
-
-      const newContent = buf.toString('utf-8')
-      const lines = newContent.split('\n')
-
-      for (const rawLine of lines) {
-        const line = rawLine.trim()
-        if (!line) continue
-
-        // ── STRICT FILTER: Ignore all engine initialization, asset loading, package registration & config lines
-        if (
-          line.includes('Log: LoadPackage') ||
-          line.includes('Log: Loading') ||
-          line.includes('Log: Registering') ||
-          line.includes('Log: Initializing') ||
-          line.includes('Log: CreatePackage') ||
-          line.includes('Class TAGame.') ||
-          line.includes('Function TAGame.') ||
-          line.includes('Default__') ||
-          line.includes('Config:') ||
-          line.includes('DevNet:') ||
-          line.includes('Browse:') ||
-          line.includes('Compile')
-        ) {
-          continue
-        }
-
-        // 1. Goal Detection (Only triggered when a real goal occurs in match)
-        if (settings.autoClipRocketLeagueGoals !== false) {
-          const isGoal =
-            (line.includes('TAGame.PRI_TA:EventGoal') ||
-             line.includes('TAGame.GameEvent_Soccar_TA:EventGoal') ||
-             line.includes('StatEvent=StatEvent_TA\'TAGame.Default__StatEvent_TA:Goal\'') ||
-             (line.includes('OnStatTickerMessage') && (line.includes('Scored a goal') || line.includes('StatEvent_TA:Goal')))) &&
-            !line.includes('LoadPackage')
-
-          if (isGoal) {
-            if (canTriggerClip(settings.autoClipCooldownSeconds || 15)) {
-              emitAutoClip({
-                game: 'Rocket League',
-                eventType: 'goal',
-                title: 'Tor erzielt! ⚽'
-              })
-              break
-            }
-          }
-        }
-
-        // 2. Save / Epic Save Detection
-        if (settings.autoClipRocketLeagueSaves !== false) {
-          const isSave =
-            (line.includes('TAGame.PRI_TA:EventSave') ||
-             line.includes('TAGame.PRI_TA:EventEpicSave') ||
-             line.includes('StatEvent=StatEvent_TA\'TAGame.Default__StatEvent_TA:Save\'') ||
-             line.includes('StatEvent=StatEvent_TA\'TAGame.Default__StatEvent_TA:EpicSave\'') ||
-             (line.includes('OnStatTickerMessage') && (line.includes('EpicSave') || line.includes('Save')))) &&
-            !line.includes('LoadPackage')
-
-          if (isSave) {
-            if (canTriggerClip(settings.autoClipCooldownSeconds || 15)) {
-              const isEpic = line.includes('Epic')
-              emitAutoClip({
-                game: 'Rocket League',
-                eventType: 'save',
-                title: isEpic ? 'Glanzparade / Epic Save! 🧤' : 'Parade / Save! 🧤'
-              })
-              break
-            }
-          }
-        }
-
-        // 3. Demolition Detection
-        if (settings.autoClipRocketLeagueDemos) {
-          const isDemo =
-            (line.includes('TAGame.PRI_TA:EventDemolition') ||
-             line.includes('TAGame.Car_TA:Demolish') ||
-             line.includes('StatEvent=StatEvent_TA\'TAGame.Default__StatEvent_TA:Demolition\'') ||
-             (line.includes('OnStatTickerMessage') && line.includes('Demolition'))) &&
-            !line.includes('LoadPackage')
-
-          if (isDemo) {
-            if (canTriggerClip(settings.autoClipCooldownSeconds || 15)) {
-              emitAutoClip({
-                game: 'Rocket League',
-                eventType: 'demo',
-                title: 'Demolition! 💥'
-              })
-              break
-            }
-          }
-        }
-
-        // 4. Match Win Detection
-        if (settings.autoClipRocketLeagueWins !== false) {
-          const isWin =
-            (line.includes('TAGame.GameEvent_Soccar_TA:EventPostMatch') ||
-             line.includes('TAGame.GameEvent_Soccar_TA:SetWinner') ||
-             line.includes('TAGame.GameEvent_Soccar_TA:Finished')) &&
-            !line.includes('LoadPackage')
-
-          if (isWin) {
-            if (canTriggerClip(settings.autoClipCooldownSeconds || 20)) {
-              emitAutoClip({
-                game: 'Rocket League',
-                eventType: 'win',
-                title: 'Match gewonnen! 🏆'
-              })
-              break
-            }
-          }
-        }
-      }
-    } catch {
-      // Ignore transient read errors while game writes to log
-    }
-  }, 1000)
-}
-
-export function stopRLAutoClipWatcher() {
-  if (rlLogInterval) {
-    clearInterval(rlLogInterval)
-    rlLogInterval = null
+      const [name,game,events]=await Promise.all([client.read('activeplayername'),client.read('gamestats'),client.read('eventdata')])
+      if(version!==generation)return
+      const rules=getRules(),result=detect({name,gameTime:game?.gameTime,events:events?.Events},rules)
+      if(result.valid){connections.lol={...connections.lol,state:'connected',detail:undefined,lastSeenAt:Date.now()};emit('lol',result.events,rules)}
+    }catch(error){if(version!==generation)return;const code=String((error as NodeJS.ErrnoException).code||'');connections.lol={state:'waiting',detail:/CERT|TLS|SSL|VERIFY/.test(code)?'certificate':'connection'}}
+    if(version===generation){timer=setTimeout(poll,1500);timer.unref()}
   }
+  void poll()
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-// 2. COUNTER-STRIKE 2 (CS2) VALVE GAME STATE INTEGRATION (100% Legal & VAC Safe)
-// ══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Ensures CS2 Game State Integration config is installed in CS2's cfg directory.
- * Valve officially provides and certifies GSI for third-party tools (no injection, no memory reading).
- */
-async function ensureCS2GsiConfigInstalled(): Promise<boolean> {
-  const GSI_CFG_CONTENT = `"Eclipse GSI Integration"
-{
-    "uri" "http://127.0.0.1:13371"
-    "timeout" "5.0"
-    "buffer"  "0.1"
-    "throttle" "0.2"
-    "heartbeat" "15.0"
-    "data"
-    {
-        "provider"            "1"
-        "map"                 "1"
-        "round"               "1"
-        "player_id"           "1"
-        "player_state"        "1"
-        "player_weapons"      "1"
-        "player_match_stats"  "1"
-    }
+export function refreshAutoClipSettings(force=false) {
+  const rules=getRules(),id=autoClipGame(currentGame),next=JSON.stringify([currentGame,id?transportEnabled(id,rules):false])
+  // Event switches and cooldowns are read live; keep the established baseline and
+  // transport when only those rules change during a match.
+  if(!force&&signature===next)return
+  signature=next;const version=++generation;stopTransport()
+  for(const id of ['cs2','dota2','lol','rocket-league'] as const)connections[id]={state:transportEnabled(id,rules)?'waiting':'disabled'}
+  if(!id||!transportEnabled(id,rules))return
+  if(id==='cs2'||id==='dota2')void startGsi(id,version)
+  else if(id==='lol')startLeague(version)
+  else if(id==='rocket-league')startRocketLeague(version)
 }
-`
+export function getAutoClipStatus(): AutoClipStatus {
+  const games={...connections}
+  for(const id of ['cs2','dota2','lol','rocket-league'] as const)if(id!==autoClipGame(currentGame))games[id]={state:transportEnabled(id,getRules())?'waiting':'disabled'}
+  for(const id of ids)if(games[id].state==='connected'&&Date.now()-(games[id].lastSeenAt||0)>35000)games[id]={...games[id],state:'listening'}
+  return {activeGame:autoClipGame(currentGame),games,rocketLeaguePlayers:[...rocketLeaguePlayers]}
+}
+export async function setupAutoClipGame(id: unknown) {
+  if(id!=='cs2'&&id!=='dota2')return {success:false,error:'configuration' as const}
   try {
-    const steamPaths: string[] = []
-
-    // 1. Check registry for Steam Path
-    try {
-      const { stdout } = await execAsync('reg query "HKCU\\Software\\Valve\\Steam" /v "SteamPath" 2>nul')
-      const match = stdout.match(/SteamPath\s+REG_SZ\s+(.+)/i)
-      if (match) steamPaths.push(match[1].trim().replace(/\//g, '\\'))
-    } catch {}
-
-    steamPaths.push('C:\\Program Files (x86)\\Steam', 'C:\\Program Files\\Steam', 'D:\\Steam', 'E:\\Steam')
-
-    const libraryFolders = new Set<string>()
-    for (const sp of steamPaths) {
-      if (!fs.existsSync(sp)) continue
-      libraryFolders.add(sp)
-
-      const vdfPath = path.join(sp, 'steamapps', 'libraryfolders.vdf')
-      if (fs.existsSync(vdfPath)) {
-        try {
-          const content = fs.readFileSync(vdfPath, 'utf-8')
-          const matches = content.matchAll(/"path"\s+"([^"]+)"/gi)
-          for (const m of matches) {
-            const p = m[1].replace(/\\\\/g, '\\')
-            if (fs.existsSync(p)) libraryFolders.add(p)
-          }
-        } catch {}
-      }
-    }
-
-    let installedAny = false
-    for (const lib of libraryFolders) {
-      const cs2CfgDir = path.join(lib, 'steamapps', 'common', 'Counter-Strike Global Offensive', 'game', 'csgo', 'cfg')
-      if (fs.existsSync(cs2CfgDir)) {
-        const targetFile = path.join(cs2CfgDir, 'gamestate_integration_eclipse.cfg')
-        if (!fs.existsSync(targetFile) || fs.readFileSync(targetFile, 'utf-8') !== GSI_CFG_CONTENT) {
-          fs.writeFileSync(targetFile, GSI_CFG_CONTENT, 'utf-8')
-          console.log(`[AutoClip] ✅ Installed Valve CS2 GSI configuration to: ${targetFile}`)
-        }
-        installedAny = true
-      }
-    }
-
-    return installedAny
-  } catch (err) {
-    console.warn('[AutoClip] Failed to verify CS2 GSI config:', err)
-    return false
-  }
+    const result=await installGsiConfiguration(id,token())
+    if(result.changed)needsRestart.add(id)
+    refreshAutoClipSettings(true)
+    return result
+  }catch{return {success:false,error:'configuration' as const}}
 }
-
-export async function startCS2GsiServer(settings: any) {
-  // Ensure config is in place
-  await ensureCS2GsiConfigInstalled()
-
-  if (gsiServer) return
-
-  lastCS2Kills = null
-  lastCS2Round = -1
-
-  try {
-    gsiServer = http.createServer((req, res) => {
-      if (req.method === 'POST') {
-        let body = ''
-        req.on('data', chunk => { body += chunk })
-        req.on('end', () => {
-          try {
-            const data = JSON.parse(body)
-            handleCS2Payload(data, settings)
-          } catch {}
-          res.writeHead(200, { 'Content-Type': 'text/plain' })
-          res.end('OK')
-        })
-      } else {
-        res.writeHead(404)
-        res.end()
-      }
-    })
-
-    gsiServer.listen(13371, '127.0.0.1', () => {
-      console.log('[AutoClip] Valve CS2 Game State Integration server listening on http://127.0.0.1:13371 (VAC-Safe)')
-    })
-  } catch (e) {
-    console.warn('[AutoClip] Failed to start CS2 GSI server:', e)
-  }
+export function initAutoClipService(window:()=>BrowserWindow|null, settings?:()=>AutoClipOptions, stats?:()=>boolean, publish?:()=>void) {
+  getWindow=window;if(settings)getRules=settings
+  if(stats)wantsCS2Stats=stats
+  if(publish)publishCS2Stats=publish
+  app?.once?.('before-quit',onGameStoppedAutoClip)
+  refreshAutoClipSettings()
 }
-
-function handleCS2Payload(data: any, settings: any) {
-  if (!data || !data.player) return
-
-  // Only track when actively playing in a match (not in main menu or spectator)
-  if (data.player.activity && data.player.activity !== 'playing') {
-    return
-  }
-
-  const currentKills = data.player.match_stats?.kills ?? null
-  const roundKills = data.player.state?.round_kills ?? 0
-  const currentRound = data.map?.round ?? -1
-
-  // Reset or initialize on fresh game / round
-  if (lastCS2Kills === null && currentKills !== null) {
-    lastCS2Kills = currentKills
-    return
-  }
-
-  // 1. Frag / Multi-Kill / ACE Detection
-  if (currentKills !== null && lastCS2Kills !== null && currentKills > lastCS2Kills) {
-    if (settings.autoClipCS2Kills !== false && canTriggerClip(settings.autoClipCooldownSeconds || 15)) {
-      const isAce = roundKills >= 5
-      const isMulti = roundKills >= 2
-      emitAutoClip({
-        game: 'Counter-Strike 2',
-        eventType: isAce ? 'ace' : 'kill',
-        title: isAce ? 'CS2 ACE (5 Kills)! 🔥' : (isMulti ? `CS2 Multi-Kill (${roundKills}x)! 🎯` : 'CS2 Frag! 🎯')
-      })
-    }
-    lastCS2Kills = currentKills
-  }
-
-  // Update kills tracker
-  if (currentKills !== null) {
-    lastCS2Kills = currentKills
-  }
-
-  // 2. Round Win Detection
-  if (settings.autoClipCS2Wins && data.round && data.round.phase === 'over' && data.round.win_team) {
-    const playerTeam = data.player.team
-    if (playerTeam && data.round.win_team === playerTeam && currentRound !== lastCS2Round) {
-      lastCS2Round = currentRound
-      const now = Date.now()
-      if (now - lastCS2WinClipTimestamp > (settings.autoClipCooldownSeconds || 20) * 1000) {
-        lastCS2WinClipTimestamp = now
-        emitAutoClip({
-          game: 'Counter-Strike 2',
-          eventType: 'win',
-          title: 'CS2 Runde gewonnen! 🏆'
-        })
-      }
-    }
-  }
+export function onGameStartedAutoClip(name:string) {
+  if(name!==currentGame){const id=autoClipGame(name);if(id==='cs2'||id==='dota2')needsRestart.delete(id);lastClip=-Infinity}
+  currentGame=name;refreshAutoClipSettings(true)
 }
-
-export function stopCS2GsiServer() {
-  if (gsiServer) {
-    try { gsiServer.close() } catch {}
-    gsiServer = null
-  }
-  lastCS2Kills = null
-  lastCS2Round = -1
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// 3. SERVICE LIFECYCLE
-// ══════════════════════════════════════════════════════════════════════════════
-
-export function initAutoClipService(getMainWindow: () => BrowserWindow | null) {
-  getWindowRef = getMainWindow
-  // Ensure GSI config is pre-installed if CS2 is installed
-  ensureCS2GsiConfigInstalled().catch(() => {})
-}
-
-export function onGameStartedAutoClip(gameName: string, settings: any) {
-  if (!settings || !settings.autoClipEnabled) return
-
-  if (gameName === 'Rocket League') {
-    startRLAutoClipWatcher(settings)
-  } else if (gameName.includes('Counter-Strike') || gameName.includes('CS2') || gameName === 'cs2') {
-    startCS2GsiServer(settings)
-  }
-}
-
-export function onGameStoppedAutoClip() {
-  stopRLAutoClipWatcher()
-  stopCS2GsiServer()
-}
+export function onGameStoppedAutoClip() {cs2Session.disconnect();publishCS2Stats();currentGame='';refreshAutoClipSettings(true)}

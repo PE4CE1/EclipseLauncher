@@ -1,17 +1,30 @@
 {
   "name": "eclipse-launcher",
-  "version": "1.2.8",
+  "version": "2.0.3",
   "author": "Eclipse",
   "description": "Eclipse Game Launcher",
+  "packageManager": "npm@11.19.0",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
+    "typecheck": "tsc --noEmit",
+    "build:native-audio": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-process-audio.ps1",
+    "build:native-fps": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-fps-helper.ps1",
+    "build:native-overlay": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-overlay-effects.ps1",
+    "build:native-media": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-media-helper.ps1",
+    "build:native-capture": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-native-capture.ps1",
+    "test": "node --test tests/*.test.cjs",
+    "test:electron": "node tests/run-electron-smoke.cjs",
+    "check": "npm run typecheck && npm test && npm run build:app",
+    "build:app": "tsc --noEmit && vite build",
+    "build": "npm run build:app && electron-builder --publish never",
+    "build:dir": "npm run build:app && electron-builder --win --dir --publish never",
     "preview": "vite preview",
     "electron:dev": "vite",
-    "electron:build": "tsc && vite build && electron-builder --win"
+    "electron:build": "npm run build:app && electron-builder --win --publish never"
   },
   "dependencies": {
+    "7zip-bin-full": "26.5.1",
     "discord-rpc": "^4.0.1",
     "electron-squirrel-startup": "^1.0.1",
     "electron-updater": "^6.8.9",
@@ -26,11 +39,12 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/webtorrent": "^0.110.1",
-    "@vitejs/plugin-react": "^4.3.1",
+    "@vitejs/plugin-react": "^6.1.2",
     "autoprefixer": "^10.4.19",
     "concurrently": "^8.2.2",
-    "electron": "^31.2.1",
-    "electron-builder": "^24.13.3",
+    "dompurify": "^3.4.17",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0",
     "firebase": "^12.17.1",
     "framer-motion": "^11.3.8",
     "hls.js": "^1.7.1",
@@ -40,13 +54,13 @@
     "react-dom": "^18.3.1",
     "tailwindcss": "^3.4.6",
     "typescript": "^5.5.3",
-    "vite": "^5.3.4",
-    "vite-plugin-electron": "^0.28.7",
-    "vite-plugin-electron-renderer": "^0.14.5",
+    "vite": "^8.3.5",
+    "vite-plugin-electron": "^1.1.2",
     "wait-on": "^7.2.0",
     "zustand": "^4.5.4"
   },
   "build": {
+    "npmRebuild": false,
     "appId": "com.eclipse.launcher",
     "productName": "Eclipse Launcher",
     "artifactName": "Eclipse.Launcher.Setup.${version}.exe",
@@ -92,7 +106,37 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
-      "electron/native/**/*"
+      "electron/inputWorker.cjs",
+      "electron/native/**/*",
+      "!electron/native/NativeVideoCapture.exe",
+      "!electron/native/ProcessAudioCapture.native.exe",
+      "!electron/native/ProcessAudioCapture.pcm.exe",
+      "!electron/native/MemoryControl*",
+      "!**/*.map",
+      "!electron/native/**/*.cs",
+      "!electron/native/**/*.cpp",
+      "!node_modules/7zip-bin-full/linux/**/*",
+      "!node_modules/7zip-bin-full/mac/**/*",
+      "!node_modules/7zip-bin-full/win/*/7zc/**/*",
+      "!node_modules/7zip-bin-full/update-*.js"
+    ],
+    "asarUnpack": [
+      "**/electron/native/**/*",
+      "**/native/**/*",
+      "**/node_modules/7zip-bin-full/**/*",
+      "**/node_modules/ffmpeg-static/**/*"
     ]
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6"
+  },
+  "allowScripts": {
+    "electron@45.0.0": true,
+    "node-datachannel@0.32.3": true,
+    "ffmpeg-static@5.3.0": true
+  },
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=11.19.0"
   }
 }

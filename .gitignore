@@ -21,3 +21,67 @@ Thumbs.db
 # Temp
 .tempmediaStorage/
 .user_uploaded/
+
+# Isolated smoke-test data and captures
+tests/.electron-smoke-*/
+tests/electron-smoke.png
+tests/electron-smoke-result.json
+tests/performance-before.json
+tests/performance-after.json
+tests/performance-loading.json
+.cache/
+.wrangler/
+
+# Local credentials and environment overrides
+.env
+.env.*
+!.env.example
+!.env.*.example
+.dev.vars
+.dev.vars.*
+.firebase/
+*service-account*.json
+*serviceAccount*.json
+firebase-adminsdk-*.json
+credentials.json
+*.key
+*.p12
+*.pfx
+*.pem
+# Public Riot trust anchor, not a private key
+!/electron/riotgames.pem
+
+# Coverage, caches and generated native compiler files
+coverage/
+.nyc_output/
+*.tsbuildinfo
+*.pdb
+*.obj
+*.ilk
+*.exp
+
+# Local recordings and old metadata experiments
+/eclipse-exit-smooth.mp4
+/games.xml
+/output.xml
+/output2.xml
+/st4ck.html
+/st4ck.xml
+/st4ck_games.xml
+/scratch/
+
+# Isolated runtime test outputs; keep test sources and fixtures
+/tests/.discord-export-*/
+/tests/.clip-media-*/
+/tests/.clip-*/
+/tests/.native-*/
+/tests/.download-*/
+/tests/.updater-*/
+/tests/test-results/
+/playwright-report/
+
+# Superseded helpers; current runtime helpers stay versioned
+/electron/native/MemoryControl*.exe
+/electron/native/NativeVideoCapture.exe
+/electron/native/ProcessAudioCapture.native.exe
+/electron/native/ProcessAudioCapture.pcm.exe

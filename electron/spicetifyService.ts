@@ -1,7 +1,11 @@
-import { ipcMain, BrowserWindow, shell } from 'electron'
-import { spawn, exec } from 'child_process'
+import { openExternalPath } from './externalLaunch'
+import { type BrowserWindow } from 'electron'
+import { ipcMain } from './ipcSecurity'
+import { spawn, execFile } from 'child_process'
 import * as path from 'path'
 import * as fs from 'fs'
+import { classifySpicetifyError } from '../src/services/spicetifyMessages'
+import type { SpicetifyResult } from '../src/types/spicetify'
 
 export interface SpicetifyStatus {
   isSpotifyInstalled: boolean
@@ -13,259 +17,111 @@ export interface SpicetifyStatus {
 }
 
 let isCurrentlyInstalling = false
+const cleanOutput = (value: string) => value.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').replace(/[\x00-\x08\x0B-\x1F\x7F]/g, '')
+const failure = (errorCode: NonNullable<SpicetifyResult['errorCode']>, error: string): SpicetifyResult => ({ success: false, errorCode, error })
 
-/**
- * Returns the default Spicetify installation directory
- */
 function getSpicetifyDir(): string {
-  const localAppData = process.env.LOCALAPPDATA || ''
-  const primary = path.join(localAppData, 'spicetify')
-  if (fs.existsSync(primary)) return primary
-
-  const appData = process.env.APPDATA || ''
-  const secondary = path.join(appData, 'spicetify')
-  if (fs.existsSync(secondary)) return secondary
-
-  return primary
+  const folders = [path.join(process.env.LOCALAPPDATA || '', 'spicetify'), path.join(process.env.APPDATA || '', 'spicetify'), path.join(process.env.USERPROFILE || '', 'spicetify-cli')]
+  return folders.find(dir => fs.existsSync(path.join(dir, 'spicetify.exe'))) || folders[0]
 }
-
-/**
- * Returns the path to the Spicetify executable
- */
-function getSpicetifyExe(): string {
-  const dir = getSpicetifyDir()
-  return path.join(dir, 'spicetify.exe')
+const getSpicetifyExe = () => path.join(getSpicetifyDir(), 'spicetify.exe')
+function readCommand(exe: string, args: string[]): Promise<string> {
+  return new Promise(resolve => execFile(exe, args, { windowsHide: true, timeout: 5000, maxBuffer: 128 * 1024 }, (error, stdout, stderr) => resolve(error ? '' : cleanOutput(String(stdout || '') + String(stderr || '')).trim())))
 }
-
-/**
- * Checks if the official Spotify client is installed on Windows
- */
-function checkSpotifyInstalled(): Promise<boolean> {
-  return new Promise((resolve) => {
-    const appData = process.env.APPDATA || ''
-    const localAppData = process.env.LOCALAPPDATA || ''
-
-    // 1. Regular desktop installer
-    const regularPath = path.join(appData, 'Spotify', 'Spotify.exe')
-    if (fs.existsSync(regularPath)) {
-      resolve(true)
-      return
-    }
-
-    // 2. Windows Apps alias
-    const aliasPath = path.join(localAppData, 'Microsoft', 'WindowsApps', 'Spotify.exe')
-    if (fs.existsSync(aliasPath)) {
-      resolve(true)
-      return
-    }
-
-    // 3. Microsoft Store package
-    const packagesDir = path.join(localAppData, 'Packages')
-    if (fs.existsSync(packagesDir)) {
-      try {
-        const list = fs.readdirSync(packagesDir)
-        if (list.some(name => name.toLowerCase().startsWith('spotifyab.spotifymusic'))) {
-          resolve(true)
-          return
-        }
-      } catch (_) {}
-    }
-
-    // 4. Command line check
-    exec('where.exe spotify', { windowsHide: true }, (err) => {
-      resolve(!err)
-    })
-  })
+async function checkSpotifyInstalled(): Promise<boolean> {
+  const roaming = process.env.APPDATA || '', local = process.env.LOCALAPPDATA || ''
+  if ([path.join(roaming, 'Spotify', 'Spotify.exe'), path.join(local, 'Microsoft', 'WindowsApps', 'Spotify.exe')].some(file => fs.existsSync(file))) return true
+  try { if (fs.readdirSync(path.join(local, 'Packages')).some(name => name.toLowerCase().startsWith('spotifyab.spotifymusic'))) return true } catch {}
+  return new Promise(resolve => execFile('where.exe', ['spotify'], { windowsHide: true, timeout: 3000 }, error => resolve(!error)))
 }
-
-/**
- * Checks Spicetify installation and reads version
- */
 export async function getSpicetifyStatus(): Promise<SpicetifyStatus> {
-  const isSpotifyInstalled = await checkSpotifyInstalled()
-  const exePath = getSpicetifyExe()
-  const exists = fs.existsSync(exePath)
+  const isSpotifyInstalled = await checkSpotifyInstalled(), dir = getSpicetifyDir(), exe = path.join(dir, 'spicetify.exe')
+  if (!fs.existsSync(exe)) return { isSpotifyInstalled, isSpicetifyInstalled: false, isInstalling: isCurrentlyInstalling }
+  // Go's log.Println writes version/config-path responses to stderr, even on success.
+  const [versionOutput, config] = await Promise.all([readCommand(exe, ['-v']), readCommand(exe, ['-c'])])
+  const configDir = config && path.isAbsolute(config) ? path.dirname(config) : path.join(process.env.APPDATA || '', 'spicetify')
+  return { isSpotifyInstalled, isSpicetifyInstalled: true, version: /\bv?\d+\.\d+\.\d+(?:[-+][\w.-]+)?\b/.exec(versionOutput)?.[0], installPath: dir,
+    hasMarketplace: fs.existsSync(path.join(configDir, 'CustomApps', 'marketplace')), isInstalling: isCurrentlyInstalling }
+}
 
-  if (!exists) {
-    return {
-      isSpotifyInstalled,
-      isSpicetifyInstalled: false,
-      isInstalling: isCurrentlyInstalling,
-    }
-  }
-
-  // Check version and marketplace folder
-  const dir = getSpicetifyDir()
-  const customAppsDir = path.join(dir, 'CustomApps', 'marketplace')
-  const hasMarketplace = fs.existsSync(customAppsDir)
-
-  let version: string | undefined = undefined
-  try {
-    const versionOutput = await new Promise<string>((resolve) => {
-      exec(`"${exePath}" -v`, { windowsHide: true }, (err, stdout) => {
-        if (err || !stdout) resolve('')
-        else resolve(stdout.trim())
-      })
-    })
-    if (versionOutput) version = versionOutput
-  } catch (_) {}
-
-  return {
-    isSpotifyInstalled,
-    isSpicetifyInstalled: true,
-    version: version || 'Installiert',
-    installPath: dir,
-    hasMarketplace,
-    isInstalling: isCurrentlyInstalling,
+function broadcast(getWindows: () => BrowserWindow[], channel: string, data: string) {
+  for (const win of getWindows()) {
+    try { if (!win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send(channel, data) } catch {}
   }
 }
 
-/**
- * Runs a PowerShell script and streams log events to webContents
- */
-function runPowerShellScript(
-  command: string,
-  getWindows: () => BrowserWindow[],
-  onData?: (data: string) => void
-): Promise<{ success: boolean; error?: string }> {
-  return new Promise((resolve) => {
-    const ps = spawn('powershell.exe', [
-      '-NoProfile',
-      '-ExecutionPolicy', 'Bypass',
-      '-Command', command
-    ], {
-      windowsHide: true,
-      env: { ...process.env }
-    })
-
-    const sendLog = (text: string) => {
-      if (onData) onData(text)
-      const wins = getWindows()
-      for (const win of wins) {
-        if (win && !win.isDestroyed()) {
-          win.webContents.send('spicetify:log', text)
-        }
-      }
+export function runSpicetifyProcess(exe: string, args: string[], getWindows: () => BrowserWindow[]): Promise<SpicetifyResult> {
+  return new Promise(resolve => {
+    let settled = false, output = ''
+    const finish = (result: SpicetifyResult) => { if (!settled) { settled = true; clearTimeout(timer); resolve(result) } }
+    const env = { ...process.env }, pathKey = Object.keys(env).find(key => key.toLowerCase() === 'path') || 'PATH'
+    env[pathKey] = getSpicetifyDir() + path.delimiter + (env[pathKey] || '')
+    const child = spawn(exe, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env })
+    const timer = setTimeout(() => { finish({ ...failure('timeout', 'Spicetify operation timed out'), details: output }); child.kill() }, 5 * 60 * 1000)
+    const log = (data: Buffer) => {
+      if (settled) return
+      const text = cleanOutput(data.toString()); output = (output + text).slice(-8192)
+      broadcast(getWindows, 'spicetify:log', text)
     }
-
-    ps.stdout.on('data', (data) => {
-      sendLog(data.toString())
-    })
-
-    ps.stderr.on('data', (data) => {
-      sendLog(data.toString())
-    })
-
-    ps.on('error', (err) => {
-      sendLog(`[Fehler] ${err.message}`)
-      resolve({ success: false, error: err.message })
-    })
-
-    ps.on('close', (code) => {
-      if (code === 0) {
-        resolve({ success: true })
-      } else {
-        resolve({ success: false, error: `Beendet mit Code ${code}` })
-      }
-    })
+    child.stdout?.on('data', log); child.stderr?.on('data', log)
+    child.once('error', error => finish({ ...failure('start_failed', 'Spicetify could not start'), details: String(error.message).slice(0, 2048) }))
+    child.once('close', code => finish(code === 0 ? { success: true } : {
+      success: false, errorCode: classifySpicetifyError(output), error: 'Spicetify operation failed', details: output,
+      ...(typeof code === 'number' ? { exitCode: code } : {}),
+    }))
   })
+}
+
+async function applyWithRecovery(getWindows: () => BrowserWindow[]): Promise<SpicetifyResult> {
+  const exe = getSpicetifyExe()
+  let result = await runSpicetifyProcess(exe, ['apply', '--no-restart'], getWindows)
+  // Only recover CLI-diagnosed backup problems. Unknown errors must not cause
+  // a restore, configuration reset, or deletion of a user's customizations.
+  if (result.errorCode === 'backup_required' || result.errorCode === 'preprocess_outdated') {
+    broadcast(getWindows, 'spicetify:status', 'repairing')
+    const args = result.errorCode === 'preprocess_outdated' ? ['restore', 'backup', 'apply', '--no-restart'] : ['backup', 'apply', '--no-restart']
+    result = await runSpicetifyProcess(exe, args, getWindows)
+  }
+  return result
 }
 
 export function initSpicetifyIPC(getWindows: () => BrowserWindow[]) {
-  // 1. Get Status
-  ipcMain.handle('spicetify:get-status', async () => {
-    return await getSpicetifyStatus()
-  })
-
-  // 2. 1-Click Install Spicetify + Marketplace
-  ipcMain.handle('spicetify:install', async () => {
-    if (isCurrentlyInstalling) return { success: false, error: 'Installation läuft bereits' }
-    isCurrentlyInstalling = true
-
-    const broadcast = (status: string) => {
-      const wins = getWindows()
-      for (const win of wins) {
-        if (win && !win.isDestroyed()) {
-          win.webContents.send('spicetify:status', status)
-        }
-      }
+  const operation = async (phase: string, work: () => Promise<SpicetifyResult>): Promise<SpicetifyResult> => {
+    if (isCurrentlyInstalling) return failure('busy', 'A Spicetify operation is already running')
+    isCurrentlyInstalling = true; broadcast(getWindows, 'spicetify:status', phase)
+    let result: SpicetifyResult
+    try { result = await work() }
+    catch (error) { result = { ...failure('failed', 'Spicetify operation failed'), details: String(error).slice(0, 2048) } }
+    finally { isCurrentlyInstalling = false }
+    broadcast(getWindows, 'spicetify:status', result.success ? 'done' : 'error')
+    return result
+  }
+  const withInstalled = (phase: string, work: () => Promise<SpicetifyResult>) => operation(phase, () => fs.existsSync(getSpicetifyExe()) ? work() : Promise.resolve(failure('not_installed', 'Spicetify is not installed')))
+  const script = (command: string) => runSpicetifyProcess('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', `$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; try { ${command}; if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; exit 0 } catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }`], getWindows)
+  ipcMain.handle('spicetify:get-status', () => getSpicetifyStatus())
+  ipcMain.handle('spicetify:install', () => operation('installing-cli', async () => {
+    if (!fs.existsSync(getSpicetifyExe())) {
+      const cli = await script('iwr -useb https://raw.githubusercontent.com/spicetify/cli/main/dists/get.ps1 | iex')
+      if (!cli.success) return cli
     }
-
-    try {
-      broadcast('installing-cli')
-      // Step 1: Install Spicetify CLI
-      const cliResult = await runPowerShellScript(
-        `iwr -useb https://raw.githubusercontent.com/spicetify/cli/main/dists/get.ps1 | iex`,
-        getWindows
-      )
-
-      if (!cliResult.success) {
-        isCurrentlyInstalling = false
-        broadcast('error')
-        return { success: false, error: cliResult.error || 'Fehler beim Laden von Spicetify CLI' }
-      }
-
-      broadcast('installing-marketplace')
-      // Step 2: Install Spicetify Marketplace
-      const marketResult = await runPowerShellScript(
-        `iwr -useb https://raw.githubusercontent.com/spicetify/marketplace/main/resources/install.ps1 | iex`,
-        getWindows
-      )
-
-      broadcast('applying')
-      // Step 3: Run backup apply
-      const exe = getSpicetifyExe()
-      if (fs.existsSync(exe)) {
-        await runPowerShellScript(
-          `& "${exe}" backup apply`,
-          getWindows
-        )
-      }
-
-      isCurrentlyInstalling = false
-      broadcast('done')
-      return { success: true }
-    } catch (err: any) {
-      isCurrentlyInstalling = false
-      broadcast('error')
-      return { success: false, error: err?.message || 'Unerwarteter Fehler' }
-    }
-  })
-
-  // 3. Apply changes (spicetify apply)
-  ipcMain.handle('spicetify:apply', async () => {
-    const exe = getSpicetifyExe()
-    if (!fs.existsSync(exe)) {
-      return { success: false, error: 'Spicetify ist nicht installiert' }
-    }
-    return await runPowerShellScript(`& "${exe}" apply`, getWindows)
-  })
-
-  // 4. Restore original Spotify (spicetify restore)
-  ipcMain.handle('spicetify:restore', async () => {
-    const exe = getSpicetifyExe()
-    if (!fs.existsSync(exe)) {
-      return { success: false, error: 'Spicetify ist nicht installiert' }
-    }
-    return await runPowerShellScript(`& "${exe}" restore`, getWindows)
-  })
-
-  // 5. Upgrade Spicetify (spicetify upgrade)
-  ipcMain.handle('spicetify:upgrade', async () => {
-    const exe = getSpicetifyExe()
-    if (!fs.existsSync(exe)) {
-      return { success: false, error: 'Spicetify ist nicht installiert' }
-    }
-    return await runPowerShellScript(`& "${exe}" upgrade`, getWindows)
-  })
-
-  // 6. Open Spicetify Directory in Explorer
+    if (!fs.existsSync(getSpicetifyExe())) return failure('not_installed', 'Spicetify executable is missing after installation')
+    broadcast(getWindows, 'spicetify:status', 'installing-marketplace')
+    const marketplace = await script('iwr -useb https://raw.githubusercontent.com/spicetify/marketplace/main/resources/install.ps1 | iex')
+    if (!marketplace.success) return marketplace
+    broadcast(getWindows, 'spicetify:status', 'applying')
+    return applyWithRecovery(getWindows)
+  }))
+  ipcMain.handle('spicetify:apply', () => withInstalled('applying', () => applyWithRecovery(getWindows)))
+  ipcMain.handle('spicetify:restore', () => withInstalled('restoring', () => runSpicetifyProcess(getSpicetifyExe(), ['restore', '--no-restart'], getWindows)))
+  ipcMain.handle('spicetify:upgrade', () => withInstalled('upgrading', async () => {
+    const result = await runSpicetifyProcess(getSpicetifyExe(), ['upgrade', '--no-restart'], getWindows)
+    if (!result.success) return result
+    broadcast(getWindows, 'spicetify:status', 'applying')
+    return applyWithRecovery(getWindows)
+  }))
   ipcMain.handle('spicetify:open-folder', async () => {
     const dir = getSpicetifyDir()
-    if (fs.existsSync(dir)) {
-      await shell.openPath(dir)
-      return { success: true }
-    }
-    return { success: false, error: 'Verzeichnis existiert nicht' }
+    if (!fs.existsSync(dir)) return failure('folder_missing', 'Spicetify directory does not exist')
+    await openExternalPath(dir); return { success: true }
   })
 }

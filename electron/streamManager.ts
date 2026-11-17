@@ -1,6 +1,7 @@
-import { BrowserWindow, desktopCapturer, ipcMain } from 'electron'
+import { BrowserWindow, desktopCapturer } from 'electron'
+import { ipcMain, secureAppWindow } from './ipcSecurity'
 import path from 'path'
-import { startGamepadService } from './gamepadService'
+import { acquireGamepadService, releaseGamepadService } from './gamepadService'
 
 let streamWindow: BrowserWindow | null = null
 let currentStreamTitle = 'Eclipse Stream: Ready'
@@ -79,11 +80,12 @@ export function openStreamStudio(gameName?: string): BrowserWindow {
     }
   })
 
+  secureAppWindow(streamWindow)
   // Critical: prevent Chromium from throttling video rendering or JS loop when occluded/background
   streamWindow.webContents.setBackgroundThrottling(false)
 
   // Start native gamepad reader so controller inputs feed the stream window
-  startGamepadService(() => streamWindow)
+  acquireGamepadService('stream', () => streamWindow)
 
   streamWindow.once('ready-to-show', () => {
     if (streamWindow && !streamWindow.isDestroyed()) {
@@ -96,6 +98,7 @@ export function openStreamStudio(gameName?: string): BrowserWindow {
   loadStreamContent()
 
   streamWindow.on('closed', () => {
+    releaseGamepadService('stream')
     streamWindow = null
     isOffScreen = false
   })
@@ -149,6 +152,9 @@ export function initStreamManager() {
   ipcMain.handle('stream:set-resolution', async (_event, payload: { width: number; height: number }) => {
     if (streamWindow && !streamWindow.isDestroyed() && !isOffScreen) {
       const { width, height } = payload
+      if (!Number.isInteger(width) || !Number.isInteger(height) || width < 320 || height < 180 || width > 7680 || height > 4320) {
+        return { success: false, error: 'Invalid stream resolution' }
+      }
       streamWindow.setContentSize(width, height)
     }
     return { success: true }

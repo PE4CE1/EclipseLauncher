@@ -1,8 +1,8 @@
-import { execFile } from 'child_process'
+import { spawn } from 'child_process'
 import path from 'path'
 import fs from 'fs'
-// @ts-ignore
-import _7z from '7zip-bin'
+import { path7z } from '7zip-bin-full'
+import { containedDownloadPath } from './downloadPaths'
 
 /**
  * Searches an extracted game folder to find the main game executable (.exe).
@@ -70,112 +70,125 @@ export function findMainGameExecutable(dir: string, gameName?: string): string |
   return bestExe ? (bestExe as any).path : null
 }
 
-export function get7zaPath(): string {
+export function get7zPath(): string {
+  const platformDirectory = process.platform === 'win32' ? 'win' : process.platform === 'darwin' ? 'mac' : 'linux'
+  const binaryName = process.platform === 'win32' ? '7z.exe' : '7zz'
   const candidatePaths = [
-    _7z.path7za,
-    _7z.path7za?.replace('app.asar', 'app.asar.unpacked'),
-    path.join(process.cwd(), 'node_modules', '7zip-bin', 'win', process.arch, '7za.exe'),
-    path.join(__dirname, '..', 'node_modules', '7zip-bin', 'win', process.arch, '7za.exe'),
-    path.join(__dirname, 'win', process.arch, '7za.exe'),
-    path.join(process.resourcesPath || '', 'app.asar.unpacked', 'node_modules', '7zip-bin', 'win', process.arch, '7za.exe'),
-    path.join(process.resourcesPath || '', '7zip-bin', 'win', process.arch, '7za.exe'),
-  ].filter(Boolean) as string[]
+    path7z.replace('app.asar', 'app.asar.unpacked'),
+    path7z,
+    path.join(process.resourcesPath || '', 'app.asar.unpacked', 'node_modules', '7zip-bin-full', platformDirectory, process.arch, binaryName),
+  ]
 
   for (const p of candidatePaths) {
     try {
-      if (fs.existsSync(p)) return p
+      if (fs.existsSync(p) && (process.platform !== 'win32' || fs.existsSync(path.join(path.dirname(p), '7z.dll')))) return p
     } catch {}
   }
-  return _7z.path7za || '7za'
+  throw new Error('The bundled 7-Zip executable or codec library is missing. Reinstall Eclipse Launcher.')
+}
+
+export function validateArchiveListing(listing: string, targetDir: string): string[] {
+  const entries: string[] = []
+  for (const line of listing.split(/\r?\n/)) {
+    if (/^(Symbolic Link|Hard Link) = \S/.test(line) || /^Attributes = .*\bl[rwxs-]{9}/i.test(line)) {
+      throw new Error('Archives containing links are not supported')
+    }
+    if (!line.startsWith('Path = ')) continue
+    const archiveEntry = line.slice(7)
+    const parts = archiveEntry.replace(/\\/g, '/').split('/')
+    if (!archiveEntry || /^[\\/]/.test(archiveEntry) || archiveEntry.includes(':') || /[\x00-\x1f]/.test(archiveEntry) ||
+        parts.some(part => part === '..' || /[. ]$/.test(part) || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(part))) {
+      throw new Error('Archive contains an unsafe file path')
+    }
+    entries.push(containedDownloadPath(targetDir, parts.join(path.sep)))
+  }
+  return entries
+}
+
+async function ensureNoLinks(destination: string, entries: string[]) {
+  // Existing junctions/symlinks would allow even a relative archive entry to
+  // escape the selected folder. Check ancestors and every existing output path.
+  const candidates = new Set<string>()
+  for (const entry of [path.resolve(destination), ...entries]) {
+    let current = entry
+    while (!candidates.has(current)) {
+      candidates.add(current)
+      const parent = path.dirname(current)
+      if (parent === current) break
+      current = parent
+    }
+  }
+  const paths = [...candidates]
+  for (let index = 0; index < paths.length; index += 32) {
+    await Promise.all(paths.slice(index, index + 32).map(async candidate => {
+      const stat = await fs.promises.lstat(candidate).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === 'ENOENT') return null
+        throw error
+      })
+      if (stat?.isSymbolicLink()) throw new Error('Extraction destination contains a symbolic link or junction')
+    }))
+  }
+}
+
+function run7zip(binary: string, args: string[], signal?: AbortSignal, onOutput?: (chunk: string) => void): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let output = ''
+    let errors = ''
+    const child = spawn(binary, args, { windowsHide: true, signal })
+    child.stdout.setEncoding('utf8')
+    child.stderr.setEncoding('utf8')
+    child.stdout.on('data', (chunk: string) => {
+      if (onOutput) onOutput(chunk)
+      else {
+        output += chunk
+        if (output.length > 32 * 1024 * 1024) {
+          child.kill()
+          reject(new Error('Archive file listing exceeds the supported size'))
+        }
+      }
+    })
+    child.stderr.on('data', (chunk: string) => { errors = (errors + chunk).slice(-8192) })
+    child.once('error', reject)
+    child.once('close', code => {
+      if (code === 0) resolve(output)
+      else reject(new Error(`7-Zip exited with code ${code}: ${errors.trim()}`))
+    })
+  })
 }
 
 export async function extractArchive(
-  archivePath: string, 
-  targetDir: string, 
+  archivePath: string,
+  targetDir: string,
   onProgress?: (percent: number) => void,
-  autoDelete?: boolean
+  autoDelete?: boolean,
+  signal?: AbortSignal
 ): Promise<{ targetDir: string; mainExe: string | null }> {
-  return new Promise((resolve, reject) => {
-    const sevenZipPath = get7zaPath()
+  const archive = path.resolve(archivePath)
+  const destination = path.resolve(targetDir)
+  const sevenZipPath = get7zPath()
+  if (!(await fs.promises.stat(archive)).isFile()) throw new Error('Archive not found: ' + archive)
+  signal?.throwIfAborted()
+  const listing = await run7zip(sevenZipPath, ['l', '-slt', '-ba', '--', archive], signal)
+  const entries = validateArchiveListing(listing, destination)
+  if (entries.length === 0) throw new Error('Archive contains no extractable files')
+  await ensureNoLinks(destination, entries)
+  await fs.promises.mkdir(destination, { recursive: true })
 
-    if (!fs.existsSync(archivePath)) {
-      return reject(new Error('Archive not found: ' + archivePath))
+  let lastProgress = 0
+  await run7zip(sevenZipPath, ['x', '-y', '-bsp1', '-bb0', `-o${destination}`, '--', archive], signal, chunk => {
+    for (const match of chunk.matchAll(/(\d+)%/g)) {
+      const percent = Math.min(100, Number(match[1]))
+      if (percent > lastProgress) {
+        lastProgress = percent
+        onProgress?.(percent)
+      }
     }
-
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true })
-    }
-
-    // 7z extraction command: x (extract with full paths), -y (assume yes), -o (output dir)
-    const args = ['x', archivePath, '-y', `-o${targetDir}`]
-
-    console.log(`[ExtractService] Using 7z binary at: ${sevenZipPath}`)
-    console.log(`[ExtractService] Extracting ${archivePath} to ${targetDir}`)
-    const child = execFile(sevenZipPath, args, { maxBuffer: 1024 * 1024 * 100 })
-
-    let lastProgress = 0
-
-    child.stdout?.on('data', (data: string) => {
-      const progressMatch = data.match(/(\d+)%/g)
-      if (progressMatch && progressMatch.length > 0) {
-        const lastMatch = progressMatch[progressMatch.length - 1]
-        const percent = parseInt(lastMatch.replace('%', ''), 10)
-        if (!isNaN(percent) && percent > lastProgress) {
-          lastProgress = percent
-          if (onProgress) onProgress(percent)
-        }
-      }
-    })
-
-    child.stderr?.on('data', (data: string) => {
-      console.warn('[ExtractService] 7z stderr:', data)
-    })
-
-    child.on('error', (err) => {
-      console.error('[ExtractService] 7z process error:', err)
-      // Fallback for zip files via PowerShell if 7za failed
-      if (archivePath.toLowerCase().endsWith('.zip') && process.platform === 'win32') {
-        console.log('[ExtractService] Trying PowerShell Expand-Archive fallback...')
-        const psCommand = `Expand-Archive -Path '${archivePath.replace(/'/g, "''")}' -DestinationPath '${targetDir.replace(/'/g, "''")}' -Force`
-        const encoded = Buffer.from(psCommand, 'utf16le').toString('base64')
-        const { exec } = require('child_process')
-        exec(`powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${encoded}`, (psErr: any) => {
-          if (psErr) {
-            return reject(psErr)
-          }
-          if (onProgress) onProgress(100)
-          const mainExe = findMainGameExecutable(targetDir)
-          if (autoDelete) {
-            try { fs.unlinkSync(archivePath) } catch (e) {}
-          }
-          resolve({ targetDir, mainExe })
-        })
-        return
-      }
-      reject(err)
-    })
-
-    child.on('exit', (code) => {
-      if (code === 0) {
-        if (onProgress) onProgress(100)
-
-        // Find main game executable
-        const mainExe = findMainGameExecutable(targetDir)
-
-        // Delete archive if requested
-        if (autoDelete) {
-          try {
-            fs.unlinkSync(archivePath)
-            console.log(`[ExtractService] Deleted original archive: ${archivePath}`)
-          } catch (e) {
-            console.warn('[ExtractService] Failed to auto-delete archive:', e)
-          }
-        }
-
-        resolve({ targetDir, mainExe })
-      } else {
-        reject(new Error(`7z process exited with code ${code}`))
-      }
-    })
   })
+  signal?.throwIfAborted()
+  const mainExe = findMainGameExecutable(destination)
+  if (autoDelete) await fs.promises.unlink(archive).catch(error => {
+    console.warn('[ExtractService] Failed to auto-delete archive:', error)
+  })
+  onProgress?.(100)
+  return { targetDir: destination, mainExe }
 }

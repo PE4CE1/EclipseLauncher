@@ -1,0 +1,5962 @@
+{
+  "capturedAt": 1793999264,
+  "ranks": [
+    {
+      "rank": 1,
+      "appid": 730,
+      "concurrent_in_game": 1029365,
+      "peak_in_game": 1191330
+    },
+    {
+      "rank": 2,
+      "appid": 570,
+      "concurrent_in_game": 643710,
+      "peak_in_game": 737873
+    },
+    {
+      "rank": 3,
+      "appid": 1422450,
+      "concurrent_in_game": 219886,
+      "peak_in_game": 219886
+    },
+    {
+      "rank": 4,
+      "appid": 578080,
+      "concurrent_in_game": 205656,
+      "peak_in_game": 778966
+    },
+    {
+      "rank": 5,
+      "appid": 3393110,
+      "concurrent_in_game": 183324,
+      "peak_in_game": 194539
+    },
+    {
+      "rank": 6,
+      "appid": 3419430,
+      "concurrent_in_game": 163931,
+      "peak_in_game": 169070
+    },
+    {
+      "rank": 7,
+      "appid": 1938090,
+      "concurrent_in_game": 161284,
+      "peak_in_game": 161284
+    },
+    {
+      "rank": 8,
+      "appid": 252490,
+      "concurrent_in_game": 143789,
+      "peak_in_game": 153853
+    },
+    {
+      "rank": 9,
+      "appid": 1091500,
+      "concurrent_in_game": 108831,
+      "peak_in_game": 108831
+    },
+    {
+      "rank": 10,
+      "appid": 4115450,
+      "concurrent_in_game": 102371,
+      "peak_in_game": 578265
+    },
+    {
+      "rank": 11,
+      "appid": 1867240,
+      "concurrent_in_game": 90974,
+      "peak_in_game": 90974
+    },
+    {
+      "rank": 12,
+      "appid": 440,
+      "concurrent_in_game": 89872,
+      "peak_in_game": 103589
+    },
+    {
+      "rank": 13,
+      "appid": 1172470,
+      "concurrent_in_game": 75424,
+      "peak_in_game": 257821
+    },
+    {
+      "rank": 14,
+      "appid": 1808500,
+      "concurrent_in_game": 66626,
+      "peak_in_game": 66626
+    },
+    {
+      "rank": 15,
+      "appid": 359550,
+      "concurrent_in_game": 66338,
+      "peak_in_game": 66338
+    },
+    {
+      "rank": 16,
+      "appid": 892970,
+      "concurrent_in_game": 65030,
+      "peak_in_game": 65030
+    },
+    {
+      "rank": 17,
+      "appid": 236390,
+      "concurrent_in_game": 65028,
+      "peak_in_game": 86082
+    },
+    {
+      "rank": 18,
+      "appid": 322170,
+      "concurrent_in_game": 59892,
+      "peak_in_game": 59892
+    },
+    {
+      "rank": 19,
+      "appid": 1203620,
+      "concurrent_in_game": 59728,
+      "peak_in_game": 59774
+    },
+    {
+      "rank": 20,
+      "appid": 230410,
+      "concurrent_in_game": 59717,
+      "peak_in_game": 75387
+    },
+    {
+      "rank": 21,
+      "appid": 3678970,
+      "concurrent_in_game": 58293,
+      "peak_in_game": 70826
+    },
+    {
+      "rank": 22,
+      "appid": 4348910,
+      "concurrent_in_game": 57815,
+      "peak_in_game": 166537
+    },
+    {
+      "rank": 23,
+      "appid": 381210,
+      "concurrent_in_game": 55677,
+      "peak_in_game": 56951
+    },
+    {
+      "rank": 24,
+      "appid": 431960,
+      "concurrent_in_game": 55058,
+      "peak_in_game": 117378
+    },
+    {
+      "rank": 25,
+      "appid": 4080220,
+      "concurrent_in_game": 55020,
+      "peak_in_game": 55471
+    },
+    {
+      "rank": 26,
+      "appid": 271590,
+      "concurrent_in_game": 54337,
+      "peak_in_game": 64138
+    },
+    {
+      "rank": 27,
+      "appid": 3241660,
+      "concurrent_in_game": 52849,
+      "peak_in_game": 56196
+    },
+    {
+      "rank": 28,
+      "appid": 2357570,
+      "concurrent_in_game": 50880,
+      "peak_in_game": 52770
+    },
+    {
+      "rank": 29,
+      "appid": 221100,
+      "concurrent_in_game": 48983,
+      "peak_in_game": 49723
+    },
+    {
+      "rank": 30,
+      "appid": 1366800,
+      "concurrent_in_game": 48464,
+      "peak_in_game": 48628
+    },
+    {
+      "rank": 31,
+      "appid": 438100,
+      "concurrent_in_game": 45773,
+      "peak_in_game": 56876
+    },
+    {
+      "rank": 32,
+      "appid": 108600,
+      "concurrent_in_game": 45350,
+      "peak_in_game": 45489
+    },
+    {
+      "rank": 33,
+      "appid": 2300320,
+      "concurrent_in_game": 44666,
+      "peak_in_game": 46120
+    },
+    {
+      "rank": 34,
+      "appid": 4262460,
+      "concurrent_in_game": 44289,
+      "peak_in_game": 62527
+    },
+    {
+      "rank": 35,
+      "appid": 3240220,
+      "concurrent_in_game": 42365,
+      "peak_in_game": 71501
+    },
+    {
+      "rank": 36,
+      "appid": 2868840,
+      "concurrent_in_game": 42040,
+      "peak_in_game": 82411
+    },
+    {
+      "rank": 37,
+      "appid": 5335510,
+      "concurrent_in_game": 41905,
+      "peak_in_game": 41905
+    },
+    {
+      "rank": 38,
+      "appid": 2767030,
+      "concurrent_in_game": 41196,
+      "peak_in_game": 47365
+    },
+    {
+      "rank": 39,
+      "appid": 2507950,
+      "concurrent_in_game": 40509,
+      "peak_in_game": 125588
+    },
+    {
+      "rank": 40,
+      "appid": 1086940,
+      "concurrent_in_game": 40204,
+      "peak_in_game": 40204
+    },
+    {
+      "rank": 41,
+      "appid": 227300,
+      "concurrent_in_game": 40183,
+      "peak_in_game": 42494
+    },
+    {
+      "rank": 42,
+      "appid": 394360,
+      "concurrent_in_game": 39907,
+      "peak_in_game": 47804
+    },
+    {
+      "rank": 43,
+      "appid": 413150,
+      "concurrent_in_game": 39621,
+      "peak_in_game": 77865
+    },
+    {
+      "rank": 44,
+      "appid": 2807960,
+      "concurrent_in_game": 39518,
+      "peak_in_game": 39518
+    },
+    {
+      "rank": 45,
+      "appid": 4126040,
+      "concurrent_in_game": 37662,
+      "peak_in_game": 40907
+    },
+    {
+      "rank": 46,
+      "appid": 250900,
+      "concurrent_in_game": 35568,
+      "peak_in_game": 48409
+    },
+    {
+      "rank": 47,
+      "appid": 292030,
+      "concurrent_in_game": 35363,
+      "peak_in_game": 35897
+    },
+    {
+      "rank": 48,
+      "appid": 553850,
+      "concurrent_in_game": 34094,
+      "peak_in_game": 39637
+    },
+    {
+      "rank": 49,
+      "appid": 1142710,
+      "concurrent_in_game": 33448,
+      "peak_in_game": 33448
+    },
+    {
+      "rank": 50,
+      "appid": 284160,
+      "concurrent_in_game": 32340,
+      "peak_in_game": 33612
+    },
+    {
+      "rank": 51,
+      "appid": 489830,
+      "concurrent_in_game": 31896,
+      "peak_in_game": 31896
+    },
+    {
+      "rank": 52,
+      "appid": 4000,
+      "concurrent_in_game": 29993,
+      "peak_in_game": 31222
+    },
+    {
+      "rank": 53,
+      "appid": 2073620,
+      "concurrent_in_game": 29033,
+      "peak_in_game": 30416
+    },
+    {
+      "rank": 54,
+      "appid": 252950,
+      "concurrent_in_game": 28436,
+      "peak_in_game": 28436
+    },
+    {
+      "rank": 55,
+      "appid": 294100,
+      "concurrent_in_game": 26564,
+      "peak_in_game": 33186
+    },
+    {
+      "rank": 56,
+      "appid": 289070,
+      "concurrent_in_game": 26418,
+      "peak_in_game": 36037
+    },
+    {
+      "rank": 57,
+      "appid": 1222670,
+      "concurrent_in_game": 26342,
+      "peak_in_game": 26739
+    },
+    {
+      "rank": 58,
+      "appid": 1973530,
+      "concurrent_in_game": 26050,
+      "peak_in_game": 63668
+    },
+    {
+      "rank": 59,
+      "appid": 3321460,
+      "concurrent_in_game": 25789,
+      "peak_in_game": 27366
+    },
+    {
+      "rank": 60,
+      "appid": 3405690,
+      "concurrent_in_game": 24904,
+      "peak_in_game": 28156
+    },
+    {
+      "rank": 61,
+      "appid": 1174180,
+      "concurrent_in_game": 24805,
+      "peak_in_game": 33106
+    },
+    {
+      "rank": 62,
+      "appid": 1085660,
+      "concurrent_in_game": 24303,
+      "peak_in_game": 25166
+    },
+    {
+      "rank": 63,
+      "appid": 1623730,
+      "concurrent_in_game": 23653,
+      "peak_in_game": 37135
+    },
+    {
+      "rank": 64,
+      "appid": 1905180,
+      "concurrent_in_game": 23003,
+      "peak_in_game": 31929
+    },
+    {
+      "rank": 65,
+      "appid": 813780,
+      "concurrent_in_game": 23002,
+      "peak_in_game": 23002
+    },
+    {
+      "rank": 66,
+      "appid": 550,
+      "concurrent_in_game": 22854,
+      "peak_in_game": 32759
+    },
+    {
+      "rank": 67,
+      "appid": 105600,
+      "concurrent_in_game": 22451,
+      "peak_in_game": 39848
+    },
+    {
+      "rank": 68,
+      "appid": 251570,
+      "concurrent_in_game": 22010,
+      "peak_in_game": 27114
+    },
+    {
+      "rank": 69,
+      "appid": 2399830,
+      "concurrent_in_game": 21944,
+      "peak_in_game": 24977
+    },
+    {
+      "rank": 70,
+      "appid": 4623570,
+      "concurrent_in_game": 21305,
+      "peak_in_game": 23591
+    },
+    {
+      "rank": 71,
+      "appid": 526870,
+      "concurrent_in_game": 20951,
+      "peak_in_game": 20951
+    },
+    {
+      "rank": 72,
+      "appid": 427520,
+      "concurrent_in_game": 20535,
+      "peak_in_game": 20598
+    },
+    {
+      "rank": 73,
+      "appid": 1245620,
+      "concurrent_in_game": 20455,
+      "peak_in_game": 25597
+    },
+    {
+      "rank": 74,
+      "appid": 261550,
+      "concurrent_in_game": 20319,
+      "peak_in_game": 28244
+    },
+    {
+      "rank": 75,
+      "appid": 2073850,
+      "concurrent_in_game": 19575,
+      "peak_in_game": 19575
+    },
+    {
+      "rank": 76,
+      "appid": 594650,
+      "concurrent_in_game": 19080,
+      "peak_in_game": 23103
+    },
+    {
+      "rank": 77,
+      "appid": 1665460,
+      "concurrent_in_game": 18828,
+      "peak_in_game": 20938
+    },
+    {
+      "rank": 78,
+      "appid": 1158310,
+      "concurrent_in_game": 18756,
+      "peak_in_game": 18756
+    },
+    {
+      "rank": 79,
+      "appid": 376210,
+      "concurrent_in_game": 18741,
+      "peak_in_game": 20166
+    },
+    {
+      "rank": 80,
+      "appid": 2139460,
+      "concurrent_in_game": 18667,
+      "peak_in_game": 24046
+    },
+    {
+      "rank": 81,
+      "appid": 39210,
+      "concurrent_in_game": 18359,
+      "peak_in_game": 18780
+    },
+    {
+      "rank": 82,
+      "appid": 216150,
+      "concurrent_in_game": 18231,
+      "peak_in_game": 22050
+    },
+    {
+      "rank": 83,
+      "appid": 3932890,
+      "concurrent_in_game": 17814,
+      "peak_in_game": 34061
+    },
+    {
+      "rank": 84,
+      "appid": 3551340,
+      "concurrent_in_game": 17686,
+      "peak_in_game": 17776
+    },
+    {
+      "rank": 85,
+      "appid": 322330,
+      "concurrent_in_game": 17620,
+      "peak_in_game": 60749
+    },
+    {
+      "rank": 86,
+      "appid": 304930,
+      "concurrent_in_game": 17300,
+      "peak_in_game": 19506
+    },
+    {
+      "rank": 87,
+      "appid": 3527290,
+      "concurrent_in_game": 16116,
+      "peak_in_game": 21925
+    },
+    {
+      "rank": 88,
+      "appid": 8930,
+      "concurrent_in_game": 16047,
+      "peak_in_game": 16141
+    },
+    {
+      "rank": 89,
+      "appid": 582660,
+      "concurrent_in_game": 15952,
+      "peak_in_game": 16253
+    },
+    {
+      "rank": 90,
+      "appid": 629520,
+      "concurrent_in_game": 15884,
+      "peak_in_game": 17045
+    },
+    {
+      "rank": 91,
+      "appid": 4019220,
+      "concurrent_in_game": 15776,
+      "peak_in_game": 16478
+    },
+    {
+      "rank": 92,
+      "appid": 739630,
+      "concurrent_in_game": 14376,
+      "peak_in_game": 14376
+    },
+    {
+      "rank": 93,
+      "appid": 377160,
+      "concurrent_in_game": 14214,
+      "peak_in_game": 14214
+    },
+    {
+      "rank": 94,
+      "appid": 1942280,
+      "concurrent_in_game": 14189,
+      "peak_in_game": 27402
+    },
+    {
+      "rank": 95,
+      "appid": 275850,
+      "concurrent_in_game": 14184,
+      "peak_in_game": 14184
+    },
+    {
+      "rank": 96,
+      "appid": 2483190,
+      "concurrent_in_game": 14066,
+      "peak_in_game": 21537
+    },
+    {
+      "rank": 97,
+      "appid": 2252570,
+      "concurrent_in_game": 13832,
+      "peak_in_game": 13832
+    },
+    {
+      "rank": 98,
+      "appid": 1326470,
+      "concurrent_in_game": 13759,
+      "peak_in_game": 20434
+    },
+    {
+      "rank": 99,
+      "appid": 244210,
+      "concurrent_in_game": 13703,
+      "peak_in_game": 14765
+    },
+    {
+      "rank": 100,
+      "appid": 1281930,
+      "concurrent_in_game": 13461,
+      "peak_in_game": 27751
+    }
+  ],
+  "items": [
+    {
+      "appid": 730,
+      "id": 730,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Counter-Strike 2",
+      "release": {
+        "steam_release_date": 1345568400
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 9972099,
+          "percent_positive": 85,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Seit seiner Veröffentlichung vor über 20 Jahren bietet Counter-Strike eine unvergleichliche Wettkampferfahrung, die von Millionen von Spielern weltweit geprägt wird. Jetzt beginnt das nächste Kapitel in der glorreichen CS-Geschichte: Willkommen bei Counter-Strike 2.",
+        "publishers": [
+          {
+            "name": "Valve",
+            "creator_clan_account_id": 4
+          }
+        ],
+        "developers": [
+          {
+            "name": "Valve",
+            "creator_clan_account_id": 4
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/730/${FILENAME}?t=1793054556",
+        "header": "162664aa5da85f418105350c5d67ca565f6c3713/header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 570,
+      "id": 570,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Dota 2",
+      "release": {
+        "steam_release_date": 1373389200,
+        "original_release_date": 0
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 2811217,
+          "percent_positive": 80,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Jeden Tag stürzen sich weltweit Millionen von Spielern als einer der über hundert Dota-Helden und -Heldinnen in die Schlacht. Egal, ob sie 10 oder 1000 Stunden gespielt haben, es gibt immer etwas Neues zu entdecken. Dank regelmäßiger Updates für Gameplay, Funktionen und Helden hat Dota 2 wahrlich ein Eigenleben entwickelt.",
+        "publishers": [
+          {
+            "name": "Valve",
+            "creator_clan_account_id": 4
+          }
+        ],
+        "developers": [
+          {
+            "name": "Valve",
+            "creator_clan_account_id": 4
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Dota",
+            "creator_clan_account_id": 40102679
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/570/${FILENAME}?t=1791407503",
+        "header": "header.jpg",
+        "library_hero": "0e4a18e7b53d1d4d68bba65969919e6a85920b04/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 1422450,
+      "id": 1422450,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Deadlock",
+      "release": {
+        "is_coming_soon": true,
+        "custom_release_date_message": "Bevorstehende Ankündigung",
+        "coming_soon_display": "text_tba"
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 0,
+          "percent_positive": 0,
+          "review_score": 0,
+          "review_score_label": "Keine Nutzerrezensionen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Deadlock ist ein Mehrspielerspiel im frühen Entwicklungsstadium.",
+        "publishers": [
+          {
+            "name": "Valve",
+            "creator_clan_account_id": 4
+          }
+        ],
+        "developers": [
+          {
+            "name": "Valve",
+            "creator_clan_account_id": 4
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1422450/${FILENAME}?t=1790716179",
+        "header": "aa249c5e8cc8f90941bd1dbdc311773cd1afe065/header.jpg",
+        "library_hero": "e38dad54f59519e592896c889bbfa7c90fd52270/library_hero.jpg"
+      },
+      "is_free": false
+    },
+    {
+      "appid": 578080,
+      "id": 578080,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "PUBG: BATTLEGROUNDS",
+      "release": {
+        "steam_release_date": 1513843500
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 2747182,
+          "percent_positive": 60,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "PUBG – Der actiongeladene Battle-Royale-Shooter, der das Genre revolutioniert hat, ist kostenlos spielbar! Stürzt euch in abwechslungsreiche Karten, plündert einzigartige Waffen und Ausrüstung und kämpft ums Überleben in einer ständig schrumpfenden Zone – jeder Moment könnte der letzte sein!",
+        "publishers": [
+          {
+            "name": "KRAFTON, Inc.",
+            "creator_clan_account_id": 44295939
+          }
+        ],
+        "developers": [
+          {
+            "name": "PUBG Corporation",
+            "creator_clan_account_id": 33973721
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/578080/${FILENAME}?t=1792718193",
+        "header": "841ea38bc58cabb70aef65365cf50bc2d79329d9/header.jpg",
+        "library_hero": "a14b88ee69f55d5354d3efc1f725eddf40650869/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 3393110,
+      "id": 3393110,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "AION 2",
+      "release": {
+        "steam_release_date": 1791205224
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 45335,
+          "percent_positive": 55,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "AION 2 ist das einzige MMORPG, das den Himmel selbst zum Schlachtfeld macht. Wähle deine Fraktion, steige als Daeva auf und kämpfe im Fraktionskrieg in einer Welt, die 36-mal größer ist als im Vorgänger. Entwickelt mit Unreal Engine 5 – exklusiv für PC. ",
+        "publishers": [
+          {
+            "name": "NC",
+            "creator_clan_account_id": 45578698
+          }
+        ],
+        "developers": [
+          {
+            "name": "NC",
+            "creator_clan_account_id": 45578698
+          }
+        ],
+        "franchises": [
+          {
+            "name": "AION"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3393110/${FILENAME}?t=1792771538",
+        "header": "10aa4b096ebe6af0d1dd7882e5ba004271aef6f7/header.jpg",
+        "library_hero": "0f3eb5d09fe82771cc01c87cd6d12fb1f38d6069/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 3419430,
+      "id": 3419430,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Bongo Cat",
+      "release": {
+        "steam_release_date": 1741161623
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 114524,
+          "percent_positive": 96,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Bongo Cat braucht deine Hilfe. Bongo Cat braucht mehr Hüte!!! Jedes Mal, wenn du eine Taste drückst, wird Bongo Cat deine Taskleiste hauen. Tippe, klicke, spiele, arbeite, um mehr Punkte zu sammeln. Welche Hüte wirst du finden?",
+        "publishers": [
+          {
+            "name": "Irox Games",
+            "creator_clan_account_id": 45040150
+          }
+        ],
+        "developers": [
+          {
+            "name": "Irox Games",
+            "creator_clan_account_id": 45040150
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3419430/${FILENAME}?t=1791309178",
+        "header": "2e6c93c020fe13d09d8120bb9164ed7cb58f00c5/header.jpg",
+        "library_hero": "9a4949145bafd78ffa4bd2d772cc0583e1cb32e9/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 1938090,
+      "id": 1938090,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Call of Duty®",
+      "release": {
+        "steam_release_date": 1666929600
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 429072,
+          "percent_positive": 55,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Das Call of Duty®-Erlebnis unterstützt Modern Warfare® 4, Black Ops 7 und Call of Duty®: Warzone™.",
+        "publishers": [
+          {
+            "name": "Activision",
+            "creator_clan_account_id": 42356652
+          }
+        ],
+        "developers": [
+          {
+            "name": "Treyarch"
+          },
+          {
+            "name": "Raven Software"
+          },
+          {
+            "name": "Beenox"
+          },
+          {
+            "name": "High Moon Studios"
+          },
+          {
+            "name": "Sledgehammer Games"
+          },
+          {
+            "name": "Infinity Ward"
+          },
+          {
+            "name": "Activision Shanghai"
+          },
+          {
+            "name": "Demonware"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Call of Duty",
+            "creator_clan_account_id": 42355870
+          },
+          {
+            "name": "Modern Warfare"
+          },
+          {
+            "name": "Black Ops"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1938090/${FILENAME}?t=1793996750",
+        "header": "23af6cf41e2d09620caa07700a4cb3288dbcbaa8/header.jpg",
+        "library_hero": "41805185a8493af69518e83d0dbb819e1de328d5/library_hero.jpg"
+      },
+      "is_free": false
+    },
+    {
+      "appid": 252490,
+      "id": 252490,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Rust",
+      "release": {
+        "steam_release_date": 1518112367
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 1179751,
+          "percent_positive": 86,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "In Rust geht es nur um eines: das blanke Überleben. Alles um dich herum will deinen Tod – die Tiere auf der Insel, sonstige Inselbewohner, die Umgebung und andere Überlebende. Tu alles, was nötig ist, um eine weitere Nacht durchzustehen.",
+        "publishers": [
+          {
+            "name": "Facepunch Studios",
+            "creator_clan_account_id": 2081
+          }
+        ],
+        "developers": [
+          {
+            "name": "Facepunch Studios",
+            "creator_clan_account_id": 2081
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/252490/${FILENAME}?t=1781536981",
+        "header": "header.jpg",
+        "library_hero": "810d28529f0c40e9a283f74cea09583f501c57e2/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 244390,
+        "purchase_option_name": "Rust",
+        "final_price_in_cents": "1999",
+        "original_price_in_cents": "3999",
+        "formatted_final_price": "19,99€",
+        "formatted_original_price": "39,99€",
+        "discount_pct": 50,
+        "active_discounts": [
+          {
+            "discount_amount": "2000",
+            "discount_description": "#discount_desc_preset_special",
+            "discount_end_date": 1794243600
+          }
+        ],
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1091500,
+      "id": 1091500,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Cyberpunk 2077",
+      "release": {
+        "steam_release_date": 1607558400,
+        "original_release_date": 0
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 903380,
+          "percent_positive": 87,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Cyberpunk 2077 ist ein Open-World-Action-Adventure-RPG, das in Night City spielt – einer gefährlichen Metropole, deren Bewohner von Macht, Glamour und Körpermodifikationen besessen sind.",
+        "publishers": [
+          {
+            "name": "CD PROJEKT RED",
+            "creator_clan_account_id": 32989758
+          }
+        ],
+        "developers": [
+          {
+            "name": "CD PROJEKT RED",
+            "creator_clan_account_id": 32989758
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1091500/${FILENAME}?t=1792682505",
+        "header": "48a93d6445a67520ea49833c93dae8f2e68fc540/header_alt_assets_9.jpg",
+        "library_hero": "cf8cec802dc47d0f24b75f9eee135e96812e2652/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 367653,
+        "purchase_option_name": "Cyberpunk 2077",
+        "final_price_in_cents": "5999",
+        "formatted_final_price": "59,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 4115450,
+      "id": 4115450,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Phantom Blade Zero",
+      "release": {
+        "steam_release_date": 1793238343
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 83938,
+          "percent_positive": 93,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "S-GAME präsentiert Phantom Blade Zero – eine Fusion von Wuxia-Story und rasanter Action, unterstützt von der Unreal Engine 5. Als Krieger namens Soul hast du nur noch 66 Tage zu leben. Wehre Meuchelmörder ab, decke Verschwörungen auf und verteidige deine Werte.",
+        "publishers": [
+          {
+            "name": "S-GAME Publishing"
+          }
+        ],
+        "developers": [
+          {
+            "name": "S-GAME Studio"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4115450/${FILENAME}?t=1793261976",
+        "header": "7f882f889630270d3d3fb93825ac6f55b55e7a6c/header.jpg",
+        "library_hero": "1cd52ca84a3d974c4206e9cb90231956324c5999/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1766409,
+        "purchase_option_name": "Phantom Blade Zero",
+        "final_price_in_cents": "5999",
+        "formatted_final_price": "59,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1867240,
+      "id": 1867240,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "WARDOGS",
+      "release": {
+        "steam_release_date": 1789055884,
+        "is_early_access": true
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 135752,
+          "percent_positive": 67,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "WARDOGS ist ein taktischer First-Person-Shooter, bei dem hundert Spieler in drei Teams um die Kontrolle über eine Zone kämpfen. Schauplatz ist ein zerstörbares Schlachtfeld in der verfallenen, hügeligen Industrielandschaft Osteuropas, wo Geld die Welt regiert. ",
+        "publishers": [
+          {
+            "name": "Team17"
+          }
+        ],
+        "developers": [
+          {
+            "name": "BULKHEAD",
+            "creator_clan_account_id": 42656369
+          }
+        ],
+        "franchises": [
+          {
+            "name": "WARDOGS"
+          },
+          {
+            "name": "Team17 Digital"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1867240/${FILENAME}?t=1791928607",
+        "header": "8d0cf7b0176267e49f7f87ca7951eaf64eefb203/header_alt_assets_0_german.jpg",
+        "library_hero": "9e3d0dba457f3d33734990866160be80c399f67c/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 671715,
+        "purchase_option_name": "WARDOGS",
+        "final_price_in_cents": "3999",
+        "formatted_final_price": "39,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 440,
+      "id": 440,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Team Fortress 2",
+      "release": {
+        "steam_release_date": 1191999600,
+        "original_release_date": 1191999600
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 1257028,
+          "percent_positive": 91,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Dank neun verschiedener Klassen mit einer breiten Palette taktischer Fähigkeiten und Persönlichkeiten finden alle Spieler etwas nach ihrem Geschmack.  Regelmäßige, kostenlose Updates mit neuen Spielmodi, Karten, Ausrüstungen und vor allem Hüten!",
+        "publishers": [
+          {
+            "name": "Valve",
+            "creator_clan_account_id": 4
+          }
+        ],
+        "developers": [
+          {
+            "name": "Valve",
+            "creator_clan_account_id": 4
+          }
+        ],
+        "capsule_headline": "Das Gun Mettle Update ist jetzt verfügbar"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/440/${FILENAME}?t=1757348372",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 1172470,
+      "id": 1172470,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Apex Legends™",
+      "release": {
+        "steam_release_date": 1604548800,
+        "original_release_date": 0
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 1077088,
+          "percent_positive": 67,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Apex Legends ist der preisgekrönte Free-to-Play Helden-Shooter von Respawn Entertainment. Meistere einen wachsenden Kader legendärer Charaktere mit mächtigen Fähigkeiten & erlebe das strategische Squadspiel und innovative Gameplay der nächsten Evolutionsstufe des Helden-Shooters & von Battle Royale.",
+        "publishers": [
+          {
+            "name": "Electronic Arts",
+            "creator_clan_account_id": 36135791
+          }
+        ],
+        "developers": [
+          {
+            "name": "Respawn",
+            "creator_clan_account_id": 37913704
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Apex Legends"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1172470/${FILENAME}?t=1793909605",
+        "header": "4219c147f1e094297c726d537518babba7f3ae2d/header.jpg",
+        "library_hero": "b9cb4783b9794eaa62020945f7caaf3cf822da20/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 1808500,
+      "id": 1808500,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "ARC Raiders",
+      "release": {
+        "steam_release_date": 1761816609
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 309198,
+          "percent_positive": 82,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "ARC Raiders ist ein Multiplayer-Extraktionsadventure, das auf einer tödlichen Erde der Zukunft spielt, die von einer mysteriösen technisierten Bedrohung namens ARC übermannt wird.",
+        "publishers": [
+          {
+            "name": "Embark Studios"
+          }
+        ],
+        "developers": [
+          {
+            "name": "Embark Studios"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1808500/${FILENAME}?t=1793881941",
+        "header": "41ee6c5c81a5797132879892586465b917acc563/header_alt_assets_9.jpg",
+        "library_hero": "ab1991cd931978e06440673952afb6f802db383d/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1399488,
+        "purchase_option_name": "Arc Raiders",
+        "final_price_in_cents": "3999",
+        "formatted_final_price": "39,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 359550,
+      "id": 359550,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Tom Clancy's Rainbow Six Siege",
+      "release": {
+        "steam_release_date": 1448992800
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 1569734,
+          "percent_positive": 82,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Tom Clancy‘s Rainbow Six Siege ist ein taktischer, teambasierter Elite-Shooter, bei dem die bessere Planung und Durchführung den Sieg bringen.",
+        "publishers": [
+          {
+            "name": "Ubisoft",
+            "creator_clan_account_id": 33075774
+          }
+        ],
+        "developers": [
+          {
+            "name": "Ubisoft Montreal"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Rainbow 6 Franchise",
+            "creator_clan_account_id": 44535644
+          },
+          {
+            "name": "Tom Clancy Franchise",
+            "creator_clan_account_id": 43517366
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/359550/${FILENAME}?t=1792001976",
+        "header": "1c7b1ea3405a69c54429e2aa3dc31f3cbbeaa456/header_alt_assets_28.jpg",
+        "library_hero": "6a17af1cb99e9822a54b6b80f8186ac932b88d3d/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 892970,
+      "id": 892970,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Valheim",
+      "release": {
+        "steam_release_date": 1788958595,
+        "original_release_date": 0,
+        "original_steam_release_date": 1612277769,
+        "release_from_early_access_date": 1788937200,
+        "release_from_early_access_style": 1
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 476812,
+          "percent_positive": 93,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Ein kooperatives Erkundungs- und Survival-Spiel für 1–10 Spieler in einem prozedural generierten und von der Kultur der Wikinger inspirierten Jenseits. Erkämpfe, erbaue & erobere dir den Weg zu einer Saga, die Odins Schutz verdient!",
+        "publishers": [
+          {
+            "name": "Coffee Stain Publishing",
+            "creator_clan_account_id": 32965813
+          }
+        ],
+        "developers": [
+          {
+            "name": "Iron Gate AB",
+            "creator_clan_account_id": 45971607
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/892970/${FILENAME}?t=1791544831",
+        "header": "1888731b59362fca6c026cdbafa3dfffd45c3146/header_alt_assets_6.jpg",
+        "library_hero": "54c41f4233adb74762d722e5b34cfb014402b55e/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 285032,
+        "purchase_option_name": "Valheim",
+        "final_price_in_cents": "2999",
+        "formatted_final_price": "29,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 236390,
+      "id": 236390,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "War Thunder",
+      "release": {
+        "steam_release_date": 1376569320
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 797817,
+          "percent_positive": 71,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "War Thunder ist ein plattformübergreifendes free-to-play MMO-Kampfspiel, das den militärischen Fahrzeugen des Zweiten Weltkriegs und Koreakriegs gewidmet ist. Nimm mit Spielern aus aller Welt an Luft-, Land- und Seeschlachten epischen Ausmaßes teil.",
+        "publishers": [
+          {
+            "name": "Gaijin Network Ltd",
+            "creator_clan_account_id": 37819846
+          }
+        ],
+        "developers": [
+          {
+            "name": "Gaijin Entertainment"
+          }
+        ],
+        "capsule_headline": "Jetzt gratis spielen"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/236390/${FILENAME}?t=1793692939",
+        "header": "38881c549e623fe432af4e7b4bc3952b443906f5/header.jpg",
+        "library_hero": "efd77bd37117ea968184726b4f65b4abab59889f/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 322170,
+      "id": 322170,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Geometry Dash",
+      "release": {
+        "steam_release_date": 1419273120
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 612924,
+          "percent_positive": 93,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Jump and fly your way through danger in this rhythm-based action platformer!",
+        "publishers": [
+          {
+            "name": "RobTop Games"
+          }
+        ],
+        "developers": [
+          {
+            "name": "RobTop Games"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/322170/${FILENAME}?t=1775300400",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 50572,
+        "purchase_option_name": "Geometry Dash",
+        "final_price_in_cents": "499",
+        "formatted_final_price": "4,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1203620,
+      "id": 1203620,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Enshrouded",
+      "release": {
+        "steam_release_date": 1792076633,
+        "release_from_early_access_date": 1792047600,
+        "release_from_early_access_style": 1
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 99710,
+          "percent_positive": 86,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Enshrouded ist ein Solo- und Koop-Survival-Action-RPG, das Freiheit und Kreativität in den Mittelpunkt stellt. Besiege den Nebel, der das Königreich Embervale verschlingt: Gehe deinen eigenen Weg in einer handgemachten, komplett veränderbaren Welt, erkunde Geheimnisse und baue was und wo du willst.",
+        "publishers": [
+          {
+            "name": "Keen Games GmbH"
+          }
+        ],
+        "developers": [
+          {
+            "name": "Keen Games GmbH"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1203620/${FILENAME}?t=1792078032",
+        "header": "98ca939f51b39bdd41e0e9198a9ccf8421148770/header_alt_assets_2.jpg",
+        "library_hero": "65bf9ce18aee402c94c5e370f0a4c7c87119f910/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1727466,
+        "purchase_option_name": "Enshrouded",
+        "final_price_in_cents": "3999",
+        "formatted_final_price": "39,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 230410,
+      "id": 230410,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Warframe",
+      "release": {
+        "steam_release_date": 1364234640
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 682399,
+          "percent_positive": 87,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Erwacht als unaufhaltsamer Krieger und kämpft an der Seite eurer Freunde in diesem handlungsorientierten Free-to-Play Online-Actionspiel.",
+        "publishers": [
+          {
+            "name": "Digital Extremes",
+            "creator_clan_account_id": 32978945
+          }
+        ],
+        "developers": [
+          {
+            "name": "Digital Extremes",
+            "creator_clan_account_id": 32978945
+          }
+        ],
+        "capsule_headline": "#label_just_updated"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/230410/${FILENAME}?t=1793987416",
+        "header": "1a3e7c2a05ce4e5cad5ac4c7e858cf5b0934704e/header.jpg",
+        "library_hero": "eff9f1a6e0b38ff6287f1fcc57e9eacfd3be27b1/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 3678970,
+      "id": 3678970,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "TBH: Task Bar Hero",
+      "release": {
+        "steam_release_date": 1779872460
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 48442,
+          "percent_positive": 53,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Das ultimative winzige Idle-RPG!\r\nNiedliche Pixel-Helden warten darauf, dich auf ein Abenteuer zu begleiten — direkt aus deiner Taskleiste. \r\nBekämpfe die Langeweile des Alltags und der Arbeit mit vielfältigen Klassen, Skills, Items und Builds!",
+        "publishers": [
+          {
+            "name": "Nugem Studio",
+            "creator_clan_account_id": 45816853
+          }
+        ],
+        "developers": [
+          {
+            "name": "Nugem Studio",
+            "creator_clan_account_id": 45816853
+          },
+          {
+            "name": "Tesseract Studio",
+            "creator_clan_account_id": 45559083
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3678970/${FILENAME}?t=1792715315",
+        "header": "145702300783d88bace2497e4e65c83765ffe27b/header_alt_assets_1_german.jpg",
+        "library_hero": "2ef6402fa80c682722b4090d283840d18f813d4f/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 4348910,
+      "id": 4348910,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Probably Stolen - Cyberpunk Shopkeeper Sim",
+      "release": {
+        "steam_release_date": 1793192022
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 10734,
+          "percent_positive": 97,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Probably Stolen ist ein Shop-Simulator mit Cyberpunk-Setting in einer dystopischen Raumstation. Handle mit dubiosen Waren, betreibe Schmuggel und Handwerk und entscheide, wie weit du gehen willst, um dich über Wasser zu halten, bevor dich die steigende Miete zum Handeln zwingt.",
+        "publishers": [
+          {
+            "name": "tinyBuild",
+            "creator_clan_account_id": 6858705
+          }
+        ],
+        "developers": [
+          {
+            "name": "Questing Goose Studio",
+            "creator_clan_account_id": 45778930
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4348910/${FILENAME}?t=1793942460",
+        "header": "e71463bc2a4c17e0358fea24572fde79da4ccb73/header_alt_assets_3_german.jpg",
+        "library_hero": "5c4503e62e9ff9d138d93d972ebd1fe62af114bc/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1519986,
+        "purchase_option_name": "Probably Stolen",
+        "final_price_in_cents": "1799",
+        "original_price_in_cents": "1999",
+        "formatted_final_price": "17,99€",
+        "formatted_original_price": "19,99€",
+        "discount_pct": 10,
+        "active_discounts": [
+          {
+            "discount_amount": "200",
+            "discount_description": "#discount_desc_preset_launch",
+            "discount_end_date": 1794416439
+          }
+        ],
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 381210,
+      "id": 381210,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Dead by Daylight",
+      "release": {
+        "steam_release_date": 1465923600,
+        "original_release_date": 1465887600
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 690418,
+          "percent_positive": 78,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "10 Jahre voller Horror. 10 Jahre voller Schreckmomente und spannender Begegnungen. 10 Jahre voller brutaler Opfer und adrenalingeladener Fluchtversuche\r\nWähle eine Seite und betritt eine Welt voller Spannung und Grauen mit dem besten asymmetrischen Multiplayer-Spiel, das das Horrorgenre zu bieten hat",
+        "publishers": [
+          {
+            "name": "Behaviour Interactive Inc.",
+            "creator_clan_account_id": 33367148
+          }
+        ],
+        "developers": [
+          {
+            "name": "Behaviour Interactive Inc.",
+            "creator_clan_account_id": 33367148
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Dead by Daylight"
+          }
+        ],
+        "capsule_headline": "Gratis Wochenende!"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/381210/${FILENAME}?t=1793724618",
+        "header": "header.jpg",
+        "library_hero": "2a0e583484963cb4d45c1f22cbf7a80123f27618/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 71374,
+        "purchase_option_name": "Dead by Daylight",
+        "final_price_in_cents": "1999",
+        "formatted_final_price": "19,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 431960,
+      "id": 431960,
+      "item_type": 0,
+      "type": 6,
+      "success": 1,
+      "visible": true,
+      "name": "Wallpaper Engine",
+      "release": {
+        "steam_release_date": 1542391380,
+        "original_steam_release_date": 1476126060
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 954599,
+          "percent_positive": 97,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Nutze atemberaubende animierte Hintergründe auf deinem Desktop. Erstelle Animationen für eigene Bilder oder importiere Videos / Websiten und teile sie auf dem Steam-Workshop!",
+        "publishers": [
+          {
+            "name": "Wallpaper Engine Team"
+          }
+        ],
+        "developers": [
+          {
+            "name": "Wallpaper Engine Team"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/431960/${FILENAME}?t=1779452230",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 89783,
+        "purchase_option_name": "Wallpaper Engine",
+        "final_price_in_cents": "499",
+        "formatted_final_price": "4,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 0,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 4080220,
+      "id": 4080220,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "EA SPORTS FC™ 27",
+      "release": {
+        "steam_release_date": 1790290781
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 11545,
+          "percent_positive": 48,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Willkommen bei The World’s Game in EA SPORTS FC™ 27.\r\nBegib dich auf The Grounds, um einen Fußball-Spielplatz zu erleben, wo die Straßen auf das Stadion treffen, und erlebe mehr Kontrolle in jedem Modus, in denen von der Community inspirierte Innovationen ein noch fußballnäheres Gameplay liefern.",
+        "publishers": [
+          {
+            "name": "Electronic Arts",
+            "creator_clan_account_id": 36135791
+          }
+        ],
+        "developers": [
+          {
+            "name": "EA CANADA"
+          },
+          {
+            "name": "EA Romania"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "EA SPORTS FC™"
+          },
+          {
+            "name": "EA Play",
+            "creator_clan_account_id": 38655211
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4080220/${FILENAME}?t=1793610006",
+        "header": "ff6a3779f1ca83aae8ad3878454f6c11008ea24d/header.jpg",
+        "library_hero": "98909665528dc40a7d43fd3dd6edc8088ed98c44/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1430460,
+        "purchase_option_name": "EA SPORTS FC™ 27",
+        "final_price_in_cents": "6999",
+        "formatted_final_price": "69,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 271590,
+      "id": 271590,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Grand Theft Auto V Legacy",
+      "release": {
+        "steam_release_date": 1428966000,
+        "original_release_date": 1428994800
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 1900221,
+          "percent_positive": 88,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "GTAV für PC bietet Spielern die Möglichkeit, die riesige Welt von Los Santos und Blaine County in Auflösungen von bis zu 4K und darüber hinaus zu erkunden, sowie das Spiel mit einer Bildwiederholrate von 60 Frames pro Sekunde zu erleben.",
+        "publishers": [
+          {
+            "name": "Rockstar Games",
+            "creator_clan_account_id": 1541443
+          }
+        ],
+        "developers": [
+          {
+            "name": "Rockstar North"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Grand Theft Auto"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/271590/${FILENAME}?t=1765387725",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "is_free": false
+    },
+    {
+      "appid": 3241660,
+      "id": 3241660,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "R.E.P.O.",
+      "release": {
+        "steam_release_date": 1740578356,
+        "is_early_access": true
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 349166,
+          "percent_positive": 96,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "An online co-op horror game with up to 6 players. Locate valuable, fully physics-based objects and handle them with care as you retrieve and extract to satisfy your creator's desires.",
+        "publishers": [
+          {
+            "name": "semiwork",
+            "creator_clan_account_id": 37568178
+          }
+        ],
+        "developers": [
+          {
+            "name": "semiwork",
+            "creator_clan_account_id": 37568178
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3241660/${FILENAME}?t=1793278962",
+        "header": "62177765c05399116f0453fe1177b00ceed698c4/header_alt_assets_3.jpg",
+        "library_hero": "c74ee0230d40b4cd12fad898930f7c3687dc3a05/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1148979,
+        "purchase_option_name": "R.E.P.O.",
+        "final_price_in_cents": "616",
+        "original_price_in_cents": "949",
+        "formatted_final_price": "6,16€",
+        "formatted_original_price": "9,49€",
+        "discount_pct": 35,
+        "active_discounts": [
+          {
+            "discount_amount": "333",
+            "discount_description": "#discount_desc_preset_special",
+            "discount_end_date": 1794243600
+          }
+        ],
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 2357570,
+      "id": 2357570,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Overwatch®",
+      "release": {
+        "steam_release_date": 1691692200
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 430408,
+          "percent_positive": 32,
+          "review_score": 4,
+          "review_score_label": "Größtenteils negativ"
+        }
+      },
+      "basic_info": {
+        "short_description": "Overwatch®, EINE ZUKUNFT, FÜR DIE ES SICH ZU KÄMPFEN LOHNT!\r\n\r\nOverwatch® ist ein sich ständig weiterentwickelndes, kostenloses teambasiertes Actionspiel in einer optimistischen Zukunft. Jedes Match ist ein ultimativer 5v5- oder 6v6-Kampf auf diversen Schlachtfeldern.\r\n",
+        "publishers": [
+          {
+            "name": "Blizzard Entertainment, Inc.",
+            "creator_clan_account_id": 45010423
+          }
+        ],
+        "developers": [
+          {
+            "name": "Blizzard Entertainment, Inc.",
+            "creator_clan_account_id": 45010423
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Overwatch"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2357570/${FILENAME}?t=1793732501",
+        "header": "23bc11d1dbc54a373d47485c4747f6ee5ceb5dd6/header_alt_assets_23_german.jpg",
+        "library_hero": "a7d765e7cdda687879dda4a84e78a17d77cde467/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 221100,
+      "id": 221100,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "DayZ",
+      "release": {
+        "steam_release_date": 1544724000,
+        "original_steam_release_date": 1387224420
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 390707,
+          "percent_positive": 78,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Wie lange überlebst du in einer apokalyptischen Welt? Das Land wurde von Zombies überrannt. Du kämpfst mit anderen Überlebenden um Ressourcen. Schließt du dich mit Fremden zusammen, um gemeinsam zu überleben? Oder bleibst du allein, um nicht verraten zu werden? Das ist DayZ – deine Geschichte.",
+        "publishers": [
+          {
+            "name": "Bohemia Interactive",
+            "creator_clan_account_id": 32984825
+          }
+        ],
+        "developers": [
+          {
+            "name": "Bohemia Interactive",
+            "creator_clan_account_id": 32984825
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/221100/${FILENAME}?t=1792059745",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 35220,
+        "purchase_option_name": "DayZ",
+        "final_price_in_cents": "4799",
+        "formatted_final_price": "47,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1366800,
+      "id": 1366800,
+      "item_type": 0,
+      "type": 6,
+      "success": 1,
+      "visible": true,
+      "name": "Crosshair X",
+      "release": {
+        "steam_release_date": 1597670771,
+        "original_release_date": 1590994800
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 44186,
+          "percent_positive": 93,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Das #1 Fadenkreuz-Overlay für kompetitive FPS-Spieler. Verbessere sofort dein Aim mit einem eigenen Fadenkreuz — wähle aus Tausenden von Pro- & Community-Designs oder erstelle dein eigenes. Vertraut von Millionen.",
+        "publishers": [
+          {
+            "name": "CenterPoint Gaming"
+          }
+        ],
+        "developers": [
+          {
+            "name": "CenterPoint Gaming"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1366800/${FILENAME}?t=1783870581",
+        "header": "8d810e477a233384d06d1f0b21e7d0c20326ee25/header_german.jpg",
+        "library_hero": "d507bd7f7b7daee255c6b8b6cc87f3760b48eb7e/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 479357,
+        "purchase_option_name": "Crosshair X",
+        "final_price_in_cents": "717",
+        "original_price_in_cents": "1025",
+        "formatted_final_price": "7,17€",
+        "formatted_original_price": "10,25€",
+        "discount_pct": 30,
+        "active_discounts": [
+          {
+            "discount_amount": "308",
+            "discount_description": "#discount_desc_preset_special",
+            "discount_end_date": 1794852000
+          }
+        ],
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 0,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 438100,
+      "id": 438100,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "VRChat",
+      "release": {
+        "steam_release_date": 1485986340,
+        "original_release_date": 1485936000,
+        "is_early_access": true
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 274747,
+          "percent_positive": 73,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Join our growing community as you explore, play, and help craft the future of social VR. Create worlds and custom avatars. Welcome to VRChat.",
+        "publishers": [
+          {
+            "name": "VRChat Inc.",
+            "creator_clan_account_id": 33975106
+          }
+        ],
+        "developers": [
+          {
+            "name": "VRChat Inc.",
+            "creator_clan_account_id": 33975106
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/438100/${FILENAME}?t=1762366454",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 108600,
+      "id": 108600,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Project Zomboid",
+      "release": {
+        "steam_release_date": 1383930960,
+        "original_release_date": 1383897600,
+        "is_early_access": true
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 372978,
+          "percent_positive": 94,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Project Zomboid is the ultimate in zombie survival. \r\nAlone or in MP: you loot, build, craft, fight, farm and fish in a struggle to survive. A hardcore RPG skillset, a vast map, massively customisable sandbox and a cute tutorial raccoon await the unwary. \r\nSo how will you die? All it takes is a bite..",
+        "publishers": [
+          {
+            "name": "The Indie Stone"
+          }
+        ],
+        "developers": [
+          {
+            "name": "The Indie Stone"
+          }
+        ],
+        "capsule_headline": "#msg_early_access_now_available"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/108600/${FILENAME}?t=1793224893",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 34371,
+        "purchase_option_name": "Project Zomboid",
+        "final_price_in_cents": "2549",
+        "formatted_final_price": "25,49€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 2300320,
+      "id": 2300320,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Landwirtschafts-Simulator 25",
+      "release": {
+        "steam_release_date": 1731414840
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 41645,
+          "percent_positive": 87,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Landwirtschafts-Simulator 25 lädt dich auf’s Land ein. Baue dein Agrarimperium im Alleingang oder im Multiplayer. Diese Farm ist deine Farm!",
+        "publishers": [
+          {
+            "name": "GIANTS Software",
+            "creator_clan_account_id": 33271475
+          }
+        ],
+        "developers": [
+          {
+            "name": "GIANTS Software",
+            "creator_clan_account_id": 33271475
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Farming Simulator",
+            "creator_clan_account_id": 34136467
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2300320/${FILENAME}?t=1793106374",
+        "header": "c2a205133d23cd24faf3c152d972a1d0177661b8/header.jpg",
+        "library_hero": "a682fa91a225a039db2734bdaeec91b19e6432c3/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 825695,
+        "purchase_option_name": "Landwirtschafts-Simulator 25",
+        "final_price_in_cents": "2999",
+        "formatted_final_price": "29,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 4262460,
+      "id": 4262460,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "ROB RUN",
+      "release": {
+        "steam_release_date": 1793811650,
+        "is_early_access": true
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 3643,
+          "percent_positive": 58,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "ROB RUN ist ein brutales Verbrecher-Sandbox-Spiel mit tausenden Spielern. Beiß die Zähne zusammen und überrage alle anderen im schmutzigen Kampf um Erfolg. Tu alles, was nötig ist, um aus dem Elend hervorzusteigen.",
+        "publishers": [
+          {
+            "name": "Kefir",
+            "creator_clan_account_id": 44178935
+          }
+        ],
+        "developers": [
+          {
+            "name": "Kefir",
+            "creator_clan_account_id": 44178935
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4262460/${FILENAME}?t=1793811654",
+        "header": "db8e0cf43c9475b96fb9446b4908de79fcb9f619/header.jpg",
+        "library_hero": "61dff3c7ebce05c75d9d60d69440b099d16cfd02/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 3240220,
+      "id": 3240220,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Grand Theft Auto V Enhanced",
+      "release": {
+        "steam_release_date": 1741091880
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 223134,
+          "percent_positive": 83,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Erlebe die Entertainment-Blockbuster Grand Theft Auto V und Grand Theft Auto Online verbessert auf einer neuen Hardwaregeneration mit atemberaubender Grafik, kürzeren Ladezeiten, 3D-Audio und mehr sowie exklusiven Inhalten für GTA-Online-Spieler.",
+        "publishers": [
+          {
+            "name": "Rockstar Games",
+            "creator_clan_account_id": 1541443
+          }
+        ],
+        "developers": [
+          {
+            "name": "Rockstar North"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Grand Theft Auto"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3240220/${FILENAME}?t=1781187782",
+        "header": "header.jpg",
+        "library_hero": "156530620aa0b27bc9c73f78c3ca64f7d8fed03d/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1148516,
+        "purchase_option_name": "Grand Theft Auto V Enhanced",
+        "final_price_in_cents": "2999",
+        "formatted_final_price": "29,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 2868840,
+      "id": 2868840,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Slay the Spire 2",
+      "release": {
+        "steam_release_date": 1772733048,
+        "is_early_access": true
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 189359,
+          "percent_positive": 61,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Der ikonische Roguelike-Deckbauer kehrt zurück. Erschaffe ein einzigartiges Deck, begegne bizarren Kreaturen und entdecke Relikte von unermesslicher Macht in Slay the Spire 2!",
+        "publishers": [
+          {
+            "name": "Mega Crit",
+            "creator_clan_account_id": 33974508
+          }
+        ],
+        "developers": [
+          {
+            "name": "Mega Crit",
+            "creator_clan_account_id": 33974508
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2868840/${FILENAME}?t=1787169309",
+        "header": "b0958d387dc366211e0f353443710cfcf9fdb020/header.jpg",
+        "library_hero": "142685c713492a21940cf2c01e50f85aca5780c8/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1023134,
+        "purchase_option_name": "Slay the Spire 2",
+        "final_price_in_cents": "2299",
+        "formatted_final_price": "22,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 5335510,
+      "id": 5335510,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Moon Sweepers",
+      "release": {
+        "steam_release_date": 1792738803
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 6409,
+          "percent_positive": 77,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Ein ganzer Mond zum Putzen. Eine Zahnbürste zum Start. Sammelt und verkauft Mondstaub in Teams mit bis zu 16 Spielern, verbessert eure Werkzeuge und schaltet Reinigungsfahrzeuge frei. Macht aus einem absurden Job ein florierendes Unternehmen, sofern eure Freunde tatsächlich mithelfen.",
+        "publishers": [
+          {
+            "name": "DragDrop Games",
+            "creator_clan_account_id": 46675606
+          }
+        ],
+        "developers": [
+          {
+            "name": "DragDrop Games",
+            "creator_clan_account_id": 46675606
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/5335510/${FILENAME}?t=1792950881",
+        "header": "41e1e802dfc069cc245b91043e451a2f9ffa80e3/header.jpg",
+        "library_hero": "96be25d2fcd970087569af58184ede859f213256/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1843666,
+        "purchase_option_name": "Moon Sweepers",
+        "final_price_in_cents": "899",
+        "formatted_final_price": "8,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 2767030,
+      "id": 2767030,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Marvel Rivals",
+      "release": {
+        "steam_release_date": 1733443200
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 425364,
+          "percent_positive": 75,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "„Marvel Rivals“ ist ein teambasierter Superhelden-PvP-Shooter! Stelle ein Marvel All-Star-Team zusammen und entwickele unzählige Strategien, indem du Heldenkräfte zu einzigartigen Team-Up-Fähigkeiten in sich stets verändernden Kampfschauplätzen im Marvel Universum kombinierst!",
+        "publishers": [
+          {
+            "name": "NetEase Games",
+            "creator_clan_account_id": 45928371
+          }
+        ],
+        "developers": [
+          {
+            "name": "NetEase Games",
+            "creator_clan_account_id": 45928371
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2767030/${FILENAME}?t=1792140776",
+        "header": "c61f65c5968af5d85b0393005991ecee0184fcaf/header.jpg",
+        "library_hero": "db5e6d9455ebe3142b81673a35dfc52d3f485c41/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 2507950,
+      "id": 2507950,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Delta Force",
+      "release": {
+        "steam_release_date": 1733355240
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 200139,
+          "percent_positive": 57,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Spiele kostenlos im Kämpfer-Extraktionsmodus und im groß angelegten Kombiwaffen-Kriegsmodus. Werde zum Elite-Kämpfer, passe dein stetig wachsendes Waffenarsenal an und stürze dich in spannende Missionen über mehrere Modi hinweg.",
+        "publishers": [
+          {
+            "name": "TiMi Studio Group"
+          }
+        ],
+        "developers": [
+          {
+            "name": "Team Jade"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2507950/${FILENAME}?t=1793696595",
+        "header": "c371614eae468e3279440d9c76b4966494be6db4/header_alt_assets_14_german.jpg",
+        "library_hero": "4715032bc269bb82d96905ea4b6c2b85cdcd679b/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 1086940,
+      "id": 1086940,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Baldur's Gate 3",
+      "release": {
+        "steam_release_date": 1691074826
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 760728,
+          "percent_positive": 96,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Stelle deine Gruppe zusammen und kehre in die Vergessenen Reiche zurück. Erlebe eine Geschichte von Freundschaft und Verrat, von Opfer und Überleben – und die Verlockung absoluter Macht.",
+        "publishers": [
+          {
+            "name": "Larian Studios",
+            "creator_clan_account_id": 6879350
+          }
+        ],
+        "developers": [
+          {
+            "name": "Larian Studios",
+            "creator_clan_account_id": 6879350
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Baldur's Gate"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1086940/${FILENAME}?t=1777363040",
+        "header": "48a2fcbda8565bb45025e98fd8ebde8a7203f6a0/header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 907539,
+        "purchase_option_name": "Baldur's Gate 3",
+        "final_price_in_cents": "5999",
+        "formatted_final_price": "59,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 227300,
+      "id": 227300,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Euro Truck Simulator 2",
+      "release": {
+        "steam_release_date": 1350061200,
+        "original_release_date": 1350543600
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 765849,
+          "percent_positive": 97,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Travel across Europe as king of the road, a trucker who delivers important cargo across impressive distances! With dozens of cities to explore, your endurance, skill and speed will all be pushed to their limits.",
+        "publishers": [
+          {
+            "name": "SCS Software",
+            "creator_clan_account_id": 4036972
+          }
+        ],
+        "developers": [
+          {
+            "name": "SCS Software",
+            "creator_clan_account_id": 4036972
+          }
+        ],
+        "capsule_headline": "#msg_new_content_now_available"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/227300/${FILENAME}?t=1793285269",
+        "header": "9a81dc3126c56637297b654f9dcac057cfd79b77/header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 19007,
+        "purchase_option_name": "Euro Truck Simulator 2",
+        "final_price_in_cents": "1999",
+        "formatted_final_price": "19,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 394360,
+      "id": 394360,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Hearts of Iron IV",
+      "release": {
+        "steam_release_date": 1465228620
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 263273,
+          "percent_positive": 90,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Der Sieg liegt in deinen Händen! Deine mächtigste Waffe liegt darin, deine Nation in den Kampf zu führen. Im Strategiespiel Hearts of Iron IV übernimmst du im herausforderndsten Konflikt der Weltgeschichte, dem Zweiten Weltkrieg, das Kommando über eine Nation.",
+        "publishers": [
+          {
+            "name": "Paradox Interactive",
+            "creator_clan_account_id": 6859167
+          }
+        ],
+        "developers": [
+          {
+            "name": "Paradox Development Studio",
+            "creator_clan_account_id": 4117016
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Hearts of Iron"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/394360/${FILENAME}?t=1791468228",
+        "header": "67bbd0057627fc2244793bcdd09260c2539499cf/header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 808478,
+        "purchase_option_name": "Hearts of Iron IV",
+        "final_price_in_cents": "4999",
+        "formatted_final_price": "49,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 413150,
+      "id": 413150,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Stardew Valley",
+      "release": {
+        "steam_release_date": 1456509578
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 903742,
+          "percent_positive": 98,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Dein Großvater hat dir sein altes Farmgrundstück in Stardew Valley hinterlassen. Ausgestattet mit Werkzeugen, die ihre besten Tage hinter sich haben, und ein paar Münzen beginnst du ein neues Leben. Kannst du von dem leben, was dir das Land zu bieten hat und die überwucherten Felder zu einer blühenden Landschaft machen?",
+        "publishers": [
+          {
+            "name": "ConcernedApe",
+            "creator_clan_account_id": 32938395
+          }
+        ],
+        "developers": [
+          {
+            "name": "ConcernedApe",
+            "creator_clan_account_id": 32938395
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/413150/${FILENAME}?t=1786554168",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 82712,
+        "purchase_option_name": "Stardew Valley",
+        "final_price_in_cents": "1399",
+        "formatted_final_price": "13,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 2807960,
+      "id": 2807960,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Battlefield™ 6",
+      "release": {
+        "steam_release_date": 1760108280
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 302431,
+          "percent_positive": 62,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Das ultimative All-Out-Warfare-Erlebnis. In einem Krieg mit Panzern, Jets und riesigen Arsenalen ist dein Squad die tödlichste Waffe.\r\n",
+        "publishers": [
+          {
+            "name": "Electronic Arts",
+            "creator_clan_account_id": 36135791
+          }
+        ],
+        "developers": [
+          {
+            "name": "Battlefield Studios",
+            "creator_clan_account_id": 36140373
+          }
+        ],
+        "franchises": [
+          {
+            "name": "BATTLEFIELD"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2807960/${FILENAME}?t=1793314012",
+        "header": "c12d12ce3c7d217398d3fcad77427bfc9d57c570/header.jpg",
+        "library_hero": "7165682cb6055d92bd2aafd940edbe70cb33ff6b/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1115548,
+        "purchase_option_name": "Battlefield™ 6",
+        "final_price_in_cents": "6999",
+        "formatted_final_price": "69,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false,
+        "free_with_master_sub_appid": 1289670
+      },
+      "is_free": false
+    },
+    {
+      "appid": 4126040,
+      "id": 4126040,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Aniimo",
+      "release": {
+        "steam_release_date": 1789523493
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 29254,
+          "percent_positive": 72,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Aniimo ist ein Open-World-RPG der nächsten Generation. Erkunde den weiten Kontinent und verschmilz mit deinen einzigartigen Aniimo, um neue Fähigkeiten freizuschalten und die Welt mit neuen Augen zu erleben! Triff auf andere Pfadfinder, bestreite spannende Kämpfe und lüfte die Geheimnisse der Welt.",
+        "publishers": [
+          {
+            "name": "Pawprint Studio"
+          }
+        ],
+        "developers": [
+          {
+            "name": "Pawprint Studio"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4126040/${FILENAME}?t=1793258293",
+        "header": "c1ee5babadf5d46000587a5eaf5901bbb6b7013c/header.jpg",
+        "library_hero": "0bc81bb95c68c6b8cacd0b2edf610ba77aba5b51/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 250900,
+      "id": 250900,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "The Binding of Isaac: Rebirth",
+      "release": {
+        "steam_release_date": 1415124000,
+        "original_release_date": 0
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 425045,
+          "percent_positive": 96,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "The Binding of Isaac: Rebirth is a randomly generated action RPG shooter with heavy Rogue-like elements. Following Isaac on his journey players will find bizarre treasures that change Isaac’s form giving him super human abilities and enabling him to fight off droves of mysterious creatures, discover secrets and fight his way to safety.",
+        "publishers": [
+          {
+            "name": "Nicalis, Inc.",
+            "creator_clan_account_id": 6877158
+          }
+        ],
+        "developers": [
+          {
+            "name": "Nicalis, Inc.",
+            "creator_clan_account_id": 6877158
+          },
+          {
+            "name": "Edmund McMillen"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Binding of Isaac"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/250900/${FILENAME}?t=1731977365",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 56355,
+        "purchase_option_name": "The Binding of Isaac: Rebirth",
+        "final_price_in_cents": "1499",
+        "formatted_final_price": "14,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 292030,
+      "id": 292030,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "The Witcher 3: Wild Hunt — Remastered",
+      "release": {
+        "steam_release_date": 1431937260,
+        "original_release_date": 0
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 842400,
+          "percent_positive": 96,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "The Witcher 3: Wild Hunt – Remastered modernisiert das gefeierte Rollenspiel mit einer Reihe von Upgrades und Optimierungen. Werde zum Monsterjäger, Geralt von Riva, und bereise eine düstere Fantasy-Open-World auf der Suche nach deiner Adoptivtochter Ciri.",
+        "publishers": [
+          {
+            "name": "CD PROJEKT RED",
+            "creator_clan_account_id": 32989758
+          }
+        ],
+        "developers": [
+          {
+            "name": "CD PROJEKT RED",
+            "creator_clan_account_id": 32989758
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/292030/${FILENAME}?t=1793900434",
+        "header": "4b5b1ba5061b8a992cc69ac58b4245434edb4296/header.jpg",
+        "library_hero": "2dbca4868f3a9912aad6966bb0b6ab2d270f6da6/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 68476,
+        "purchase_option_name": "The Witcher 3: Wild Hunt — Remastered",
+        "final_price_in_cents": "4999",
+        "formatted_final_price": "49,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 553850,
+      "id": 553850,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "HELLDIVERS™ 2",
+      "release": {
+        "steam_release_date": 1707382200
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 852157,
+          "percent_positive": 75,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Die letzte Angriffslinie der Galaxie. Schließe dich den Helldivers an und kämpfe dich in einem rasanten, hektischen und wilden Third-Person-Shooter durch eine feindselige Galaxie, um die Freiheit zu verbreiten.",
+        "publishers": [
+          {
+            "name": "PlayStation Publishing LLC",
+            "creator_clan_account_id": 40425349
+          }
+        ],
+        "developers": [
+          {
+            "name": "Arrowhead Game Studios",
+            "creator_clan_account_id": 33602140
+          }
+        ],
+        "franchises": [
+          {
+            "name": "HELLDIVERS™",
+            "creator_clan_account_id": 44709910
+          },
+          {
+            "name": "PlayStation Studios"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/553850/${FILENAME}?t=1793395133",
+        "header": "5bd0dd81e8d8c98dc44cca6bcc58892fff3f667c/header_german.jpg",
+        "library_hero": "6cb2177e422438e35b0cd1f1111a468130a83a11/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 137730,
+        "purchase_option_name": "HELLDIVERS™ 2",
+        "final_price_in_cents": "3999",
+        "formatted_final_price": "39,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1142710,
+      "id": 1142710,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Total War: WARHAMMER III",
+      "release": {
+        "steam_release_date": 1645077600
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 107305,
+          "percent_positive": 72,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Das kataklysmische Finale der Total War™: WARHAMMER®-Trilogie ist hier. Sammelt Eure Streitkräfte und betretet das Reich des Chaos, eine Dimension überwältigenden Horrors, in der sich das Schicksal der Welt entscheidet. Werdet Ihr Eure Dämonen bezwingen … oder befehligen?",
+        "publishers": [
+          {
+            "name": "SEGA",
+            "creator_clan_account_id": 32528477
+          },
+          {
+            "name": "Feral Interactive"
+          }
+        ],
+        "developers": [
+          {
+            "name": "CREATIVE ASSEMBLY"
+          },
+          {
+            "name": "Feral Interactive"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Total War",
+            "creator_clan_account_id": 32991376
+          },
+          {
+            "name": "Warhammer",
+            "creator_clan_account_id": 34274830
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1142710/${FILENAME}?t=1790321531",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 634179,
+        "purchase_option_name": "Total War: WARHAMMER III",
+        "final_price_in_cents": "5999",
+        "formatted_final_price": "59,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 284160,
+      "id": 284160,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "BeamNG.drive",
+      "release": {
+        "steam_release_date": 1432915575,
+        "is_early_access": true
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 398080,
+          "percent_positive": 97,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "A dynamic soft-body physics vehicle simulator capable of doing just about anything.",
+        "publishers": [
+          {
+            "name": "BeamNG",
+            "creator_clan_account_id": 35351994
+          }
+        ],
+        "developers": [
+          {
+            "name": "BeamNG",
+            "creator_clan_account_id": 35351994
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/284160/${FILENAME}?t=1792417797",
+        "header": "17f8af1312bc48e6cd90e5fb639d4981682af260/header.jpg",
+        "library_hero": "0d3db87fafbdd4b67437dea28d104ec8f2a2b0a0/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 39241,
+        "purchase_option_name": "BeamNG.drive",
+        "final_price_in_cents": "2250",
+        "formatted_final_price": "22,50€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 489830,
+      "id": 489830,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "The Elder Scrolls V: Skyrim Special Edition",
+      "release": {
+        "steam_release_date": 1477609200
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 223379,
+          "percent_positive": 94,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Die mit über 200 „Spiel des Jahres“-Auszeichnungen prämierte The Elder Scrolls V: Skyrim Special Edition erweckt epische Fantasy in atemberaubendem Detail zum Leben. Die Special Edition enthält das gefeierte Spiel sowie Add-ons mit brandneuen Funktionen.",
+        "publishers": [
+          {
+            "name": "Bethesda Softworks",
+            "creator_clan_account_id": 33028765
+          }
+        ],
+        "developers": [
+          {
+            "name": "Bethesda Game Studios"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "The Elder Scrolls"
+          },
+          {
+            "name": "Skyrim"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/489830/${FILENAME}?t=1786648247",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 110687,
+        "purchase_option_name": "The Elder Scrolls V: Skyrim Special Edition",
+        "final_price_in_cents": "3999",
+        "formatted_final_price": "39,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 4000,
+      "id": 4000,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Garry's Mod",
+      "release": {
+        "steam_release_date": 1164826920,
+        "original_release_date": 1164787200,
+        "mac_release_date": 1285264920
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 1100236,
+          "percent_positive": 96,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Garry's Mod is a physics sandbox. There aren't any predefined aims or goals. We give you the tools and leave you to play.",
+        "publishers": [
+          {
+            "name": "Valve"
+          }
+        ],
+        "developers": [
+          {
+            "name": "Facepunch Studios",
+            "creator_clan_account_id": 2081
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4000/${FILENAME}?t=1776868682",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 218,
+        "purchase_option_name": "Garry's Mod",
+        "final_price_in_cents": "999",
+        "formatted_final_price": "9,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 2073620,
+      "id": 2073620,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Arena Breakout: Infinite",
+      "release": {
+        "steam_release_date": 1757983440
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 87716,
+          "percent_positive": 73,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Arena Breakout: Infinite ist ein immersives taktisches Exfiltrierung-FPS. Stürze dich in den Kampf, hole dir Beute und Reichtum. Mit realistischer Grafik und lebensechtem Sound schlägst du dich durch Kämpfe mit hohem Risiko und reichlich Belohnungen!",
+        "publishers": [
+          {
+            "name": "Morefun Studios"
+          }
+        ],
+        "developers": [
+          {
+            "name": "Morefun Studios"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2073620/${FILENAME}?t=1791983571",
+        "header": "e5415bf14b88ef5b9dd9f1c2c6ef3efc4206ddba/header_german.jpg",
+        "library_hero": "d8a635a829664fe37375275b63fc647d495f412d/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 252950,
+      "id": 252950,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Rocket League®",
+      "release": {
+        "steam_release_date": 1436252340,
+        "original_release_date": 1436252400
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 431842,
+          "percent_positive": 88,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Fußball und Autofahren treffen wieder aufeinander in der lang erwarteten, physikbasierten Fortsetzung zum beliebten Arena-Klassiker Supersonic Acrobatic Rocket-Powered Battle-Cars!",
+        "publishers": [
+          {
+            "name": "Psyonix LLC"
+          }
+        ],
+        "developers": [
+          {
+            "name": "Psyonix LLC"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/252950/${FILENAME}?t=1791210513",
+        "header": "3abd9ab079c8896a4762dbe34a853d89b7f704df/header_alt_assets_17.jpg",
+        "library_hero": "4a928c7a0cecb86f12f1e25f57230a8232f92803/library_hero.jpg"
+      },
+      "is_free": false
+    },
+    {
+      "appid": 294100,
+      "id": 294100,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "RimWorld",
+      "release": {
+        "steam_release_date": 1539787596,
+        "original_release_date": 1539759600,
+        "original_steam_release_date": 1468620000
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 211302,
+          "percent_positive": 97,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Eine Science-Fiction-Kolonie-Simulation, gelenkt von einer intelligenten Erzähler-KI. Generiert Geschichten durch Simulieren von Psychologie, Ökologie, Fernkampf, Nahkampf, Klima, Biome, Diplomatie, zwischenmenschliche Beziehungen, Kunst, Medizin, Handel und mehr.",
+        "publishers": [
+          {
+            "name": "Ludeon Studios",
+            "creator_clan_account_id": 32942316
+          }
+        ],
+        "developers": [
+          {
+            "name": "Ludeon Studios",
+            "creator_clan_account_id": 32942316
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/294100/${FILENAME}?t=1782756789",
+        "header": "76e0613b8197327299d5dbabb0a7fd7828a689a2/header.jpg",
+        "library_hero": "6d7bd7e3d848308ffac87221194aba2338d10efa/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 41602,
+        "purchase_option_name": "RimWorld",
+        "final_price_in_cents": "3199",
+        "formatted_final_price": "31,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 289070,
+      "id": 289070,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Sid Meier’s Civilization® VI",
+      "release": {
+        "steam_release_date": 1477022400
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 277509,
+          "percent_positive": 86,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Geh mit deinem Reich auf Expansionskurs, bring deine Kultur voran und fordere die großen Anführer der Menschheitsgeschichte heraus. Wird sich deine Zivilisation bewähren?",
+        "publishers": [
+          {
+            "name": "2K",
+            "creator_clan_account_id": 2428135
+          },
+          {
+            "name": "Aspyr (Mac)",
+            "creator_clan_account_id": 31936442
+          },
+          {
+            "name": "Aspyr (Linux)",
+            "creator_clan_account_id": 31936442
+          }
+        ],
+        "developers": [
+          {
+            "name": "Firaxis Games",
+            "creator_clan_account_id": 32844624
+          },
+          {
+            "name": "Aspyr (Mac)",
+            "creator_clan_account_id": 31936442
+          },
+          {
+            "name": "Aspyr (Linux)",
+            "creator_clan_account_id": 31936442
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Sid Meier's Civilization",
+            "creator_clan_account_id": 33339585
+          }
+        ],
+        "capsule_headline": "Erweiterung Jetzt Kaufen!"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/289070/${FILENAME}?t=1792718069",
+        "header": "header.jpg",
+        "library_hero": "95dca23c23f718952bd30cc4a0687cc951a43468/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 123215,
+        "purchase_option_name": "Sid Meier's Civilization VI",
+        "final_price_in_cents": "5999",
+        "formatted_final_price": "59,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1222670,
+      "id": 1222670,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "The Sims™ 4",
+      "release": {
+        "steam_release_date": 1592506560,
+        "original_release_date": 1409641200
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 202379,
+          "percent_positive": 86,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Erstelle und steuere deine Charaktere in einer virtuellen Welt ohne Regeln. Sei mächtig, triff freie Entscheidungen, hab Spaß und spiele Schicksal!",
+        "publishers": [
+          {
+            "name": "Electronic Arts",
+            "creator_clan_account_id": 36135791
+          }
+        ],
+        "developers": [
+          {
+            "name": "Maxis"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "The Sims™"
+          },
+          {
+            "name": "EA Play",
+            "creator_clan_account_id": 38655211
+          }
+        ],
+        "capsule_headline": "#msg_available_now_free_to_play"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1222670/${FILENAME}?t=1793293287",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 1973530,
+      "id": 1973530,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Limbus Company",
+      "release": {
+        "steam_release_date": 1677453900
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 124079,
+          "percent_positive": 88,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "As the Executive Manager of Limbus Company, lead your group of twelve Sinners, venture into the buried facilities of Lobotomy Corporation, and lay claim on the Golden Boughs.",
+        "publishers": [
+          {
+            "name": "ProjectMoon"
+          }
+        ],
+        "developers": [
+          {
+            "name": "ProjectMoon"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "ProjectMoon"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1973530/${FILENAME}?t=1793975559",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 3321460,
+      "id": 3321460,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Crimson Desert Enhanced",
+      "release": {
+        "steam_release_date": 1773957036
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 118759,
+          "percent_positive": 83,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Crimson Desert ist ein Open-World-Action-Adventure auf Pywel. Begleite Kliff auf seiner Reise, um die Graumähnen wiederaufzubauen und das Land vor einer drohenden Gefahr zu retten. Von unberührter Wildnis und Städten bis hin zum mysteriösen Abyss: Bahne dir deinen Weg durch Kämpfe und Entdeckungen.",
+        "publishers": [
+          {
+            "name": "Pearl Abyss",
+            "creator_clan_account_id": 39862715
+          }
+        ],
+        "developers": [
+          {
+            "name": "Pearl Abyss",
+            "creator_clan_account_id": 39862715
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3321460/${FILENAME}?t=1792637341",
+        "header": "236f3814be7a97d86831800691b6096d449222a8/header.jpg",
+        "library_hero": "fa05258232b2b970e2730d2ad5917842e914283c/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1176092,
+        "purchase_option_name": "Crimson Desert Enhanced",
+        "final_price_in_cents": "6999",
+        "formatted_final_price": "69,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 3405690,
+      "id": 3405690,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "EA SPORTS FC™ 26",
+      "release": {
+        "steam_release_date": 1758841140
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 103534,
+          "percent_positive": 51,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Erlebe The World's Game wie nie zuvor in EA SPORTS FC™ 26. Feiere Triumphe in einem internationalen 48-Team-Turniermodus, stelle dich thematischen Live-Management-Challenges und tauche in die Profikarriere mit neuen internationalen ICONs und Heroes ein.\r\n",
+        "publishers": [
+          {
+            "name": "Electronic Arts",
+            "creator_clan_account_id": 36135791
+          }
+        ],
+        "developers": [
+          {
+            "name": "EA Canada"
+          },
+          {
+            "name": "EA Romania"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "EA SPORTS FC™"
+          },
+          {
+            "name": "EA Play "
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3405690/${FILENAME}?t=1789751159",
+        "header": "2d96aa1b06e453cd62dae9029d412f19e61932c3/header.jpg",
+        "library_hero": "d32943b4fdbf90b6541c3fbfe2b7cda9c33e8e6e/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1204710,
+        "purchase_option_name": "EA SPORTS FC™ 26",
+        "final_price_in_cents": "6999",
+        "formatted_final_price": "69,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false,
+        "free_with_master_sub_appid": 1289670
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1174180,
+      "id": 1174180,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Red Dead Redemption 2",
+      "release": {
+        "steam_release_date": 1575565200
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 860177,
+          "percent_positive": 92,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Arthur Morgan und die Van-der-Linde-Gang sind auf der Flucht. Während Bundesagenten und Kopfgeldjäger ihnen auf den Fersen sind, müssen sie sich raubend, stehlend und kämpfend den Weg durch das Herz Amerikas bahnen, um zu überleben.",
+        "publishers": [
+          {
+            "name": "Rockstar Games",
+            "creator_clan_account_id": 1541443
+          }
+        ],
+        "developers": [
+          {
+            "name": "Rockstar Games",
+            "creator_clan_account_id": 1541443
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Red Dead Redemption"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1174180/${FILENAME}?t=1759502961",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 402134,
+        "purchase_option_name": "Red Dead Redemption 2",
+        "final_price_in_cents": "5999",
+        "formatted_final_price": "59,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1085660,
+      "id": 1085660,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Destiny 2",
+      "release": {
+        "steam_release_date": 1569949200,
+        "original_release_date": 1569913200
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 664649,
+          "percent_positive": 78,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Lüftet die Geheimnisse des Sonnensystems und erlebt atemberaubende Ego-Shooter-Kämpfe in Destiny 2. Schaltet mächtige Fähigkeiten frei und sammelt einzigartige Ausrüstung in Story-Missionen, im Koop- und im PvP-Modus.",
+        "publishers": [
+          {
+            "name": "Bungie",
+            "creator_clan_account_id": 42567202
+          }
+        ],
+        "developers": [
+          {
+            "name": "Bungie",
+            "creator_clan_account_id": 42567202
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Destiny"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1085660/${FILENAME}?t=1781815889",
+        "header": "0ccf0dc0a8c4ec078db7ab99ddc820b2fa884441/header.jpg",
+        "library_hero": "e0c143377be45cc7c5df6f19604250b419537f76/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 1623730,
+      "id": 1623730,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Palworld",
+      "release": {
+        "steam_release_date": 1783652772,
+        "original_steam_release_date": 1705651175,
+        "release_from_early_access_date": 1783666800,
+        "release_from_early_access_style": 1
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 417710,
+          "percent_positive": 94,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Ein völlig neues Mehrspieler-Survival-Crafting-Spiel, in dem du in einer riesigen Welt „Pals“ genannte, mysteriöse Kreaturen sammelst und sie kämpfen, bauen, farmen oder in Fabriken arbeiten lässt.",
+        "publishers": [
+          {
+            "name": "Pocketpair",
+            "creator_clan_account_id": 41648656
+          }
+        ],
+        "developers": [
+          {
+            "name": "Pocketpair",
+            "creator_clan_account_id": 41648656
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1623730/${FILENAME}?t=1790336367",
+        "header": "6912f19c43a95ff5fe514eedd35e68bf12335459/header.jpg",
+        "library_hero": "2d3bef9d1a0ad28c0ea002ec4522e12e7218fbff/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 576498,
+        "purchase_option_name": "Palworld",
+        "final_price_in_cents": "2899",
+        "formatted_final_price": "28,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1905180,
+      "id": 1905180,
+      "item_type": 0,
+      "type": 6,
+      "success": 1,
+      "visible": true,
+      "name": "OBS Studio",
+      "release": {
+        "steam_release_date": 1647885720,
+        "original_release_date": 1405321200
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 59446,
+          "percent_positive": 95,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Kostenlose und freie Open-Source-Software für die Erstellung von Videoaufnahmen und Livestreams",
+        "publishers": [
+          {
+            "name": "OBS Project"
+          }
+        ],
+        "developers": [
+          {
+            "name": "OBS Project"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1905180/${FILENAME}?t=1788207455",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 813780,
+      "id": 813780,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Age of Empires II: Definitive Edition",
+      "release": {
+        "steam_release_date": 1573747200
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 160338,
+          "percent_positive": 94,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Age of Empires II: DE enthält „The Last Khans” mit drei neuen Kampagnen und vier neuen Zivilisationen. In regelmäßigen Updates wird das Spiel um weitere Inhalte erweitert, darunter Events, Zusatzinhalte, neue Spielmodi und erweiterte Funktionen wie der kürzlich hinzugefügte Koop-Modus!",
+        "publishers": [
+          {
+            "name": "Xbox Game Studios",
+            "creator_clan_account_id": 3090835
+          }
+        ],
+        "developers": [
+          {
+            "name": "World's Edge",
+            "creator_clan_account_id": 35480745
+          },
+          {
+            "name": "Forgotten Empires",
+            "creator_clan_account_id": 7632690
+          },
+          {
+            "name": "CaptureAge",
+            "creator_clan_account_id": 35480745
+          },
+          {
+            "name": "Tantalus Media"
+          },
+          {
+            "name": "Wicked Witch"
+          },
+          {
+            "name": "Feral Interactive",
+            "creator_clan_account_id": 33824648
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Age of Empires"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/813780/${FILENAME}?t=1790623375",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 248721,
+        "purchase_option_name": "Age of Empires II: Definitive Edition",
+        "final_price_in_cents": "3299",
+        "formatted_final_price": "32,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 550,
+      "id": 550,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Left 4 Dead 2",
+      "release": {
+        "steam_release_date": 1258434000,
+        "original_release_date": 0
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 825140,
+          "percent_positive": 97,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Set in the zombie apocalypse, Left 4 Dead 2 is a co-operative action horror FPS takes you and your friends through the cities, swamps and cemeteries of the Deep South, from Savannah to New Orleans across five expansive campaigns.",
+        "publishers": [
+          {
+            "name": "Valve",
+            "creator_clan_account_id": 4
+          }
+        ],
+        "developers": [
+          {
+            "name": "Valve",
+            "creator_clan_account_id": 4
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/550/${FILENAME}?t=1772742214",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 2482,
+        "purchase_option_name": "Left 4 Dead 2 (DE)",
+        "final_price_in_cents": "969",
+        "formatted_final_price": "9,69€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 105600,
+      "id": 105600,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Terraria",
+      "release": {
+        "steam_release_date": 1305568020
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 1249720,
+          "percent_positive": 97,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Graben, kämpfen, erforschen und bauen Sie! Nichts ist unmöglich in diesem Action-geladenen Abenteuerspiel. Auch erhältlich als Viererpaket!",
+        "publishers": [
+          {
+            "name": "Re-Logic",
+            "creator_clan_account_id": 32940202
+          }
+        ],
+        "developers": [
+          {
+            "name": "Re-Logic",
+            "creator_clan_account_id": 32940202
+          }
+        ],
+        "capsule_headline": "#label_just_updated"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/105600/${FILENAME}?t=1792530636",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 8183,
+        "purchase_option_name": "Terraria",
+        "final_price_in_cents": "975",
+        "formatted_final_price": "9,75€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 251570,
+      "id": 251570,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "7 Days to Die",
+      "release": {
+        "steam_release_date": 1721925239,
+        "original_steam_release_date": 1386963008
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 275152,
+          "percent_positive": 87,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "7 Days to Die ist ein Open-World-Spiel, das auf einzigartige Weise Ego-Shooter, Survival-Horror, Tower Defense und Rollenspiel kombiniert. Spiele den ultimativen Vorreiter der Zombie-Survival-Sandbox-RPGs. Navezgane erwartet dich!",
+        "publishers": [
+          {
+            "name": "The Fun Pimps Entertainment LLC",
+            "creator_clan_account_id": 44869566
+          }
+        ],
+        "developers": [
+          {
+            "name": "The Fun Pimps"
+          }
+        ],
+        "capsule_headline": "Jetzt als 2-Pack verfügbar"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/251570/${FILENAME}?t=1793815172",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 30741,
+        "purchase_option_name": "7 Days to Die",
+        "final_price_in_cents": "4399",
+        "formatted_final_price": "43,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 2399830,
+      "id": 2399830,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "ARK: Survival Ascended",
+      "release": {
+        "steam_release_date": 1698296845,
+        "is_early_access": true
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 109526,
+          "percent_positive": 60,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Ark wird in dieser nächsten Generation der Videospieltechnologie mit Unreal Engine 5 von Grund auf neu gestaltet! Bilden Sie einen Stamm, zahm und züchten Hunderte von einzigartigen Dinosauriern und Urkreaturen, erforschen, bauen, bauen und kämpfen Sie sich auf die Spitze der Lebensmittelkette.",
+        "publishers": [
+          {
+            "name": "Studio Wildcard",
+            "creator_clan_account_id": 32940182
+          },
+          {
+            "name": "Snail Games USA",
+            "creator_clan_account_id": 32938488
+          }
+        ],
+        "developers": [
+          {
+            "name": "Studio Wildcard",
+            "creator_clan_account_id": 32940182
+          },
+          {
+            "name": "Grove Street Games"
+          },
+          {
+            "name": "Instinct Games"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2399830/${FILENAME}?t=1793226168",
+        "header": "d934813ca531af0fce69fe36bc972f1c90d1aa19/header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 863377,
+        "purchase_option_name": "ARK: Survival Ascended",
+        "final_price_in_cents": "1124",
+        "original_price_in_cents": "4499",
+        "formatted_final_price": "11,24€",
+        "formatted_original_price": "44,99€",
+        "discount_pct": 75,
+        "active_discounts": [
+          {
+            "discount_amount": "3375",
+            "discount_description": "#discount_desc_preset_special",
+            "discount_end_date": 1794157200
+          }
+        ],
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 4623570,
+      "id": 4623570,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Deskrawl: Idle ARPG",
+      "release": {
+        "steam_release_date": 1790596816
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 3466,
+          "percent_positive": 51,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Grinde Mobs, farme Beute und fange Gegner ein, damit sie dir dienen. Deskrawl ist ein episches Idle-ARPG, das am unteren Rand deines Desktops läuft. Farme legendäre Gegenstände und erschaffe übermächtige Helden, während du arbeitest oder entspannst.",
+        "publishers": [
+          {
+            "name": "First Day Games",
+            "creator_clan_account_id": 46586217
+          },
+          {
+            "name": "Gamersky Games",
+            "creator_clan_account_id": 42658688
+          }
+        ],
+        "developers": [
+          {
+            "name": "First Day Games",
+            "creator_clan_account_id": 46586217
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4623570/${FILENAME}?t=1792998955",
+        "header": "4c1aa677f31f987858b5d88981978bb83b86b519/header.jpg",
+        "library_hero": "ec9056e9ca5d5201ad64f500bcd42992dc1dfdf6/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1610556,
+        "purchase_option_name": "Deskrawl: Idle ARPG",
+        "final_price_in_cents": "719",
+        "formatted_final_price": "7,19€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 526870,
+      "id": 526870,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Satisfactory",
+      "release": {
+        "steam_release_date": 1725980394,
+        "original_release_date": 0
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 237278,
+          "percent_positive": 97,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Satisfactory ist ein Fabrik-Aufbauspiel aus der Ego-Perspektive mit einer Prise Erkundung und Kampf. Spiele allein oder mit Freunden, erkunde einen fremden Planeten, baue mehrstöckige Fabriken und betrete den Fließbandhimmel!",
+        "publishers": [
+          {
+            "name": "Coffee Stain Publishing",
+            "creator_clan_account_id": 32965813
+          }
+        ],
+        "developers": [
+          {
+            "name": "Coffee Stain Studios"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/526870/${FILENAME}?t=1791192059",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1138280,
+        "purchase_option_name": "Satisfactory",
+        "final_price_in_cents": "3899",
+        "formatted_final_price": "38,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 427520,
+      "id": 427520,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Factorio",
+      "release": {
+        "steam_release_date": 1597395519,
+        "original_steam_release_date": 1456426831
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 193524,
+          "percent_positive": 97,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Errichte in Factorio deine eigene Fabrik, um einfachste Elemente zu raffinierten Strukturen zu kombinieren. Nutze deine Fantasie in einer unendlichen 2D-Welt und verteidige deine Fabrik gegen die Kreaturen, die dir deinen Fortschritt nicht gönnen.",
+        "publishers": [
+          {
+            "name": "Wube Software LTD."
+          }
+        ],
+        "developers": [
+          {
+            "name": "Wube Software LTD."
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/427520/${FILENAME}?t=1792752343",
+        "header": "ab9a2df0a77caebde20dc45adc021de8cdcf7cc5/header.jpg",
+        "library_hero": "2fcd262bd4bad87bccc539ee1ba14f6e70e62983/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 88199,
+        "purchase_option_name": "Factorio",
+        "final_price_in_cents": "3200",
+        "formatted_final_price": "32,00€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1245620,
+      "id": 1245620,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "ELDEN RING",
+      "release": {
+        "steam_release_date": 1645744078
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 835462,
+          "percent_positive": 93,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "DAS NEUE FANTASY-ACTION-RPG.\r\nErhebt Euch, Befleckter, und lasst Euch von der Gnade leiten, um die Macht des Eldenrings zu befehligen und zum Eldenfürsten im Zwischenland zu werden.",
+        "publishers": [
+          {
+            "name": "FromSoftware, Inc.",
+            "creator_clan_account_id": 45188208
+          },
+          {
+            "name": "Bandai Namco Entertainment",
+            "creator_clan_account_id": 33042543
+          }
+        ],
+        "developers": [
+          {
+            "name": "FromSoftware, Inc.",
+            "creator_clan_account_id": 45188208
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1245620/${FILENAME}?t=1790290043",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 440408,
+        "purchase_option_name": "ELDEN RING",
+        "final_price_in_cents": "5999",
+        "formatted_final_price": "59,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 261550,
+      "id": 261550,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Mount & Blade II: Bannerlord",
+      "release": {
+        "steam_release_date": 1666681380
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 232728,
+          "percent_positive": 87,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Strategie-/Action-RPG. Riesiges mittelalterliches Sandbox-Spiel mit Charaktererstellung, Diplomatie, Handwerk, Handel und Eroberungen. Stellt Armeen auf, befehligt sie mithilfe eines komplexen und doch intuitiven fähigkeitsbasierten Kampfsystems und kämpft mit ihnen in gewaltigen Echtzeitschlachten.",
+        "publishers": [
+          {
+            "name": "TaleWorlds Entertainment",
+            "creator_clan_account_id": 33089344
+          }
+        ],
+        "developers": [
+          {
+            "name": "TaleWorlds Entertainment",
+            "creator_clan_account_id": 33089344
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Mount &amp; Blade"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/261550/${FILENAME}?t=1764252300",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 805352,
+        "purchase_option_name": "Mount & Blade II: Bannerlord",
+        "final_price_in_cents": "4999",
+        "formatted_final_price": "49,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 2073850,
+      "id": 2073850,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "THE FINALS",
+      "release": {
+        "steam_release_date": 1702007340
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 280180,
+          "percent_positive": 78,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Komm zu THE FINALS, der weltberühmten, kostenlosen, kampforientierten Spielshow! Kämpfe mit deinen Teamkameraden in virtuellen Arenen, die du ändern, ausnutzen und sogar zerstören kannst.",
+        "publishers": [
+          {
+            "name": "Embark Studios"
+          }
+        ],
+        "developers": [
+          {
+            "name": "Embark Studios"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2073850/${FILENAME}?t=1792501373",
+        "header": "4b0efa1275c8cedc030209eb174af726a5ca1776/header.jpg",
+        "library_hero": "7f774fde78b0c485c6b61dfea87783fea5aa77c5/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 594650,
+      "id": 594650,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Hunt: Showdown 1896",
+      "release": {
+        "steam_release_date": 1566909034,
+        "original_release_date": 0,
+        "original_steam_release_date": 1519318800
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 214595,
+          "percent_positive": 74,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Hunt: Showdown 1896 ist der gnadenlos lohnenswerte Extraction-Shooter. Verfolge verdrehte Monster und bestehe im skrupellosen PvP. Hol dir Trophäen in verdorbenen Gefilden. Mit einem Team könntest du überleben. Stirb mit nichts oder schaffe es mit reicher Beute hinaus.",
+        "publishers": [
+          {
+            "name": "Crytek",
+            "creator_clan_account_id": 33141571
+          }
+        ],
+        "developers": [
+          {
+            "name": "Crytek",
+            "creator_clan_account_id": 33141571
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Hunt"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/594650/${FILENAME}?t=1791385253",
+        "header": "8cf55bcd74fc14c93f3a9cc7d0a442afabab6f88/header_alt_assets_29.jpg",
+        "library_hero": "cbd2053ed5a29294b5543f9e952500e2f73972fd/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 155279,
+        "purchase_option_name": "Hunt: Showdown 1896",
+        "final_price_in_cents": "2999",
+        "formatted_final_price": "29,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1665460,
+      "id": 1665460,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "eFootball™",
+      "release": {
+        "steam_release_date": 1632960000
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 120650,
+          "percent_positive": 52,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Erleben Sie das aufregende Fußballspiel, das nun die Marke von 1 Milliarde Downloads geknackt hat!\r\nSpielen Sie eFootball™ mit Benutzern aus der ganzen Welt!",
+        "publishers": [
+          {
+            "name": "KONAMI",
+            "creator_clan_account_id": 39026134
+          }
+        ],
+        "developers": [
+          {
+            "name": "KONAMI",
+            "creator_clan_account_id": 39026134
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1665460/${FILENAME}?t=1792635226",
+        "header": "86619d0fb7126b3d5276004175f9a62181223c0f/header.jpg",
+        "library_hero": "866665da08b46cd32f67e9521f4283bc861fe773/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 1158310,
+      "id": 1158310,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Crusader Kings III",
+      "release": {
+        "steam_release_date": 1598976000
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 94120,
+          "percent_positive": 90,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Liebe, kämpfe, plane und erreiche Größe. Bestimme das Erbe deines Hauses in der umfassenden Strategie von Crusader Kings III. Der Tod ist erst der Anfang, wenn du deine Dynastie in dieser reichhaltigen, überlebensgroßen Simulation des Mittelalters führst.",
+        "publishers": [
+          {
+            "name": "Paradox Interactive",
+            "creator_clan_account_id": 6859167
+          }
+        ],
+        "developers": [
+          {
+            "name": "Paradox Development Studio",
+            "creator_clan_account_id": 4117016
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Crusader Kings",
+            "creator_clan_account_id": 36592959
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1158310/${FILENAME}?t=1792414688",
+        "header": "8a7e814d13f8e73c0d40471f585ece908f9be282/header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 452686,
+        "purchase_option_name": "Crusader Kings III",
+        "final_price_in_cents": "4999",
+        "formatted_final_price": "49,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 376210,
+      "id": 376210,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "The Isle",
+      "release": {
+        "steam_release_date": 1449026834,
+        "is_early_access": true
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 114194,
+          "percent_positive": 80,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Experience fierce open world survival gameplay as you attempt to stay alive on an unforgiving island inhabited by dinosaurs!\r\n\r\nHunt. Grow. Survive.",
+        "publishers": [
+          {
+            "name": "Afterthought LLC"
+          }
+        ],
+        "developers": [
+          {
+            "name": "Afterthought LLC"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/376210/${FILENAME}?t=1653237914",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 69583,
+        "purchase_option_name": "The Isle",
+        "final_price_in_cents": "1999",
+        "formatted_final_price": "19,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 2139460,
+      "id": 2139460,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Once Human",
+      "release": {
+        "steam_release_date": 1720555235
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 195159,
+          "percent_positive": 79,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Once Human ist ein Survival-Spiel in skurrilen Welten. Kämpfe an der Seite deiner Freunde um Ressourcen, errichte dein Lager und stell dich dem Grauen, während du die Wahrheit hinter dem Weltuntergang aufdeckst. Einst warst du Mensch. Bist du es noch?",
+        "publishers": [
+          {
+            "name": "Starry Studio"
+          },
+          {
+            "name": "NetEase Games",
+            "creator_clan_account_id": 45928371
+          }
+        ],
+        "developers": [
+          {
+            "name": "Starry Studio"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2139460/${FILENAME}?t=1792640697",
+        "header": "c18b08a2f93dec32fcc5fa71bc2da44ee42de1f0/header.jpg",
+        "library_hero": "4b43feb4aadab1fbb9d7ffc583e4a8af12bb1d22/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 39210,
+      "id": 39210,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "FINAL FANTASY XIV Online",
+      "release": {
+        "steam_release_date": 1392717300,
+        "original_release_date": 1392710400
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 79022,
+          "percent_positive": 86,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Schließe dich über 30 Millionen Abenteurern weltweit an und werde Teil einer epischen FINAL FANTASY-Welt, die sich stets im Wandel befindet und weiterentwickelt. Erlebe eine unvergessliche Geschichte und mitreißende Schlachten auf deiner Reise durch unzählige bezaubernde Umgebungen.",
+        "publishers": [
+          {
+            "name": "Square Enix",
+            "creator_clan_account_id": 1012195
+          }
+        ],
+        "developers": [
+          {
+            "name": "Square Enix",
+            "creator_clan_account_id": 1012195
+          }
+        ],
+        "franchises": [
+          {
+            "name": "FINAL FANTASY",
+            "creator_clan_account_id": 34459938
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/39210/${FILENAME}?t=1793815364",
+        "header": "header_german.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 33938,
+        "purchase_option_name": "FINAL FANTASY XIV Online Starter Edition",
+        "final_price_in_cents": "999",
+        "formatted_final_price": "9,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 216150,
+      "id": 216150,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "MapleStory",
+      "release": {
+        "steam_release_date": 1344546240
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 16317,
+          "percent_positive": 60,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Werde Teil von über 260 Millionen Spielern aus aller Welt in MapleStory, dem größten 2D-MMORPG-Abenteuer der Welt! Spiele jetzt kostenlos.",
+        "publishers": [
+          {
+            "name": "Nexon America Inc.",
+            "creator_clan_account_id": 37638943
+          }
+        ],
+        "developers": [
+          {
+            "name": "NEXON Korea Corporation"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/216150/${FILENAME}?t=1792606813",
+        "header": "903ea857e7b2944b4738a01054c1560a455ab32b/header_alt_assets_21.jpg",
+        "library_hero": "d726e53d0a9c97b984eaee4a7557d3fe1670df94/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 3932890,
+      "id": 3932890,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Escape from Tarkov",
+      "release": {
+        "steam_release_date": 1763204483
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 59144,
+          "percent_positive": 50,
+          "review_score": 5,
+          "review_score_label": "Ausgeglichen"
+        }
+      },
+      "basic_info": {
+        "short_description": "Escape from Tarkov ist der originale Extraction-Shooter, in dem jeder Raid ein Spiel mit dem Tod ist. Bereite dich vor, blute, halte durch und kämpfe gegen gnadenlose PMC-Spieler und gefährliche Scavs, sichere deine Beute – doch nur die Extraktion entscheidet, ob du überlebst oder alles verlierst.",
+        "publishers": [
+          {
+            "name": "Battlestate Games"
+          }
+        ],
+        "developers": [
+          {
+            "name": "Battlestate Games"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3932890/${FILENAME}?t=1785782094",
+        "header": "4dd12ea3b00a4f8b67bfd629f3b9abbf8d5cab05/header_alt_assets_2.jpg",
+        "library_hero": "aafc8223ec54157952204dce609e40ec743e7720/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1381724,
+        "purchase_option_name": "Escape from Tarkov - Standard Edition",
+        "final_price_in_cents": "4999",
+        "formatted_final_price": "49,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 3551340,
+      "id": 3551340,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Football Manager 26",
+      "release": {
+        "steam_release_date": 1762272098
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 21884,
+          "percent_positive": 37,
+          "review_score": 4,
+          "review_score_label": "Größtenteils negativ"
+        }
+      },
+      "basic_info": {
+        "short_description": "Nimm auf der Bank Platz und erlebe die Fußballmanagement-Zukunft.",
+        "publishers": [
+          {
+            "name": "SEGA",
+            "creator_clan_account_id": 32528477
+          }
+        ],
+        "developers": [
+          {
+            "name": "Sports Interactive"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Football Manager"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3551340/${FILENAME}?t=1781176251",
+        "header": "7d28b9aa8dcfcd96593d112736f58b4b1d3cc7a4/header.jpg",
+        "library_hero": "beff6e0339dd85cad29b97ba4bded5b5966aaf5d/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1253262,
+        "purchase_option_name": "Football Manager 26",
+        "final_price_in_cents": "5999",
+        "formatted_final_price": "59,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 322330,
+      "id": 322330,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Don't Starve Together",
+      "release": {
+        "steam_release_date": 1461257940
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 378458,
+          "percent_positive": 94,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "„Don't Starve Together“ ist die eigenständige Mehrspieler-Erweiterung des kompromisslosen Überlebensspiels „Don't Starve“.",
+        "publishers": [
+          {
+            "name": "Klei Entertainment",
+            "creator_clan_account_id": 112393
+          }
+        ],
+        "developers": [
+          {
+            "name": "Klei Entertainment",
+            "creator_clan_account_id": 112393
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Don't Starve",
+            "creator_clan_account_id": 45864710
+          }
+        ],
+        "capsule_headline": "Jetzt aktualisiert"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/322330/${FILENAME}?t=1793044716",
+        "header": "050ea9c51a4e96f707309d33b7cdd38e0a6cbfff/header_alt_assets_51.jpg",
+        "library_hero": "516815fcb3a671bd0b12f9fd9fd0de1f699cdfac/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 68179,
+        "purchase_option_name": "Don't Starve Together",
+        "final_price_in_cents": "1499",
+        "formatted_final_price": "14,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 304930,
+      "id": 304930,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Unturned",
+      "release": {
+        "steam_release_date": 1499443260
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 565082,
+          "percent_positive": 91,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Unturned is an open-world zombie survival sandbox game. As one of the few not yet turned, you must fight to remain among the living.",
+        "publishers": [
+          {
+            "name": "Smartly Dressed Games",
+            "creator_clan_account_id": 11122666
+          }
+        ],
+        "developers": [
+          {
+            "name": "Smartly Dressed Games",
+            "creator_clan_account_id": 11122666
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Unturned"
+          }
+        ],
+        "capsule_headline": "Neu: Im Early Access kostenlos spielen"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/304930/${FILENAME}?t=1783436894",
+        "header": "161ec2d6ace8a03afdb7a423510ff8f7d8b301ba/header.jpg",
+        "library_hero": "057572b732954853cd64c45a9c82daece27e2b29/library_hero.jpg"
+      },
+      "is_free": true
+    },
+    {
+      "appid": 3527290,
+      "id": 3527290,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "PEAK",
+      "release": {
+        "steam_release_date": 1750093261
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 312084,
+          "percent_positive": 94,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "PEAK ist ein Koop-Kletterspiel, in dem der kleinste Fehler ins Verderben führen kann. Allein oder als Gruppe verirrter Pfadfinder besteht die einzige Hoffnung auf Rettung von einer geheimnisvollen Insel darin, den Berg in ihrer Mitte zu erklimmen. Hast du das Zeug dazu, den PEAK zu erreichen? ",
+        "publishers": [
+          {
+            "name": "Aggro Crab",
+            "creator_clan_account_id": 36064034
+          },
+          {
+            "name": "Evil Landfall?",
+            "creator_clan_account_id": 32941859
+          }
+        ],
+        "developers": [
+          {
+            "name": "Team PEAK"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Landfall"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/3527290/${FILENAME}?t=1792684718",
+        "header": "31bac6b2eccf09b368f5e95ce510bae2baf3cfcd/header.jpg",
+        "library_hero": "d75184257596a3d2b402c58db0ef28844804e952/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1245027,
+        "purchase_option_name": "PEAK",
+        "final_price_in_cents": "464",
+        "original_price_in_cents": "749",
+        "formatted_final_price": "4,64€",
+        "formatted_original_price": "7,49€",
+        "discount_pct": 38,
+        "active_discounts": [
+          {
+            "discount_amount": "285",
+            "discount_description": "#discount_desc_preset_special",
+            "discount_end_date": 1794736800
+          }
+        ],
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 8930,
+      "id": 8930,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Sid Meier's Civilization® V",
+      "release": {
+        "steam_release_date": 1285265520,
+        "mac_release_date": 1290453120,
+        "linux_release_date": 1402550400
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 128452,
+          "percent_positive": 95,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Erstellen, entdecken und laden Sie die neuen, von Spielern kreierten Maps, Szenarien, Bedienungselemente und mehr!",
+        "publishers": [
+          {
+            "name": "2K",
+            "creator_clan_account_id": 2428135
+          },
+          {
+            "name": "Aspyr (Mac)",
+            "creator_clan_account_id": 31936442
+          },
+          {
+            "name": "Aspyr (Linux)",
+            "creator_clan_account_id": 31936442
+          }
+        ],
+        "developers": [
+          {
+            "name": "Firaxis Games",
+            "creator_clan_account_id": 32844624
+          },
+          {
+            "name": "Aspyr (Mac)",
+            "creator_clan_account_id": 31936442
+          },
+          {
+            "name": "Aspyr (Linux)",
+            "creator_clan_account_id": 31936442
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Sid Meier's Civilization",
+            "creator_clan_account_id": 33339585
+          }
+        ],
+        "capsule_headline": "#msg_on_sale_now"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/8930/${FILENAME}?t=1724341158",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 6146,
+        "purchase_option_name": "Sid Meier's Civilization V",
+        "final_price_in_cents": "749",
+        "original_price_in_cents": "2999",
+        "formatted_final_price": "7,49€",
+        "formatted_original_price": "29,99€",
+        "discount_pct": 75,
+        "active_discounts": [
+          {
+            "discount_amount": "2250",
+            "discount_description": "#discount_desc_preset_special",
+            "discount_end_date": 1795111200
+          }
+        ],
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 582660,
+      "id": 582660,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Black Desert",
+      "release": {
+        "steam_release_date": 1495641600,
+        "original_release_date": 0
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 63366,
+          "percent_positive": 75,
+          "review_score": 6,
+          "review_score_label": "Größtenteils positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Mit mehr als 20 Millionen Abenteurern – Black Desert Online ist ein Open-World-Action-MMORPG.\r\n\r\nErlebt spannende, action-geladene Kämpfe, mächtige Weltbosse, Burg- und Schlosseroberungen mit Euren Freunden, Arbeitstalente wie Angeln, Kochen, Handeln und noch vieles mehr.",
+        "publishers": [
+          {
+            "name": "Pearl Abyss",
+            "creator_clan_account_id": 39862715
+          }
+        ],
+        "developers": [
+          {
+            "name": "Pearl Abyss",
+            "creator_clan_account_id": 39862715
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/582660/${FILENAME}?t=1786645008",
+        "header": "3c4172635738d9e5901e340b28136745fd9e491a/header_alt_assets_27.jpg",
+        "library_hero": "19e73cbb1d437b5cd0a6973b7119fb6ee6145f4b/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 149597,
+        "purchase_option_name": "Black Desert",
+        "final_price_in_cents": "999",
+        "formatted_final_price": "9,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 629520,
+      "id": 629520,
+      "item_type": 0,
+      "type": 6,
+      "success": 1,
+      "visible": true,
+      "name": "Soundpad",
+      "release": {
+        "steam_release_date": 1506794138,
+        "original_release_date": 1478678400
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 97460,
+          "percent_positive": 96,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Spiele Sounds in Voicechats ab und das in bester Qualität. Mit Soundpad kannst du dem Mikrofonsignal Sounds oder Musik hinzufügen, so dass auch andere sie hören.",
+        "publishers": [
+          {
+            "name": "Leppsoft"
+          }
+        ],
+        "developers": [
+          {
+            "name": "Leppsoft"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/629520/${FILENAME}?t=1788253332",
+        "header": "ab89598a7a660ab510473c72e3cf64886c85421c/header.jpg",
+        "library_hero": "02351e283342c6a5aaf20497495fb3b18d5f9a59/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 209078,
+        "purchase_option_name": "Soundpad",
+        "final_price_in_cents": "499",
+        "formatted_final_price": "4,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 0,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 4019220,
+      "id": 4019220,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Dressmaker",
+      "release": {
+        "steam_release_date": 1789990310
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 19229,
+          "percent_positive": 98,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Eröffne eine Damenschneiderei! Wähle in diesem entspannten, von echter Schneiderarbeit inspirierten Spiel Stoffe aus, schneide Schnittmusterteile zu und füge alles mit der Nähmaschine zusammen, um Traumkleider zu kreieren.",
+        "publishers": [
+          {
+            "name": "Free Lives",
+            "creator_clan_account_id": 33033033
+          }
+        ],
+        "developers": [
+          {
+            "name": "Cozy Lives"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/4019220/${FILENAME}?t=1792401675",
+        "header": "f1cd08127872e60e4c47a4bc3e40d682d94741bf/header.jpg",
+        "library_hero": "122eb9b7e28c9db5679448517302037834d70309/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 1410125,
+        "purchase_option_name": "Dressmaker",
+        "final_price_in_cents": "1547",
+        "formatted_final_price": "15,47€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 739630,
+      "id": 739630,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Phasmophobia",
+      "release": {
+        "steam_release_date": 1600451828,
+        "is_early_access": true
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 686738,
+          "percent_positive": 94,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Phasmophobia is a 4 player online co-op psychological horror. Paranormal activity is on the rise and it’s up to you and your team to use all the ghost-hunting equipment at your disposal in order to gather as much evidence as you can.",
+        "publishers": [
+          {
+            "name": "Kinetic Games",
+            "creator_clan_account_id": 43687366
+          }
+        ],
+        "developers": [
+          {
+            "name": "Kinetic Games",
+            "creator_clan_account_id": 43687366
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/739630/${FILENAME}?t=1793615120",
+        "header": "c227a2855aba60f3657bc0c3a46515b8c41fb2b6/header.jpg",
+        "library_hero": "95195106acc69d90ce3cfd327e711e22fa95ec61/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 216522,
+        "purchase_option_name": "Phasmophobia",
+        "final_price_in_cents": "1899",
+        "formatted_final_price": "18,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 377160,
+      "id": 377160,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Fallout 4",
+      "release": {
+        "steam_release_date": 1447131600
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 292040,
+          "percent_positive": 81,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Bethesda Game Studios, die preisgekrönten Schöpfer von Starfield und The Elder Scrolls V: Skyrim, präsentieren Fallout 4. Das Rollenspiel mit wegweisendem Open-World-Design wurde über 200-mal als „Best of“ ausgezeichnet, darunter als „Game of the Year“ von DICE und BAFTA.",
+        "publishers": [
+          {
+            "name": "Bethesda Softworks",
+            "creator_clan_account_id": 33028765
+          }
+        ],
+        "developers": [
+          {
+            "name": "Bethesda Game Studios"
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Fallout",
+            "creator_clan_account_id": 35501442
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/377160/${FILENAME}?t=1786648137",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 103387,
+        "purchase_option_name": "Fallout 4",
+        "final_price_in_cents": "1999",
+        "formatted_final_price": "19,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1942280,
+      "id": 1942280,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Brotato",
+      "release": {
+        "steam_release_date": 1687514379,
+        "original_steam_release_date": 1664297723
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 113160,
+          "percent_positive": 95,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Brotato ist ein Arena-Shooter-Roguelite aus der Vogelperspektive, in dem du eine Kartoffel spielst, die mit bis zu 6 Waffen gleichzeitig gegen Horden von Aliens kämpft. Wähle aus einer Vielzahl von Fähigkeiten und Items, um einzigartige Builds zu erstellen und zu überleben, bis Hilfe eintrifft.",
+        "publishers": [
+          {
+            "name": "Blobfish",
+            "creator_clan_account_id": 44280697
+          }
+        ],
+        "developers": [
+          {
+            "name": "Blobfish",
+            "creator_clan_account_id": 44280697
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1942280/${FILENAME}?t=1793641955",
+        "header": "bf970261a3a42f346624ae9c48b5b317fc724857/header_alt_assets_4.jpg",
+        "library_hero": "b71bcf668c1411086681df7ad5f23930f85eecfe/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 699833,
+        "purchase_option_name": "Brotato",
+        "final_price_in_cents": "249",
+        "original_price_in_cents": "499",
+        "formatted_final_price": "2,49€",
+        "formatted_original_price": "4,99€",
+        "discount_pct": 50,
+        "active_discounts": [
+          {
+            "discount_amount": "250",
+            "discount_description": "#discount_desc_preset_midweek",
+            "discount_end_date": 1794852000
+          }
+        ],
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 275850,
+      "id": 275850,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "No Man's Sky",
+      "release": {
+        "steam_release_date": 1471021020
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 319552,
+          "percent_positive": 84,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "No Man's Sky ist ein Science-Fiction-Spiel über Erkundung und Überleben in einem grenzenlosen, in Echtzeit generierten Universum.",
+        "publishers": [
+          {
+            "name": "Hello Games",
+            "creator_clan_account_id": 34051164
+          }
+        ],
+        "developers": [
+          {
+            "name": "Hello Games",
+            "creator_clan_account_id": 34051164
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/275850/${FILENAME}?t=1793196605",
+        "header": "9f1ca9e3b7d1dccb7b5af404a6739ddc1118ef32/header_alt_assets_26.jpg",
+        "library_hero": "a06bedfeefe046496d0155b46cff309933e7d46b/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 97032,
+        "purchase_option_name": "No Man's Sky",
+        "final_price_in_cents": "2359",
+        "original_price_in_cents": "5899",
+        "formatted_final_price": "23,59€",
+        "formatted_original_price": "58,99€",
+        "discount_pct": 60,
+        "active_discounts": [
+          {
+            "discount_amount": "3540",
+            "discount_description": "#discount_desc_preset_special",
+            "discount_end_date": 1794247200
+          }
+        ],
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 2483190,
+      "id": 2483190,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Forza Horizon 6",
+      "release": {
+        "steam_release_date": 1779162600
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 91901,
+          "percent_positive": 80,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Entdecke die atemberaubenden Landschaften Japans in über 550 Echtwelt-Autos und werde im bislang größten Open-World-Fahrabenteuer von Forza Horizon zur Rennlegende.",
+        "publishers": [
+          {
+            "name": "Xbox Game Studios",
+            "creator_clan_account_id": 3090835
+          }
+        ],
+        "developers": [
+          {
+            "name": "Playground Games",
+            "creator_clan_account_id": 44451136
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2483190/${FILENAME}?t=1793894652",
+        "header": "c53fe3362cc3267a5d34aca3e796b90963e0e23f/header_alt_assets_6.jpg",
+        "library_hero": "3eeb9970d8a8b6634d114b43e0edba78a7ee1eb6/library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 950527,
+        "purchase_option_name": "Forza Horizon 6",
+        "final_price_in_cents": "6999",
+        "formatted_final_price": "69,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 2252570,
+      "id": 2252570,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Football Manager 2024",
+      "release": {
+        "steam_release_date": 1699286335
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 28731,
+          "percent_positive": 91,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Baue ein Weltklasseteam auf und mach dich bereit, deine Rivalen in den bedeutendsten Fußball-Wettbewerben auszustechen. Denk dran: Der Fortschritt hört nie auf – im Fußball geht es immer besser!",
+        "publishers": [
+          {
+            "name": "SEGA",
+            "creator_clan_account_id": 32528477
+          }
+        ],
+        "developers": [
+          {
+            "name": "Sports Interactive"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/2252570/${FILENAME}?t=1763646323",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1326470,
+      "id": 1326470,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Sons Of The Forest",
+      "release": {
+        "steam_release_date": 1708624858,
+        "original_steam_release_date": 1677175275
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 289007,
+          "percent_positive": 88,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Die Suche nach einen vermissten Milliardär führt Dich auf eine abgelegenen Insel, die sich als von Kannibalen verseuchten Hölle entpuppt. Nutze deine handwerklichen Fähigkeiten und kämpfe ums Überleben, allein oder mit Freunden, in dieser neuen, furchterregenden Openworld-Survival-Horror-Simulation.",
+        "publishers": [
+          {
+            "name": "Newnight "
+          }
+        ],
+        "developers": [
+          {
+            "name": "Endnight Games Ltd",
+            "creator_clan_account_id": 46140168
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1326470/${FILENAME}?t=1708624856",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 463209,
+        "purchase_option_name": "Sons Of The Forest",
+        "final_price_in_cents": "2899",
+        "formatted_final_price": "28,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 244210,
+      "id": 244210,
+      "item_type": 0,
+      "type": 0,
+      "success": 1,
+      "visible": true,
+      "name": "Assetto Corsa",
+      "release": {
+        "steam_release_date": 1418978948
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 137539,
+          "percent_positive": 92,
+          "review_score": 8,
+          "review_score_label": "Sehr positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Assetto Corsa v1.16 introduces the new \"Laguna Seca\" laser-scanned track, 7 new cars among which the eagerly awaited Alfa Romeo Giulia Quadrifoglio! Check the changelog for further info!",
+        "publishers": [
+          {
+            "name": "505 Games",
+            "creator_clan_account_id": 33027220
+          }
+        ],
+        "developers": [
+          {
+            "name": "Kunos Simulazioni",
+            "creator_clan_account_id": 42710034
+          }
+        ],
+        "franchises": [
+          {
+            "name": "Assetto Corsa"
+          }
+        ],
+        "capsule_headline": "Jetzt aktualisiert"
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/244210/${FILENAME}?t=1793288663",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "best_purchase_option": {
+        "packageid": 29776,
+        "purchase_option_name": "Assetto Corsa",
+        "final_price_in_cents": "1999",
+        "formatted_final_price": "19,99€",
+        "user_can_purchase_as_gift": true,
+        "hide_discount_pct_for_compliance": false,
+        "included_game_count": 1,
+        "must_purchase_as_set": false,
+        "package_group": "default",
+        "price_cannot_be_displayed_as_discount": false
+      },
+      "is_free": false
+    },
+    {
+      "appid": 1281930,
+      "id": 1281930,
+      "item_type": 0,
+      "type": 2,
+      "success": 1,
+      "visible": true,
+      "name": "tModLoader",
+      "release": {
+        "steam_release_date": 1589648363
+      },
+      "reviews": {
+        "summary_filtered": {
+          "review_count": 386625,
+          "percent_positive": 97,
+          "review_score": 9,
+          "review_score_label": "Äußerst positiv"
+        }
+      },
+      "basic_info": {
+        "short_description": "Dig, Fight, and Build your way through the world of player-created mods on Terraria with tModLoader - this DLC makes modding Terraria a reality!",
+        "publishers": [
+          {
+            "name": "Re-Logic"
+          },
+          {
+            "name": "TML Team"
+          }
+        ],
+        "developers": [
+          {
+            "name": "TML Team"
+          }
+        ]
+      },
+      "assets": {
+        "asset_url_format": "steam/apps/1281930/${FILENAME}?t=1793819597",
+        "header": "header.jpg",
+        "library_hero": "library_hero.jpg"
+      },
+      "is_free": true
+    }
+  ]
+}

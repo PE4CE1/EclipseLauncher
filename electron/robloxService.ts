@@ -1,7 +1,11 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as https from 'https'
-import { ipcMain, BrowserWindow } from 'electron'
+import { BrowserWindow, app } from 'electron'
+import { createRobloxCodesService } from './robloxCodesService'
+import { cleanRobloxName, sameRobloxGame, robloxSlug } from '../src/services/robloxGames'
+import type { RobloxGameCodesResult } from '../src/types/robloxCodes'
+import { ipcMain } from './ipcSecurity'
 import { addPlaytimeRecord, setPlaytimeRecord, loadPlaytimeDb } from './playtimeService'
 import { isRobloxRunning } from './processMonitor'
 
@@ -22,28 +26,14 @@ export interface RobloxTrackedExperience {
   iconUrl?: string
 }
 
-export interface RobloxCodeItem {
-  code: string
-  reward: string
-  isExpired?: boolean
-}
-
-export interface RobloxGameCodesResult {
-  gameName: string
-  placeId?: string
-  universeId?: string
-  iconUrl?: string
-  activeCodes: RobloxCodeItem[]
-  expiredCodes: RobloxCodeItem[]
-  source?: string
-  lastUpdated: number
-}
+export type { RobloxCodeItem, RobloxGameCodesResult } from '../src/types/robloxCodes'
 
 let isTracking = false
 let pollInterval: NodeJS.Timeout | null = null
 let currentExperience: RobloxExperience | null = null
 const changeListeners: Array<(info: RobloxExperience | null) => void> = []
 let registeredWindowsGetter: (() => BrowserWindow[]) | null = null
+let lastDiscordHeartbeat = 0
 
 let activeExperienceSession: {
   placeId: string
@@ -55,207 +45,94 @@ let activeExperienceSession: {
 
 // Caches for API results
 const experienceCache = new Map<string, RobloxExperience>()
-const codesCache = new Map<string, RobloxGameCodesResult>()
 
-// ─── Curated Working Codes Database for Top Roblox Games ────────────────────
-const CURATED_CODES: Record<string, { active: RobloxCodeItem[]; expired: RobloxCodeItem[] }> = {
-  'steal an egg': {
-    active: [
-      { code: 'EASTER', reward: 'Free Boost & Speed' },
-      { code: 'RELEASE', reward: 'Free Starter Eggs & Cash' },
-      { code: 'PETS', reward: 'Free Pet Boost' },
-      { code: 'FREEGEMS', reward: '500 Free Gems' },
-      { code: 'SPEED', reward: '+15 Min Speed Boost' },
-    ],
-    expired: [
-      { code: 'BETA', reward: '100 Gems', isExpired: true },
-      { code: 'TEST1', reward: 'Free Egg', isExpired: true }
-    ]
-  },
-  'blox fruits': {
-    active: [
-      { code: 'KITT_RESET', reward: 'Free Stat Reset' },
-      { code: 'SUB2GAMERROBOT_RESET1', reward: 'Free Stat Reset' },
-      { code: 'SUB2GAMERROBOT_EXP1', reward: '30 Minutes of 2x Experience' },
-      { code: 'Sub2CaptainMaui', reward: '20 Minutes of 2x Experience' },
-      { code: 'Sub2OfficialNoobie', reward: '20 Minutes of 2x Experience' },
-      { code: 'TheGreatAce', reward: '20 Minutes of 2x Experience' },
-      { code: 'Sub2NoobMaster123', reward: '20 Minutes of 2x Experience' },
-      { code: 'Sub2Daigrock', reward: '20 Minutes of 2x Experience' },
-      { code: 'Axiore', reward: '20 Minutes of 2x Experience' },
-      { code: 'StrawHatMaine', reward: '20 Minutes of 2x Experience' },
-      { code: 'TantaiGaming', reward: '20 Minutes of 2x Experience' },
-      { code: 'Bluxxy', reward: '20 Minutes of 2x Experience' },
-      { code: 'fudd10_V2', reward: '2 Beli' },
-      { code: 'BIGNEWS', reward: "Title: 'Big News'" },
-    ],
-    expired: [
-      { code: 'ADMINFIGHT', reward: '20 Min 2x EXP', isExpired: true },
-      { code: 'SEATROLLING', reward: '20 Min 2x EXP', isExpired: true },
-      { code: 'DRAGONABUSE', reward: '20 Min 2x EXP', isExpired: true },
-      { code: 'JULYUPDATE_RESET', reward: 'Stat Reset', isExpired: true },
-      { code: 'NOOB2PRO', reward: '20 Min 2x EXP', isExpired: true },
-    ]
-  },
-  'murder mystery 2': {
-    active: [
-      { code: 'MM2Winter', reward: 'Free Holiday Knife Skin' },
-      { code: '2026', reward: 'Free Coins & Pet' },
-    ],
-    expired: [
-      { code: 'COMB4T2', reward: 'Combat II Knife', isExpired: true },
-      { code: 'PR1SM', reward: 'Prism Knife', isExpired: true },
-      { code: 'AL3X', reward: 'Alex Knife', isExpired: true },
-      { code: 'CORL', reward: 'Corl Knife', isExpired: true },
-    ]
-  },
-  'adopt me': {
-    active: [
-      { code: 'SEA_CREATURES', reward: 'Free Sea Egg' },
-      { code: 'SUMMER_SALE', reward: '100 Free Bucks' },
-    ],
-    expired: [
-      { code: '1B1LL1ONV1S1TS', reward: '200 Bucks', isExpired: true },
-      { code: 'M4NH4TT4N', reward: 'New Pet Box', isExpired: true },
-    ]
-  },
-  'blade ball': {
-    active: [
-      { code: 'GOODLUCK', reward: '1x Free Wheel Spin' },
-      { code: 'DRAGONS', reward: 'Dragon Sword Skin' },
-      { code: 'DELAYBALL', reward: 'Special Sword Skin' },
-      { code: 'FREESPINS', reward: '1x Free Spin' },
-      { code: 'SHARKATTACK', reward: '1x Free Spin' },
-      { code: 'SUMMER', reward: 'Free Summer Crate' },
-    ],
-    expired: [
-      { code: 'WINTER', reward: 'Free Crate', isExpired: true },
-      { code: '1000LIKES', reward: '100 Coins', isExpired: true },
-    ]
-  },
-  'pet simulator 99': {
-    active: [
-      { code: 'PETS99', reward: 'Free Huge Pet Boost' },
-      { code: 'RELEASE', reward: '1,000 Free Diamonds' },
-    ],
-    expired: [
-      { code: 'LUCKY', reward: 'Lucky Potion', isExpired: true }
-    ]
-  },
-  'king legacy': {
-    active: [
-      { code: 'DinoxLive', reward: '+100,000 Beli Cash' },
-      { code: 'Peodiz', reward: '+100,000 Beli Cash' },
-      { code: '<3LEEPUNGG', reward: '30 Minutes of 2x Experience' },
-      { code: 'WELCOMETOKINGLEGACY', reward: '30 Minutes of 2x Experience' },
-      { code: '2MFAV', reward: '30 Minutes of 2x Experience' },
-      { code: 'UPDATE6', reward: 'Free Stat Reset' },
-    ],
-    expired: [
-      { code: '1BVISITS', reward: '30 Min 2x EXP', isExpired: true },
-      { code: 'THX4WAITING', reward: 'Stat Reset', isExpired: true }
-    ]
-  },
-  'anime defenders': {
-    active: [
-      { code: 'RELEASE', reward: '500 Free Gems' },
-      { code: 'DEFENDERS', reward: '800 Gems + 1 Wish Ticket' },
-      { code: 'SUB2KARAKORUM', reward: '300 Free Gems' },
-    ],
-    expired: [
-      { code: 'SORRYFORSHUTDOWN', reward: '500 Gems', isExpired: true }
-    ]
-  },
-  'da hood': {
-    active: [
-      { code: 'FIREWORKS2026', reward: '250,000 Da Hood Cash' },
-      { code: 'TRADEME', reward: '100,000 Da Hood Cash' },
-      { code: 'DAHOOD', reward: '100,000 Da Hood Cash' },
-    ],
-    expired: [
-      { code: 'SUMMER2025', reward: '100k Cash', isExpired: true }
-    ]
-  },
-  'doors': {
-    active: [
-      { code: 'SCREECHSUCKS', reward: '25 Free Knobs' },
-      { code: 'THEHUNT', reward: '1x Free Revive' },
-      { code: '4B', reward: '144 Knobs + 1 Revive' },
-    ],
-    expired: [
-      { code: 'THREE', reward: 'Free Revive', isExpired: true },
-      { code: '2BILLIONVISITS', reward: '100 Knobs', isExpired: true }
-    ]
-  },
-  'rivals': {
-    active: [
-      { code: 'COMMUNITY', reward: 'Free Community Wrap' },
-      { code: 'RELEASE', reward: '100 Free Keys' },
-    ],
-    expired: [
-      { code: 'TESTING', reward: '50 Keys', isExpired: true }
-    ]
-  },
-  'dress to impress': {
-    active: [
-      { code: 'D1NDOTEE', reward: 'Exclusive Designer Top' },
-      { code: 'TEKKYOO26', reward: 'Special Runway Dress' },
-      { code: 'LANATUDOR', reward: 'Lana Tudor Designer Dress' },
-      { code: 'CHOPPING', reward: 'Special Accessory Handbag' },
-    ],
-    expired: [
-      { code: 'FASHION', reward: 'Dress', isExpired: true }
-    ]
-  },
-  'toilet tower defense': {
-    active: [
-      { code: 'SpeakerUpgrade', reward: '200 Free Coins' },
-      { code: 'CameraGuy', reward: '100 Free Coins' },
-      { code: 'AutoSkip', reward: '200 Free Coins' },
-    ],
-    expired: [
-      { code: 'Parasite', reward: 'Coins', isExpired: true }
-    ]
-  }
+// ─── Instant Resolution Map for Top Curated Experiences ─────────────────────
+const KNOWN_ROBLOX_GAMES_BY_PLACE: Record<string, { name: string; universeId?: string }> = {
+  '107778070777162': { name: 'Steal An Egg', universeId: '10563114921' },
+  '4924922222': { name: 'Brookhaven RP', universeId: '1686885941' },
+  '2753915549': { name: 'Blox Fruits', universeId: '994732206' },
+  '142823291': { name: 'Murder Mystery 2', universeId: '66654135' },
+  '920587237': { name: 'Adopt Me!', universeId: '383310974' },
+  '17625359962': { name: 'Rivals', universeId: '6035872082' },
+  '16732694052': { name: 'Fisch', universeId: '5750914919' },
+  '8737899170': { name: 'Pet Simulator 99', universeId: '3317771874' },
+  '15101393044': { name: 'Dress to Impress', universeId: '5203828273' },
+  '6516141723': { name: 'Doors', universeId: '2440500124' },
+  '189707': { name: 'Natural Disaster Survival', universeId: '1628178' },
+  '155615604': { name: 'Prison Life', universeId: '66810237' },
+  '606849621': { name: 'Jailbreak', universeId: '231652981' },
+  '13772394625': { name: 'Blade Ball', universeId: '4777817887' },
+  '3260590327': { name: 'Tower Defense Simulator', universeId: '1176784616' },
+  '4520749081': { name: 'King Legacy', universeId: '1451439645' },
+  '13775256536': { name: 'Toilet Tower Defense', universeId: '4778845442' },
+  '2788229376': { name: 'Da Hood', universeId: '1008451066' },
 }
 
-function getRobloxLogsDir(): string | null {
-  const localAppData = process.env.LOCALAPPDATA
-  if (localAppData) {
-    const p = path.join(localAppData, 'Roblox', 'logs')
-    if (fs.existsSync(p)) return p
+const KNOWN_ROBLOX_GAMES_BY_UNIVERSE: Record<string, string> = {
+  '10563114921': 'Steal An Egg',
+  '1686885941': 'Brookhaven RP',
+  '994732206': 'Blox Fruits',
+  '66654135': 'Murder Mystery 2',
+  '383310974': 'Adopt Me!',
+  '6035872082': 'Rivals',
+  '5750914919': 'Fisch',
+  '3317771874': 'Pet Simulator 99',
+  '5203828273': 'Dress to Impress',
+  '2440500124': 'Doors',
+  '1628178': 'Natural Disaster Survival',
+  '66810237': 'Prison Life',
+  '231652981': 'Jailbreak',
+  '4777817887': 'Blade Ball',
+  '1176784616': 'Tower Defense Simulator',
+  '1451439645': 'King Legacy',
+  '4778845442': 'Toilet Tower Defense',
+  '1008451066': 'Da Hood',
+}
+
+let consecutiveMisses = 0
+
+function getAllRobloxLogDirs(): string[] {
+  const dirs: string[] = []
+  const candidates = [
+    process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Roblox', 'logs') : null,
+    process.env.USERPROFILE ? path.join(process.env.USERPROFILE, 'AppData', 'Local', 'Roblox', 'logs') : null,
+    process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Bloxstrap', 'logs') : null,
+    process.env.USERPROFILE ? path.join(process.env.USERPROFILE, 'AppData', 'Local', 'Bloxstrap', 'logs') : null,
+    process.env.TEMP ? path.join(process.env.TEMP, 'Roblox', 'logs') : null,
+    process.env.TEMP ? path.join(process.env.TEMP, 'Bloxstrap', 'logs') : null,
+  ]
+  for (const c of candidates) {
+    if (c && fs.existsSync(c) && !dirs.includes(c)) {
+      dirs.push(c)
+    }
   }
-  const tempDir = process.env.TEMP
-  if (tempDir) {
-    const p = path.join(tempDir, 'Roblox', 'logs')
-    if (fs.existsSync(p)) return p
-  }
-  return null
+  return dirs
 }
 
 export function findLatestPlayerLogFile(): string | null {
-  const dir = getRobloxLogsDir()
-  if (!dir || !fs.existsSync(dir)) return null
+  const dirs = getAllRobloxLogDirs()
+  if (dirs.length === 0) return null
 
-  try {
-    const files = fs.readdirSync(dir)
-    const logFiles = files
-      .filter(f => f.includes('Player') && f.endsWith('.log'))
-      .map(f => {
-        const fullPath = path.join(dir, f)
-        try {
-          const stats = fs.statSync(fullPath)
-          return { fullPath, mtime: stats.mtimeMs }
-        } catch {
-          return { fullPath, mtime: 0 }
+  const allFiles: Array<{ fullPath: string; mtime: number }> = []
+
+  for (const dir of dirs) {
+    try {
+      const files = fs.readdirSync(dir)
+      for (const f of files) {
+        // Player log files (ignore crashes and installer logs)
+        if (f.includes('Player') && f.endsWith('.log') && !f.toLowerCase().includes('installer') && !f.toLowerCase().includes('crash')) {
+          const fullPath = path.join(dir, f)
+          try {
+            const stats = fs.statSync(fullPath)
+            allFiles.push({ fullPath, mtime: stats.mtimeMs })
+          } catch {}
         }
-      })
-      .sort((a, b) => b.mtime - a.mtime)
-
-    return logFiles.length > 0 ? logFiles[0].fullPath : null
-  } catch {
-    return null
+      }
+    } catch {}
   }
+
+  allFiles.sort((a, b) => b.mtime - a.mtime)
+  return allFiles.length > 0 ? allFiles[0].fullPath : null
 }
 
 function fetchJson<T>(url: string, headers: Record<string, string> = {}): Promise<T | null> {
@@ -294,12 +171,26 @@ function fetchJson<T>(url: string, headers: Record<string, string> = {}): Promis
 export async function fetchRobloxExperienceDetails(placeId: string, universeIdHint?: string): Promise<RobloxExperience | null> {
   const cacheKey = universeIdHint || placeId
   if (experienceCache.has(cacheKey)) {
-    return experienceCache.get(cacheKey)!
+    const cached = experienceCache.get(cacheKey)!
+    if (cached.name && cached.name !== 'Roblox Experience') {
+      return cached
+    }
   }
 
-  let universeId = universeIdHint
+  let resolvedName: string | undefined = undefined
+  let universeId: string | undefined = universeIdHint
+  let iconUrl: string | undefined = undefined
 
-  // 1. Resolve universeId from placeId if not provided
+  // 1. Check curated instant lookup
+  if (KNOWN_ROBLOX_GAMES_BY_PLACE[placeId]) {
+    resolvedName = KNOWN_ROBLOX_GAMES_BY_PLACE[placeId].name
+    universeId = universeId || KNOWN_ROBLOX_GAMES_BY_PLACE[placeId].universeId
+  }
+  if (!resolvedName && universeId && KNOWN_ROBLOX_GAMES_BY_UNIVERSE[universeId]) {
+    resolvedName = KNOWN_ROBLOX_GAMES_BY_UNIVERSE[universeId]
+  }
+
+  // 2. Resolve universeId from placeId if still missing
   if (!universeId) {
     const uRes = await fetchJson<{ universeId?: number }>(`https://apis.roblox.com/universes/v1/places/${placeId}/universe`)
     if (uRes?.universeId) {
@@ -307,75 +198,119 @@ export async function fetchRobloxExperienceDetails(placeId: string, universeIdHi
     }
   }
 
-  if (!universeId) {
-    const fallback: RobloxExperience = { placeId, universeId: '', name: 'Roblox Experience' }
-    experienceCache.set(cacheKey, fallback)
-    return fallback
+  if (!resolvedName && universeId && KNOWN_ROBLOX_GAMES_BY_UNIVERSE[universeId]) {
+    resolvedName = KNOWN_ROBLOX_GAMES_BY_UNIVERSE[universeId]
   }
 
-  // 2. Fetch game details and icon thumbnail in parallel
-  const [detailsRes, iconsRes] = await Promise.all([
-    fetchJson<{ data?: Array<{ name: string; creator?: { name: string } }> }>(`https://games.roblox.com/v1/games?universeIds=${universeId}`),
-    fetchJson<{ data?: Array<{ imageUrl?: string }> }>(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${universeId}&size=512x512&format=Png&isCircular=false`)
-  ])
+  // 3. Fetch details & icon in parallel from Roblox public API
+  let creatorName: string | undefined = undefined
 
-  const name = detailsRes?.data?.[0]?.name || 'Roblox Experience'
-  const creatorName = detailsRes?.data?.[0]?.creator?.name
-  const iconUrl = iconsRes?.data?.[0]?.imageUrl
+  if (universeId) {
+    const [detailsRes, iconsRes] = await Promise.all([
+      fetchJson<{ data?: Array<{ name: string; creator?: { name: string } }> }>(`https://games.roblox.com/v1/games?universeIds=${universeId}`),
+      fetchJson<{ data?: Array<{ imageUrl?: string }> }>(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${universeId}&size=512x512&format=Png&isCircular=false`)
+    ])
 
+    if (detailsRes?.data?.[0]?.name) {
+      resolvedName = detailsRes.data[0].name
+    }
+    creatorName = detailsRes?.data?.[0]?.creator?.name
+    iconUrl = iconsRes?.data?.[0]?.imageUrl
+  }
+
+  // 4. Fallback to place gameicon if universe icon is missing
+  if (!iconUrl) {
+    const placeIconRes = await fetchJson<{ data?: Array<{ imageUrl?: string }> }>(`https://thumbnails.roblox.com/v1/places/gameicons?placeIds=${placeId}&size=512x512&format=Png&isCircular=false`)
+    iconUrl = placeIconRes?.data?.[0]?.imageUrl
+  }
+
+  const finalName = resolvedName || 'Roblox Experience'
   const exp: RobloxExperience = {
     placeId,
-    universeId,
-    name,
+    universeId: universeId || '',
+    name: finalName,
     iconUrl,
     creatorName
   }
 
-  experienceCache.set(cacheKey, exp)
+  if (finalName !== 'Roblox Experience') {
+    experienceCache.set(cacheKey, exp)
+    if (placeId) experienceCache.set(placeId, exp)
+    if (universeId) experienceCache.set(universeId, exp)
+  }
+
   return exp
 }
 
 function parseActiveGameFromContent(content: string): { placeId: string; universeId?: string } | null {
+  if (!content) return null
   const lines = content.split(/\r?\n/)
   let active: { placeId: string; universeId?: string } | null = null
+  let currentUniverseId: string | undefined = undefined
   let lastJoinIdx = -1
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
 
-    // Join indicators: placeid and universeid
-    const matchJoin = line.match(/placeid:([0-9]+).*?universeid:([0-9]+)/i) || 
+    // 1. Teleport event (most common in modern Roblox sub-places & transitions)
+    const teleportMatch = line.match(/(?:doTeleport|teleport).*?["%3a:=]+placeid["%3a:=]+([0-9]+)/i)
+    if (teleportMatch && teleportMatch[1]) {
+      const placeId = teleportMatch[1]
+      const universeMatch = line.match(/["%3a:=]+universeid["%3a:=]+([0-9]+)/i)
+      if (universeMatch && universeMatch[1]) {
+        currentUniverseId = universeMatch[1]
+      }
+      active = { placeId, universeId: currentUniverseId }
+      lastJoinIdx = i
+      continue
+    }
+
+    // 2. Report game_join_loadtime or placeid/universeid pair
+    const matchPair = line.match(/placeid:([0-9]+).*?universeid:([0-9]+)/i) ||
                       line.match(/universeid:([0-9]+).*?placeid:([0-9]+)/i)
-    if (matchJoin) {
+    if (matchPair) {
       const placeId = line.match(/placeid:([0-9]+)/i)?.[1]
       const universeId = line.match(/universeid:([0-9]+)/i)?.[1]
       if (placeId) {
-        active = { placeId, universeId }
+        if (universeId) currentUniverseId = universeId
+        active = { placeId, universeId: currentUniverseId }
         lastJoinIdx = i
         continue
       }
     }
 
+    // 3. Joining game 'guid' place 1234567
     const matchOutput = line.match(/Joining game '[^']+' place ([0-9]+)/i)
     if (matchOutput && matchOutput[1]) {
-      active = { placeId: matchOutput[1] }
+      active = { placeId: matchOutput[1], universeId: currentUniverseId }
       lastJoinIdx = i
       continue
     }
 
+    // 4. Game join succeeded
     const matchJoinUtil = line.match(/Game join succeeded.*?placeId:\s*([0-9]+)/i)
     if (matchJoinUtil && matchJoinUtil[1]) {
-      active = { placeId: matchJoinUtil[1] }
+      active = { placeId: matchJoinUtil[1], universeId: currentUniverseId }
       lastJoinIdx = i
       continue
     }
 
-    // Leave indicators - only if occurring strictly AFTER the join event
+    // 5. Http trace filter for places API
+    const matchHttpTrace = line.match(/\/places\/([0-9]+)\//i)
+    if (matchHttpTrace && matchHttpTrace[1] && !active) {
+      active = { placeId: matchHttpTrace[1], universeId: currentUniverseId }
+      lastJoinIdx = i
+      continue
+    }
+
+    // Explicit TRUE full game exits back to desktop or app shell:
     if (
-      line.includes('destroyLuaApp: (stage:UGCGame)') ||
-      line.includes('sendAnalyticsBeforeLeave') ||
-      line.includes('Disconnected - stop() called') ||
-      line.includes('Disconnected from game')
+      line.includes('finished destroying luaApp') ||
+      line.includes('destroyLuaApp: (stage:UGCGame)... finished') ||
+      line.includes('setStage: (stage:None)') ||
+      line.includes('setStage: (stage:Native)') ||
+      line.includes('Platform handler was destroyed') ||
+      line.includes('AppPlatformQoSEmergencyHandler was destroyed')
     ) {
       if (i > lastJoinIdx) {
         active = null
@@ -406,40 +341,40 @@ export function notifyPlaytimeUpdated() {
 }
 
 /**
- * Verifies whether Roblox is genuinely running on the system right now.
- * Double-checks via ProcessMonitor AND checks log file write freshness (< 20s old).
+ * Verifies whether Roblox is genuinely active on the system right now.
+ * Relies strictly on processMonitor's verified active-window state.
+ * Background or windowless zombie Roblox processes are never considered active.
  */
 export function isRobloxActive(): boolean {
   try {
-    if (isRobloxRunning()) return true
-  } catch {}
-
-  const latestLog = findLatestPlayerLogFile()
-  if (!latestLog) return false
-
-  try {
-    const stat = fs.statSync(latestLog)
-    const ageMs = Date.now() - stat.mtimeMs
-    // Active Roblox player process continuously writes logs every 2-5 seconds.
-    // If the file has not been modified in the last 20 seconds, Roblox is NOT active.
-    if (ageMs > 20000) {
-      return false
-    }
+    if (!isRobloxRunning()) return false
   } catch {
     return false
   }
-
   return true
 }
 
-export async function syncRobloxExperience(): Promise<RobloxExperience | null> {
-  // If Roblox is not actively running, terminate any active session and return null immediately
+let experienceSync: Promise<RobloxExperience | null> | null = null
+let trackingGeneration = 0
+
+export function syncRobloxExperience(): Promise<RobloxExperience | null> {
+  if (experienceSync) return experienceSync
+  const promise = performExperienceSync().finally(() => {
+    if (experienceSync === promise) experienceSync = null
+  })
+  experienceSync = promise
+  return promise
+}
+
+async function performExperienceSync(): Promise<RobloxExperience | null> {
+  const generation = trackingGeneration
+  // If Roblox is not actively running, terminate active session and notify null
   if (!isRobloxActive()) {
+    consecutiveMisses = 0
     if (activeExperienceSession) {
-      const dur = Math.max(0, Math.floor((Date.now() - activeExperienceSession.lastMinuteTick) / 60000))
+      const dur = Math.max(0, (Date.now() - activeExperienceSession.lastMinuteTick) / 60000)
       if (dur > 0) {
         addPlaytimeRecord(`roblox_exp_${activeExperienceSession.placeId}`, activeExperienceSession.name, dur)
-        addPlaytimeRecord('roblox', 'Roblox', dur, 999001)
         notifyPlaytimeUpdated()
       }
       activeExperienceSession = null
@@ -453,20 +388,7 @@ export async function syncRobloxExperience(): Promise<RobloxExperience | null> {
 
   const latestLog = findLatestPlayerLogFile()
   if (!latestLog) {
-    if (activeExperienceSession) {
-      const dur = Math.max(0, Math.floor((Date.now() - activeExperienceSession.lastMinuteTick) / 60000))
-      if (dur > 0) {
-        addPlaytimeRecord(`roblox_exp_${activeExperienceSession.placeId}`, activeExperienceSession.name, dur)
-        addPlaytimeRecord('roblox', 'Roblox', dur, 999001)
-        notifyPlaytimeUpdated()
-      }
-      activeExperienceSession = null
-    }
-    if (currentExperience !== null) {
-      currentExperience = null
-      notifyListeners(null)
-    }
-    return null
+    return currentExperience
   }
 
   try {
@@ -474,20 +396,17 @@ export async function syncRobloxExperience(): Promise<RobloxExperience | null> {
     const active = parseActiveGameFromContent(content)
 
     if (active && active.placeId) {
+      consecutiveMisses = 0
       const isNewGame = !currentExperience || currentExperience.placeId !== active.placeId
 
       if (isNewGame) {
         // Flush previous session if switching games
         if (activeExperienceSession && activeExperienceSession.placeId !== active.placeId) {
-          const delta = Math.max(0, Math.floor((Date.now() - activeExperienceSession.lastMinuteTick) / 60000))
-          if (delta > 0) {
-            addPlaytimeRecord(`roblox_exp_${activeExperienceSession.placeId}`, activeExperienceSession.name, delta)
-            addPlaytimeRecord('roblox', 'Roblox', delta, 999001)
-            notifyPlaytimeUpdated()
-          }
+          flushRobloxExperiencePlaytime()
         }
 
         const exp = await fetchRobloxExperienceDetails(active.placeId, active.universeId)
+        if (generation !== trackingGeneration || !isRobloxActive()) return currentExperience
         currentExperience = exp
         activeExperienceSession = {
           placeId: active.placeId,
@@ -505,20 +424,30 @@ export async function syncRobloxExperience(): Promise<RobloxExperience | null> {
           const deltaMins = Math.floor((now - activeExperienceSession.lastMinuteTick) / 60000)
           if (deltaMins >= 1) {
             addPlaytimeRecord(`roblox_exp_${activeExperienceSession.placeId}`, activeExperienceSession.name, deltaMins)
-            addPlaytimeRecord('roblox', 'Roblox', deltaMins, 999001)
-            activeExperienceSession.lastMinuteTick = now
+            activeExperienceSession.lastMinuteTick += deltaMins * 60000
             notifyPlaytimeUpdated()
           }
+        }
+        // Periodic Discord RPC heartbeat every 30s to keep presence fresh and active
+        const now = Date.now()
+        if (now - lastDiscordHeartbeat > 30000 && currentExperience) {
+          lastDiscordHeartbeat = now
+          notifyListeners(currentExperience)
         }
       }
       return currentExperience
     } else {
-      // Left game or returned to Roblox menu
+      // Debounce menu / leave detection to prevent micro-drops during area teleports
+      consecutiveMisses++
+      if (consecutiveMisses < 10) {
+        return currentExperience
+      }
+
+      // 4 consecutive misses: player confirmed left game to Roblox menu
       if (activeExperienceSession) {
-        const delta = Math.max(0, Math.floor((Date.now() - activeExperienceSession.lastMinuteTick) / 60000))
+        const delta = Math.max(0, (Date.now() - activeExperienceSession.lastMinuteTick) / 60000)
         if (delta > 0) {
           addPlaytimeRecord(`roblox_exp_${activeExperienceSession.placeId}`, activeExperienceSession.name, delta)
-          addPlaytimeRecord('roblox', 'Roblox', delta, 999001)
           notifyPlaytimeUpdated()
         }
         activeExperienceSession = null
@@ -536,9 +465,8 @@ export async function syncRobloxExperience(): Promise<RobloxExperience | null> {
 
 export function flushRobloxExperiencePlaytime(): void {
   if (activeExperienceSession) {
-    const delta = Math.max(1, Math.round((Date.now() - activeExperienceSession.startTime) / 60000))
+    const delta = Math.max(0, (Date.now() - activeExperienceSession.lastMinuteTick) / 60000)
     addPlaytimeRecord(`roblox_exp_${activeExperienceSession.placeId}`, activeExperienceSession.name, delta)
-    addPlaytimeRecord('roblox', 'Roblox', delta, 999001)
     notifyPlaytimeUpdated()
     activeExperienceSession = null
   }
@@ -558,7 +486,7 @@ export function startRobloxTracker(onChange?: (info: RobloxExperience | null) =>
   if (isTracking) {
     // If already tracking, trigger a sync and notify the new listener
     syncRobloxExperience().then(exp => {
-      if (onChange && exp) {
+      if (onChange && exp && changeListeners.includes(onChange)) {
         try {
           onChange(exp)
         } catch (_) {}
@@ -586,6 +514,8 @@ export function stopRobloxTracker(onChange?: (info: RobloxExperience | null) => 
   } else {
     changeListeners.length = 0
   }
+  if (onChange && changeListeners.length > 0) return
+  trackingGeneration++
 
   // Unconditionally stop polling and reset experience when tracker stops
   if (pollInterval) {
@@ -606,25 +536,32 @@ export function getCurrentRobloxExperience(): RobloxExperience | null {
  * Parses historical Roblox player log files on user's disk and backfills playtime
  */
 export async function backfillRobloxExperiencesFromLogs(): Promise<RobloxTrackedExperience[]> {
-  const dir = getRobloxLogsDir()
-  if (!dir || !fs.existsSync(dir)) return []
+  const dirs = getAllRobloxLogDirs()
+  if (dirs.length === 0) return []
 
   try {
-    const files = fs.readdirSync(dir)
-      .filter(f => f.includes('Player') && f.endsWith('.log'))
-      .map(f => {
-        const fullPath = path.join(dir, f)
-        try {
-          return { fullPath, mtime: fs.statSync(fullPath).mtimeMs }
-        } catch {
-          return { fullPath, mtime: 0 }
-        }
-      })
-      .sort((a, b) => b.mtime - a.mtime)
+    const allFiles: Array<{ fullPath: string; mtime: number }> = []
+    for (const dir of dirs) {
+      try {
+        const files = fs.readdirSync(dir)
+          .filter(f => f.includes('Player') && f.endsWith('.log') && !f.toLowerCase().includes('installer') && !f.toLowerCase().includes('crash'))
+          .map(f => {
+            const fullPath = path.join(dir, f)
+            try {
+              return { fullPath, mtime: fs.statSync(fullPath).mtimeMs }
+            } catch {
+              return { fullPath, mtime: 0 }
+            }
+          })
+        allFiles.push(...files)
+      } catch {}
+    }
+
+    allFiles.sort((a, b) => b.mtime - a.mtime)
 
     const expMap: Record<string, { placeId: string; universeId?: string; minutes: number; lastPlayed: number }> = {}
 
-    for (const file of files.slice(0, 40)) {
+    for (const file of allFiles.slice(0, 40)) {
       try {
         const content = fs.readFileSync(file.fullPath, 'utf-8')
         const lines = content.split(/\r?\n/)
@@ -803,531 +740,25 @@ export async function getRobloxExperiencePlaytime(): Promise<RobloxTrackedExperi
   return list.sort((a, b) => b.minutes - a.minutes)
 }
 
-// ─── Roblox Codes Scraper & Intelligent Resolver ────────────────────────────
+export { decodeHtml, isValidCode, isValidReward, stripUnwantedHtml, parseCodesFromTitle, parseCodesFromHtmlOrText } from './robloxCodesParser'
+export const cleanGameName = cleanRobloxName
+export const isSameGame = sameRobloxGame
+export const getCandidateSlugs = (name: string) => [robloxSlug(name)].filter(Boolean)
 
-export function cleanGameName(raw: string): string {
-  let s = raw
-    // Strip unicode emojis
-    .replace(/\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji}/gu, ' ')
-    // Strip common bracketed tags like [💎], [UPDATE 2], [1.5], [EVENT]
-    .replace(/\[[^\]]*\]/g, ' ')
-    .replace(/\([^)]*\)/g, ' ')
-    .replace(/\{[^}]*\}/g, ' ')
-    // Strip version numbers like "1.5", "v2.0"
-    .replace(/\b\d+(\.\d+)+\b/g, ' ')
-    // Strip standalone noise words
-    .replace(/\b(code|codes|update|release|event)\b/gi, ' ')
-    // Keep alphanumeric, apostrophe, hyphens, spaces
-    .replace(/[^\w\s'-]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return s || raw.trim()
-}
-
-export function getCandidateSlugs(rawName: string): string[] {
-  const slugs = new Set<string>()
-  const cleaned = cleanGameName(rawName)
-
-  // 1. Primary slug from cleaned name
-  const primarySlug = cleaned.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  if (primarySlug && primarySlug.length >= 2) slugs.add(primarySlug)
-
-  // 2. Slug without apostrophe s (e.g. "hot's rng" -> "hots-rng")
-  const noAposSlug = cleaned.toLowerCase().replace(/'s\b/g, 's').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  if (noAposSlug && noAposSlug.length >= 2) slugs.add(noAposSlug)
-
-  // 3. Sub-parts split by separators or emojis
-  const parts = rawName.split(/[💀|•\-:\/🌋🔥🚨⚡💎✨🎉⛏️]/)
-  for (const part of parts) {
-    const cp = cleanGameName(part)
-    if (cp && cp.length >= 3) {
-      const ps = cp.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-      if (ps && ps.length >= 2) slugs.add(ps)
-      const ps2 = cp.toLowerCase().replace(/'s\b/g, 's').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-      if (ps2 && ps2.length >= 2) slugs.add(ps2)
-    }
-  }
-
-  // 4. Raw name cleaned
-  const rawClean = rawName
-    .replace(/\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji}/gu, ' ')
-    .replace(/[^a-zA-Z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  const rawSlug = rawClean.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  if (rawSlug && rawSlug.length >= 2) slugs.add(rawSlug)
-
-  return Array.from(slugs).filter(s => s && s.length >= 2 && !['game', 'roblox', 'update', 'codes'].includes(s))
-}
-
-export function parseCodesFromTitle(title: string): RobloxCodeItem[] {
-  const codes: RobloxCodeItem[] = []
-  if (!title) return codes
-
-  // Pattern: code[AoC], code: FOO, [Code: BAR], code (LUCKY)
-  const reg = /(?:code|codes)\s*[:\[\({]\s*([A-Za-z0-9_!.\-+]{2,25})\s*[:\]\)}]?/gi
-  let m: RegExpExecArray | null
-  while ((m = reg.exec(title)) !== null) {
-    const candidate = m[1].trim()
-    if (isValidCode(candidate)) {
-      codes.push({ code: candidate, reward: 'Special Title Code' })
-    }
-  }
-  return codes
-}
-
-export function decodeHtml(str: string): string {
-  if (!str) return ''
-  return str
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;|&rsquo;|&lsquo;/g, "'")
-    .replace(/&ndash;|&mdash;|&#8211;/g, '-')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&times;/g, 'x')
-    .replace(/&#8217;/g, "'")
-    .trim()
-}
-
-const STOP_WORDS = new Set([
-  'list', 'click', 'here', 'below', 'code', 'codes', 'active', 'expired',
-  'how', 'roblox', 'twitter', 'discord', 'step', 'steps', 'note', 'update',
-  'image', 'img', 'link', 'guide', 'game', 'games', 'free', 'and', 'for',
-  'new', 'all', 'more', 'check', 'follow', 'join', 'page', 'video', 'channel',
-  'redeem', 'enter', 'working', 'reward', 'rewards', 'button', 'screen', 'icon',
-  'menu', 'box', 'tap', 'press', 'type', 'copy', 'paste', 'claim', 'gift',
-  'the', 'with', 'from', 'this', 'that', 'they', 'what', 'when', 'where',
-  'script', 'function', 'return', 'var', 'const', 'let', 'true', 'false',
-  'null', 'undefined', 'id', 'data', 'data-next', 'status', 'value', 'width',
-  'height', 'updated', 'created', 'version', 'payload', 'callback', 'error',
-  'success', 'listener', 'event', 'parameter', 'name', 'slotid', 'cmpid',
-  'retvalue', 'callid', 'pingdata', 'gppstring', 'sectionlist', 'item', 'items',
-  'settings', 'gear', 'cog'
-])
-
-export function isValidCode(code: string): boolean {
-  if (!code || typeof code !== 'string') return false
-  const c = code.trim()
-  if (c.length < 2 || c.length > 32) return false
-  if (/^\d+x\d+$/i.test(c)) return false
-  if (STOP_WORDS.has(c.toLowerCase())) return false
-  if (/^https?:\/\//i.test(c)) return false
-  if (!/^[A-Za-z0-9_!.\-+?]+$/.test(c)) return false
-  if (c.includes(' ') || c.includes('<') || c.includes('>') || c.includes('=') || c.includes('/') || c.includes('\\')) return false
-  if (c.startsWith('_') || c.startsWith('-') || c.startsWith('.')) return false
-  return true
-}
-
-export function isValidReward(reward: string): boolean {
-  if (!reward || typeof reward !== 'string') return false
-  const r = reward.trim()
-  if (r.length < 2 || r.length > 130) return false
-  // Reject JavaScript constructs
-  if (/[{};]/.test(r)) return false
-  if (/\/\//.test(r)) return false // comments
-  if (/\b(function|return|var|const|let|window|document|typeof|instanceof|class=|href=)\b/i.test(r)) return false
-  if (/(payload\.|data-prev|\.parentElement|\.classList|=>|===|!==)/i.test(r)) return false
-  if (/^(true|false|null|undefined),?$/i.test(r)) return false
-  if (/^['"][^'"]*['"],?$/.test(r)) return false // quoted JS strings
-  if (r.endsWith(',') && !r.includes(' ')) return false
-  if (/^[a-z0-9_$-]+:[a-z0-9_$-]+$/i.test(r)) return false
-  return true
-}
-
-export function stripUnwantedHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
-    .replace(/<svg[\s\S]*?<\/svg>/gi, ' ')
-    .replace(/<!--[\s\S]*?-->/g, ' ')
-    .replace(/<header[\s\S]*?<\/header>/gi, ' ')
-    .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
-    .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
-    .replace(/<aside[\s\S]*?<\/aside>/gi, ' ')
-}
-
-export function parseCodesFromHtmlOrText(rawInput: string): { active: RobloxCodeItem[]; expired: RobloxCodeItem[] } {
-  const active: RobloxCodeItem[] = []
-  const expired: RobloxCodeItem[] = []
-  if (!rawInput) return { active, expired }
-
-  const isHtml = /<[a-z][\s\S]*>/i.test(rawInput)
-  const cleanInput = isHtml ? stripUnwantedHtml(rawInput) : rawInput
-
-  const lower = cleanInput.toLowerCase()
-  const expIdx = lower.indexOf('expired')
-  const workingSection = expIdx !== -1 ? cleanInput.substring(0, expIdx) : cleanInput
-  const expiredSection = expIdx !== -1 ? cleanInput.substring(expIdx) : ''
-
-  const parseSection = (section: string, isExpired: boolean) => {
-    if (isHtml) {
-      // 1. Process <li> elements cleanly
-      const liBlockRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi
-      let liMatch: RegExpExecArray | null
-      while ((liMatch = liBlockRegex.exec(section)) !== null) {
-        let inner = liMatch[1]
-        // Strip copy buttons (e.g. on Beebom)
-        inner = inner.replace(/<button[\s\S]*?<\/button>/gi, ' ')
-
-        // Ignore redemption tutorial steps
-        if (/^(?:click|tap|press|select|open|launch|go to|head to|look for)\b/i.test(inner.replace(/<[^>]+>/g, ' ').trim())) {
-          continue
-        }
-
-        let code = ''
-        let reward = ''
-
-        const strongMatch = inner.match(/<(?:strong|b|code)[^>]*>\s*([A-Za-z0-9_!.\-+?]{2,32})\s*<\/(?:strong|b|code)>/i)
-        if (strongMatch) {
-          code = strongMatch[1].trim()
-          const rest = inner.substring(inner.indexOf(strongMatch[0]) + strongMatch[0].length)
-          const cleanRest = decodeHtml(rest.replace(/<[^>]+>/g, ' ')).replace(/Copy\s*$/i, '').trim()
-          const sepMatch = cleanRest.match(/^[:=\-–—&ndash;&mdash;]+\s*(.+)$/i)
-          reward = sepMatch ? sepMatch[1].trim() : cleanRest
-        } else {
-          const cleanLine = decodeHtml(inner.replace(/<[^>]+>/g, ' ')).replace(/Copy\s*$/i, '').trim()
-          const lineM = cleanLine.match(/^([A-Za-z0-9_!.\-+?]{2,32})\s*[:=\-–—]\s*(.+)$/)
-          if (lineM) {
-            code = lineM[1].trim()
-            reward = lineM[2].trim()
-          }
-        }
-
-        if (code) {
-          reward = reward
-            .replace(/\s*[\(\[]\s*(?:NEW!?|HOT|LATEST|EXPIRED|WORKING|UPDATED)\s*[\)\]]/gi, '')
-            .replace(/\s*[-–—:]\s*$/, '')
-            .trim()
-
-          if (isValidCode(code) && isValidReward(reward)) {
-            const item: RobloxCodeItem = { code, reward: reward || 'Free Reward', isExpired }
-            const target = isExpired ? expired : active
-            if (!target.some(i => i.code.toLowerCase() === code.toLowerCase())) {
-              target.push(item)
-            }
-          }
-        }
+let codesService: ReturnType<typeof createRobloxCodesService> | undefined
+function getCodesService() {
+  return codesService ??= createRobloxCodesService({
+    cacheFile: path.join(app.getPath('userData'), 'roblox-codes-v3.json'),
+    onUpdate: data => {
+      for (const win of registeredWindowsGetter?.() || []) {
+        if (!win.isDestroyed()) win.webContents.send('roblox:codes-updated', data)
       }
-
-      // 2. Table rows: <tr><td>CODE</td><td>REWARD</td></tr>
-      const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi
-      let trMatch: RegExpExecArray | null
-      while ((trMatch = trRegex.exec(section)) !== null) {
-        const cells: string[] = []
-        const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi
-        let tdMatch: RegExpExecArray | null
-        while ((tdMatch = tdRegex.exec(trMatch[1])) !== null) {
-          cells.push(decodeHtml(tdMatch[1].replace(/<[^>]+>/g, '')).trim())
-        }
-        if (cells.length >= 2) {
-          const c = cells[0].trim()
-          const r = cells[1].trim()
-          if (isValidCode(c) && isValidReward(r)) {
-            const item: RobloxCodeItem = { code: c, reward: r || 'Free Reward', isExpired }
-            const target = isExpired ? expired : active
-            if (!target.some(i => i.code.toLowerCase() === c.toLowerCase())) {
-              target.push(item)
-            }
-          }
-        }
-      }
-    } else {
-      // 3. Plain text line parser (strictly for game descriptions without HTML)
-      const lines = section.split(/\r?\n/)
-      for (let line of lines) {
-        line = line.trim()
-        if (!line) continue
-
-        // Format: CODE - REWARD (e.g. "tyfor300likes - 2,500 MogPoints")
-        const lineMatch = line.match(/^[-*•]?\s*([A-Za-z0-9_!.\-+]{2,30})\s*[-–—:]\s*(.+)$/)
-        if (lineMatch) {
-          const c = lineMatch[1].trim()
-          let r = decodeHtml(lineMatch[2].trim())
-          if (isValidCode(c) && isValidReward(r)) {
-            const target = isExpired ? expired : active
-            if (!target.some(i => i.code.toLowerCase() === c.toLowerCase())) {
-              target.push({ code: c, reward: r, isExpired })
-            }
-          }
-        }
-
-        // Format: "Use Code: RELEASE, EXPANSION"
-        const useCodeMatch = line.match(/(?:use\s+)?code[s]?\s*[:=\-–—]\s*(.+)/i)
-        if (useCodeMatch) {
-          const rest = useCodeMatch[1]
-          const parts = rest.split(/[,/|&]|\s+and\s+/i)
-          for (const p of parts) {
-            const clean = p.replace(/["'“”`[\]()!*✨🔥⚡💎⛏️🎁🎉\\]/g, '').trim()
-            if (isValidCode(clean)) {
-              const target = isExpired ? expired : active
-              if (!target.some(i => i.code.toLowerCase() === clean.toLowerCase())) {
-                target.push({ code: clean, reward: 'Free In-Game Rewards', isExpired })
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  parseSection(workingSection, false)
-  if (expiredSection) parseSection(expiredSection, true)
-
-  return { active, expired }
-}
-
-export function isSameGame(a?: string | null, b?: string | null): boolean {
-  if (!a || !b) return false
-  const na = a.toLowerCase().trim()
-  const nb = b.toLowerCase().trim()
-  if (na === nb) return true
-  const ca = cleanGameName(a).toLowerCase().trim()
-  const cb = cleanGameName(b).toLowerCase().trim()
-  if (ca === cb) return true
-  if (ca && cb && (ca.includes(cb) || cb.includes(ca))) return true
-  return false
-}
-
-function fetchWebPage(url: string, timeout = 4000): Promise<string | null> {
-  return new Promise((resolve) => {
-    try {
-      const req = https.get(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9'
-        },
-        timeout
-      }, (res) => {
-        const code = res.statusCode || 0
-        if (code >= 300 && code < 400 && res.headers.location) {
-          let loc = res.headers.location
-          if (loc.startsWith('/')) loc = new URL(loc, url).href
-          return fetchWebPage(loc, timeout).then(resolve)
-        }
-        if (code !== 200) return resolve(null)
-        let data = ''
-        res.on('data', c => data += c)
-        res.on('end', () => resolve(data))
-      })
-      req.on('error', () => resolve(null))
-      req.on('timeout', () => { req.destroy(); resolve(null) })
-    } catch {
-      resolve(null)
-    }
+    },
   })
 }
-
-/**
- * Resolves codes for any Roblox game by name or ID
- */
-export async function getRobloxGameCodes(
-  gameName: string,
-  placeId?: string,
-  universeId?: string,
-  forceRefresh = false
-): Promise<RobloxGameCodesResult> {
-  const cleaned = cleanGameName(gameName)
-  const normKey = cleaned.toLowerCase()
-
-  if (forceRefresh) {
-    codesCache.delete(normKey)
-    codesCache.delete(gameName.toLowerCase().trim())
-  }
-
-  // Auto-resolve universeId from currentExperience if matching
-  let resolvedUniverseId = universeId
-  let resolvedPlaceId = placeId
-  if (!resolvedUniverseId && currentExperience) {
-    if (isSameGame(currentExperience.name, gameName)) {
-      resolvedUniverseId = currentExperience.universeId
-      resolvedPlaceId = resolvedPlaceId || currentExperience.placeId
-    }
-  }
-
-  // 1. Check in-memory cache (TTL: 30 minutes) - only if we have active codes
-  if (!forceRefresh) {
-    const cached = codesCache.get(normKey) || codesCache.get(gameName.toLowerCase().trim())
-    if (cached && (Date.now() - cached.lastUpdated < 30 * 60 * 1000) && cached.activeCodes.length > 0) {
-      return cached
-    }
-  }
-
-  // 2. Check Curated Database for instant high-confidence results
-  let curatedMatch: { active: RobloxCodeItem[]; expired: RobloxCodeItem[] } | null = null
-  for (const [key, data] of Object.entries(CURATED_CODES)) {
-    if (normKey === key || normKey.includes(key) || key.includes(normKey)) {
-      curatedMatch = data
-      break
-    }
-  }
-
-  let activeCodes: RobloxCodeItem[] = curatedMatch ? [...curatedMatch.active] : []
-  let expiredCodes: RobloxCodeItem[] = curatedMatch ? [...curatedMatch.expired] : []
-  let resolvedSource = curatedMatch ? 'Verified Database' : undefined
-
-  // 3. Title Codes (Developers frequently put codes directly into the game title)
-  const titleCodes = parseCodesFromTitle(gameName)
-  for (const tc of titleCodes) {
-    if (!activeCodes.some(c => c.code.toLowerCase() === tc.code.toLowerCase())) {
-      activeCodes.unshift(tc)
-    }
-    resolvedSource = resolvedSource ? `${resolvedSource} + Game Title` : 'Game Title'
-  }
-
-  // 4. Candidate Slugs Generation
-  const candidateSlugs = getCandidateSlugs(gameName)
-
-  // 5. Official Roblox Game API: Check Game Description & Canonical URL Path
-  if (resolvedUniverseId) {
-    try {
-      const gRes = await fetchJson<{ data?: Array<{ description?: string; canonicalUrlPath?: string }> }>(
-        `https://games.roblox.com/v1/games?universeIds=${resolvedUniverseId}`
-      )
-      const gData = gRes?.data?.[0]
-      if (gData?.description) {
-        const descResult = parseCodesFromHtmlOrText(gData.description)
-        for (const it of descResult.active) {
-          if (!activeCodes.some(c => c.code.toLowerCase() === it.code.toLowerCase())) {
-            activeCodes.push(it)
-          }
-        }
-        for (const it of descResult.expired) {
-          if (!expiredCodes.some(c => c.code.toLowerCase() === it.code.toLowerCase())) {
-            expiredCodes.push(it)
-          }
-        }
-        if (descResult.active.length > 0) {
-          resolvedSource = resolvedSource ? `${resolvedSource} + Roblox Description` : 'Roblox Official'
-        }
-      }
-
-      // Add canonical URL path slug if available (e.g. "/games/123/Sell-Ores" -> "sell-ores")
-      if (gData?.canonicalUrlPath) {
-        const pathMatch = gData.canonicalUrlPath.match(/\/games\/\d+\/([a-zA-Z0-9_-]+)/)
-        if (pathMatch && pathMatch[1]) {
-          const canonSlug = pathMatch[1].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-          if (canonSlug && canonSlug.length >= 2 && !candidateSlugs.includes(canonSlug)) {
-            candidateSlugs.unshift(canonSlug)
-          }
-        }
-      }
-    } catch (_) {}
-  }
-
-  // 6. Multi-Source Web Scraper across all candidate slugs
-  for (const slug of candidateSlugs) {
-    const urls: string[] = [
-      `https://tryhardguides.com/${slug}-codes/`,
-      `https://beebom.com/${slug}-codes/`,
-      `https://progameguides.com/roblox/${slug}-codes/`,
-      `https://${slug.replace(/-/g, '')}.fandom.com/api.php?action=parse&page=Codes&prop=text&format=json`,
-      `https://roblox.fandom.com/api.php?action=parse&page=${encodeURIComponent(cleaned)}/Codes&prop=text&format=json`
-    ]
-
-    for (const url of urls) {
-      try {
-        if (url.includes('fandom.com/api.php')) {
-          const fRes = await fetchJson<{ parse?: { text?: { '*'?: string } } }>(url)
-          const html = fRes?.parse?.text?.['*']
-          if (html) {
-            const parsed = parseCodesFromHtmlOrText(html)
-            if (parsed.active.length > 0) {
-              for (const item of parsed.active) {
-                if (!activeCodes.some(c => c.code.toLowerCase() === item.code.toLowerCase())) {
-                  activeCodes.push(item)
-                }
-              }
-              for (const item of parsed.expired) {
-                if (!expiredCodes.some(c => c.code.toLowerCase() === item.code.toLowerCase())) {
-                  expiredCodes.push(item)
-                }
-              }
-              resolvedSource = resolvedSource ? `${resolvedSource} + Fandom` : 'Roblox Wiki'
-              break
-            }
-          }
-        } else {
-          const html = await fetchWebPage(url, 3800)
-          if (html && (html.toLowerCase().includes('code') || html.includes('wp-block-list'))) {
-            const parsed = parseCodesFromHtmlOrText(html)
-            if (parsed.active.length > 0) {
-              for (const item of parsed.active) {
-                if (!activeCodes.some(c => c.code.toLowerCase() === item.code.toLowerCase())) {
-                  activeCodes.push(item)
-                }
-              }
-              for (const item of parsed.expired) {
-                if (!expiredCodes.some(c => c.code.toLowerCase() === item.code.toLowerCase())) {
-                  expiredCodes.push(item)
-                }
-              }
-              const host = new URL(url).hostname.replace('www.', '')
-              resolvedSource = resolvedSource ? `${resolvedSource} + ${host}` : host
-              break
-            }
-          }
-        }
-      } catch (_) {}
-    }
-
-    if (activeCodes.length >= 3) break
-  }
-
-  // 7. Site Search Fallback: If still no codes, search TryHardGuides and Beebom
-  if (activeCodes.length === 0) {
-    const searchTerms = [cleaned, gameName].filter(Boolean)
-    for (const term of searchTerms) {
-      if (activeCodes.length > 0) break
-      try {
-        const searchHtml = await fetchWebPage(`https://tryhardguides.com/?s=${encodeURIComponent(term + ' codes')}`, 4000)
-        if (searchHtml) {
-          const match = searchHtml.match(/href="(https:\/\/tryhardguides\.com\/[a-z0-9-]+-codes\/)"/i)
-          if (match && match[1]) {
-            const articleHtml = await fetchWebPage(match[1], 4000)
-            if (articleHtml) {
-              const parsed = parseCodesFromHtmlOrText(articleHtml)
-              if (parsed.active.length > 0) {
-                for (const item of parsed.active) {
-                  if (!activeCodes.some(c => c.code.toLowerCase() === item.code.toLowerCase())) {
-                    activeCodes.push(item)
-                  }
-                }
-                for (const item of parsed.expired) {
-                  if (!expiredCodes.some(c => c.code.toLowerCase() === item.code.toLowerCase())) {
-                    expiredCodes.push(item)
-                  }
-                }
-                resolvedSource = 'tryhardguides.com'
-                break
-              }
-            }
-          }
-        }
-      } catch (_) {}
-    }
-  }
-
-  // 8. Build final result
-  const result: RobloxGameCodesResult = {
-    gameName: cleaned || gameName,
-    placeId: resolvedPlaceId,
-    universeId: resolvedUniverseId,
-    activeCodes,
-    expiredCodes,
-    source: resolvedSource || 'Community Codes Engine',
-    lastUpdated: Date.now()
-  }
-
-  // Only cache if we actually found active codes!
-  if (activeCodes.length > 0) {
-    codesCache.set(normKey, result)
-  }
-
-  return result
+export async function getRobloxGameCodes(gameName: string, placeId?: string, universeId?: string, forceRefresh = false): Promise<RobloxGameCodesResult> {
+  const current = currentExperience && sameRobloxGame(gameName, currentExperience.name) ? currentExperience : null
+  return getCodesService().getCodes(gameName, placeId || current?.placeId, universeId || current?.universeId, forceRefresh)
 }
 
 /**
@@ -1360,6 +791,7 @@ export function initRobloxIPC(getWindows: () => BrowserWindow[]) {
   })
 
   // 2. Fetch codes for a game
+  ipcMain.handle('roblox:search-code-games', async (_event, query: string) => getCodesService().searchGames(query))
   ipcMain.handle('roblox:get-codes', async (_event, gameName: string, placeId?: string, universeId?: string, forceRefresh?: boolean) => {
     return await getRobloxGameCodes(gameName, placeId, universeId, forceRefresh)
   })

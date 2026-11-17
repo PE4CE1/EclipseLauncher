@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; base-uri 'none'; form-action 'none';">
+<meta name="referrer" content="no-referrer">
+<style>html,body{margin:0;background:transparent;overflow:hidden}#controller{visibility:hidden}#controller[data-ready]{visibility:visible}</style>
+<link id="skin-style" rel="stylesheet">
+</head>
+<body>
+  <div id="controller" class="controller ps5">
+    <div class="triggers">
+      <div id="trigger-l" class="trigger left"></div>
+      <div id="trigger-r" class="trigger right"></div>
+    </div>
+    <div class="bumpers">
+      <div id="bumper-l" class="bumper left"></div>
+      <div id="bumper-r" class="bumper right"></div>
+    </div>
+    <div class="arrows">
+      <div id="btn-back" class="back"></div>
+      <div id="btn-start" class="start"></div>
+    </div>
+    <div class="abxy">
+      <div id="btn-a" class="button a"></div>
+      <div id="btn-b" class="button b"></div>
+      <div id="btn-x" class="button x"></div>
+      <div id="btn-y" class="button y"></div>
+    </div>
+    <div class="dpad">
+      <div id="dpad-up" class="face up"></div>
+      <div id="dpad-down" class="face down"></div>
+      <div id="dpad-left" class="face left"></div>
+      <div id="dpad-right" class="face right"></div>
+    </div>
+    <div class="sticks">
+      <div id="stick-l" class="stick left"></div>
+      <div id="stick-r" class="stick right"></div>
+    </div>
+  </div>
+
+  <script src="./controller.js"></script>
+</body>
+</html>

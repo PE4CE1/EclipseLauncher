@@ -1,117 +1,24 @@
+import { useTranslation } from '../../hooks/useTranslation'
+import { SceneTransition } from '../shared/SceneTransition'
+import { PosterArt as LibraryCoverArt } from '../shared/PosterArt'
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Library, Star, Trash2, Play, Plus, Search, Heart, Download, LayoutGrid, List, X } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useScanner } from '../../hooks/useScanner'
 import { useUIStore } from '../../store/uiStore'
-import { findSteamIdByName } from '../../services/steamService'
-import { getCoverUrl, getHeaderUrl, getPlaceholderCover } from '../../services/assetHelper'
+import { findSteamIdByName, KNOWN_GAME_PREVIEWS, isPlaceholderAppName, extractAppIdFromPlaceholder, getKnownSteamGameName, resolveSteamAppName } from '../../services/steamService'
 import type { LibraryGame, InstalledGame } from '../../types/game'
 import steamLogoImg from '../../assets/steam-logo.png'
-import robloxHeroImg from '../../assets/roblox/hero.png'
-import robloxLogoImg from '../../assets/Roblox-Logo-Icon.png'
+import { isLocallyInstalled } from '../../services/gameInstallation'
+import { useShallow } from 'zustand/react/shallow'
+import { WindowedGrid } from '../shared/WindowedGrid'
 
 type TabId = 'all' | 'installed' | 'favorites' | 'custom'
 
 const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
 
-// Global instant asset resolution memory cache to eliminate repeat probes during scrolling
-const coverCache = new Map<string, { url: string; isWide: boolean }>()
-
-/** Ultra-fast Cover Art with hardware async decoding, smart hero banner fallback, and clean shimmer loading */
-export const LibraryCoverArt = React.memo(function LibraryCoverArt({ game }: { game: LibraryGame | (InstalledGame & { isInstalled: boolean }) }) {
-  const resolvedId = ('steamId' in game && typeof game.steamId === 'number' && game.steamId > 0)
-    ? game.steamId
-    : ('appId' in game && game.appId && !isNaN(Number(game.appId)) && Number(game.appId) > 0)
-      ? Number(game.appId)
-      : (typeof game.id === 'string' && game.id.startsWith('steam-'))
-        ? Number(game.id.replace('steam-', ''))
-        : (!isNaN(Number(game.id)) && Number(game.id) > 0)
-          ? Number(game.id)
-          : undefined
-
-  const cacheKey = `${game.name}_${resolvedId || game.id}`
-  const cached = coverCache.get(cacheKey)
-
-  const isRoblox = resolvedId === 999001 || game.name?.toLowerCase() === 'roblox' || game.id === 'roblox'
-
-  // Build a fallback chain — useRef so handleError never has a stale closure
-  const coverImage = ('coverImage' in game && game.coverImage) ? game.coverImage : undefined
-  const iconUrl = ('iconUrl' in game && game.iconUrl) ? game.iconUrl : undefined
-
-  const fallbackChain: string[] = isRoblox
-    ? [robloxHeroImg, robloxLogoImg]
-    : resolvedId
-    ? [
-        `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/library_600x900.jpg`,
-        `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/library_600x900.jpg`,
-        ...(coverImage ? [coverImage] : []),
-        `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/header.jpg`,
-        `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/header.jpg`,
-        `https://cdn.cloudflare.steamstatic.com/steam/apps/${resolvedId}/header.jpg`,
-        `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${resolvedId}/library_hero.jpg`,
-      ]
-    : [
-        ...(coverImage ? [coverImage] : []),
-        ...(iconUrl ? [iconUrl] : []),
-        getPlaceholderCover(game.name),
-      ]
-
-  const fallbackIndexRef = useRef(0)
-
-  const [imgSrc, setImgSrc] = useState<string>(() => {
-    if (cached) return cached.url
-    return fallbackChain[0] ?? getPlaceholderCover(game.name)
-  })
-
-  const [isWide, setIsWide] = useState<boolean>(() => cached ? cached.isWide : false)
-  const [isLoaded, setIsLoaded] = useState<boolean>(() => !!cached)
-
-  const handleError = useCallback(() => {
-    setIsLoaded(false)
-    const next = fallbackIndexRef.current + 1
-    if (next < fallbackChain.length) {
-      fallbackIndexRef.current = next
-      const nextUrl = fallbackChain[next]
-      // Wide format starts at header.jpg (index ≥ 3 for steam games)
-      const isNowWide = resolvedId ? next >= 3 : false
-      setIsWide(isNowWide)
-      setImgSrc(nextUrl)
-    } else {
-      const placeholder = getPlaceholderCover(game.name)
-      setImgSrc(placeholder)
-      setIsLoaded(true)
-      coverCache.set(cacheKey, { url: placeholder, isWide: false })
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleLoad = useCallback(() => {
-    setIsLoaded(true)
-    coverCache.set(cacheKey, { url: imgSrc, isWide: false })
-  }, [cacheKey, imgSrc])
-
-  return (
-    <div className="relative w-full h-full overflow-hidden bg-[#0c0d13] select-none">
-      {/* ─── Ultra Clean Minimalist Loading Shimmer (Zero Controller Icon, Zero CPU Load) ─── */}
-      {!isLoaded && (
-        <div className="cover-shimmer-container">
-          <div className="cover-shimmer-wave" />
-        </div>
-      )}
-
-      {/* Actual Image */}
-      <img
-        src={imgSrc}
-        alt={game.name}
-        loading="lazy"
-        decoding="async"
-        onLoad={handleLoad}
-        onError={handleError}
-        className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-      />
-    </div>
-  )
-})
+export { PosterArt as LibraryCoverArt } from '../shared/PosterArt'
 
 interface GridCardProps {
   game: LibraryGame | (InstalledGame & { isInstalled: boolean })
@@ -125,7 +32,7 @@ interface GridCardProps {
   onStopGame: (id: string) => void
 }
 
-/** Memoized Grid Card for 120fps smooth scrolling */
+/** Keep layout stable; only the fixed-aspect artwork skips offscreen painting. */
 const LibraryGridCard = React.memo(function LibraryGridCard({
   game,
   isFav,
@@ -137,23 +44,30 @@ const LibraryGridCard = React.memo(function LibraryGridCard({
   onLaunchGame,
   onStopGame
 }: GridCardProps) {
+  const { t } = useTranslation()
   const platform = game.platform
+  const numId = ('steamId' in game && typeof game.steamId === 'number' && game.steamId > 0)
+    ? game.steamId
+    : ('appId' in game && game.appId && !isNaN(Number(game.appId)) && Number(game.appId) > 0)
+      ? Number(game.appId)
+      : (typeof game.id === 'string' && game.id.startsWith('steam-'))
+        ? Number(game.id.replace('steam-', ''))
+        : (!isNaN(Number(game.id)) && Number(game.id) > 0)
+          ? Number(game.id)
+          : extractAppIdFromPlaceholder(game.name) || undefined
+  const isPlaceholder = isPlaceholderAppName(game.name, numId)
+  const knownName = numId ? getKnownSteamGameName(numId) : null
+  const displayName = (isPlaceholder && knownName) ? knownName : game.name
 
   return (
     <div
       id={`library-grid-item-${game.id}`}
-      style={{
-        contain: 'paint layout style',
-        contentVisibility: 'auto',
-        containIntrinsicSize: '200px 300px',
-        transform: 'translateZ(0)',
-      }}
-      className="game-card group relative flex flex-col rounded-xl bg-hub-surface border border-white/10 hover:border-white/40 hover:shadow-[0_0_20px_rgba(255,255,255,0.08)] overflow-hidden transition-all duration-300 ease-out cursor-pointer will-change-transform"
+      className="game-card library-grid-card group relative flex flex-col rounded-xl bg-hub-surface border border-white/10 hover:border-white/40 hover:shadow-[0_0_20px_rgba(255,255,255,0.08)] overflow-hidden transition-[background-color,border-color,box-shadow] duration-200 ease-out cursor-pointer"
       onClick={() => onOpenDetails(game)}
     >
       {/* Large Poster Cover Art (2:3 Aspect Ratio) */}
-      <div className="relative aspect-[2/3] w-full overflow-hidden bg-hub-elevated">
-        <div className="w-full h-full transform group-hover:scale-[1.025] transition-transform duration-300 ease-out">
+      <div className="library-card-art relative aspect-[2/3] w-full overflow-hidden bg-hub-elevated">
+        <div className="w-full h-full">
           <LibraryCoverArt game={game} />
         </div>
 
@@ -161,15 +75,15 @@ const LibraryGridCard = React.memo(function LibraryGridCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-out flex flex-col justify-between p-3 z-10 pointer-events-none group-hover:pointer-events-auto">
           {/* Top Badges */}
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white/90 border border-white/10">
-              {platform === 'steam' ? 'Steam' : platform === 'epic' ? 'Epic' : 'Custom'}
+            <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-black/70 group-hover:backdrop-blur-md text-white/90 border border-white/10">
+              {platform === 'steam' ? 'Steam' : platform === 'epic' ? 'Epic' : t('uiCustomGames')}
             </span>
             <button
               onClick={(e) => {
                 e.stopPropagation()
                 onToggleFavorite(game.id)
               }}
-              className={`w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all ${
+              className={`w-7 h-7 rounded-full flex items-center justify-center group-hover:backdrop-blur-md transition-colors ${
                 isFav ? 'bg-red-500/30 text-red-400 border border-red-500/40' : 'bg-black/60 text-white/70 hover:text-red-400 hover:bg-black/80 border border-white/10'
               }`}
             >
@@ -187,7 +101,7 @@ const LibraryGridCard = React.memo(function LibraryGridCard({
                   if (isPlaying) {
                     onStopGame(game.id as string)
                   } else {
-                    onLaunchGame(game.launchUrl!, game.name)
+                    onLaunchGame(game.launchUrl!, displayName)
                   }
                 }}
                 disabled={isKillingThis}
@@ -200,30 +114,30 @@ const LibraryGridCard = React.memo(function LibraryGridCard({
                         ? platform === 'steam' 
                           ? 'bg-[#1b2838] hover:bg-[#2a475e] border border-[#66c0f4]/30 text-white shadow-[0_0_10px_rgba(102,192,244,0.2)]'
                           : 'bg-white hover:bg-gray-200 text-black shadow-md'
-                        : 'bg-white/15 hover:bg-white/25 text-white backdrop-blur-md border border-white/20'
+                        : 'bg-white/15 hover:bg-white/25 text-white group-hover:backdrop-blur-md border border-white/20'
                 }`}
               >
                 {isKillingThis ? (
                   <>
-                    <div className="w-3 h-3 border-2 border-white/50 border-t-transparent rounded-full animate-spin" /> Cancel...
+                    <div className="w-3 h-3 border-2 border-white/50 border-t-transparent rounded-full animate-spin" />  {t('uiCancelling')}
                   </>
                 ) : isPlaying ? (
                   <>
-                    <X size={12} className="text-white" /> Cancel
+                    <X size={12} className="text-white" />  {t('cancel')}
                   </>
                 ) : isInstalled ? (
                   platform === 'steam' ? (
                     <>
-                      <img src={steamLogoImg} className="w-3.5 h-3.5 object-contain" alt="Steam" /> Play Now
+                      <img src={steamLogoImg} className="w-3.5 h-3.5 object-contain" alt="Steam" />  {t('playNow')}
                     </>
                   ) : (
                     <>
-                      <Play size={12} className="fill-black" /> Play Now
+                      <Play size={12} className="fill-black" />  {t('playNow')}
                     </>
                   )
                 ) : (
                   <>
-                    <Download size={12} className="text-white" /> Install
+                    <Download size={12} className="text-white" />  {t('uiInstall')}
                   </>
                 )}
               </button>
@@ -234,14 +148,14 @@ const LibraryGridCard = React.memo(function LibraryGridCard({
 
       {/* Minimalist Card Footer */}
       <div className="p-3 bg-hub-surface flex flex-col justify-between flex-1 border-t border-hub-border/30 z-10">
-        <p className="text-xs font-bold text-hub-text truncate group-hover:text-white transition-colors">
-          {game.name}
+        <p className="text-xs font-bold text-hub-text truncate group-hover:text-white transition-colors" title={displayName}>
+          {displayName}
         </p>
         <div className="flex items-center justify-between mt-1.5">
           <div className="flex items-center gap-1.5">
             <div className={`w-1.5 h-1.5 rounded-full ${isInstalled ? 'bg-emerald-400' : 'bg-white/20'}`} />
             <span className={`text-[10px] font-medium ${isInstalled ? 'text-emerald-400' : 'text-hub-muted'}`}>
-              {isInstalled ? 'Installed' : 'Library'}
+              {isInstalled ? t('installed') : 'Library'}
             </span>
           </div>
           {'genres' in game && game.genres?.[0] && (
@@ -281,37 +195,48 @@ const LibraryListCard = React.memo(function LibraryListCard({
   onLaunchGame,
   onStopGame
 }: ListCardProps) {
+  const { t } = useTranslation()
   const platform = game.platform
+  const numId = ('steamId' in game && typeof game.steamId === 'number' && game.steamId > 0)
+    ? game.steamId
+    : ('appId' in game && game.appId && !isNaN(Number(game.appId)) && Number(game.appId) > 0)
+      ? Number(game.appId)
+      : (typeof game.id === 'string' && game.id.startsWith('steam-'))
+        ? Number(game.id.replace('steam-', ''))
+        : (!isNaN(Number(game.id)) && Number(game.id) > 0)
+          ? Number(game.id)
+          : extractAppIdFromPlaceholder(game.name) || undefined
+  const isPlaceholder = isPlaceholderAppName(game.name, numId)
+  const knownName = numId ? getKnownSteamGameName(numId) : null
+  const displayName = (isPlaceholder && knownName) ? knownName : game.name
 
   return (
     <div
       id={`library-item-${game.id}`}
       style={{
-        contain: 'paint layout style',
-        contentVisibility: 'auto',
-        containIntrinsicSize: '100% 64px',
-        transform: 'translateZ(0)',
+        contain: 'layout style',
       }}
-      className="flex items-center gap-4 p-3 rounded-xl bg-hub-surface border border-hub-border/30 hover:border-hub-border/60 hover:bg-hub-elevated transition-all group cursor-pointer"
+      className="library-list-card flex items-center gap-4 p-3 rounded-xl bg-hub-surface border border-hub-border/30 hover:border-hub-border/60 hover:bg-hub-elevated transition-colors group cursor-pointer"
       onClick={() => onOpenDetails(game)}
     >
-      <div className="w-14 h-14 rounded-lg overflow-hidden bg-hub-elevated flex-shrink-0">
+      <div className="library-list-art w-14 h-14 rounded-lg overflow-hidden bg-hub-elevated flex-shrink-0">
         <LibraryCoverArt game={game} />
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-hub-text truncate">{game.name}</p>
+          <p className="text-sm font-semibold text-hub-text truncate" title={displayName}>{displayName}</p>
           {isInstalled && (
             <span className="badge-installed text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0">
-              Installed
+
+              {t('installed')}
             </span>
           )}
           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0 ${
             platform === 'steam' ? 'badge-steam' :
             platform === 'epic'  ? 'badge-epic'  : 'badge-custom'
           }`}>
-            {platform === 'steam' ? 'Steam' : platform === 'epic' ? 'Epic' : 'Custom'}
+            {platform === 'steam' ? 'Steam' : platform === 'epic' ? 'Epic' : t('uiCustomGames')}
           </span>
         </div>
         {'genres' in game && game.genres && (
@@ -337,7 +262,7 @@ const LibraryListCard = React.memo(function LibraryListCard({
               if (isPlaying) {
                 onStopGame(game.id as string)
               } else {
-                onLaunchGame(game.launchUrl!, game.name)
+                onLaunchGame(game.launchUrl!, displayName)
               }
             }}
             disabled={isKillingThis}
@@ -350,30 +275,30 @@ const LibraryListCard = React.memo(function LibraryListCard({
                     ? platform === 'steam'
                       ? 'bg-[#1b2838] hover:bg-[#2a475e] text-white border border-[#66c0f4]/30 shadow-[0_0_10px_rgba(102,192,244,0.2)]'
                       : 'bg-white hover:bg-gray-200 text-black shadow-md'
-                    : 'bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/10'
+                    : 'bg-white/10 hover:bg-white/20 text-white group-hover:backdrop-blur-md border border-white/10'
             }`}
           >
             {isKillingThis ? (
               <>
-                <div className="w-3 h-3 border-2 border-white/50 border-t-transparent rounded-full animate-spin" /> Cancel...
+                <div className="w-3 h-3 border-2 border-white/50 border-t-transparent rounded-full animate-spin" />  {t('uiCancelling')}
               </>
             ) : isPlaying ? (
               <>
-                <X size={11} className="text-white" /> Cancel
+                <X size={11} className="text-white" />  {t('cancel')}
               </>
             ) : isInstalled ? (
               platform === 'steam' ? (
                 <>
-                  <img src={steamLogoImg} className="w-3 h-3 object-contain" alt="Steam" /> Play Now
+                  <img src={steamLogoImg} className="w-3 h-3 object-contain" alt="Steam" />  {t('playNow')}
                 </>
               ) : (
                 <>
-                  <Play size={11} className="fill-black" /> Play Now
+                  <Play size={11} className="fill-black" />  {t('playNow')}
                 </>
               )
             ) : (
               <>
-                <Download size={11} className="text-white" /> Install
+                <Download size={11} className="text-white" />  {t('uiInstall')}
               </>
             )}
           </button>
@@ -389,7 +314,7 @@ const LibraryListCard = React.memo(function LibraryListCard({
               ? 'text-red-400 bg-red-500/10'
               : 'text-hub-muted hover:text-red-400 hover:bg-red-500/10'
           }`}
-          aria-label="Toggle favorite"
+          aria-label={t('uiToggleFavorite')}
         >
           <Heart size={14} className={isFav ? 'fill-red-400' : ''} />
         </button>
@@ -401,7 +326,7 @@ const LibraryListCard = React.memo(function LibraryListCard({
               onRemoveFromLibrary(game.id)
             }}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-hub-muted hover:text-red-400 hover:bg-red-500/10 transition-all"
-            aria-label="Remove from library"
+            aria-label={t('uiRemoveLibrary')}
           >
             <Trash2 size={14} />
           </button>
@@ -412,13 +337,15 @@ const LibraryListCard = React.memo(function LibraryListCard({
 })
 
 export function LibraryView() {
-  const { library, removeFromLibrary, toggleFavorite, favoriteIds, installedGames, setInstalledGames, activeGame, stopPlaySession } = useGameStore()
+  const { t, locale } = useTranslation()
+  const { library, removeFromLibrary, toggleFavorite, favoriteIds, installedGames, setInstalledGames, activeGame, stopPlaySession } = useGameStore(useShallow(({ library, removeFromLibrary, toggleFavorite, favoriteIds, installedGames, setInstalledGames, activeGame, stopPlaySession }) => ({ library, removeFromLibrary, toggleFavorite, favoriteIds, installedGames, setInstalledGames, activeGame, stopPlaySession })))
   const { launchGame, addCustomGame } = useScanner()
-  const { showNotification } = useUIStore()
+  const showNotification = useUIStore(s => s.showNotification)
   const [activeTab, setActiveTab] = useState<TabId>('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [search, setSearch] = useState('')
   const [killingGameId, setKillingGameId] = useState<string | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   // Combine library + installed games (memoized with deduplication)
   const allGames = useMemo<Array<LibraryGame | (InstalledGame & { isInstalled: boolean })>>(() => {
@@ -427,9 +354,12 @@ export function LibraryView() {
     // 1. Installed games take priority
     for (const ig of installedGames) {
       if (!ig || !ig.name) continue
-      const normName = normalize(ig.name)
-      const key = ig.appId ? `steam_${ig.appId}` : `name_${normName}`
-      const val = { ...ig, isInstalled: ig.installed !== false }
+      const numId = ig.steamId || (ig.appId ? Number(ig.appId) : extractAppIdFromPlaceholder(ig.name)) || undefined
+      const cleanName = (numId && isPlaceholderAppName(ig.name, numId)) ? (getKnownSteamGameName(numId) || ig.name) : ig.name
+      const gameWithCleanName = cleanName !== ig.name ? { ...ig, name: cleanName, steamId: numId || ig.steamId } : ig
+      const normName = normalize(cleanName)
+      const key = (numId || ig.appId) ? `steam_${numId || ig.appId}` : `name_${normName}`
+      const val = { ...gameWithCleanName, isInstalled: isLocallyInstalled(ig) }
       map.set(key, val)
       map.set(`name_${normName}`, val)
     }
@@ -437,27 +367,32 @@ export function LibraryView() {
     // 2. Library games merged without duplicates
     for (const lg of library) {
       if (!lg || !lg.name) continue
-      const normName = normalize(lg.name)
-      const steamKey = lg.steamId ? `steam_${lg.steamId}` : null
+      const numId = lg.steamId || (lg.appId ? Number(lg.appId) : extractAppIdFromPlaceholder(lg.name)) || undefined
+      const cleanName = (numId && isPlaceholderAppName(lg.name, numId)) ? (getKnownSteamGameName(numId) || lg.name) : lg.name
+      const gameWithCleanName = cleanName !== lg.name ? { ...lg, name: cleanName, steamId: numId || lg.steamId } : lg
+      const normName = normalize(cleanName)
+      const steamKey = (numId || lg.steamId) ? `steam_${numId || lg.steamId}` : null
       const nameKey = `name_${normName}`
 
       if ((steamKey && map.has(steamKey)) || map.has(nameKey)) {
         continue
       }
 
-      map.set(nameKey, lg)
-      if (steamKey) map.set(steamKey, lg)
+      const local = lg.platform === 'custom' && !!lg.installPath?.trim() && isLocallyInstalled(lg)
+      const entry = { ...gameWithCleanName, installed: local }
+      map.set(nameKey, entry)
+      if (steamKey) map.set(steamKey, entry)
     }
 
     return Array.from(new Set(map.values()))
   }, [installedGames, library])
 
   const tabs = useMemo(() => [
-    { id: 'all' as TabId,       label: 'All',       count: allGames.length },
-    { id: 'installed' as TabId, label: 'Installed',  count: installedGames.filter(g => g.installed !== false).length },
-    { id: 'custom' as TabId,    label: 'Custom',     count: library.filter(g => !installedGames.some(ig => ig.name === g.name)).length },
-    { id: 'favorites' as TabId, label: 'Favorites',  count: favoriteIds.length },
-  ], [allGames.length, installedGames, library, favoriteIds.length])
+    { id: 'all' as TabId,       label: t('uiAll'),       count: allGames.length },
+    { id: 'installed' as TabId, label: t('installed'),  count: installedGames.filter(isLocallyInstalled).length },
+    { id: 'custom' as TabId,    label: t('uiCustomGames'),     count: library.filter(g => !installedGames.some(ig => ig.name === g.name)).length },
+    { id: 'favorites' as TabId, label: t('uiFavorites'),  count: favoriteIds.length },
+  ], [allGames.length, installedGames, library, favoriteIds.length, t])
 
   const filtered = useMemo(() => {
     const s = search.toLowerCase().trim()
@@ -473,33 +408,13 @@ export function LibraryView() {
     })
   }, [allGames, search, favoriteIds, activeTab])
 
-  // Instant 0ms render: mount the visible viewport instantly, expand the rest in background frames
-  const [visibleLimit, setVisibleLimit] = useState(48)
-
-  useEffect(() => {
-    setVisibleLimit(48)
-  }, [search, activeTab])
-
-  useEffect(() => {
-    if (visibleLimit < filtered.length) {
-      const timer = setTimeout(() => {
-        setVisibleLimit(prev => Math.min(prev + 64, filtered.length))
-      }, 20)
-      return () => clearTimeout(timer)
-    }
-  }, [visibleLimit, filtered.length])
-
-  const visibleGames = useMemo(() => {
-    return filtered.slice(0, visibleLimit)
-  }, [filtered, visibleLimit])
-
   const handleAddCustom = useCallback(async () => {
     const path = await addCustomGame()
     if (path) {
       const name = path.split('\\').pop()?.replace('.exe', '') || 'Custom Game'
-      showNotification(`Added ${name} to library`, 'success')
+      showNotification(t('addedToLibrary', { name }), 'success')
     }
-  }, [addCustomGame, showNotification])
+  }, [addCustomGame, showNotification, t])
 
   const openDetailsForGame = useCallback((game: any) => {
     const isRoblox = game.name?.toLowerCase() === 'roblox' || game.id === 'roblox' || game.steamId === 999001
@@ -513,8 +428,11 @@ export function LibraryView() {
             ? game.id
             : typeof game.id === 'string' && game.id.startsWith('steam-')
               ? Number(game.id.replace('steam-', ''))
-              : undefined
-    useUIStore.getState().openGameDetails(sId || (isRoblox ? 999001 : 0), game.name)
+              : extractAppIdFromPlaceholder(game.name) || undefined
+    const isPlaceholder = isPlaceholderAppName(game.name, sId)
+    const knownName = sId ? getKnownSteamGameName(sId) : null
+    const finalName = (isPlaceholder && knownName) ? knownName : game.name
+    useUIStore.getState().openGameDetails(sId || (isRoblox ? 999001 : 0), finalName)
   }, [])
 
   const handleLaunchGame = useCallback((url: string, name: string) => {
@@ -548,6 +466,9 @@ export function LibraryView() {
       const id = await findSteamIdByName(game.name)
       if (id) {
         game.steamId = id
+        if (!game.iconUrl) {
+          game.iconUrl = `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${id}/header.jpg`
+        }
         changed = true
       }
     })
@@ -557,14 +478,77 @@ export function LibraryView() {
     })
   }, [installedGames, setInstalledGames])
 
+  // Auto-resolve any remaining placeholder games in library or installedGames via online Steam lookup
+  const placeholderResolvedRef = useRef<Set<number>>(new Set())
+  useEffect(() => {
+    const toResolve: Array<{ numId: number; item: any }> = []
+    for (const g of allGames) {
+      const numId = ('steamId' in g && typeof g.steamId === 'number' && g.steamId > 0)
+        ? g.steamId
+        : ('appId' in g && g.appId && !isNaN(Number(g.appId)) && Number(g.appId) > 0)
+          ? Number(g.appId)
+          : (typeof g.id === 'string' && g.id.startsWith('steam-'))
+            ? Number(g.id.replace('steam-', ''))
+            : (!isNaN(Number(g.id)) && Number(g.id) > 0)
+              ? Number(g.id)
+              : extractAppIdFromPlaceholder(g.name) || undefined
+      if (numId && isPlaceholderAppName(g.name, numId) && !placeholderResolvedRef.current.has(numId)) {
+        placeholderResolvedRef.current.add(numId)
+        toResolve.push({ numId, item: g })
+      }
+    }
+
+    if (toResolve.length === 0) return
+
+    let isMounted = true
+    const runResolution = async () => {
+      for (const { numId, item } of toResolve) {
+        if (!isMounted) break
+        const resolvedName = await resolveSteamAppName(numId)
+        if (resolvedName && !isPlaceholderAppName(resolvedName, numId)) {
+          const freshInstalled = useGameStore.getState().installedGames
+          const freshLibrary = useGameStore.getState().library
+          let instChanged = false
+          let libChanged = false
+
+          const updatedInstalled = freshInstalled.map(ig => {
+            const igNum = ig.steamId || (ig.appId ? Number(ig.appId) : extractAppIdFromPlaceholder(ig.name))
+            if (igNum === numId || ig.id === item.id) {
+              instChanged = true
+              return { ...ig, name: resolvedName, steamId: numId }
+            }
+            return ig
+          })
+
+          const updatedLibrary = freshLibrary.map(lg => {
+            const lgNum = lg.steamId || (lg.appId ? Number(lg.appId) : extractAppIdFromPlaceholder(lg.name))
+            if (lgNum === numId || lg.id === item.id) {
+              libChanged = true
+              return { ...lg, name: resolvedName, steamId: numId }
+            }
+            return lg
+          })
+
+          if (instChanged) useGameStore.getState().setInstalledGames(updatedInstalled)
+          if (libChanged) useGameStore.getState().setLibrary(updatedLibrary)
+        }
+      }
+    }
+    runResolution()
+
+    return () => {
+      isMounted = false
+    }
+  }, [allGames])
+
   return (
-    <div className="h-full overflow-y-auto overflow-x-hidden relative custom-scrollbar">
-      {/* Header with authentic Frosted Glass Blur */}
-      <div className="sticky top-0 z-20 px-6 pt-5 pb-4 border-b border-white/[0.08] bg-[#07080a]/80 backdrop-blur-xl shadow-xl">
+    <div ref={scrollRef} data-windowed-scroll className="view-scroll h-full overflow-y-auto overflow-x-hidden relative custom-scrollbar">
+      {/* Shared toolbar surface keeps the ambient background continuous. */}
+      <div className="launcher-toolbar sticky top-0 z-20 px-6 pt-5 pb-4 border-b border-white/[0.08] bg-[#07080a]/80 backdrop-blur-xl shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-xl font-bold text-hub-text">My Library</h2>
-            <p className="text-sm text-hub-muted mt-0.5">{allGames.length} games</p>
+            <h2 className="text-xl font-bold text-hub-text">{t('uiMyLibrary')}</h2>
+            <p className="text-sm text-hub-muted mt-0.5">{allGames.length === 1 ? t('uiOneGame') : t('uiGameCount', { count: allGames.length.toLocaleString(locale) })}</p>
           </div>
           <button
             id="library-add-custom"
@@ -572,7 +556,8 @@ export function LibraryView() {
             className="btn-ghost flex items-center gap-2 text-sm py-2"
           >
             <Plus size={14} />
-            Add Game
+
+            {t('uiAddGame')}
           </button>
         </div>
 
@@ -604,7 +589,7 @@ export function LibraryView() {
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search library…"
+                placeholder={t('uiSearchLibrary')}
                 className="w-full bg-black/90 border border-white/10 hover:border-white/20 focus:border-white/30 rounded-full pl-9 pr-8 py-1.5 text-sm h-8 text-white placeholder-white/40 focus:outline-none focus:bg-black transition-all shadow-inner"
               />
               {search && (
@@ -621,20 +606,22 @@ export function LibraryView() {
           {/* View Mode Toggle Button */}
           <div className="flex items-center gap-1 bg-black/60 border border-white/10 rounded-lg p-1">
             <button
+              id="library-view-grid"
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-md transition-all ${
                 viewMode === 'grid' ? 'bg-white/20 text-white shadow-sm' : 'text-white/50 hover:text-white'
               }`}
-              title="Grid View (Large Covers)"
+              title={t('uiGridView')}
             >
               <LayoutGrid size={16} />
             </button>
             <button
+              id="library-view-list"
               onClick={() => setViewMode('list')}
               className={`p-1.5 rounded-md transition-all ${
                 viewMode === 'list' ? 'bg-white/20 text-white shadow-sm' : 'text-white/50 hover:text-white'
               }`}
-              title="List View"
+              title={t('uiListView')}
             >
               <List size={16} />
             </button>
@@ -643,25 +630,23 @@ export function LibraryView() {
       </div>
 
       {/* Game List / Grid */}
-      <div className="px-6 py-4">
+      <SceneTransition sceneKey={`${activeTab}:${viewMode}`} data-library-results className="px-6 py-4">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24">
             <Library size={48} className="text-hub-border mb-4" />
             <p className="text-hub-muted text-lg font-medium">
-              {activeTab === 'installed' ? 'No installed games detected' :
-               activeTab === 'favorites' ? 'No favorites yet' :
-               'Your library is empty'}
+              {activeTab === 'installed' ? t('uiNoInstalledGames') :
+               activeTab === 'favorites' ? t('uiNoFavorites') : t('uiEmptyLibrary')}
             </p>
             <p className="text-hub-border text-sm mt-1">
               {activeTab === 'installed'
-                ? 'Run a scan to detect Steam and Epic games'
-                : 'Browse the Catalogue to add games'}
+                ? t('uiScanInstalled') : t('uiBrowseToAdd')}
             </p>
           </div>
         ) : viewMode === 'grid' ? (
           /* Grid View - Clean Minimalist Cover Cards */
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {visibleGames.map((game) => {
+          <WindowedGrid items={filtered} scrollRef={scrollRef} resetKey={`${activeTab}:grid:${search}`} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {(game) => {
               const isInstalled = 'isInstalled' in game ? game.isInstalled : (game.installed ?? true)
               const isFav = favoriteIds.includes(game.id)
               const isRoblox = game.name?.toLowerCase() === 'roblox' || game.id === 'roblox' || ('steamId' in game && game.steamId === 999001)
@@ -688,12 +673,12 @@ export function LibraryView() {
                   onStopGame={handleStopGame}
                 />
               )
-            })}
-          </div>
+            }}
+          </WindowedGrid>
         ) : (
           /* List View */
-          <div className="grid gap-2">
-            {visibleGames.map((game) => {
+          <WindowedGrid items={filtered} scrollRef={scrollRef} resetKey={`${activeTab}:list:${search}`} className="grid gap-2">
+            {(game) => {
               const isInstalled = 'isInstalled' in game ? game.isInstalled : (game.installed ?? true)
               const isFav = favoriteIds.includes(game.id)
               const isRoblox = game.name?.toLowerCase() === 'roblox' || game.id === 'roblox' || ('steamId' in game && game.steamId === 999001)
@@ -721,10 +706,10 @@ export function LibraryView() {
                   onStopGame={handleStopGame}
                 />
               )
-            })}
-          </div>
+            }}
+          </WindowedGrid>
         )}
-      </div>
+      </SceneTransition>
     </div>
   )
 }

@@ -1,212 +1,72 @@
-import { useEffect, useRef, useState, memo } from 'react'
+import { memo, useEffect, useState, type CSSProperties } from 'react'
+import '../overlay-widgets.css'
 
 export type MetricsConfig = {
-  fps?: boolean
-  cpu?: boolean
-  gpu?: boolean
-  ram?: boolean
-  ping?: boolean
-  time?: boolean
-  layout?: 'vertical' | 'horizontal'
-  scale?: number
+  fps?: boolean; cpu?: boolean; gpu?: boolean; ram?: boolean; ping?: boolean; time?: boolean
+  layout?: 'vertical' | 'horizontal'; scale?: number
+  background?: 'glass' | 'clear' | 'solid'
+  mirrored?: boolean
 }
-
 export type MetricsData = {
-  cpu: number
-  gpu: number
-  ram: number
-  ramMB: number
-  totalMB: number
-  idleTime: number
-  gameFps?: number
+  cpu?: number; gpu?: number; ram?: number; ramMB?: number; totalMB?: number; idleTime: number
+  gameFps?: number; frameTimeMs?: number; gameFpsStatus?: string; gameFpsPid?: number; gameFpsSource?: string
 }
 
-// Measure display / game frame rate with sub-millisecond precision
-function useFPS() {
-  const [fps, setFps] = useState(0)
-  const frameCount = useRef(0)
-  const lastTime = useRef(performance.now())
-  const rafId = useRef<number>(0)
-
-  useEffect(() => {
-    const tick = (now: number) => {
-      frameCount.current++
-      const delta = now - lastTime.current
-      if (delta >= 1000) {
-        setFps(Math.round((frameCount.current * 1000) / delta))
-        frameCount.current = 0
-        lastTime.current = now
-      }
-      rafId.current = requestAnimationFrame(tick)
-    }
-    rafId.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafId.current)
-  }, [])
-
-  return fps
-}
-
-export const Performance = memo(function Performance({ 
-  metrics, 
-  config,
-  editMode = false,
-}: { 
-  metrics: MetricsData; 
-  config?: MetricsConfig;
-  editMode?: boolean;
+export const Performance = memo(function Performance({ metrics, config, editMode = false, language = 'de' }: {
+  metrics: MetricsData; config?: MetricsConfig; editMode?: boolean; language?: string
 }) {
-  const displayFps = useFPS()
-  const [time, setTime] = useState('')
-
-  const cfg: MetricsConfig = config ?? { fps: true, cpu: true, gpu: true, ram: true, time: true, layout: 'vertical' }
-  const isHorizontal = cfg.layout === 'horizontal'
-  const rawScale = cfg.scale ?? 100
-  const normalizedScale = typeof rawScale === 'number' ? (rawScale > 3 ? rawScale / 100 : rawScale) : 1
-  const finalScale = normalizedScale * 1.15
-
+  const cfg = config ?? {}
+  const de = language === 'de'
+  const formatTime = () => new Date().toLocaleTimeString(de ? 'de-DE' : 'en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
+  const [time, setTime] = useState(formatTime)
   useEffect(() => {
-    if (!cfg.time) return
-    const tick = () => setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+    if (cfg.time === false) return
+    const tick = () => setTime(formatTime())
     tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [cfg.time])
+    let interval: ReturnType<typeof setInterval> | undefined
+    const align = setTimeout(() => { tick(); interval = setInterval(tick, 60000) }, 60000 - Date.now() % 60000)
+    return () => { clearTimeout(align); if (interval) clearInterval(interval) }
+  }, [cfg.time, de])
 
-  const effectiveFps = metrics.gameFps && metrics.gameFps > 0 ? metrics.gameFps : displayFps
+  const horizontal = cfg.layout === 'horizontal'
+  const surface = cfg.background === 'clear' || cfg.background === 'solid' ? cfg.background : 'glass'
+  const rawScale = cfg.scale ?? 100
+  const normalized = Number.isFinite(rawScale) ? (rawScale > 3 ? rawScale / 100 : rawScale) : 1
+  const scale = Math.max(.5, Math.min(2, normalized))
+  const hasFps = Number.isFinite(metrics.gameFps) && metrics.gameFps! > 0
+  const denied = metrics.gameFpsStatus === 'permission-required'
+  const hint = denied
+    ? (de ? 'FPS-Zugriff in Einstellungen → Gameplay-Overlay aktivieren.' : 'Enable FPS access in Settings → Gameplay Overlay.')
+    : metrics.gameFpsStatus === 'unavailable'
+      ? (de ? 'FPS-Helfer nicht verfügbar.' : 'FPS helper unavailable.')
+      : metrics.gameFpsStatus === 'no-frames'
+        ? (de ? 'Das Spiel liefert momentan keine Bilddaten.' : 'The game is not currently presenting frames.') : ''
+  const percentage = (label: string, value?: number) => ({ label,
+    value: Number.isFinite(value) ? String(Math.round(Math.max(0, Math.min(100, value!)))) : '—',
+    unit: Number.isFinite(value) ? '%' : '', hint: '', accent: false })
+  const rows = [
+    cfg.fps !== false && { label: 'FPS', value: hasFps ? String(Math.round(metrics.gameFps!)) : denied ? (de ? 'Zugriff' : 'Access') : '—',
+      unit: '', hint, accent: hasFps },
+    cfg.cpu !== false && percentage('CPU', metrics.cpu),
+    cfg.gpu !== false && percentage('GPU', metrics.gpu),
+    cfg.ram !== false && percentage('RAM', metrics.ram),
+    cfg.time !== false && { label: de ? 'UHR' : 'TIME', value: time, unit: '', hint: '', accent: false },
+  ].filter((row): row is { label: string; value: string; unit: string; hint: string; accent: boolean } => !!row)
+  if (!rows.length) return null
 
-  const items = [
-    (cfg.fps ?? true) && { label: 'FPS', value: String(effectiveFps), unit: '' },
-    (cfg.cpu ?? true) && { label: 'CPU', value: String(metrics.cpu ?? 0), unit: '%' },
-    (cfg.gpu ?? true) && { label: 'GPU', value: String(metrics.gpu ?? 0), unit: '%' },
-    (cfg.ram ?? true) && { label: 'RAM', value: String(metrics.ram ?? 0), unit: '%' },
-    (cfg.time ?? true) && time && { label: 'TIME', value: time, unit: '' },
-  ].filter(Boolean) as { label: string; value: string; unit: string }[]
-
-  if (items.length === 0) return null
-
-  // Horizontal flat bar layout
-  if (isHorizontal) {
-    return (
-      <div style={{
-        display: 'inline-flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: '3px 7px',
-        borderRadius: 6,
-        backgroundColor: 'rgba(10, 12, 18, 0.88)',
-        backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        outline: editMode ? '1.5px dashed rgba(255, 255, 255, 0.7)' : 'none',
-        outlineOffset: '3px',
-        boxShadow: editMode ? '0 0 12px rgba(255, 255, 255, 0.15), 0 4px 16px rgba(0, 0, 0, 0.25)' : '0 4px 16px rgba(0, 0, 0, 0.25)',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif',
-        userSelect: 'none',
-        pointerEvents: 'none',
-        contain: 'layout paint style',
-        transform: `scale(${finalScale}) translateZ(0)`,
-        transformOrigin: 'top left',
-        transition: 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease',
-      }}>
-        {items.map((item, idx) => (
-          <div key={item.label} style={{ display: 'inline-flex', alignItems: 'center' }}>
-            {idx > 0 && (
-              <div style={{
-                width: 1,
-                height: 10,
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                margin: '0 7px',
-              }} />
-            )}
-            <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4 }}>
-              <span style={{
-                fontSize: 8.5,
-                fontWeight: 500,
-                color: 'rgba(255, 255, 255, 0.42)',
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-              }}>
-                {item.label}
-              </span>
-              <span style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: '#ffffff',
-                fontVariantNumeric: 'tabular-nums',
-                letterSpacing: '-0.01em',
-              }}>
-                {item.value}
-                {item.unit && (
-                  <span style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255, 255, 255, 0.55)', marginLeft: 0.5 }}>
-                    {item.unit}
-                  </span>
-                )}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  // Vertical compact card layout
-  return (
-    <div style={{
-      display: 'inline-flex',
-      flexDirection: 'column',
-      minWidth: 76,
-      padding: '4px 8px',
-      borderRadius: 7,
-      backgroundColor: 'rgba(10, 12, 18, 0.88)',
-      backdropFilter: 'blur(16px)',
-      border: '1px solid rgba(255, 255, 255, 0.08)',
-      outline: editMode ? '1.5px dashed rgba(255, 255, 255, 0.7)' : 'none',
-      outlineOffset: '3px',
-      boxShadow: editMode ? '0 0 12px rgba(255, 255, 255, 0.15), 0 4px 16px rgba(0, 0, 0, 0.25)' : '0 4px 16px rgba(0, 0, 0, 0.25)',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      contain: 'layout paint style',
-      transform: `scale(${finalScale}) translateZ(0)`,
-      transformOrigin: 'top left',
-      transition: 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease',
-    }}>
-      {items.map((item, idx) => (
-        <div
-          key={item.label}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-            height: 17,
-            borderBottom: idx < items.length - 1 ? '1px solid rgba(255, 255, 255, 0.04)' : 'none',
-          }}
-        >
-          <span style={{
-            fontSize: 8.5,
-            fontWeight: 500,
-            color: 'rgba(255, 255, 255, 0.42)',
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-          }}>
-            {item.label}
-          </span>
-          <span style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: '#ffffff',
-            fontVariantNumeric: 'tabular-nums',
-            letterSpacing: '-0.01em',
-          }}>
-            {item.value}
-            {item.unit && (
-              <span style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255, 255, 255, 0.55)', marginLeft: 0.5 }}>
-                {item.unit}
-              </span>
-            )}
-          </span>
-        </div>
-      ))}
+  return <div className={`overlay-panel performance-hud${horizontal ? ' performance-hud--horizontal' : ''}`}
+    style={{ '--performance-scale': scale, outline: editMode ? '1px dashed rgba(255,255,255,.55)' : undefined, outlineOffset: 3 } as CSSProperties}
+    data-surface={surface} data-mirrored={cfg.mirrored||undefined} data-fps-status={cfg.fps !== false ? metrics.gameFpsStatus : undefined} aria-label={de ? 'Leistungsanzeige' : 'Performance monitor'}>
+    <div className="performance-hud__heading" aria-hidden="true"><span />ECLIPSE</div>
+    <div className="performance-hud__stats">
+      {rows.map(row => <div key={row.label} title={row.hint || undefined}
+        className={`performance-hud__stat${row.label === 'FPS' ? ' performance-hud__stat--fps' : ''}`}
+        data-metric={row.label === 'UHR' ? 'TIME' : row.label}>
+        <span className="performance-hud__label">{row.label}</span>
+        <span className="performance-hud__value" data-accent={row.accent || undefined} data-unavailable={row.label === 'FPS' && denied && !hasFps || undefined}>
+          {row.value}{row.unit && <span className="performance-hud__unit">{row.unit}</span>}
+        </span>
+      </div>)}
     </div>
-  )
+  </div>
 })

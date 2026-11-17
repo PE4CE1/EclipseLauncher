@@ -1,0 +1,4 @@
+https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=block
+https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2
+https://raw.githubusercontent.com/google/fonts/main/ofl/inter/OFL.txt
+SHA-256: 3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62

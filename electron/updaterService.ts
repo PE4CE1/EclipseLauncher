@@ -1,155 +1,95 @@
 import { autoUpdater } from 'electron-updater'
-import { ipcMain, app, shell } from 'electron'
-import fs from 'fs'
-import path from 'path'
-import https from 'https'
-import http from 'http'
-import { execFile } from 'child_process'
+import { app } from 'electron'
+import { ipcMain } from './ipcSecurity'
+import path from 'node:path'
+import { hasExternalBroker, spawnExternalApplication, waitForExternalLaunches } from './externalLaunch'
 
-let downloadedInstallerPath: string | null = null
+export function isTrustedUpdateUrl(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && url.hostname === 'github.com' && !url.username && !url.password &&
+      !url.port && /^\/PE4CE1\/EclipseLauncher\/releases\/(?:download\/[^/]+|latest\/download)\/[^/]+\.exe$/i.test(url.pathname)
+  } catch { return false }
+}
+
 
 export function initUpdater(mainWindow: Electron.BrowserWindow) {
-  // Allow updating without a code signature
+  // Preserve electron-updater's validated installer path and arguments, while
+  // keeping the installer and its restarted app outside the old memory job.
+  const nativeUpdater = autoUpdater as typeof autoUpdater & { spawnLog?: (exe: string, args?: string[], env?: NodeJS.ProcessEnv, stdio?: unknown) => Promise<boolean>; memoryBrokerInstalled?: boolean }
+  if (!nativeUpdater.memoryBrokerInstalled && nativeUpdater.spawnLog) {
+    const spawnLog = nativeUpdater.spawnLog.bind(autoUpdater)
+    nativeUpdater.spawnLog = async (exe, args = [], env, stdio) => {
+      if (!hasExternalBroker()) return spawnLog(exe, args, env, stdio)
+      if (env) throw new Error('Custom installer environments are unsupported while the memory limit is active')
+      const child = await spawnExternalApplication(exe, args, path.dirname(exe)); child.unref(); return true
+    }
+    nativeUpdater.memoryBrokerInstalled = true
+  }
+  let downloadInProgress = false
+  let updateReady = false
   autoUpdater.autoDownload = false
-  autoUpdater.autoInstallOnAppQuit = true
+  autoUpdater.autoInstallOnAppQuit = !hasExternalBroker()
+  autoUpdater.allowPrerelease = false
+  autoUpdater.allowDowngrade = false
+  autoUpdater.disableWebInstaller = true
 
-  // Let the renderer know the current state
-  const sendStatus = (status: string, data?: any) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('updater:status', { status, data })
-    }
+  const sendStatus = (status: string, data?: unknown) => {
+    if (!mainWindow.isDestroyed()) mainWindow.webContents.send('updater:status', { status, data })
   }
-
-  // --- AutoUpdater Events ---
-  autoUpdater.on('checking-for-update', () => {
-    sendStatus('checking')
-  })
-
-  autoUpdater.on('update-available', (info) => {
-    sendStatus('available', info)
-  })
-
-  autoUpdater.on('update-not-available', (info) => {
-    sendStatus('not-available', info)
-  })
-
-  autoUpdater.on('error', (err) => {
-    sendStatus('error', err?.message || String(err))
-  })
-
-  autoUpdater.on('download-progress', (progressObj) => {
-    sendStatus('downloading', progressObj)
-  })
-
-  autoUpdater.on('update-downloaded', (info) => {
-    sendStatus('downloaded', info)
-  })
-
-  // Helper to download installer file with live progress and automatic redirect handling
-  function downloadFileWithProgress(url: string, targetPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const get = (currentUrl: string, maxRedirects = 5) => {
-        if (maxRedirects <= 0) return reject(new Error('Too many redirects'))
-
-        const client = currentUrl.startsWith('https') ? https : http
-        client.get(currentUrl, { headers: { 'User-Agent': 'EclipseLauncher' } }, (res) => {
-          if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-            return get(res.headers.location, maxRedirects - 1)
-          }
-          if (res.statusCode !== 200) {
-            return reject(new Error(`Download failed with HTTP ${res.statusCode}`))
-          }
-
-          const totalBytes = parseInt(res.headers['content-length'] || '0', 10)
-          let receivedBytes = 0
-
-          const fileStream = fs.createWriteStream(targetPath)
-          res.on('data', (chunk) => {
-            receivedBytes += chunk.length
-            if (totalBytes > 0) {
-              const percent = Math.min(100, Math.round((receivedBytes / totalBytes) * 100))
-              sendStatus('downloading', { percent, total: totalBytes, transferred: receivedBytes })
-            }
-          })
-
-          res.pipe(fileStream)
-
-          fileStream.on('finish', () => {
-            fileStream.close()
-            resolve()
-          })
-
-          fileStream.on('error', (err) => {
-            fs.unlink(targetPath, () => {})
-            reject(err)
-          })
-        }).on('error', reject)
-      }
-
-      get(url)
-    })
+  const failure = (error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error)
+    sendStatus('error', message)
+    return { success: false as const, error: message }
   }
-
-  // --- IPC Handlers from Renderer ---
-
-  // Client wants to check for updates manually
-  ipcMain.handle('updater:check', () => {
-    try {
-      if (app.isPackaged) {
-        autoUpdater.checkForUpdatesAndNotify()
-      }
-    } catch (e) {
-      console.error('[Updater] Check error:', e)
-    }
+  // The native quit event is too late to await an outside-job IPC handoff.
+  // Start it before quitting; the shared shutdown guard waits for its OS ack.
+  if (hasExternalBroker()) app.on('before-quit', event => {
+    if (!updateReady) return
+    event.preventDefault()
+    updateReady = false
+    const installer = autoUpdater as typeof autoUpdater & { install?: (silent: boolean, runAfter: boolean) => boolean }
+    installer.install?.(true, false)
+    void waitForExternalLaunches().then(() => app.quit())
   })
 
-  // Client wants to start the download
+  // A download revalidates metadata without replacing the active card with a checking screen.
+  autoUpdater.on('checking-for-update', () => { if (!downloadInProgress) sendStatus('checking') })
+  autoUpdater.on('update-available', info => { if (!downloadInProgress) sendStatus('available', info) })
+  autoUpdater.on('update-not-available', info => { if (!downloadInProgress) sendStatus('not-available', info) })
+  autoUpdater.on('error', error => { updateReady = false; sendStatus('error', error?.message || String(error)) })
+  autoUpdater.on('download-progress', progress => sendStatus('downloading', progress))
+  autoUpdater.on('update-downloaded', info => { updateReady = true; sendStatus('downloaded', info) })
+
+  ipcMain.handle('updater:check', async () => {
+    if (!app.isPackaged) return { success: false, error: 'Automatic updates require an installed or packaged Eclipse build.' }
+    try { await autoUpdater.checkForUpdates(); return { success: true } }
+    catch (error) { return failure(error) }
+  })
+
   ipcMain.handle('updater:download', async (_event, directUrl?: string) => {
+    if (downloadInProgress) return { success: false, error: 'An update download is already running' }
+    if (directUrl !== undefined && !isTrustedUpdateUrl(directUrl)) return failure('Untrusted update URL')
+    if (!app.isPackaged) return failure('Automatic updates require an installed or packaged Eclipse build.')
+    downloadInProgress = true
+    updateReady = false
     try {
-      if (app.isPackaged && !directUrl) {
-        try {
-          await autoUpdater.downloadUpdate()
-          return { success: true }
-        } catch (err) {
-          console.warn('[Updater] autoUpdater.downloadUpdate failed, falling back to direct download:', err)
-        }
-      }
-
-      // Direct / Dev fallback download
-      const targetUrl = directUrl || 'https://github.com/PE4CE1/EclipseLauncher/releases/latest/download/Eclipse.Launcher.Setup.exe'
-      const tempPath = path.join(app.getPath('temp'), 'EclipseLauncherSetup.exe')
-
-      sendStatus('downloading', { percent: 2 })
-      await downloadFileWithProgress(targetUrl, tempPath)
-      downloadedInstallerPath = tempPath
-      sendStatus('downloaded', { filePath: tempPath })
-      return { success: true, filePath: tempPath }
-    } catch (e: any) {
-      console.error('[Updater] Download update error:', e)
-      sendStatus('error', e.message || String(e))
-      return { success: false, error: e.message }
-    }
+      // Always use release metadata and its SHA-512 check, even when the renderer supplies an asset URL.
+      const result = await autoUpdater.checkForUpdates()
+      if (!result?.isUpdateAvailable) throw new Error('No newer update is available.')
+      await autoUpdater.downloadUpdate()
+      return { success: true }
+    } catch (error) { return failure(error) }
+    finally { downloadInProgress = false }
   })
 
-  // Client wants to quit and install immediately
-  ipcMain.handle('updater:install', () => {
+  ipcMain.handle('updater:install', async () => {
+    if (!app.isPackaged || !updateReady || downloadInProgress) return failure('The update must finish downloading before it can be installed.')
+    updateReady = false
     try {
-      if (downloadedInstallerPath && fs.existsSync(downloadedInstallerPath)) {
-        const installer = downloadedInstallerPath
-        downloadedInstallerPath = null
-        shell.openPath(installer)
-        setTimeout(() => app.quit(), 1000)
-        return
-      }
-
-      if (app.isPackaged) {
-        autoUpdater.quitAndInstall()
-      } else {
-        app.relaunch()
-        app.quit()
-      }
-    } catch (e) {
-      console.error('[Updater] Install error:', e)
-    }
+      autoUpdater.quitAndInstall(false, true)
+      return { success: true }
+    } catch (error) { return failure(error) }
   })
 }

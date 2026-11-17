@@ -1,231 +1,54 @@
-import { Client } from 'discord-rpc'
+import { DiscordConnection } from './discordConnection'
+import { createDiscordClient } from './discordClient'
+import type { DiscordActivity } from './discordActivity'
+import { fetchSteamGameIcon, searchSteamArtwork, steamIconUrl } from './discordGameArtwork'
+export { searchSteamArtwork } from './discordGameArtwork'
+import { APP_VERSION } from '../src/services/appVersion'
+import type { DownloadActivity } from './steamDownloadActivity'
 
 // Default Client ID for Eclipse Launcher
 export const DEFAULT_CLIENT_ID = '1534714200813863136'
 
-// Optional map for game-specific Discord Application IDs (e.g. "Rocket League with Eclipse")
-export const GAME_CLIENT_IDS: Record<string, string> = {
-  'rocket league': '', // When you create an app named "Rocket League with Eclipse", put its Client ID here!
-  'roblox': '',
-  'fortnite': '',
-  'valorant': '',
-  'grand theft auto v': '',
-  'counter-strike 2': '',
-  'minecraft': '',
-  'league of legends': ''
-}
-
 let activeClientId = DEFAULT_CLIENT_ID
-let rpc: Client | null = null
-let startTimestamp: Date | undefined = undefined
-let isReady = false
-let isConnecting = false
-let lastLoginAttemptTime = 0
-const LOGIN_RETRY_COOLDOWN_MS = 5000
-let pendingActivity: any = null
+let enabled = true
+let showVersion = false
+const connection = new DiscordConnection(createDiscordClient)
 
-let lastActivityTime = 0
-let lastActivityKey = ''
-let throttleTimeout: NodeJS.Timeout | null = null
-
-function updateActivityThrottled(activity: any, force: boolean = false) {
-  if (!rpc && !isConnecting) {
-    initDiscordRPC(activeClientId)
-  }
-
-  const key = JSON.stringify(activity)
-  const now = Date.now()
-
-  if (!isReady || !rpc) {
-    pendingActivity = activity
-    return
-  }
-
-  // If payload didn't change and not forced, return
-  if (key === lastActivityKey && !force) return
-
-  const elapsed = now - lastActivityTime
-
-  // Discord rate limit: max 1 update every ~3.5 seconds
-  if (elapsed < 3500 && !force) {
-    pendingActivity = activity
-    if (!throttleTimeout) {
-      throttleTimeout = setTimeout(() => {
-        throttleTimeout = null
-        if (pendingActivity) {
-          updateActivityThrottled(pendingActivity, true)
-        }
-      }, Math.max(100, 3500 - elapsed))
-    }
-    return
-  }
-
-  if (throttleTimeout) {
-    clearTimeout(throttleTimeout)
-    throttleTimeout = null
-  }
-
-  lastActivityTime = Date.now()
-  lastActivityKey = key
-  pendingActivity = null
-
-  rpc.setActivity(activity).catch((err: any) => {
-    if (err?.message?.includes('closed') || err?.message?.includes('connection')) {
-      isReady = false
-      isConnecting = false
-      rpc = null
-    }
-  })
-}
-
-export function initDiscordRPC(targetClientId: string = DEFAULT_CLIENT_ID) {
-  if (rpc && activeClientId === targetClientId && (isReady || isConnecting)) return
-
-  const now = Date.now()
-  if (now - lastLoginAttemptTime < LOGIN_RETRY_COOLDOWN_MS && activeClientId === targetClientId) {
-    return
-  }
-
-  lastLoginAttemptTime = now
-
-  // If switching client IDs or reconnecting, cleanly destroy previous RPC connection
-  if (rpc) {
-    try {
-      rpc.removeAllListeners()
-      rpc.destroy().catch(() => {})
-    } catch (_) {}
-    rpc = null
-    isReady = false
-    isConnecting = false
-  }
-
+export function initDiscordRPC(targetClientId = DEFAULT_CLIENT_ID) {
   activeClientId = targetClientId
-  isConnecting = true
-
-  try {
-    const client = new Client({ transport: 'ipc' })
-    rpc = client
-
-    client.on('ready', () => {
-      if (rpc !== client) return
-      console.log(`Discord RPC ready (Client ID: ${activeClientId})`)
-      isReady = true
-      isConnecting = false
-      if (pendingActivity) {
-        updateActivityThrottled(pendingActivity, true)
-      }
-    })
-
-    client.on('close', () => {
-      if (rpc === client) {
-        isReady = false
-        isConnecting = false
-        rpc = null
-      }
-    })
-
-    client.on('error', (_err: any) => {
-      if (rpc === client) {
-        isReady = false
-        isConnecting = false
-      }
-    })
-
-    client.login({ clientId: activeClientId }).catch((err: any) => {
-      if (rpc === client) {
-        rpc = null 
-        isReady = false
-        isConnecting = false
-      }
-    })
-  } catch (_) {
-    rpc = null
-    isReady = false
-    isConnecting = false
-  }
+  connection.refresh()
 }
-
-import * as https from 'https'
 
 export const ECLIPSE_LOGO_URL = 'https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/public/logo.png'
-export const ECLIPSE_LOGO_GIF_URL = 'https://i.imgur.com/Q5Hueya.gif'
+export const ECLIPSE_LOGO_GIF_URL = 'https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/public/eclipse-logo.gif'
 
-// Cache for dynamic Steam artwork lookups so every game gets its best working artwork instantly
-const steamArtworkCache = new Map<string, { appId?: number; imageUrl: string }>()
-
-function checkUrlValid(url: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    try {
-      const req = https.request(url, { method: 'HEAD', timeout: 2000 }, (res) => {
-        resolve(res.statusCode === 200)
-      })
-      req.on('error', () => resolve(false))
-      req.on('timeout', () => { req.destroy(); resolve(false) })
-      req.end()
-    } catch (_) {
-      resolve(false)
-    }
-  })
+// Official square Steam community icons, verified against IStoreBrowseService.
+const STEAM_ICON_HASHES: Record<number, string> = {
+  "440": "f568912870a4684f9ec76277a1a404dda6bab213",
+  "570": "48eb825bb93787945065b460bdc109e395384ebf",
+  "730": "8dbc71957312bbd3baea65848b545be9eae2a355",
+  "105600": "858961e95fbf869f136e1770d586e0caefd4cfac",
+  "252490": "820be4782639f9c4b64fa3ca7e6c26a95ae4fd1c",
+  "252950": "9ad6dd3d173523354385955b5fb2af87639c4163",
+  "271590": "1e72f87eb927fa1485e68aefaff23c7fd7178251",
+  "292030": "7b52d11edee478d652ef4e7103e00644bed2c74c",
+  "359550": "624745d333ac54aedb1ee911013e2edb7722550e",
+  "381210": "aa152097a700fd6f4707397ce41794ea30874790",
+  "553850": "5236dcc5d02b1f7aa199eef56253d20be87baef3",
+  "1086940": "d866cae7ea1e471fdbc206287111f1b642373bd9",
+  "1091500": "6897c3848f3e0350d512f59d5bae174a1e3739f9",
+  "1097150": "6c027709b9eb1417c993bc7d513b97b232002368",
+  "1172470": "8986dd626da56db5f3fe09bc1b8871739de8b00d",
+  "1174180": "5106abd9c1187a97f23295a0ba9470c94804ec6c",
+  "1245620": "b6e290dd5a92ce98f89089a207733c70c41a1871",
+  "1623730": "f5523077a8f4c923c2e8d8c17794b3319035fa73",
+  "2195250": "d01e05e0fb8e77c790c699b4fa0a9559cf80d16d",
+  "2357570": "da42bd294c941d5947b1bc2c2b2efa1313d36a91",
+  "2669320": "f6c4988f3e7b965451a3d9fca34014585d1754e2"
 }
+const knownSteamIcon = (appId: number) => steamIconUrl(appId, STEAM_ICON_HASHES[appId])
 
-export async function searchSteamArtwork(gameName: string): Promise<{ appId?: number; imageUrl: string } | null> {
-  const clean = gameName.toLowerCase().trim()
-  if (steamArtworkCache.has(clean)) {
-    return steamArtworkCache.get(clean)!
-  }
-
-  return new Promise((resolve) => {
-    const url = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(gameName)}&l=english&cc=US`
-    const req = https.get(url, { timeout: 3500 }, async (res) => {
-      if (res.statusCode !== 200) {
-        resolve(null)
-        return
-      }
-      let raw = ''
-      res.on('data', chunk => raw += chunk)
-      res.on('end', async () => {
-        try {
-          const json = JSON.parse(raw)
-          if (json.items && json.items.length > 0 && json.items[0].id) {
-            const appId = Number(json.items[0].id)
-            const tinyImage = json.items[0].tiny_image || ''
-
-            // 1. Try official transparent logo.png
-            const logoUrl = `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/logo.png`
-            if (await checkUrlValid(logoUrl)) {
-              const resObj = { appId, imageUrl: logoUrl }
-              steamArtworkCache.set(clean, resObj)
-              resolve(resObj)
-              return
-            }
-
-            // 2. Try official header.jpg
-            const headerUrl = `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`
-            if (await checkUrlValid(headerUrl)) {
-              const resObj = { appId, imageUrl: headerUrl }
-              steamArtworkCache.set(clean, resObj)
-              resolve(resObj)
-              return
-            }
-
-            // 3. Guaranteed fallback to tiny_image capsule
-            if (tinyImage) {
-              const resObj = { appId, imageUrl: tinyImage }
-              steamArtworkCache.set(clean, resObj)
-              resolve(resObj)
-              return
-            }
-          }
-        } catch (_) {}
-        resolve(null)
-      })
-    })
-    req.on('error', () => resolve(null))
-    req.on('timeout', () => { req.destroy(); resolve(null) })
-  })
-}
-
-// Guaranteed 100% working Discord-friendly CDN URLs (Steam CDN & GitHub Raw - never blocked by Discord)
+// Public publisher/CDN assets; unavailable artwork falls back to Eclipse.
 export const GAME_ARTWORK_MAP: Record<string, { appId?: number; imageUrl?: string }> = {
   'rocket league': {
     appId: 252950,
@@ -233,110 +56,111 @@ export const GAME_ARTWORK_MAP: Record<string, { appId?: number; imageUrl?: strin
   },
   'grand theft auto v': {
     appId: 271590,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/271590/logo.png'
+    imageUrl: knownSteamIcon(271590)
   },
   'grand theft auto v enhanced': {
     appId: 271590,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/271590/logo.png'
+    imageUrl: knownSteamIcon(271590)
   },
   'fivem': {
     appId: 271590,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/271590/logo.png'
+    imageUrl: 'https://fivem.net/favicon.png'
   },
   'red dead redemption 2': {
     appId: 1174180,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1174180/logo.png'
+    imageUrl: knownSteamIcon(1174180)
   },
   'roblox': {
     imageUrl: 'https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/public/Roblox-Logo-Icon.png'
   },
   'fortnite': {
-    imageUrl: 'https://cdn2.unrealengine.com/14br-consoles-1920x1080-wlogo-1920x1080-ecd45d947e4f.jpg'
+    imageUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/a9/c4/00/a9c4002f-046a-ee19-68c9-730ee92109fa/AppIcon-0-0-1x_U007epad-0-1-85-220.png/512x512bb.jpg'
   },
   'valorant': {
-    imageUrl: 'https://images.contentstack.io/v3/assets/blt731acb42bb3d1659/blt77995166da9d1078/5ef232bf0f9d986b2457aa68/VALORANT_JETT_1920x1080.jpg'
+    imageUrl: 'https://cmsassets.rgpub.io/sanity/images/dsfx7636/news/cbf4460132cdfeb2a97fad5f9dd25ba0bc058f76-128x128.png'
   },
   'league of legends': {
-    imageUrl: 'https://brand.riotgames.com/static/a994aa7387ab0c315f4e4f2179b6bf5c/36e63/lol-logo.png'
+    imageUrl: 'https://shared.fastly.steamstatic.com/community_assets/images/apps/20590/e449d66244514c3607ac485936fd59aa4c194c03.jpg'
   },
   'minecraft': {
-    imageUrl: 'https://launchercontent.mojang.com/vanilla/icon.png'
+    imageUrl: 'https://www.minecraft.net/etc.clientlibs/minecraftnet/clientlibs/clientlib-site/resources/android-icon-192x192.png'
   },
   'counter-strike 2': {
     appId: 730,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/730/logo.png'
+    imageUrl: knownSteamIcon(730)
   },
   'dota 2': {
     appId: 570,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/570/logo.png'
+    imageUrl: knownSteamIcon(570)
   },
   'cyberpunk 2077': {
     appId: 1091500,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1091500/logo.png'
+    imageUrl: knownSteamIcon(1091500)
   },
   'elden ring': {
     appId: 1245620,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/logo.png'
+    imageUrl: knownSteamIcon(1245620)
   },
   'apex legends': {
     appId: 1172470,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1172470/logo.png'
+    imageUrl: knownSteamIcon(1172470)
   },
   'overwatch 2': {
     appId: 2357570,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2357570/logo.png'
+    imageUrl: knownSteamIcon(2357570)
   },
   'palworld': {
     appId: 1623730,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1623730/logo.png'
+    imageUrl: knownSteamIcon(1623730)
   },
   'helldivers 2': {
     appId: 553850,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/553850/logo.png'
+    imageUrl: knownSteamIcon(553850)
   },
   "baldur's gate 3": {
     appId: 1086940,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1086940/logo.png'
+    imageUrl: knownSteamIcon(1086940)
   },
   'the witcher 3: wild hunt': {
     appId: 292030,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/292030/logo.png'
+    imageUrl: knownSteamIcon(292030)
   },
   'ea sports fc 24': {
     appId: 2195250,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2195250/logo.png'
+    imageUrl: knownSteamIcon(2195250)
   },
   'ea sports fc 25': {
     appId: 2669320,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2669320/logo.png'
+    imageUrl: knownSteamIcon(2669320)
   },
   'rust': {
     appId: 252490,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/252490/logo.png'
+    imageUrl: knownSteamIcon(252490)
   },
   'rainbow six siege': {
     appId: 359550,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/359550/logo.png'
+    imageUrl: knownSteamIcon(359550)
   },
   'dead by daylight': {
     appId: 381210,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/381210/logo.png'
+    imageUrl: knownSteamIcon(381210)
   },
   'team fortress 2': {
     appId: 440,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/440/logo.png'
+    imageUrl: knownSteamIcon(440)
   },
   'terraria': {
     appId: 105600,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/105600/logo.png'
+    imageUrl: knownSteamIcon(105600)
   },
   'fall guys': {
     appId: 1097150,
-    imageUrl: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1097150/logo.png'
+    imageUrl: knownSteamIcon(1097150)
   },
 }
 
 export interface DiscordBaseContext {
+  clipsMode?: boolean
   type: 'game' | 'idle' | 'download'
   gameName?: string
   startTime?: number
@@ -348,344 +172,135 @@ export interface DiscordBaseContext {
   customSmallIconUrl?: string
   customSmallText?: string
   downloadName?: string
+  download?: DownloadActivity
   largeImageKey?: string
   largeImageText?: string
+  processId?: number
 }
 
 let activeContext: DiscordBaseContext | null = null
 let animationTicker: NodeJS.Timeout | null = null
 let isAnimationEnabled = false
 let animFrame = 0
+let contextRevision = 0
+let contextKey = ''
+const cleanText = (value: string, size = 128) => Array.from(value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim()).slice(0, size).join('')
+const imageUrl = (value?: string) => {
+  if (!value) return undefined
+  try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password && value.length <= 2048 ? value : undefined } catch { return undefined }
+}
 
-function getAnimatedLines(context: DiscordBaseContext, frame: number) {
-  let rawDetails = ''
-  let rawState = ''
-
-  if (context.type === 'idle') {
-    rawDetails = 'In Launcher'
-    rawState = 'Browsing Library'
-  } else if (context.type === 'download') {
-    const dlName = context.downloadName || 'Game'
-    rawDetails = `📥 Downloading ${dlName}`
-    rawState = 'with Eclipse'
-  } else {
-    // Gaming
-    const style = context.style || 'clipping'
-    const isPrivacy = !!context.isPrivacyMode
-    const displayName = isPrivacy ? 'a Game' : (context.gameName || 'a Game')
-    rawDetails = style === 'playing' ? `Playing ${displayName}` : `Clipping ${displayName}`
-    rawState = context.customState || 'with Eclipse'
+function activityFor(context: DiscordBaseContext): DiscordActivity {
+  const privacy = !!context.isPrivacyMode
+  const action = context.download?.phase === 'install' ? 'Installing' : context.download?.phase === 'verify' ? 'Verifying' : context.download?.phase === 'prepare' ? 'Preparing' : 'Downloading'
+  let details = context.type === 'idle' ? (context.clipsMode ? 'In Eclipse Clips' : 'In Launcher') : context.type === 'download' ? `${action} ${privacy ? 'a game' : context.downloadName || 'Game'}` : `${context.style === 'playing' ? 'Playing' : 'Clipping'} ${privacy ? 'a Game' : context.gameName || 'a Game'}`
+  let state = context.type === 'idle' ? (context.clipsMode ? 'Clips Studio' : 'Browsing Library') : privacy ? 'with Eclipse' : context.customState || 'with Eclipse'
+  if (context.type === 'download' && context.download && !privacy) state = `${context.download.source}${context.download.progress === undefined ? '' : ` · ${context.download.progress}%`} · with Eclipse`
+  if (showVersion) {
+    const suffix = ` · v${APP_VERSION}`
+    state = cleanText(state, 128 - suffix.length - (isAnimationEnabled ? 4 : 0)) + suffix
   }
-
-  const isEven = (Math.abs(frame) % 2) === 0
-
+  if (isAnimationEnabled) {
+    const even = animFrame % 2 === 0
+    details = `${even ? '✦' : '✧'} ${details} ${even ? '✦' : '✧'}`
+    state = `${even ? '✧' : '✦'} ${state} ${even ? '✧' : '✦'}`
+  }
   return {
-    details: isEven ? `✦ ${rawDetails} ✦` : `✧ ${rawDetails} ✧`,
-    state: isEven ? `✧ ${rawState} ✧` : `✦ ${rawState} ✦`
-  }
-}
-
-function startAnimationTicker() {
-  if (animationTicker) {
-    clearInterval(animationTicker)
-    animationTicker = null
-  }
-
-  if (!isAnimationEnabled || !activeContext) return
-
-  animationTicker = setInterval(() => {
-    if (!isAnimationEnabled || !activeContext) {
-      stopAnimationTicker()
-      return
-    }
-
-    animFrame = (animFrame + 1) % 4
-    const lines = getAnimatedLines(activeContext, animFrame)
-
-    if (activeContext.type === 'idle') {
-      const activity = {
-        details: lines.details,
-        state: lines.state,
-        largeImageKey: ECLIPSE_LOGO_GIF_URL,
-        largeImageText: 'Eclipse Launcher',
-        instance: false,
-        buttons: [
-          { label: 'Download Eclipse', url: 'https://eclipselauncher.pages.dev/' }
-        ]
-      }
-      updateActivityThrottled(activity, true)
-    } else if (activeContext.type === 'download') {
-      const activity = {
-        details: lines.details,
-        state: lines.state,
-        largeImageKey: ECLIPSE_LOGO_URL,
-        largeImageText: 'Eclipse Launcher Download Manager',
-        smallImageKey: ECLIPSE_LOGO_URL,
-        smallImageText: 'Eclipse',
-        instance: false,
-        buttons: [
-          { label: 'Download Eclipse', url: 'https://eclipselauncher.pages.dev/' }
-        ]
-      }
-      updateActivityThrottled(activity, true)
-    } else if (activeContext.type === 'game') {
-      const activity = {
-        details: lines.details,
-        state: lines.state,
-        startTimestamp: activeContext.startTime ? new Date(activeContext.startTime) : startTimestamp,
-        largeImageKey: activeContext.largeImageKey || ECLIPSE_LOGO_URL,
-        largeImageText: activeContext.largeImageText || 'Eclipse Launcher',
-        smallImageKey: activeContext.customSmallIconUrl || ECLIPSE_LOGO_URL,
-        smallImageText: activeContext.customSmallText || 'Eclipse',
-        instance: false,
-        buttons: [
-          { label: 'Download Eclipse', url: 'https://eclipselauncher.pages.dev/' },
-          { label: 'GitHub Releases', url: 'https://github.com/PE4CE1/EclipseLauncher/releases' }
-        ]
-      }
-      updateActivityThrottled(activity, true)
-    }
-  }, 2800)
-}
-
-function stopAnimationTicker() {
-  if (animationTicker) {
-    clearInterval(animationTicker)
-    animationTicker = null
-  }
-}
-
-export function setDiscordTextAnimationEnabled(enabled: boolean) {
-  isAnimationEnabled = enabled
-  if (isAnimationEnabled) {
-    if (activeContext) {
-      animFrame = 0
-      startAnimationTicker()
-    }
-  } else {
-    stopAnimationTicker()
-    if (activeContext) {
-      if (activeContext.type === 'game') {
-        setDiscordActivity(
-          activeContext.gameName || 'a Game',
-          activeContext.startTime || Date.now(),
-          activeContext.isPrivacyMode,
-          activeContext.style,
-          activeContext.appId,
-          activeContext.customIconUrl,
-          activeContext.customState,
-          activeContext.customSmallIconUrl,
-          activeContext.customSmallText,
-          false
-        )
-      } else if (activeContext.type === 'idle') {
-        setDiscordIdleActivity(false)
-      } else if (activeContext.type === 'download') {
-        setDiscordDownloadActivity(activeContext.downloadName || 'Game', false)
-      }
-    }
-  }
-}
-
-export function setDiscordActivity(
-  gameName: string, 
-  startTime: number, 
-  isPrivacyMode: boolean = false,
-  style: 'clipping' | 'playing' = 'clipping',
-  appId?: string | number,
-  customIconUrl?: string,
-  customState?: string,
-  customSmallIconUrl?: string,
-  customSmallText?: string,
-  isAnimated: boolean = false
-) {
-  startTimestamp = new Date(startTime)
-  isAnimationEnabled = isAnimated
-  const displayName = isPrivacyMode ? (style === 'playing' ? 'a Game' : 'a Game') : gameName
-
-  // Resolve Clean Game Icon / Artwork
-  let largeImageKey = ECLIPSE_LOGO_URL
-  let largeImageText = isPrivacyMode ? 'Eclipse Launcher' : gameName
-  const cleanName = (gameName || '').toLowerCase().trim()
-
-  // Switch to game-specific client ID if registered (for "Rocket League with Eclipse" title)
-  const targetClientId = (!isPrivacyMode && GAME_CLIENT_IDS[cleanName]) ? GAME_CLIENT_IDS[cleanName] : DEFAULT_CLIENT_ID
-  if (targetClientId !== activeClientId) {
-    initDiscordRPC(targetClientId)
-  }
-
-  let hasFoundArtwork = false
-
-  if (!isPrivacyMode) {
-    const mapped = GAME_ARTWORK_MAP[cleanName]
-
-    if (customIconUrl && customIconUrl.startsWith('http')) {
-      largeImageKey = customIconUrl
-      hasFoundArtwork = true
-    } else if (mapped?.imageUrl) {
-      largeImageKey = mapped.imageUrl
-      hasFoundArtwork = true
-    } else if (mapped?.appId) {
-      largeImageKey = `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${mapped.appId}/logo.png`
-      hasFoundArtwork = true
-    } else if (appId) {
-      largeImageKey = `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/logo.png`
-      hasFoundArtwork = true
-    }
-  }
-
-  // If no artwork mapped yet, dynamically search Steam Store in background and update RPC!
-  if (!isPrivacyMode && !hasFoundArtwork && gameName && !customIconUrl) {
-    searchSteamArtwork(gameName).then(artwork => {
-      if (artwork?.imageUrl) {
-        setDiscordActivity(gameName, startTime, isPrivacyMode, style, artwork.appId, artwork.imageUrl, customState, customSmallIconUrl, customSmallText, isAnimated)
-      }
-    }).catch(() => {})
-  }
-
-  activeContext = {
-    type: 'game',
-    gameName,
-    startTime,
-    isPrivacyMode,
-    style,
-    appId,
-    customIconUrl,
-    customState,
-    customSmallIconUrl,
-    customSmallText,
-    largeImageKey,
-    largeImageText
-  }
-
-  let details = isPrivacyMode
-    ? (style === 'playing' ? 'Playing a Game' : 'Clipping a Game')
-    : (style === 'playing' ? `Playing ${displayName}` : `Clipping ${displayName}`)
-
-  let state = customState || 'with Eclipse'
-
-  if (isAnimationEnabled) {
-    const lines = getAnimatedLines(activeContext, animFrame)
-    details = lines.details
-    state = lines.state
-  }
-
-  const activity = {
-    details,
-    state,
-    startTimestamp,
-    largeImageKey, 
-    largeImageText,
-    smallImageKey: customSmallIconUrl || ECLIPSE_LOGO_URL,
-    smallImageText: customSmallText || 'Eclipse',
+    name: context.type === 'game' && !privacy ? `${cleanText(context.gameName || 'a Game', 115)} with Eclipse` : 'Eclipse',
+    statusDisplayType: 0,
+    processId: context.type === 'game' && !privacy ? context.processId : undefined,
+    details: cleanText(details), state: cleanText(state),
+    ...(context.type === 'game' && context.startTime ? { startTimestamp: new Date(context.startTime) } : {}),
+    largeImageKey: privacy ? ECLIPSE_LOGO_GIF_URL : context.largeImageKey || ECLIPSE_LOGO_GIF_URL,
+    largeImageText: privacy ? 'Eclipse' : cleanText(context.largeImageText || 'Eclipse'),
+    ...(context.type !== 'idle' ? { smallImageKey: privacy ? ECLIPSE_LOGO_GIF_URL : imageUrl(context.customSmallIconUrl) || ECLIPSE_LOGO_GIF_URL, smallImageText: privacy ? 'Eclipse' : cleanText(context.customSmallText || 'Eclipse') } : {}),
     instance: false,
     buttons: [
       { label: 'Download Eclipse', url: 'https://eclipselauncher.pages.dev/' },
-      { label: 'GitHub Releases', url: 'https://github.com/PE4CE1/EclipseLauncher/releases' }
-    ]
-  }
-
-  updateActivityThrottled(activity, true)
-
-  if (isAnimationEnabled) {
-    startAnimationTicker()
-  } else {
-    stopAnimationTicker()
+      { label: 'GitHub', url: 'https://github.com/PE4CE1/EclipseLauncher' },
+    ],
   }
 }
 
-export function setDiscordDownloadActivity(downloadName: string, isAnimated: boolean = false) {
-  if (activeClientId !== DEFAULT_CLIENT_ID) {
-    initDiscordRPC(DEFAULT_CLIENT_ID)
-  }
+function publish() {
+  connection.publish(enabled && activeContext ? activityFor(activeContext) : null, activeClientId)
+}
+function stopAnimationTicker() {
+  if (animationTicker) clearInterval(animationTicker)
+  animationTicker = null
+}
+function syncAnimationTicker() {
+  if (!enabled || !isAnimationEnabled || !activeContext) { stopAnimationTicker(); return }
+  if (animationTicker) return
+  animationTicker = setInterval(() => {
+    if (!enabled || !isAnimationEnabled || !activeContext) { stopAnimationTicker(); return }
+    animFrame = (animFrame + 1) % 2
+    publish()
+  }, 5000)
+  animationTicker.unref?.()
+}
 
+export function setDiscordEnabled(value: boolean) {
+  if (enabled === value) return
+  enabled = value
+  if (!enabled) clearDiscordActivity()
+}
+
+export function setDiscordActivity(gameName: string, startTime: number, isPrivacyMode = false, style: 'clipping' | 'playing' = 'clipping', appId?: string | number, customIconUrl?: string, customState?: string, customSmallIconUrl?: string, customSmallText?: string, isAnimated = false, processId?: number) {
+  if (!enabled || typeof gameName !== 'string' || !gameName.trim()) return
+  const time = Number.isFinite(startTime) && startTime > 0 ? Math.min(startTime, Date.now()) : Date.now()
+  const key = JSON.stringify(['game', gameName, time, isPrivacyMode, style, appId, customIconUrl, customState, customSmallIconUrl, customSmallText, isAnimated, processId])
+  if (key === contextKey) { connection.refresh(); return }
+  contextKey = key
+  const revision = ++contextRevision
+  const name = gameName.toLowerCase().replace(/[™®©]/g, '').trim(), mapped = GAME_ARTWORK_MAP[name]
+  const steamAppId = Number(appId || mapped?.appId)
+  const artwork = isPrivacyMode ? undefined : imageUrl(customIconUrl) ||
+    (Number.isSafeInteger(steamAppId) && steamAppId > 0 && steamAppId !== mapped?.appId ? knownSteamIcon(steamAppId) : imageUrl(mapped?.imageUrl))
+  const lookup = () => Number.isSafeInteger(steamAppId) && steamAppId > 0 ? fetchSteamGameIcon(steamAppId) : searchSteamArtwork(gameName)
+  activeContext = { type: 'game', gameName, startTime: time, isPrivacyMode, style, appId, customIconUrl, customState, customSmallIconUrl, customSmallText, processId, largeImageKey: artwork || ECLIPSE_LOGO_GIF_URL, largeImageText: gameName }
   isAnimationEnabled = isAnimated
-  activeContext = {
-    type: 'download',
-    downloadName
-  }
-
-  let details = `📥 Downloading ${downloadName}`
-  let state = `with Eclipse`
-
-  if (isAnimationEnabled) {
-    const lines = getAnimatedLines(activeContext, animFrame)
-    details = lines.details
-    state = lines.state
-  }
-
-  const activity = {
-    details,
-    state,
-    largeImageKey: ECLIPSE_LOGO_URL,
-    largeImageText: 'Eclipse Launcher Download Manager',
-    smallImageKey: ECLIPSE_LOGO_URL,
-    smallImageText: 'Eclipse',
-    instance: false,
-    buttons: [
-      { label: 'Download Eclipse', url: 'https://eclipselauncher.pages.dev/' }
-    ]
-  }
-
-  updateActivityThrottled(activity)
-
-  if (isAnimationEnabled) {
-    startAnimationTicker()
-  } else {
-    stopAnimationTicker()
-  }
+  publish(); syncAnimationTicker()
+  if (!isPrivacyMode && !artwork) void lookup().then(found => {
+    if (!found || !enabled || revision !== contextRevision || activeContext?.type !== 'game') return
+    activeContext = { ...activeContext, largeImageKey: found.imageUrl }
+    publish()
+  }).catch(() => {})
 }
 
-export function setDiscordIdleActivity(isAnimated: boolean = false) {
-  if (activeClientId !== DEFAULT_CLIENT_ID) {
-    initDiscordRPC(DEFAULT_CLIENT_ID)
-  }
-
-  isAnimationEnabled = isAnimated
-  activeContext = {
-    type: 'idle'
-  }
-
-  let details = 'In Launcher'
-  let state = 'Browsing Library'
-
-  if (isAnimationEnabled) {
-    const lines = getAnimatedLines(activeContext, animFrame)
-    details = lines.details
-    state = lines.state
-  }
-
-  const activity = {
-    details,
-    state,
-    largeImageKey: ECLIPSE_LOGO_GIF_URL,
-    largeImageText: 'Eclipse Launcher',
-    instance: false,
-    buttons: [
-      { label: 'Download Eclipse', url: 'https://eclipselauncher.pages.dev/' }
-    ]
-  }
-
-  updateActivityThrottled(activity)
-
-  if (isAnimationEnabled) {
-    startAnimationTicker()
-  } else {
-    stopAnimationTicker()
-  }
+function setSimpleActivity(type: 'idle' | 'download', name: string | undefined, animated: boolean, clipsMode = false, download?: DownloadActivity, privacy = false) {
+  if (!enabled) return
+  const key = JSON.stringify([type, name, animated, clipsMode, download, privacy])
+  if (key === contextKey) { connection.refresh(); return }
+  contextKey = key
+  const revision = ++contextRevision
+  const artwork = !privacy && download?.appId ? knownSteamIcon(download.appId) : undefined
+  activeContext = { type, clipsMode, downloadName: name, download, isPrivacyMode: privacy,
+    largeImageKey: artwork || ECLIPSE_LOGO_GIF_URL,
+    largeImageText: type === 'download' ? name || 'Eclipse Downloads' : 'Eclipse' }
+  isAnimationEnabled = animated
+  publish(); syncAnimationTicker()
+  if (!privacy && download?.appId && !artwork) void fetchSteamGameIcon(download.appId).then(found => {
+    if (!found || !enabled || revision !== contextRevision || activeContext?.type !== 'download') return
+    activeContext = { ...activeContext, largeImageKey: found.imageUrl }
+    publish()
+  }).catch(() => {})
 }
-
+export function setDiscordDownloadActivity(name: string, animated = false, download?: DownloadActivity, privacy = false) { setSimpleActivity('download', cleanText(name), animated, false, download, privacy) }
+export function setDiscordIdleActivity(animated = false, clipsMode = false) { setSimpleActivity('idle', undefined, animated, clipsMode) }
+export function setDiscordVersionVisible(value: boolean) { if (showVersion !== value) { showVersion = value; publish() } }
+export function setDiscordTextAnimationEnabled(value: boolean) {
+  if (isAnimationEnabled === value) return
+  isAnimationEnabled = value; contextRevision++; contextKey = ''; animFrame = 0
+  publish(); syncAnimationTicker()
+}
 export function clearDiscordActivity() {
-  activeContext = null
+  contextRevision++; contextKey = ''; activeContext = null
   stopAnimationTicker()
-  pendingActivity = null
-  lastActivityKey = ''
-  if (throttleTimeout) {
-    clearTimeout(throttleTimeout)
-    throttleTimeout = null
-  }
-  if (isReady && rpc) {
-    rpc.clearActivity().catch((err: any) => console.log('Failed to clear Discord activity:', err?.message || err))
-    startTimestamp = undefined
-  }
+  connection.publish(null, activeClientId)
 }
+export function stopDiscordRPC() {
+  contextRevision++; contextKey = ''; activeContext = null
+  stopAnimationTicker(); connection.stop()
+}
+export function refreshDiscordActivity() { connection.refresh() }

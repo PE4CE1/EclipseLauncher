@@ -15,66 +15,47 @@ export function RLSteamAvatarHUD({
   const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
-    // Toggle from InputService (Keyboard & Controller)
-    const handleScoreboardToggle = (open: boolean) => {
-      if (!isEditMode) {
-        setIsVisible(open)
-      }
+    if (isEditMode) return
+    let keyboardPressed = false, controllerPressed = false, nativeConnected = false
+    let timer: ReturnType<typeof setTimeout>
+    const key = controllerKey.toLowerCase()
+    const index = key === 'start' ? 9 : /^button \d+$/.test(key) ? Math.min(31, Number(key.slice(7))) : 8
+    const publish = () => setIsVisible(keyboardPressed || controllerPressed)
+    const pressed = (buttons: any[] = []) => Boolean(buttons[index]?.pressed || buttons[index]?.value > .5)
+    const unsubToggle = window.electronAPI?.onRLScoreboardToggle?.((open: boolean) => {
+      keyboardPressed = open === true
+      publish()
+    })
+    const unsubController = window.electronAPI?.onGamepadState?.((state: any) => {
+      nativeConnected = state?.connected === true
+      controllerPressed = nativeConnected && pressed(state.buttons)
+      publish()
+    })
+    const pollFallback = () => {
+      if (!nativeConnected) {
+        const gamepad = Array.from(navigator.getGamepads?.() || []).find(pad => pad?.connected)
+        controllerPressed = Boolean(gamepad && pressed(gamepad.buttons as any[]))
+        publish()
+        timer = setTimeout(pollFallback, gamepad ? 50 : 500)
+      } else timer = setTimeout(pollFallback, 500)
     }
-
-    const unsubToggle = (window.electronAPI as any)?.on?.('rl:scoreboard-toggle', handleScoreboardToggle)
-
-
-    // Actually, handling gamepad perfectly alongside keyboard needs a bit of care.
-    // Let's implement robust polling:
-    let reqId: number
-    let lastGpPressed = false
-    const robustPoll = () => {
-      if (isEditMode) {
-        reqId = requestAnimationFrame(robustPoll)
-        return
-      }
-      
-      const gamepads = navigator.getGamepads ? navigator.getGamepads() : []
-      let isPressed = false
-      for (const gp of gamepads) {
-        if (!gp) continue
-        let btnIndex = 8
-        const keyLower = controllerKey.toLowerCase()
-        if (keyLower === 'select') btnIndex = 8
-        else if (keyLower === 'start') btnIndex = 9
-        else if (keyLower.startsWith('button ')) {
-          btnIndex = parseInt(keyLower.replace('button ', ''))
-        }
-        
-        if (gp.buttons[btnIndex]?.pressed) {
-          isPressed = true
-          break
-        }
-      }
-      
-      if (isPressed !== lastGpPressed) {
-        lastGpPressed = isPressed
-        setIsVisible(isPressed)
-      }
-      
-      reqId = requestAnimationFrame(robustPoll)
-    }
-    
-    reqId = requestAnimationFrame(robustPoll)
-
+    pollFallback()
     return () => {
       unsubToggle?.()
-      cancelAnimationFrame(reqId)
+      unsubController?.()
+      clearTimeout(timer)
     }
-  }, [isEditMode])
+  }, [isEditMode, controllerKey])
 
   useEffect(() => {
+    let disposed = false
+    setAvatarUrl(null)
     if (steamUrl) {
       (window.electronAPI as any)?.invoke?.('rl:fetch-steam-avatar', steamUrl).then((url: string | null) => {
-        if (url) setAvatarUrl(url)
-      })
+        if (!disposed && url) setAvatarUrl(url)
+      }).catch(() => {})
     }
+    return () => { disposed = true }
   }, [steamUrl])
 
   if (!avatarUrl) return null
@@ -84,7 +65,7 @@ export function RLSteamAvatarHUD({
 
   // Default Rocket League avatar size is roughly 44x44 or 48x48 depending on resolution
   // We use 56px and scale it based on UI scale setting
-  const scaleMult = (scale || 100) / 100
+  const scaleMult = Number.isFinite(scale) ? Math.max(.3, Math.min(2, scale / 100)) : .85
 
   return (
     <div style={{
@@ -92,8 +73,6 @@ export function RLSteamAvatarHUD({
       height: 56 * scaleMult,
       pointerEvents: 'none',
       userSelect: 'none',
-      opacity: isVisible || isEditMode ? 1 : 0,
-      transition: 'opacity 0.1s',
       border: `${2 * scaleMult}px solid white`,
       borderRadius: 2 * scaleMult,
       overflow: 'hidden',

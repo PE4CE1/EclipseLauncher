@@ -1,16 +1,24 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import fs from 'fs'
-import { execSync, execFile } from 'child_process'
+import { execFileSync, execFile } from 'child_process'
+import { memoryReliefDue, normalizeMemoryTarget, DEFAULT_MEMORY_TARGET_MB } from '../src/services/memoryBudget'
+import type { MemoryBudgetStatus } from '../src/types/system'
 
 let monitorTimer: NodeJS.Timeout | null = null
-let maintenanceTimer: NodeJS.Timeout | null = null
 let isOptimizing = false
 let lastTrimTime = 0
 let cachedTrimmerPath: string | null = null
 
-// Memory threshold in Megabytes: triggers proactive trim before touching 100MB
-const SOFT_MEMORY_CEILING_MB = 88
+let getMemoryTarget = () => DEFAULT_MEMORY_TARGET_MB
+let lastReliefAt: number | null = null
+
+export async function getMemoryBudgetStatus(): Promise<MemoryBudgetStatus> {
+  const metrics = getEclipseMemoryMetrics(), targetMB = normalizeMemoryTarget(getMemoryTarget())
+  return { targetMB, workingSetMB: metrics.totalWorkingSetMB, privateMB: metrics.totalPrivateMB,
+    residentMB: null, committedMB: metrics.totalPrivateMB, measurement: 'working-set-estimate',
+    pressure: targetMB > 0 && metrics.totalWorkingSetMB > targetMB, lastReliefAt }
+}
 
 function getTrimmerExecutablePath(): string | null {
   if (cachedTrimmerPath && fs.existsSync(cachedTrimmerPath)) {
@@ -19,6 +27,7 @@ function getTrimmerExecutablePath(): string | null {
   if (process.platform !== 'win32') return null
 
   const possiblePaths = [
+    path.join(process.resourcesPath || '', 'app.asar.unpacked', 'electron', 'native', 'MemoryTrimmer.exe'),
     path.join(__dirname, 'native/MemoryTrimmer.exe'),
     path.join(__dirname, '../electron/native/MemoryTrimmer.exe'),
     path.join(app.getAppPath(), 'electron/native/MemoryTrimmer.exe'),
@@ -27,7 +36,7 @@ function getTrimmerExecutablePath(): string | null {
   ]
 
   for (const p of possiblePaths) {
-    if (fs.existsSync(p)) {
+    if (!/(^|[\\/])app\.asar([\\/]|$)/i.test(p) && fs.existsSync(p)) {
       cachedTrimmerPath = p
       return p
     }
@@ -40,7 +49,10 @@ function getTrimmerExecutablePath(): string | null {
     try {
       const csc = 'C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe'
       if (fs.existsSync(csc)) {
-        execSync(`"${csc}" /nologo /optimize /platform:x64 /target:winexe /out:"${targetExe}" "${csSource}"`)
+        const physicalSource = /(^|[\\/])app\.asar([\\/]|$)/i.test(csSource)
+          ? path.join(app.getPath('userData'), 'MemoryTrimmer.cs') : csSource
+        if (physicalSource !== csSource) fs.writeFileSync(physicalSource, fs.readFileSync(csSource))
+        execFileSync(csc, ['/nologo', '/optimize', '/platform:x64', '/target:winexe', `/out:${targetExe}`, physicalSource], { windowsHide: true, timeout: 15000 })
         if (fs.existsSync(targetExe)) {
           cachedTrimmerPath = targetExe
           return targetExe
@@ -66,7 +78,10 @@ export function getEclipseMemoryMetrics(): { totalWorkingSetMB: number; totalPri
 
   try {
     const metrics = app.getAppMetrics()
+    const measured = new Set<number>()
     for (const m of metrics) {
+      if (!m.pid || measured.has(m.pid)) continue
+      measured.add(m.pid)
       if (m.pid) pids.add(m.pid.toString())
       if (m.memory) {
         totalWorkingSetKB += m.memory.workingSetSize || 0
@@ -82,7 +97,7 @@ export function getEclipseMemoryMetrics(): { totalWorkingSetMB: number; totalPri
     const mem = process.memoryUsage()
     return {
       totalWorkingSetMB: Math.round(mem.rss / (1024 * 1024)),
-      totalPrivateMB: Math.round(mem.heapUsed / (1024 * 1024)),
+      totalPrivateMB: 0,
       pids: Array.from(pids),
     }
   }
@@ -128,7 +143,7 @@ export async function trimMemoryNow(force: boolean = false): Promise<void> {
       if (exePath && fs.existsSync(exePath)) {
         const { pids } = getEclipseMemoryMetrics()
         await new Promise<void>((resolve) => {
-          execFile(exePath, pids, { windowsHide: true }, () => {
+          execFile(exePath, pids, { windowsHide: true, timeout: 5000 }, () => {
             resolve()
           })
         })
@@ -141,39 +156,29 @@ export async function trimMemoryNow(force: boolean = false): Promise<void> {
   }
 }
 
-/**
- * Initializes the automated memory optimizer service.
- * Continuously keeps memory usage stably under 100MB using proactive soft-ceiling detection.
- */
-export function startMemoryOptimizer(getMainWindow: () => BrowserWindow | null): void {
-  // Initial post-startup trim: gives renderer 5 seconds to complete initial load & stores
-  setTimeout(() => {
-    trimMemoryNow(true)
-  }, 5000).unref()
+let sampling = false
+export async function requestMemoryRelief(force = false): Promise<void> {
+  if (sampling) return
+  sampling = true
+  try {
+    const targetMB = normalizeMemoryTarget(getMemoryTarget())
+    if (!targetMB && !force) return
+    const status = await getMemoryBudgetStatus(), usage = status.residentMB ?? status.workingSetMB, now = Date.now()
+    if (!force && !memoryReliefDue(usage, targetMB, now, lastReliefAt)) return
+    lastReliefAt = now
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (window.isDestroyed() || window.webContents.isDestroyed() || window.webContents.isCrashed()) continue
+      window.webContents.send('memory:pressure', { targetMB, workingSetMB: usage })
+    }
+  } catch {} finally { sampling = false }
+}
 
-  // 1. Continuous health monitor: checks memory every 5 seconds
-  // If memory approaches the soft ceiling (>= 88MB), triggers immediate proactive trim
+/** Reclaim unused data before the target is reached; paging active working sets causes restore stalls. */
+export function startMemoryOptimizer(_getMainWindow: () => BrowserWindow | null, target: () => number = () => DEFAULT_MEMORY_TARGET_MB): void {
+  getMemoryTarget = target
   if (!monitorTimer) {
-    monitorTimer = setInterval(() => {
-      try {
-        const { totalWorkingSetMB } = getEclipseMemoryMetrics()
-        if (totalWorkingSetMB >= SOFT_MEMORY_CEILING_MB) {
-          trimMemoryNow()
-        }
-      } catch {}
-    }, 5000)
+    monitorTimer = setInterval(requestMemoryRelief, 15000)
     monitorTimer.unref()
-  }
-
-  // 2. Baseline idle maintenance: runs every 15 seconds to keep baseline memory lean (~65MB–75MB)
-  if (!maintenanceTimer) {
-    maintenanceTimer = setInterval(() => {
-      const now = Date.now()
-      if (now - lastTrimTime >= 12000) {
-        trimMemoryNow()
-      }
-    }, 15000)
-    maintenanceTimer.unref()
   }
 }
 
@@ -182,8 +187,5 @@ export function stopMemoryOptimizer(): void {
     clearInterval(monitorTimer)
     monitorTimer = null
   }
-  if (maintenanceTimer) {
-    clearInterval(maintenanceTimer)
-    maintenanceTimer = null
-  }
+  lastReliefAt = null
 }

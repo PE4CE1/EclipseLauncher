@@ -1,0 +1,135 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function own(uid) { return signedIn() && request.auth.uid == uid; }
+    function sanitized() {
+      return request.resource.data.schemaVersion == 2
+        && request.resource.data.keys().hasOnly(['schemaVersion','uid','username','friendCode','avatarUrl','avatarFrame','steamAvatarFrameUrl','steamAvatarFrameStaticUrl','bannerUrl','bannerPosition','bio','profileAccentColor','socialDiscord','socialTwitch','socialYoutube','showHardwareSpecs','hardwareSpecs','status','currentGame','level','steamLevel','steamProfileUrl','steamGamesCount','steamBadgesCount','steamFavoriteBadge','steamRecentGames','steamBadges','steamGames','steamBackgroundUrl','steamBackgroundMovie','showSteamBackground','showPlaytime','showSteamStats','totalPlaytimeMins','totalPlaytimeHours','totalLibraryCount','totalInstalledCount','topPlayedGames','pinnedGames','lastSeen','friends','createdAt','updatedAt']);
+    }
+    function acceptedInvitation(uid) {
+      let invitation = /databases/$(database)/documents/friend_requests/$(uid + '__' + request.auth.uid);
+      return exists(invitation) && get(invitation).data.status == 'pending'
+        && getAfter(invitation).data.status == 'accepted'
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.friends.hasAll([uid]);
+    }
+    function friendChangeOnly(uid) {
+      return signedIn()
+        && resource.data.schemaVersion == 2
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['friends', 'updatedAt'])
+        && request.resource.data.friends is list && resource.data.friends is list
+        && request.resource.data.friends.size() <= 500
+        && request.resource.data.friends.toSet().difference(resource.data.friends.toSet()).hasOnly([request.auth.uid])
+        && resource.data.friends.toSet().difference(request.resource.data.friends.toSet()).hasOnly([request.auth.uid])
+        && (request.resource.data.friends.toSet().difference(resource.data.friends.toSet()).size() == 0 || acceptedInvitation(uid));
+    }
+    function ownFriendChange(uid) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['friends']) || (
+        request.resource.data.friends is list && resource.data.friends is list
+        && request.resource.data.friends.size() <= 500
+        && (request.resource.data.friends.removeAll(resource.data.friends).size() == 0
+          || (request.resource.data.friends.removeAll(resource.data.friends).size() == 1
+            && acceptedInvitation(request.resource.data.friends.removeAll(resource.data.friends)[0])
+            && getAfter(/databases/$(database)/documents/users/$(request.resource.data.friends.removeAll(resource.data.friends)[0])).data.friends.hasAll([uid])))
+      );
+    }
+    match /users/{uid} {
+      allow get: if own(uid) || (signedIn() && (!exists(/databases/$(database)/documents/users/$(uid)) || resource.data.schemaVersion == 2));
+      allow list: if signedIn() && resource.data.schemaVersion == 2;
+      allow create: if own(uid) && sanitized() && request.resource.data.uid == uid && request.resource.data.friends is list && request.resource.data.friends.size() == 0;
+      allow update: if (own(uid) && sanitized() && request.resource.data.uid == uid && ownFriendChange(uid)) || friendChangeOnly(uid);
+      allow delete: if own(uid);
+    }
+    match /friend_requests/{id} {
+      function participant() { return signedIn() && (request.auth.uid == resource.data.toUid || request.auth.uid == resource.data.fromUid); }
+      function validInvitation() {
+        let data = request.resource.data;
+        let sender = get(/databases/$(database)/documents/users/$(data.fromUid)).data;
+        let recipient = get(/databases/$(database)/documents/users/$(data.toUid)).data;
+        return signedIn() && data.keys().hasOnly(['fromUid','toUid','fromUsername','fromAvatarUrl','fromFriendCode','toUsername','toAvatarUrl','toFriendCode','status','createdAt','updatedAt'])
+          && data.fromUid == request.auth.uid && data.fromUid != data.toUid && id == data.fromUid + '__' + data.toUid
+          && sender.schemaVersion == 2 && recipient.schemaVersion == 2
+          && data.status == 'pending' && data.createdAt == request.time && data.updatedAt == request.time
+          && data.fromUsername == sender.username && data.fromUsername is string && data.fromUsername.size() <= 256
+          && data.toUsername == recipient.username && data.toUsername is string && data.toUsername.size() <= 256
+          && data.fromFriendCode == sender.friendCode && data.toFriendCode == recipient.friendCode
+          && data.fromAvatarUrl is string && data.fromAvatarUrl.size() <= 2048 && (data.fromAvatarUrl == '' || data.fromAvatarUrl == sender.avatarUrl)
+          && data.toAvatarUrl is string && data.toAvatarUrl.size() <= 2048 && (data.toAvatarUrl == '' || data.toAvatarUrl == recipient.avatarUrl)
+          && !(data.toUid in sender.friends) && !(data.fromUid in recipient.friends);
+      }
+      allow get: if signedIn() && (!exists(/databases/$(database)/documents/friend_requests/$(id)) || participant());
+      allow list: if participant();
+      allow create: if validInvitation();
+      allow update: if participant() && (
+        (resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+          && request.resource.data.updatedAt == request.time
+          && ((request.auth.uid == resource.data.toUid && (request.resource.data.status == 'declined'
+            || (request.resource.data.status == 'accepted'
+              && getAfter(/databases/$(database)/documents/users/$(resource.data.fromUid)).data.friends.hasAll([resource.data.toUid])
+              && getAfter(/databases/$(database)/documents/users/$(resource.data.toUid)).data.friends.hasAll([resource.data.fromUid]))))
+            || (request.auth.uid == resource.data.fromUid && request.resource.data.status == 'cancelled')))
+        || (validInvitation() && request.resource.data.fromUid == resource.data.fromUid && request.resource.data.toUid == resource.data.toUid
+          && ((resource.data.status == 'cancelled' && request.time > resource.data.updatedAt + duration.value(60,'s'))
+            || (resource.data.status == 'declined' && request.time > resource.data.updatedAt + duration.value(24,'h'))
+            || resource.data.status == 'accepted'))
+      );
+      allow delete: if false;
+    }
+    function chatMember(chatId) {
+      return signedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+    }
+    function mutualChatFriends(members) {
+      let first = get(/databases/$(database)/documents/users/$(members[0])).data;
+      let second = get(/databases/$(database)/documents/users/$(members[1])).data;
+      return first.schemaVersion == 2 && second.schemaVersion == 2
+        && members[1] in first.friends && members[0] in second.friends;
+    }
+    function chatCooldown(uid, chatId, messageId) {
+      let path = /databases/$(database)/documents/chat_cooldowns/$(uid);
+      let after = getAfter(path).data;
+      return after.lastSentAt == request.time && after.chatId == chatId && after.messageId == messageId
+        && (!exists(path) || request.time >= get(path).data.lastSentAt + duration.value(5,'s'));
+    }
+    match /chats/{chatId} {
+      function validChat() {
+        let data = request.resource.data;
+        let message = getAfter(/databases/$(database)/documents/chats/$(chatId)/messages/$(data.lastMessageId)).data;
+        return signedIn() && data.keys().hasOnly(['members','updatedAt','lastMessage','lastSenderId','lastMessageId'])
+          && data.members is list && data.members.size() == 2 && data.members[0] != data.members[1]
+          && request.auth.uid in data.members && chatId == data.members[0] + '__' + data.members[1]
+          && data.lastMessage is string && data.lastMessage.size() > 0 && data.lastMessage.size() <= 2000
+          && data.updatedAt == request.time && data.lastSenderId == request.auth.uid
+          && message.senderId == request.auth.uid && message.text == data.lastMessage && message.createdAt == request.time
+          && mutualChatFriends(data.members) && chatCooldown(request.auth.uid,chatId,data.lastMessageId);
+      }
+      allow get: if signedIn() && (!exists(/databases/$(database)/documents/chats/$(chatId)) || request.auth.uid in resource.data.members);
+      allow list: if signedIn() && request.auth.uid in resource.data.members && request.query.limit <= 100;
+      allow create: if validChat();
+      allow update: if validChat() && request.resource.data.members == resource.data.members;
+      allow delete: if false;
+      match /messages/{messageId} {
+        allow get: if chatMember(chatId);
+        allow list: if chatMember(chatId) && request.query.limit <= 50;
+        allow create: if signedIn() && request.resource.data.keys().hasOnly(['senderId','text','createdAt'])
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 2000
+          && request.resource.data.createdAt == request.time
+          && request.auth.uid in getAfter(/databases/$(database)/documents/chats/$(chatId)).data.members
+          && getAfter(/databases/$(database)/documents/chats/$(chatId)).data.lastMessageId == messageId
+          && chatCooldown(request.auth.uid,chatId,messageId);
+        allow update, delete: if false;
+      }
+    }
+    match /chat_cooldowns/{uid} {
+      allow get: if own(uid);
+      allow list, delete: if false;
+      allow create, update: if own(uid) && request.resource.data.keys().hasOnly(['lastSentAt','chatId','messageId'])
+        && chatCooldown(uid,request.resource.data.chatId,request.resource.data.messageId)
+        && getAfter(/databases/$(database)/documents/chats/$(request.resource.data.chatId)/messages/$(request.resource.data.messageId)).data.senderId == uid
+        && getAfter(/databases/$(database)/documents/chats/$(request.resource.data.chatId)/messages/$(request.resource.data.messageId)).data.createdAt == request.time;
+    }
+    match /device_identities/{device} { allow read, write: if false; }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

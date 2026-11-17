@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { Clock, Play, ExternalLink, RefreshCw } from 'lucide-react'
+import { desktopFetch as fetch } from '../../services/httpClient'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { Clock, Play, ExternalLink, RefreshCw, ChevronLeft, ChevronRight, KeyRound } from 'lucide-react'
 import { useTranslation } from '../../hooks/useTranslation'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
@@ -18,6 +19,13 @@ export const RobloxPlaytimeStrip: React.FC<RobloxPlaytimeStripProps> = ({ onSele
   const [experiences, setExperiences] = useState<RobloxTrackedExperience[]>([])
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({})
   const [isSyncing, setIsSyncing] = useState(false)
+
+  // Carousel ref and mouse grab-to-scroll state
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [startX, setStartX] = useState(0)
+  const [scrollLeftPos, setScrollLeftPos] = useState(0)
+  const [hasMoved, setHasMoved] = useState(false)
 
   // Find total Roblox playtime from installed games or library
   const totalRobloxMinutes = useMemo(() => {
@@ -114,7 +122,7 @@ export const RobloxPlaytimeStrip: React.FC<RobloxPlaytimeStripProps> = ({ onSele
     }
   }, [loadPlaytime])
 
-  // Batch fetch thumbnails for any missing icons
+  // Batch fetch thumbnails for any missing icons (high-res 512x512)
   useEffect(() => {
     const missingPlaceIds = experiences
       .map(e => e.placeId)
@@ -122,7 +130,7 @@ export const RobloxPlaytimeStrip: React.FC<RobloxPlaytimeStripProps> = ({ onSele
 
     if (missingPlaceIds.length === 0) return
 
-    const url = `https://thumbnails.roblox.com/v1/places/gameicons?placeIds=${missingPlaceIds.slice(0, 40).join(',')}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false`
+    const url = `https://thumbnails.roblox.com/v1/places/gameicons?placeIds=${missingPlaceIds.slice(0, 40).join(',')}&returnPolicy=PlaceHolder&size=512x512&format=Png&isCircular=false`
 
     fetch(url)
       .then(res => res.json())
@@ -172,6 +180,44 @@ export const RobloxPlaytimeStrip: React.FC<RobloxPlaytimeStripProps> = ({ onSele
     return `${hours} Std.`
   }
 
+  // Horizontal scroll with navigation buttons
+  const handleScroll = (dir: 'left' | 'right') => {
+    if (!scrollRef.current) return
+    const amount = 500
+    scrollRef.current.scrollBy({
+      left: dir === 'left' ? -amount : amount,
+      behavior: 'smooth'
+    })
+  }
+
+  // Mouse Grab & Drag to scroll horizontally
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return
+    setIsDragging(true)
+    setHasMoved(false)
+    setStartX(e.pageX - scrollRef.current.offsetLeft)
+    setScrollLeftPos(scrollRef.current.scrollLeft)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollRef.current) return
+    e.preventDefault()
+    const x = e.pageX - scrollRef.current.offsetLeft
+    const walk = (x - startX) * 1.5
+    if (Math.abs(walk) > 4) {
+      setHasMoved(true)
+    }
+    scrollRef.current.scrollLeft = scrollLeftPos - walk
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleMouseLeave = () => {
+    setIsDragging(false)
+  }
+
   const handleOpenWebsite = (e: React.MouseEvent, placeId: string) => {
     e.stopPropagation()
     const webUrl = `https://www.roblox.com/games/${placeId}`
@@ -218,6 +264,7 @@ export const RobloxPlaytimeStrip: React.FC<RobloxPlaytimeStripProps> = ({ onSele
   }
 
   const handleCardClick = (gameName: string) => {
+    if (hasMoved) return
     if (onSelectGame) {
       onSelectGame(gameName)
     }
@@ -230,125 +277,171 @@ export const RobloxPlaytimeStrip: React.FC<RobloxPlaytimeStripProps> = ({ onSele
   }
 
   return (
-    <div className="w-full px-6 md:px-10 xl:px-14 py-2 select-none">
-      <div className="bg-[#0b0c10]/80 border border-white/[0.06] rounded-2xl p-3.5 backdrop-blur-md">
-        {/* Header Strip */}
-        <div className="flex items-center justify-between gap-3 mb-2.5 px-0.5">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
-              <Clock size={13} />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-white">
-                {t('robloxPlaytimeByGame') || 'Spielzeit pro Erlebnis'}
-              </span>
-              <span className="hidden sm:inline-block text-[11px] text-white/30 font-medium">
-                • {formatTotalTime(totalRobloxMinutes)} gesamt
-              </span>
-            </div>
+    <div className="w-full px-6 md:px-10 xl:px-14 py-3 select-none">
+      {/* ─── Minimalist Header matching Popular Experiences ─────────────────── */}
+      <div className="flex items-center justify-between gap-3 mb-3 px-1">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
+            <Clock size={13} />
           </div>
-
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleManualSync}
-              disabled={isSyncing}
-              className="w-6 h-6 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] text-white/50 hover:text-white flex items-center justify-center transition-all cursor-pointer disabled:opacity-40"
-              title="Roblox-Logs scannen & aktualisieren"
-            >
-              <RefreshCw size={11} className={isSyncing ? 'animate-spin text-emerald-400' : ''} />
-            </button>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[10px] font-medium text-white/60">
-              <span>{t('robloxTotalTime') || 'Gesamt'}:</span>
-              <span className="font-bold text-white tracking-wide">
-                {formatTotalTime(totalRobloxMinutes)}
-              </span>
-            </div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+              {t('robloxPlaytimeByGame') || 'Spielzeit pro Erlebnis'}
+            </h3>
+            <span className="text-[11px] text-white/30 hidden sm:inline-block font-medium">
+              • {formatTotalTime(totalRobloxMinutes)}  {t('uiTotal')}
+            </span>
           </div>
         </div>
 
-        {/* Horizontal Experience Track or Minimalist Fallback */}
-        {experiences.length > 0 ? (
-          <div className="flex items-center gap-2.5 overflow-x-auto hide-scrollbar py-1">
-            {experiences.map((game) => {
-              const timeFormatted = formatMinutes(game.minutes)
-              const thumbUrl = thumbnails[game.placeId] || game.iconUrl
+        {/* Action Controls & Navigation Arrows */}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            className="w-7 h-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] hover:border-white/20 text-white/60 hover:text-white flex items-center justify-center transition-all cursor-pointer disabled:opacity-40 active:scale-95 shadow-sm"
+            title={t('uiScanRoblox')}
+          >
+            <RefreshCw size={12} className={isSyncing ? 'animate-spin text-emerald-400' : ''} />
+          </button>
 
-              return (
-                <div
-                  key={game.placeId}
-                  onClick={() => handleCardClick(game.name)}
-                  className="group relative flex items-center justify-between gap-3 px-3 py-2 rounded-xl border transition-all duration-150 cursor-pointer min-w-[230px] max-w-[270px] flex-shrink-0 bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.07] hover:border-white/20 shadow-sm"
-                >
-                  {/* Thumbnail Avatar & Info */}
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <div className="w-8 h-8 rounded-lg overflow-hidden bg-black/40 border border-white/10 flex-shrink-0 relative">
-                      {thumbUrl ? (
-                        <img
-                          src={thumbUrl}
-                          alt={game.name}
-                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-white/[0.04] flex items-center justify-center text-[9px] font-bold text-white/30">
-                          RBX
-                        </div>
-                      )}
-                    </div>
+          <div className="h-4 w-[1px] bg-white/10 mx-0.5 hidden sm:block" />
 
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-white/90 truncate group-hover:text-white transition-colors">
-                        {game.name}
-                      </p>
-                      <p className="text-[11px] font-medium text-emerald-400">
-                        {timeFormatted || '1m'}
-                      </p>
+          <button
+            onClick={() => handleScroll('left')}
+            className="w-7 h-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] hover:border-white/20 text-white/60 hover:text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-sm"
+            title={t('uiSwipeLeft')}
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <button
+            onClick={() => handleScroll('right')}
+            className="w-7 h-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] hover:border-white/20 text-white/60 hover:text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-sm"
+            title={t('uiSwipeRight')}
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Horizontal Experience Cards (Draggable & Swipeable) ─────────────── */}
+      {experiences.length > 0 ? (
+        <div
+          ref={scrollRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          className={`flex items-stretch gap-3 overflow-x-auto hide-scrollbar select-none py-1 px-1 ${
+            isDragging ? 'cursor-grabbing' : 'cursor-grab'
+          }`}
+        >
+          {experiences.map((game) => {
+            const timeFormatted = formatMinutes(game.minutes)
+            const thumbUrl = thumbnails[game.placeId] || game.iconUrl
+
+            return (
+              <div
+                key={game.placeId}
+                onClick={() => handleCardClick(game.name)}
+                className="group relative w-[210px] sm:w-[225px] flex-shrink-0 rounded-2xl bg-[#0b0c10]/90 border border-white/[0.07] hover:border-emerald-500/30 transition-all duration-200 overflow-hidden flex flex-col justify-between hover:shadow-[0_8px_24px_rgba(16,185,129,0.15)] cursor-pointer"
+              >
+                {/* 16:10 Thumbnail Cover */}
+                <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#10121a]">
+                  {thumbUrl ? (
+                    <img
+                      src={thumbUrl}
+                      alt={game.name}
+                      loading="lazy"
+                      draggable={false}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 pointer-events-none"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-white/[0.03] flex items-center justify-center text-xs font-bold text-white/20">
+                      ROBLOX
                     </div>
+                  )}
+
+                  {/* Subtle Vignette Gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0b0c10] via-transparent to-black/30 pointer-events-none" />
+
+                  {/* Top Playtime Badge (Glowing Emerald) */}
+                  <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-emerald-500/30 text-[10px] font-bold text-emerald-400 shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                    <span>{timeFormatted || '1m'}</span>
                   </div>
 
-                  {/* Clean Direct Action Buttons (Always accessible) */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {/* Open Website Button */}
-                    <button
-                      onClick={(e) => handleOpenWebsite(e, game.placeId)}
-                      className="w-7 h-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.12] border border-white/[0.08] text-white/60 hover:text-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-                      title={`${game.name} auf Roblox.com öffnen`}
-                    >
-                      <ExternalLink size={11} />
-                    </button>
-
+                  {/* Hover Quick-Action Overlay */}
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center gap-2 z-20">
                     {/* Direct Launch Play Button */}
                     <button
                       onClick={(e) => handleLaunchGame(e, game.placeId, game.name)}
-                      className="h-7 px-2.5 rounded-lg bg-white hover:bg-gray-100 text-black text-[11px] font-bold flex items-center gap-1 transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
-                      title={`${game.name} direkt in Roblox starten`}
+                      className="h-8 px-3 rounded-xl bg-white hover:bg-gray-100 text-black text-xs font-bold transition-transform hover:scale-105 flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95"
+                      title={`${game.name} jetzt spielen`}
                     >
-                      <Play size={10} className="fill-current" />
-                      <span>{t('robloxPlayNow') || 'Spielen'}</span>
+                      <Play size={11} className="fill-current" />
+                      <span>{t('robloxPlayNow') || t('uiPlaying')}</span>
+                    </button>
+
+                    {/* Open Website Button */}
+                    <button
+                      onClick={(e) => handleOpenWebsite(e, game.placeId)}
+                      className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-transform hover:scale-105 cursor-pointer active:scale-95"
+                      title={t('uiOpenRoblox')}
+                    >
+                      <ExternalLink size={12} />
                     </button>
                   </div>
                 </div>
-              )
-            })}
+
+                {/* Minimalist Card Details */}
+                <div className="p-3 flex items-center justify-between gap-2 border-t border-white/[0.04]">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors truncate">
+                      {game.name}
+                    </h4>
+                    <div className="flex items-center gap-1.5 text-[11px] text-white/40 mt-0.5">
+                      <span className="text-emerald-400/90 font-medium">
+                        {timeFormatted ? `${timeFormatted} gespielt` : 'Gerade entdeckt'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Codes Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleCardClick(game.name)
+                    }}
+                    className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.09] border border-white/[0.08] hover:border-white/20 text-amber-300 text-[11px] font-semibold transition-all flex items-center gap-1 flex-shrink-0 cursor-pointer"
+                    title={t('uiViewCodes')}
+                  >
+                    <KeyRound size={10} className="text-amber-400" />
+                    <span>Codes</span>
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3 py-3 px-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] text-white/40 text-xs">
+          <div className="flex items-center gap-2">
+            <Clock size={14} className="text-white/30" />
+            <span className="text-xs text-white/60">
+
+              {t('uiRobloxTracking')}
+            </span>
           </div>
-        ) : (
-          <div className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-white/40 text-xs">
-            <div className="flex items-center gap-2">
-              <Clock size={12} className="text-white/30" />
-              <span className="text-[11px] text-white/50">
-                Roblox-Erlebnisse werden automatisch erfasst, sobald du spielst.
-              </span>
-            </div>
-            <button
-              onClick={handleManualSync}
-              disabled={isSyncing}
-              className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/[0.08] hover:bg-emerald-500/[0.15] border border-emerald-500/20 transition-all cursor-pointer disabled:opacity-50"
-            >
-              {isSyncing ? 'Scanne Logs…' : 'Logs prüfen'}
-            </button>
-          </div>
-        )}
-      </div>
+          <button
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold uppercase tracking-wider px-3 py-1 rounded-lg bg-emerald-500/[0.08] hover:bg-emerald-500/[0.15] border border-emerald-500/20 transition-all cursor-pointer disabled:opacity-50"
+          >
+            {isSyncing ? 'Scanne Logs…' : 'Logs prüfen'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

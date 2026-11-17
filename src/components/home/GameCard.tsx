@@ -1,110 +1,36 @@
-import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Plus, Check, Star, Trash2 } from 'lucide-react'
+import { useTranslation } from '../../hooks/useTranslation'
+import React from 'react'
+import { Plus, Check, Trash2 } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { useGameStore } from '../../store/gameStore'
 import type { SteamGame } from '../../services/steamService'
 import type { LibraryGame } from '../../types/game'
-import { getPlaceholderCover } from '../../services/assetHelper'
-import robloxHeroImg from '../../assets/roblox/hero.png'
-import robloxLogoImg from '../../assets/Roblox-Logo-Icon.png'
+import { PosterArt } from '../shared/PosterArt'
+import { findInstalledGame } from '../../services/gameInstallation'
+import { localizeGameGenres } from '../../i18n/gameContent'
 
 interface GameCardProps {
   game: SteamGame
   index?: number
+  onOpen?: () => void
 }
 
-export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCardProps) {
-  const { openGameDetails, showNotification } = useUIStore()
-  const { library, addToLibrary, removeFromLibrary, installedGames } = useGameStore()
-  const cardRef = React.useRef<HTMLDivElement>(null)
-  
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (document.documentElement.classList.contains('performance-mode')) return
-    const el = cardRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const centerX = rect.width / 2
-    const centerY = rect.height / 2
-    
-    // Calculate rotation directly
-    const rotateX = ((y - centerY) / centerY) * -7
-    const rotateY = ((x - centerX) / centerX) * 7
-    const px = (x / rect.width) * 100
-    const py = (y / rect.height) * 100
-    
-    el.style.setProperty('--rx', `${rotateX}deg`)
-    el.style.setProperty('--ry', `${rotateY}deg`)
-    el.style.setProperty('--mx', `${px}%`)
-    el.style.setProperty('--my', `${py}%`)
-  }
-
-  const handleMouseLeave = () => {
-    const el = cardRef.current
-    if (!el) return
-    el.style.setProperty('--rx', '0deg')
-    el.style.setProperty('--ry', '0deg')
-    el.style.setProperty('--mx', '50%')
-    el.style.setProperty('--my', '50%')
-  }
-  
+export const GameCard = React.memo(function GameCard({ game, onOpen }: GameCardProps) {
+  const { t, language, locale } = useTranslation()
+  const openGameDetails = useUIStore(s => s.openGameDetails)
+  const showNotification = useUIStore(s => s.showNotification)
+  const library = useGameStore(s => s.library)
+  const addToLibrary = useGameStore(s => s.addToLibrary)
+  const removeFromLibrary = useGameStore(s => s.removeFromLibrary)
+  const installedGames = useGameStore(s => s.installedGames)
   const appId = game.steamId || (game as any).id || (game as any).appid || (game as any).app_id
 
   const isInLibrary = library.some(g => g.steamId === appId)
-  const libGame = library.find(g => g.steamId === appId)
-  const installedGame = installedGames.find(g =>
-    (g.appId && g.appId === String(appId)) ||
-    g.name.toLowerCase().includes(game.name.toLowerCase().slice(0, 8))
-  )
+  const installedGame = findInstalledGame(installedGames, { steamId: Number(appId), name: game.name })
 
   function handleOpenGamePreview(id: number) {
+    onOpen?.()
     openGameDetails(id, game.name)
-  }
-
-  // Full fallback chain — start with guaranteed-valid URLs from API, then CDN poster attempts
-  const isRoblox = appId === 999001 || game.name?.toLowerCase() === 'roblox'
-  const fallbackChain: string[] = isRoblox
-    ? [robloxHeroImg, robloxLogoImg]
-    : [
-        // 1. Vertical poster (best quality, but many games don't have it)
-        `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`,
-        // 2. game.headerImage is the URL Steam API returned — always a real image
-        ...(game.headerImage ? [game.headerImage] : []),
-        // 3. More CDN options
-        `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`,
-        `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`,
-        `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`,
-      ]
-
-  const primaryUrl = fallbackChain[0]
-  const [imgSrc, setImgSrc] = useState(primaryUrl)
-  const [hasError, setHasError] = useState(!appId)
-  const [isLoaded, setIsLoaded] = useState(false)
-  const fallbackIndexRef = React.useRef(0)
-
-  // Reset when appId changes
-  useEffect(() => {
-    if (appId) {
-      fallbackIndexRef.current = 0
-      setImgSrc(fallbackChain[0])
-      setHasError(false)
-      setIsLoaded(false)
-    } else {
-      setHasError(true)
-    }
-  }, [appId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleImageError = () => {
-    setIsLoaded(false)
-    const next = fallbackIndexRef.current + 1
-    if (next < fallbackChain.length) {
-      fallbackIndexRef.current = next
-      setImgSrc(fallbackChain[next])
-    } else {
-      setHasError(true)
-    }
   }
 
   function handleLibraryToggle(e: React.MouseEvent) {
@@ -115,7 +41,7 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
       const existingGame = library.find(g => g.steamId === appId)
       if (existingGame) {
         removeFromLibrary(existingGame.id)
-        showNotification(`${game.name} removed from library`, 'info')
+        showNotification(t('wasRemoved', { name: game.name }), 'info')
       }
     } else {
       const newGame: LibraryGame = {
@@ -135,75 +61,34 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
         publisher: game.publishers?.[0],
       }
       addToLibrary(newGame)
-      showNotification(`${game.name} added to library`, 'success')
+      showNotification(t('addedToLibrary', { name: game.name }), 'success')
     }
   }
 
   return (
-    <motion.div
+    <div
       id={`game-card-${appId}`}
-      className="game-card group w-44 flex-shrink-0 cursor-pointer"
-      initial={{ opacity: 0, y: 22, scale: 0.94 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay: Math.min(index * 0.045, 0.4), duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      className="game-card store-game-card group w-44 flex-shrink-0 cursor-pointer"
+      role="button"
+      tabIndex={0}
+      aria-label={game.name}
+      onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); if (appId) handleOpenGamePreview(appId) } }}
       onClick={() => {
         if (appId) handleOpenGamePreview(appId)
       }}
     >
       <div 
-        ref={cardRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        className="relative aspect-[2/3] rounded-xl border border-white/5 bg-transparent transition-all duration-200 ease-out group-hover:shadow-[0_20px_40px_-10px_rgba(255,255,255,0.1)] group-hover:border-white/20 group-hover:scale-[1.02]"
-        style={{
-          transform: 'perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg))',
-          transformStyle: 'preserve-3d',
-        }}
+        className="store-card-art relative aspect-[2/3] rounded-xl border border-white/5 bg-[#08090d]"
       >
-        <div className="absolute inset-0 overflow-hidden rounded-xl bg-[#08090d] [transform:translateZ(0)] select-none">
-          {/* ─── Ultra Clean, Pure Minimalist Loading Shimmer (Zero Controller Icon, Zero CPU Load) ─── */}
-          {!isLoaded && !hasError && (
-            <div className="cover-shimmer-container">
-              <div className="cover-shimmer-wave" />
-            </div>
-          )}
-
-          {!hasError ? (
-            <img
-              src={imgSrc}
-              onLoad={() => setIsLoaded(true)}
-              onError={handleImageError}
-              alt={game.name}
-              loading="lazy"
-              decoding="async"
-              className={`w-full h-full object-cover z-10 relative transition-all duration-300 ease-out group-hover:scale-[1.03] ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-[#08090d] border border-white/[0.06] p-4 text-center select-none overflow-hidden z-10 relative">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.02),transparent_70%)]" />
-              <span className="text-[11px] font-medium text-white/40 line-clamp-2 px-2 max-w-full z-10">
-                {game.name}
-              </span>
-            </div>
-          )}
-
-          {/* Subtle glass overlay */}
-          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.03] transition-colors duration-300 z-20 pointer-events-none opacity-0 group-hover:opacity-100" />
-          
-          {/* Dynamic Parallax Glare */}
-          <div 
-            className="dynamic-glare absolute inset-0 z-30 pointer-events-none rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-            style={{
-              background: 'radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12) 0%, transparent 60%)'
-            }}
-          />
+        <div className="absolute inset-0 overflow-hidden rounded-xl bg-[#08090d] select-none">
+          <PosterArt game={{ id: String(appId || game.name), name: game.name, platform: 'steam', steamId: appId, iconUrl: game.headerImage }} />
 
           {/* Hover overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-40">
           <button
             id={`card-add-${appId}`}
             onClick={handleLibraryToggle}
-            className={`w-full py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all group/btn ${
+            className={`w-full py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-[background-color,color,border-color] duration-150 group/btn ${
               isInLibrary
                 ? 'bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 border border-white/10'
                 : 'bg-white text-black hover:bg-gray-200'
@@ -212,11 +97,11 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
             {isInLibrary ? (
               <>
                 <Check size={12} className="group-hover/btn:hidden" />
-                <span className="group-hover/btn:hidden">In Library</span>
-                <span className="hidden group-hover/btn:flex items-center gap-1.5"><Trash2 size={12} /> Remove</span>
+                <span className="group-hover/btn:hidden">{t('inLibrary')}</span>
+                <span className="hidden group-hover/btn:flex items-center gap-1.5"><Trash2 size={12} />  {t('uiRemove')}</span>
               </>
             ) : (
-              <><Plus size={12} /> Add</>
+              <><Plus size={12} />  {t('add')}</>
             )}
           </button>
         </div>
@@ -224,20 +109,22 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
         {/* Status badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {installedGame && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/20 text-white backdrop-blur-md border border-white/10 shadow-sm">
-              ✓ Installed
+            <span data-installed className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/20 text-white backdrop-blur-md border border-white/10 shadow-sm">
+
+              {t('uiInstalledBadge')}
             </span>
           )}
           {game.isFree && (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/10 text-white backdrop-blur-md border border-white/5 shadow-sm">
-              Free
+
+              {t('uiFree')}
             </span>
           )}
         </div>
 
         {/* Discount badge */}
         {(game.discountPercent ?? 0) > 0 && (
-          <div className="absolute top-2 right-2 z-30 flex items-center justify-center bg-[#4c6b22] text-[#beee11] border border-[#beee11]/40 text-xs font-black px-2 py-0.5 rounded-md shadow-xl tracking-tight backdrop-blur-sm">
+          <div className="absolute top-2 right-2 z-30 flex items-center justify-center bg-[#4c6b22] text-[#beee11] border border-[#beee11]/40 text-xs font-black px-2 py-0.5 rounded-md shadow-xl tracking-tight">
             -{game.discountPercent}%
           </div>
         )}
@@ -252,13 +139,13 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
       </div>
 
       {/* Info below card */}
-      <div className="mt-3 px-1 transition-all duration-300 group-hover:translate-y-0.5">
+      <div className="mt-3 px-1">
         <p className="text-xs font-semibold text-hub-text truncate leading-tight transition-colors group-hover:text-white">{game.name}</p>
         <div className="flex items-center justify-between mt-1.5 gap-1.5">
           <p className="text-[11px] text-hub-muted truncate">
-            {game.releaseDate?.split(',').pop()?.trim() || game.genres?.[0] || '—'}
+            {game.releaseDate?.split(',').pop()?.trim() || localizeGameGenres(game.genres, language)?.[0] || '—'}
           </p>
-          {(game.discountPercent ?? 0) > 0 ? (
+          {(game.discountPercent ?? 0) > 0 && game.priceFormatted ? (
             <div className="flex items-center gap-1.5 flex-shrink-0">
               {game.initialPriceFormatted && (
                 <span className="text-[10px] text-white/40 line-through decoration-white/40 font-medium">
@@ -274,10 +161,11 @@ export const GameCard = React.memo(function GameCard({ game, index = 0 }: GameCa
               {game.priceFormatted}
             </p>
           ) : game.isFree ? (
-            <p className="text-[11px] font-semibold text-white/90 flex-shrink-0">Free</p>
+            <p className="text-[11px] font-semibold text-white/90 flex-shrink-0">{t('uiFree')}</p>
           ) : null}
         </div>
+        {typeof game.currentPlayers === 'number' && <p className="home-card-activity">{t('homeActivePlayers', {count:game.currentPlayers.toLocaleString(locale)})}</p>}
       </div>
-    </motion.div>
+    </div>
   )
 })

@@ -1,33 +1,103 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
 import { Play, Plus, Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { useGameStore } from '../../store/gameStore'
-import { getLogoUrl } from '../../services/assetHelper'
-import { SmartImage } from '../shared/SmartImage'
+import { prepareHeroArtwork, getCachedHeroArtwork, type HeroArtwork } from '../../services/heroArtwork'
 import { useTranslation } from '../../hooks/useTranslation'
 import type { SteamGame } from '../../services/steamService'
 import type { LibraryGame } from '../../types/game'
+import { useReducedMotionPreference } from '../../hooks/useReducedMotionPreference'
+import '../layout/scene-motion.css'
+import { localizeGameGenres } from '../../i18n/gameContent'
 
 interface HeroSectionProps {
   games: SteamGame[]
+  compact?: boolean
 }
 
-export function HeroSection({ games }: HeroSectionProps) {
-  const [currentIndex, setCurrentIndex] = useState(0)
+type Slide = { game: SteamGame; artwork: HeroArtwork }
+const appIdOf = (game?: SteamGame) => Number(game?.steamId || (game as any)?.id || (game as any)?.appid || (game as any)?.app_id) || 0
+
+function HeroVisual({ slide }: { slide: Slide }) {
+  return <div className="hero-visual absolute inset-0 bg-[#040405] pointer-events-none" data-image-id={appIdOf(slide.game)}>
+    <img src={slide.artwork.url} alt="" className="absolute inset-0 w-full h-full object-cover object-center opacity-90" decoding="async" />
+    {slide.artwork.logo && <div className="absolute top-20 md:top-24 right-8 md:right-12 lg:right-14 max-w-[240px] md:max-w-[320px] flex items-center justify-end">
+      <img src={slide.artwork.logo} alt="" className="max-h-24 md:max-h-32 w-auto object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)]" />
+    </div>}
+  </div>
+}
+
+export function HeroSection({ games, compact = false }: HeroSectionProps) {
+  const showcase = useRef<HTMLDivElement>(null)
+  const [isVisible, setIsVisible] = useState(true)
+  const [selectedId, setSelectedId] = useState(() => appIdOf(games[0]))
+  const requestedId = useRef(selectedId)
+  requestedId.current = selectedId
+  const [frame, setFrame] = useState<{ current: Slide | null; previous: Slide | null }>(() => {
+    const game = games[0]
+    const artwork = game && getCachedHeroArtwork(appIdOf(game), game.screenshots?.[0] || game.headerImage,game.heroImage)
+    return { current: artwork ? { game, artwork } : null, previous: null }
+  })
   const [isHovered, setIsHovered] = useState(false)
-  const [isWindowFocused, setIsWindowFocused] = useState(true)
+  const [keyboardFocus,setKeyboardFocus] = useState(false)
+  const [isWindowFocused, setIsWindowFocused] = useState(() => !document.hidden && document.hasFocus())
   
-  const { openGameDetails, showNotification } = useUIStore()
-  const { addToLibrary, library, activeGame } = useGameStore()
-  const { t } = useTranslation()
+  const openGameDetails = useUIStore(s => s.openGameDetails)
+  const showNotification = useUIStore(s => s.showNotification)
+  const addToLibrary = useGameStore(s => s.addToLibrary)
+  const library = useGameStore(s => s.library)
+  const modalOpen = useUIStore(s => s.isGameModalOpen)
+  const reducedMotion = useReducedMotionPreference()
+  const { t, language, locale } = useTranslation()
+  const desired = games.find(game => appIdOf(game) === selectedId) || games[0]
+  const desiredId = appIdOf(desired)
+
+  useEffect(() => {
+    if (!showcase.current || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(([entry]) => setIsVisible(entry.isIntersecting))
+    observer.observe(showcase.current)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!desired || modalOpen || (frame.current && !isWindowFocused)) return
+    if (frame.current && appIdOf(frame.current.game)===desiredId) return
+    const controller = new AbortController()
+    void prepareHeroArtwork(desiredId, desired.name, desired.screenshots?.[0] || desired.headerImage, controller.signal,desired.heroImage).then(artwork => {
+      if (!artwork || controller.signal.aborted) return
+      setFrame(previous => {
+        const current = {
+          game: previous.current && appIdOf(previous.current.game) === desiredId ? previous.current.game : desired,
+          artwork,
+        }
+        // Keep one copy snapshot while visible; late feed enrichment must not
+        // rearrange the title and buttons halfway through a slide.
+        if (previous.current && appIdOf(previous.current.game) === desiredId && previous.current.artwork.url === artwork.url) return previous
+        return { current, previous: reducedMotion ? null : previous.current }
+      })
+    })
+    return () => controller.abort()
+  }, [desired, desiredId, frame.current, isWindowFocused, modalOpen, reducedMotion])
+
+  useEffect(() => {
+    if (!frame.previous) return
+    if (reducedMotion) {
+      setFrame(previous => previous.previous ? { ...previous, previous: null } : previous)
+      return
+    }
+    const id = appIdOf(frame.current?.game)
+    // Also release the old layer if Chromium defers animation events in a hidden
+    // window. Removing the incoming class leaves an opaque, ready image.
+    const timer = setTimeout(() => setFrame(previous => appIdOf(previous.current?.game) === id ? { ...previous, previous: null } : previous), 650)
+    return () => clearTimeout(timer)
+  }, [frame.previous, frame.current, reducedMotion])
 
   // Track window visibility & focus to halt all background work when on 2nd monitor or tabbed out
   useEffect(() => {
-    const handleFocus = () => setIsWindowFocused(true)
+    const handleFocus = () => setIsWindowFocused(!document.hidden)
     const handleBlur = () => setIsWindowFocused(false)
     const handleVisibilityChange = () => {
-      setIsWindowFocused(document.visibilityState === 'visible')
+      setIsWindowFocused(!document.hidden && document.hasFocus())
     }
 
     window.addEventListener('focus', handleFocus)
@@ -41,46 +111,54 @@ export function HeroSection({ games }: HeroSectionProps) {
     }
   }, [])
 
-  // Auto-rotation timer: Auto-advances every 8s reliably even in performance mode
+  // Rotate only after the previous transition completed and while the showcase
+  // is visible and not being used. Rapid manual requests keep only the latest target.
   useEffect(() => {
-    if (games.length <= 1 || !isWindowFocused) {
-      return
-    }
+    if (games.length <= 1 || !isVisible || !isWindowFocused || isHovered || keyboardFocus || modalOpen || reducedMotion || frame.previous || !frame.current || appIdOf(frame.current.game) !== desiredId) return
+    const timer = setTimeout(() => {
+      const index = games.findIndex(game => appIdOf(game) === desiredId)
+      setSelectedId(appIdOf(games[(index + 1) % games.length]))
+    }, 6500)
+    return () => clearTimeout(timer)
+  }, [games, desiredId, isVisible, isWindowFocused, isHovered, keyboardFocus, modalOpen, reducedMotion, frame])
 
-    const interval = setInterval(() => {
-      setCurrentIndex(i => (i + 1) % games.length)
-    }, 8000)
-
-    return () => clearInterval(interval)
-  }, [games.length, isWindowFocused])
-
-  // Preload next upcoming hero image & logo into browser cache for instantaneous, zero-spike slide changes
+  // Warm adjacent slides first, then the compact set with only two decodes in
+  // flight. Dot navigation can reuse the same images without an extra request.
   useEffect(() => {
-    if (!games || games.length === 0) return
-    const nextIndex = (currentIndex + 1) % games.length
-    const nextGame = games[nextIndex]
-    if (nextGame) {
-      const nextAppId = nextGame.steamId || (nextGame as any).id || (nextGame as any).appid
-      if (nextAppId) {
-        const heroImg = new Image()
-        heroImg.src = `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${nextAppId}/library_hero.jpg`
-        const logoImg = new Image()
-        logoImg.src = getLogoUrl(nextAppId)
+    if (!isVisible || !isWindowFocused || modalOpen || games.length < 2 || !frame.current || frame.previous) return
+    const index = games.findIndex(game => appIdOf(game) === appIdOf(frame.current!.game))
+    const controller = new AbortController()
+    const steps = compact ? [1,-1,...Array.from({length:Math.min(8,games.length)-1},(_,i) => i+1)] : [1,-1]
+    const queue = [...new Map(steps.map(step => {
+      const game = games[(index+step+games.length)%games.length]
+      return [appIdOf(game),game] as const
+    })).values()]
+    let next = 0
+    const warm = async () => {
+      while (next < queue.length && !controller.signal.aborted) {
+        const game = queue[next++]
+        await prepareHeroArtwork(appIdOf(game),game.name,game.screenshots?.[0]||game.headerImage,controller.signal,game.heroImage)
       }
     }
-  }, [currentIndex, games])
+    void Promise.all(Array.from({length:Math.min(2,queue.length)},warm))
+    return () => controller.abort()
+  }, [games, frame, isVisible, isWindowFocused, modalOpen, compact])
 
-  // Auto-reset index if games array shrinks
-  useEffect(() => {
-    if (currentIndex >= games.length && games.length > 0) {
-      setCurrentIndex(0)
-    }
-  }, [currentIndex, games.length])
-
-  const current = games[currentIndex] || games[0]
+  const current = frame.current?.game || desired
+  const currentAppId = appIdOf(current)
+  const currentIndex = Math.max(0, games.findIndex(game => appIdOf(game) === currentAppId))
   if (!current) return null
-
-  const currentAppId = current.steamId || (current as any).id || (current as any).appid || (current as any).app_id
+  const choose = (game:SteamGame) => {
+    const id=appIdOf(game)
+    requestedId.current=id
+    setSelectedId(id)
+    const ready=getCachedHeroArtwork(id,game.screenshots?.[0]||game.headerImage,game.heroImage)
+    if (ready) setFrame(previous=>appIdOf(previous.current?.game)===id ? previous : {current:{game,artwork:ready},previous:reducedMotion?null:previous.current})
+  }
+  const move = (direction: number) => {
+    const index = Math.max(0,games.findIndex(game=>appIdOf(game)===(requestedId.current||desiredId)))
+    choose(games[(index+direction+games.length)%games.length])
+  }
   const isInLibrary = library.some(g => g.steamId === currentAppId)
 
   function handleAddToLibrary() {
@@ -105,71 +183,45 @@ export function HeroSection({ games }: HeroSectionProps) {
 
   return (
     <div 
-      className="relative w-full h-[520px] md:h-[560px] overflow-hidden flex-shrink-0 bg-[#040405] select-none"
-      onMouseEnter={() => setIsHovered(true)}
+      ref={showcase}
+      className="store-hero relative w-full h-[520px] md:h-[560px] overflow-hidden flex-shrink-0 bg-[#040405] select-none"
+      data-hero-id={currentAppId}
+      data-compact={compact || undefined}
+      data-hero-paused={!isVisible || !isWindowFocused || isHovered || keyboardFocus || modalOpen || reducedMotion || undefined}
+      data-hero-pending={desiredId !== currentAppId || undefined}
+      onFocusCapture={event => setKeyboardFocus((event.target as HTMLElement).matches(':focus-visible'))}
       onMouseLeave={() => setIsHovered(false)}
+      onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setKeyboardFocus(false) }}
     >
-      {/* Background images with hardware-accelerated crossfade */}
-      <AnimatePresence>
-        <motion.div
-          key={currentAppId}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.35, ease: 'easeInOut' }}
-          className="absolute inset-0 will-change-[opacity] [transform:translateZ(0)]"
-        >
-          <SmartImage 
-            appId={currentAppId} 
-            type="hero" 
-            alt={current.name} 
-            fallbackScreenshotUrl={current.screenshots?.[0] || current.headerImage}
-            className="w-full h-full object-cover opacity-90 pointer-events-none" 
-          />
-        </motion.div>
-      </AnimatePresence>
+      {/* Keep the outgoing image fully opaque below the decoded incoming frame.
+          Fading both layers out/in at once creates a dark flash halfway through. */}
+      <div className="hero-scenery absolute inset-0" aria-hidden="true">
+        <div className="absolute inset-0" aria-hidden="true">
+          {[reducedMotion ? null : frame.previous, frame.current].filter((slide): slide is Slide => !!slide).map(slide => {
+            const incoming = slide === frame.current && !!frame.previous && !reducedMotion
+            return <div key={`${appIdOf(slide.game)}:${slide.artwork.url}`}
+              className={`hero-frame absolute inset-0 ${incoming ? 'hero-frame--incoming' : ''}`}
+              onAnimationEnd={event => {
+                if (incoming && event.target === event.currentTarget) setFrame(previous => previous.previous ? { ...previous, previous: null } : previous)
+              }}><HeroVisual slide={slide} /></div>
+          })}
+        </div>
 
-      {/* Logo overlay - zero-overhead radial backdrop instead of heavy Gaussian blur-2xl filter */}
-      <AnimatePresence>
-        <motion.div
-          key={`logo-${currentAppId}`}
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
-          className="absolute top-20 md:top-24 right-8 md:right-12 lg:right-14 max-w-[240px] md:max-w-[320px] z-10 pointer-events-none flex items-center justify-end will-change-[opacity,transform] [transform:translateZ(0)]"
-        >
-          <div className="relative">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.6)_0%,transparent_70%)] scale-150 -z-10 pointer-events-none" />
-            <img
-              src={getLogoUrl(currentAppId)}
-              alt=""
-              className="max-h-24 md:max-h-32 w-auto object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)]"
-              onError={e => { e.currentTarget.style.display = 'none' }}
-              loading="eager"
-            />
-          </div>
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Gradient overlays (static, GPU rasterized once) */}
-      <div className="absolute inset-0 hero-gradient pointer-events-none" />
-      <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-[#040405]/90 via-[#040405]/40 to-transparent pointer-events-none" />
-      <div className="absolute bottom-0 left-0 right-0 h-3/4 bg-gradient-to-t from-[#040405] via-[#040405]/60 to-transparent pointer-events-none" />
+        {/* Gradient overlays (static, GPU rasterized once) */}
+        <div className="absolute inset-0 hero-gradient pointer-events-none" />
+        <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-[#040405]/90 via-[#040405]/40 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-3/4 bg-gradient-to-t from-[#040405] via-[#040405]/60 to-transparent pointer-events-none" />
+      </div>
 
       {/* Content */}
-      <AnimatePresence>
-        <motion.div
+        <div
           key={`content-${currentAppId}`}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
-          className="absolute bottom-0 left-0 right-0 p-8 z-10 will-change-[opacity,transform] [transform:translateZ(0)]"
+          className="hero-copy absolute bottom-0 left-0 right-0 p-8 z-10"
         >
+          {compact && <p className="home-hero-kicker">{t('homeSpotlight')}</p>}
           {/* Genre tags */}
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
-            {current.genres?.slice(0, 3).map(g => (
+          <div className="hero-genres flex items-center gap-2 mb-4 flex-wrap">
+            {localizeGameGenres(current.genres, language)?.slice(0, 3).map(g => (
               <span
                 key={g}
                 className="text-[11px] font-medium px-3 py-1 rounded-full bg-white/10 text-white/90 border border-white/5"
@@ -187,6 +239,8 @@ export function HeroSection({ games }: HeroSectionProps) {
                 {t('freeToPlay')}
               </span>
             )}
+            {compact && typeof current.currentPlayers === 'number' && <span className="home-hero-activity">{t('homeActivePlayers', {count: current.currentPlayers.toLocaleString(locale)})}</span>}
+            {compact && typeof current.positivePercent === 'number' && <span>{t('homePositiveReviews', {percent: current.positivePercent})}</span>}
           </div>
 
           {/* Title */}
@@ -195,7 +249,7 @@ export function HeroSection({ games }: HeroSectionProps) {
           </h2>
 
           {/* Meta */}
-          <div className="flex items-center gap-4 mb-4 text-sm text-white/60">
+          <div className="hero-meta flex items-center gap-4 mb-4 text-sm text-white/60">
             {current.releaseDate && (
               <div className="flex items-center gap-1">
                 <Calendar size={13} />
@@ -218,14 +272,12 @@ export function HeroSection({ games }: HeroSectionProps) {
           </div>
 
           {/* Description snippet */}
-          {current.shortDescription && (
-            <p className="text-sm text-white/60 mb-5 max-w-xl line-clamp-2 leading-relaxed">
-              {current.shortDescription}
+            <p className="hero-description text-sm text-white/60 mb-5 max-w-xl line-clamp-2 leading-relaxed">
+              {current.shortDescription || '\u00a0'}
             </p>
-          )}
 
           {/* Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="hero-actions flex items-center gap-3" onMouseEnter={()=>setIsHovered(true)} onMouseLeave={()=>setIsHovered(false)}>
             <button
               id={`hero-view-${currentAppId}`}
               onClick={() => { if (currentAppId) openGameDetails(currentAppId, current.name) }}
@@ -244,44 +296,49 @@ export function HeroSection({ games }: HeroSectionProps) {
               <span>{isInLibrary ? t('inLibrary') : t('addToLibrary')}</span>
             </button>
           </div>
-        </motion.div>
-      </AnimatePresence>
+        </div>
 
       {/* Navigation */}
       {games.length > 1 && (
         <>
           <button
             id="hero-prev"
-            onClick={() => setCurrentIndex(i => (i - 1 + games.length) % games.length)}
+            onClick={() => move(-1)}
+            onMouseEnter={()=>setIsHovered(true)} onMouseLeave={()=>setIsHovered(false)}
             className="absolute left-4 top-1/2 -mt-[18px] z-20 w-9 h-9 bg-black/50 hover:bg-black/80 border border-white/20 rounded-full flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
-            aria-label="Previous"
+            aria-label={t('uiPrevious')}
           >
             <ChevronLeft size={18} />
           </button>
           <button
             id="hero-next"
-            onClick={() => setCurrentIndex(i => (i + 1) % games.length)}
+            onClick={() => move(1)}
+            onMouseEnter={()=>setIsHovered(true)} onMouseLeave={()=>setIsHovered(false)}
             className="absolute right-4 top-1/2 -mt-[18px] z-20 w-9 h-9 bg-black/50 hover:bg-black/80 border border-white/20 rounded-full flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
-            aria-label="Next"
+            aria-label={t('uiNext')}
           >
             <ChevronRight size={18} />
           </button>
 
           {/* Dot indicators */}
-          <div className="absolute bottom-4 right-8 flex items-center gap-1.5 z-20">
-            {games.slice(0, 15).map((_, i) => (
+          <nav className={`hero-pagination absolute bottom-4 right-8 flex items-center gap-1.5 z-20 ${compact ? 'hero-pagination--compact' : ''}`} aria-label={t('homeHighlightsLabel')} onMouseEnter={()=>setIsHovered(true)} onMouseLeave={()=>setIsHovered(false)}>
+            {games.slice(0, 15).map((game, i) => (
               <button
-                key={i}
-                onClick={() => setCurrentIndex(i)}
-                className={`rounded-full transition-all duration-200 cursor-pointer ${
+                key={appIdOf(game)}
+                type="button"
+                data-highlight-id={appIdOf(game)}
+                onClick={() => choose(game)}
+                aria-current={appIdOf(game)===desiredId ? 'true' : undefined}
+                className={`rounded-full transition-[width,background-color] duration-200 ease-out cursor-pointer ${
                   i === currentIndex
                     ? 'w-6 h-1.5 bg-white'
                     : 'w-1.5 h-1.5 bg-white/20 hover:bg-white/40'
                 }`}
-                aria-label={`Slide ${i + 1}`}
+                aria-label={t('homeSlide', {number: i + 1})+' · '+game.name}
+                title={game.name}
               />
             ))}
-          </div>
+          </nav>
         </>
       )}
     </div>

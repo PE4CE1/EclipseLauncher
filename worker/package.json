@@ -3,15 +3,19 @@
   "version": "1.0.0",
   "description": "Cloudflare Worker & D1 Backend for Eclipse Launcher",
   "main": "src/index.ts",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "d1:init": "wrangler d1 execute eclipse-db --file=./schema.sql --remote",
     "d1:init-local": "wrangler d1 execute eclipse-db --file=./schema.sql --local"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240405.0",
-    "typescript": "^5.5.3",
-    "wrangler": "^3.57.0"
+    "@cloudflare/workers-types": "^5.20261026.1",
+    "typescript": "~5.9.3",
+    "wrangler": "^4.153.0"
   }
 }

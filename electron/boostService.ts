@@ -1,83 +1,23 @@
-import { exec } from 'child_process'
+import { execFile } from 'child_process'
 import util from 'util'
 import os from 'os'
 import { BrowserWindow } from 'electron'
+import { getEclipseMemoryMetrics, trimMemoryNow } from './memoryOptimizerService'
 
-const execAsync = util.promisify(exec)
+const execFileAsync = util.promisify(execFile)
 
 let originalPowerSchemeGuid: string | null = null
 let isBoostActive = false
-let boostedPid: number | null = null
+let boostedProcess: { pid: number; originalPriority: number } | null = null
 
-/**
- * Real Windows Native Working Set & Memory Optimizer.
- * Flushes unmodified physical working set pages across user-space processes using psapi.dll!EmptyWorkingSet.
- * Reclaims real physical RAM back to the operating system pool.
- */
+/** Trim only the launcher's working sets; other applications retain their useful pages. */
 export async function flushSystemRam(): Promise<{ freedMB: number; currentFreeGB: string }> {
-  const ramBefore = os.freemem()
-
-  try {
-    // 1. Force V8 engine GC in current Node/Electron main process
-    if (global.gc) {
-      try { global.gc() } catch {}
-    }
-
-    // 2. Real Windows Process Working Set Flush using Win32 EmptyWorkingSet API
-    if (process.platform === 'win32') {
-      const psScript = `
-$code = @'
-using System;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-
-public class MemoryCleaner {
-    [DllImport("psapi.dll")]
-    public static extern int EmptyWorkingSet(IntPtr hwProc);
-
-    public static long CleanAll() {
-        long freed = 0;
-        foreach (Process p in Process.GetProcesses()) {
-            try {
-                if (p.Id > 4 && p.ProcessName != "csrss" && p.ProcessName != "smss") {
-                    long b = p.WorkingSet64;
-                    EmptyWorkingSet(p.Handle);
-                    p.Refresh();
-                    long diff = b - p.WorkingSet64;
-                    if (diff > 0) freed += diff;
-                }
-            } catch {}
-        }
-        return freed;
-    }
-}
-'@
-Add-Type -TypeDefinition $code
-$trimmed = [MemoryCleaner]::CleanAll()
-Write-Output "TRIMMED:$([math]::Round($trimmed / 1MB))"
-`
-      const b64 = Buffer.from(psScript, 'utf16le').toString('base64')
-      const cmd = `powershell -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand ${b64}`
-      const { stdout } = await execAsync(cmd, { timeout: 7000, windowsHide: true })
-      
-      const match = stdout.match(/TRIMMED:(\d+)/)
-      const trimmedWorkingSetMB = match ? parseInt(match[1], 10) : 0
-      console.log(`[TrueBoost] Native memory clean completed. Trimmed working set: ${trimmedWorkingSetMB} MB`)
-    }
-  } catch (e) {
-    console.warn('[TrueBoost] Native memory clean exception:', e)
-  }
-
-  // 3. Measure actual real physical RAM freed
-  const ramAfter = os.freemem()
-  const diffMB = Math.round((ramAfter - ramBefore) / (1024 * 1024))
-  const currentFreeGB = (os.freemem() / (1024 * 1024 * 1024)).toFixed(1)
-
-  console.log(`[TrueBoost] Physical free RAM before: ${(ramBefore / (1024*1024*1024)).toFixed(2)} GB, after: ${(ramAfter / (1024*1024*1024)).toFixed(2)} GB, diff: ${diffMB} MB`)
-
+  const before = getEclipseMemoryMetrics().totalWorkingSetMB
+  await trimMemoryNow(true)
+  const after = getEclipseMemoryMetrics().totalWorkingSetMB
   return {
-    freedMB: Math.max(0, diffMB),
-    currentFreeGB,
+    freedMB: Math.max(0, before - after),
+    currentFreeGB: (os.freemem() / (1024 * 1024 * 1024)).toFixed(1),
   }
 }
 
@@ -85,11 +25,11 @@ Write-Output "TRIMMED:$([math]::Round($trimmed / 1MB))"
  * Elevates the game process priority to Above Normal or High for frame pacing consistency.
  */
 export async function optimizeGamePriority(pid: number): Promise<boolean> {
-  if (process.platform !== 'win32' || pid <= 0) return false
+  if (process.platform !== 'win32' || !Number.isSafeInteger(pid) || pid <= 0 || pid > 0xffffffff) return false
   try {
-    // Priority 32768 = Above Normal, 128 = High. Above Normal is the safest for 0 audio/input stutters.
-    await execAsync('wmic process where ProcessId=' + pid + ' CALL setpriority 32768', { timeout: 2000, windowsHide: true })
-    boostedPid = pid
+    const originalPriority = os.getPriority(pid)
+    os.setPriority(pid, os.constants.priority.PRIORITY_ABOVE_NORMAL)
+    if (!boostedProcess || boostedProcess.pid !== pid) boostedProcess = { pid, originalPriority }
     console.log('[TrueBoost] Elevated game PID ' + pid + ' priority to AboveNormal')
     return true
   } catch (e) {
@@ -103,21 +43,22 @@ export async function optimizeGamePriority(pid: number): Promise<boolean> {
  */
 export async function activateGamingPowerPlan(): Promise<boolean> {
   if (process.platform !== 'win32') return false
+  if (originalPowerSchemeGuid) return true
   try {
-    const { stdout } = await execAsync('powercfg /getactivescheme', { timeout: 2000, windowsHide: true })
-    const match = stdout.match(/GUID:\s*([a-f0-9\-]+)/i)
-    if (match && match[1]) {
-      originalPowerSchemeGuid = match[1].trim()
-    }
+    const { stdout } = await execFileAsync('powercfg.exe', ['/getactivescheme'], { timeout: 2000, windowsHide: true })
+    const match = stdout.match(/\b[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\b/i)
+    if (!match) return false
+    const previousScheme = match[0].toLowerCase()
 
-    if (originalPowerSchemeGuid && !originalPowerSchemeGuid.includes('8c5e7fda') && !originalPowerSchemeGuid.includes('e9a42b02')) {
+    if (previousScheme !== '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c' && previousScheme !== 'e9a42b02-d5df-448d-aa00-03f14749eb61') {
       try {
-        await execAsync('powercfg /setactive e9a42b02-d5df-448d-aa00-03f14749eb61', { timeout: 1500, windowsHide: true })
+        await execFileAsync('powercfg.exe', ['/setactive', 'e9a42b02-d5df-448d-aa00-03f14749eb61'], { timeout: 1500, windowsHide: true })
         console.log('[TrueBoost] Activated Ultimate Performance power plan')
       } catch {
-        await execAsync('powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c', { timeout: 1500, windowsHide: true })
+        await execFileAsync('powercfg.exe', ['/setactive', '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'], { timeout: 1500, windowsHide: true })
         console.log('[TrueBoost] Activated High Performance power plan')
       }
+      originalPowerSchemeGuid = previousScheme
     }
     return true
   } catch (e) {
@@ -131,7 +72,7 @@ export async function activateGamingPowerPlan(): Promise<boolean> {
 export async function restorePowerPlan(): Promise<void> {
   if (process.platform !== 'win32' || !originalPowerSchemeGuid) return
   try {
-    await execAsync('powercfg /setactive ' + originalPowerSchemeGuid, { timeout: 2000, windowsHide: true })
+    await execFileAsync('powercfg.exe', ['/setactive', originalPowerSchemeGuid], { timeout: 2000, windowsHide: true })
     console.log('[TrueBoost] Restored previous power plan (' + originalPowerSchemeGuid + ')')
     originalPowerSchemeGuid = null
   } catch (e) {
@@ -189,7 +130,10 @@ export async function enableTrueBoostForGame(
 export async function disableTrueBoost(mainWindow: BrowserWindow | null): Promise<void> {
   if (!isBoostActive) return
   isBoostActive = false
-  boostedPid = null
+  if (boostedProcess) {
+    try { os.setPriority(boostedProcess.pid, boostedProcess.originalPriority) } catch {}
+    boostedProcess = null
+  }
 
   console.log('[TrueBoost] Deactivating True Boost and restoring system settings')
   try {

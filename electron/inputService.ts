@@ -1,182 +1,39 @@
-import { uIOhook, UiohookKey } from 'uiohook-napi'
-import { BrowserWindow } from 'electron'
+import {app,utilityProcess,type BrowserWindow,type UtilityProcess} from 'electron'
+import path from 'node:path'
 
-let isScoreboardOpen = false
-let kbBind = 'Tab' // default
-let ctrlBind = 'Select' // default
-let isHookRunning = false
-
-let overlayWin: BrowserWindow | null = null
-
-let leftClicks: number[] = []
-let rightClicks: number[] = []
-let cpsDecayInterval: NodeJS.Timeout | null = null
-let lastEmittedLmb = 0
-let lastEmittedRmb = 0
-let pendingDispatch = false
-let latestButtonClicked: 'lmb' | 'rmb' | undefined = undefined
-
-let lastLmbClickTime = 0
-let lastRmbClickTime = 0
-
-function pruneClicks(now: number) {
-  while (leftClicks.length > 0 && now - leftClicks[0] > 1000) {
-    leftClicks.shift()
-  }
-  while (rightClicks.length > 0 && now - rightClicks[0] > 1000) {
-    rightClicks.shift()
-  }
+let overlayWin:BrowserWindow|null=null,worker:UtilityProcess|null=null,retry:ReturnType<typeof setTimeout>|undefined
+let kbBind='Tab',ctrlBind='Select',restarts=0,exhausted=false
+function send(channel:string,value:unknown){if(overlayWin&&!overlayWin.isDestroyed())try{overlayWin.webContents.send(channel,value)}catch{}}
+function launch(){
+  if(worker||retry||exhausted||!overlayWin||overlayWin.isDestroyed())return
+  try{
+    const child=worker=utilityProcess.fork(path.join(app.getAppPath(),'electron/inputWorker.cjs'),[],{stdio:'pipe',serviceName:'Eclipse input'})
+    const started=Date.now()
+    child.stdout?.on('data',()=>{});child.stderr?.on('data',()=>{})
+    child.on('message',message=>{
+      if(worker!==child||!message||typeof message!=='object')return
+      if(message.type==='ready')child.postMessage({type:'bind',key:kbBind})
+      else if(message.type==='scoreboard'&&typeof message.open==='boolean')send('rl:scoreboard-toggle',message.open)
+      else if(message.type==='cps'&&[message.lmb,message.rmb].every(value=>Number.isInteger(value)&&value>=0&&value<=128))send('overlay:cps-update',{lmb:message.lmb,rmb:message.rmb,total:message.lmb+message.rmb,...(['lmb','rmb'].includes(message.buttonClicked)?{buttonClicked:message.buttonClicked}:{})})
+    })
+    child.once('exit',()=>{
+      if(worker!==child)return
+      worker=null;send('rl:scoreboard-toggle',false);send('overlay:cps-update',{lmb:0,rmb:0,total:0})
+      if(Date.now()-started>=30000)restarts=0
+      if(overlayWin&&!overlayWin.isDestroyed()&&restarts<3){retry=setTimeout(()=>{retry=undefined;launch()},1000*2**restarts++);retry.unref()}
+      else exhausted=true
+    })
+  }catch(error){worker=null;exhausted=true;console.warn('[InputService] Isolated input unavailable:',error)}
 }
-
-function flushCps() {
-  pendingDispatch = false
-  if (!overlayWin || overlayWin.isDestroyed()) return
-  const now = Date.now()
-  pruneClicks(now)
-  const lmb = leftClicks.length
-  const rmb = rightClicks.length
-  const total = lmb + rmb
-  const btn = latestButtonClicked
-  latestButtonClicked = undefined
-
-  if (btn !== undefined || lmb !== lastEmittedLmb || rmb !== lastEmittedRmb) {
-    lastEmittedLmb = lmb
-    lastEmittedRmb = rmb
-    overlayWin.webContents.send('overlay:cps-update', { lmb, rmb, total, buttonClicked: btn })
-  }
+export function startInputService(window:BrowserWindow){overlayWin=window;launch()}
+export function stopInputService(){
+  clearTimeout(retry);retry=undefined;restarts=0;exhausted=false
+  const child=worker;worker=null;overlayWin=null
+  if(child){try{child.postMessage({type:'stop'})}catch{};child.kill()}
 }
-
-function scheduleCpsUpdate(button?: 'lmb' | 'rmb') {
-  if (button) latestButtonClicked = button
-  if (pendingDispatch) return
-  pendingDispatch = true
-  setImmediate(flushCps)
-}
-
-const handleKeyEvent = (e: any, isDown: boolean) => {
-  if (!overlayWin || overlayWin.isDestroyed()) return
-  
-  // Find key name from UiohookKey enum based on keycode
-  const keyName = Object.keys(UiohookKey).find(k => (UiohookKey as any)[k] === e.keycode)
-  const pressedKey = keyName?.toUpperCase()
-  const bindKey = kbBind.toUpperCase()
-
-  if (pressedKey === bindKey) {
-    if (isDown !== isScoreboardOpen) {
-      isScoreboardOpen = isDown
-      overlayWin.webContents.send('rl:scoreboard-toggle', isDown)
-    }
-  }
-}
-
-const handleMouseDown = (e: any) => {
-  if (!overlayWin || overlayWin.isDestroyed()) return
-  const now = Date.now()
-  if (e.button === 1) {
-    // 10ms hardware debounce to prevent duplicate micro-switch bounce events
-    if (now - lastLmbClickTime >= 10) {
-      lastLmbClickTime = now
-      leftClicks.push(now)
-      scheduleCpsUpdate('lmb')
-    }
-  } else if (e.button === 2) {
-    if (now - lastRmbClickTime >= 10) {
-      lastRmbClickTime = now
-      rightClicks.push(now)
-      scheduleCpsUpdate('rmb')
-    }
-  }
-}
-
-export function startInputService(overlayWindow: BrowserWindow) {
-  overlayWin = overlayWindow
-
-  if (!isHookRunning) {
-    try {
-      // Remove any stale listeners first to guarantee strictly ONE listener
-      uIOhook.removeAllListeners()
-
-      // FAST-PATH: Override uIOhook.handler to immediately drop mousemove (9), mousewheel (11), click (6)
-      // This prevents 1000Hz gaming mouse movement from triggering any V8/JS overhead or micro-stutters in 3D games!
-      ;(uIOhook as any).handler = function (e: any) {
-        if (e.type === 9 || e.type === 11 || e.type === 6) return
-        if (e.type === 7) {
-          this.emit('mousedown', e)
-          return
-        }
-        if (e.type === 8) {
-          this.emit('mouseup', e)
-          return
-        }
-        if (e.type === 4) {
-          this.emit('keydown', e)
-          return
-        }
-        if (e.type === 5) {
-          this.emit('keyup', e)
-          return
-        }
-      }
-
-      uIOhook.on('keydown', (e) => handleKeyEvent(e, true))
-      uIOhook.on('keyup', (e) => handleKeyEvent(e, false))
-      uIOhook.on('mousedown', handleMouseDown)
-      uIOhook.start()
-      isHookRunning = true
-      console.log('[InputService] uIOhook global keyboard and mouse listeners started.')
-
-      if (!cpsDecayInterval) {
-        cpsDecayInterval = setInterval(() => {
-          if (!overlayWin || overlayWin.isDestroyed()) return
-          if (leftClicks.length > 0 || rightClicks.length > 0 || lastEmittedLmb > 0 || lastEmittedRmb > 0) {
-            const now = Date.now()
-            pruneClicks(now)
-            const lmb = leftClicks.length
-            const rmb = rightClicks.length
-            const total = lmb + rmb
-            if (lmb !== lastEmittedLmb || rmb !== lastEmittedRmb) {
-              lastEmittedLmb = lmb
-              lastEmittedRmb = rmb
-              overlayWin.webContents.send('overlay:cps-update', { lmb, rmb, total })
-            }
-          }
-        }, 40)
-      }
-    } catch (err) {
-      console.error('[InputService] Failed to start input listeners:', err)
-    }
-  }
-}
-
-export function stopInputService() {
-  if (isHookRunning) {
-    try {
-      uIOhook.removeAllListeners()
-      uIOhook.stop()
-    } catch (_) {}
-    isHookRunning = false
-  }
-  if (cpsDecayInterval) {
-    clearInterval(cpsDecayInterval)
-    cpsDecayInterval = null
-  }
-  leftClicks = []
-  rightClicks = []
-  lastEmittedLmb = 0
-  lastEmittedRmb = 0
-  lastLmbClickTime = 0
-  lastRmbClickTime = 0
-  pendingDispatch = false
-  latestButtonClicked = undefined
-  isScoreboardOpen = false
-  overlayWin = null
-}
-
-export function setInputKeybinds(keyboardKey: string, controllerKey: string) {
-  if (keyboardKey) kbBind = keyboardKey
-  if (controllerKey) ctrlBind = controllerKey
-  console.log(`[InputService] Keybinds updated. KB: ${kbBind}, CTRL: ${ctrlBind}`)
-  if (overlayWin && !overlayWin.isDestroyed()) {
-    overlayWin.webContents.send('rl:controller-bind-update', ctrlBind)
-  }
+export function setInputKeybinds(keyboardKey:string,controllerKey:string){
+  if(keyboardKey)kbBind=keyboardKey
+  if(controllerKey)ctrlBind=controllerKey
+  try{worker?.postMessage({type:'bind',key:kbBind})}catch{}
+  send('rl:controller-bind-update',ctrlBind)
 }

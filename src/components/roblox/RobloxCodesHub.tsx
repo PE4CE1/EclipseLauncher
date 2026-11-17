@@ -1,526 +1,138 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import {
-  Copy,
-  Check,
-  Search,
-  RefreshCw,
-  ExternalLink,
-  ChevronDown,
-  X,
-  Bell,
-  BellRing,
-  KeyRound
-} from 'lucide-react'
-import { playNotificationSound } from '../../services/soundService'
+import { DropdownSurface } from '../shared/DropdownSurface'
+import { useEffect, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowUpRight, Bell, Check, CheckCheck, ChevronDown, Copy, Gamepad2, KeyRound, Loader2, Radio, RefreshCw, Search, X } from 'lucide-react'
 import { useTranslation } from '../../hooks/useTranslation'
 import { useUIStore } from '../../store/uiStore'
-import type { RobloxExperience, RobloxGameCodesResult } from '../../types/game'
+import { playNotificationSound } from '../../services/soundService'
+import { copyText } from '../../services/clipboard'
+import { ROBLOX_CODE_GAMES, cleanRobloxName, robloxNameKey } from '../../services/robloxGames'
+import type { RobloxCodeGame, RobloxCodeItem, RobloxGameCodesResult } from '../../types/robloxCodes'
+import type { RobloxExperience } from '../../types/game'
+import './roblox-preview.css'
 
-const POPULAR_GAMES = [
-  'Steal An Egg',
-  'Brookhaven RP',
-  'Blox Fruits',
-  'Murder Mystery 2',
-  'Adopt Me!',
-  'Rivals',
-  'Fisch',
-  'Pet Simulator 99',
-  'Dress to Impress',
-  'Doors',
-  "Sol's RNG",
-  'Flee the Facility',
-  'The Strongest Battlegrounds',
-  'Berry Avenue RP',
-  'Tower of Hell',
-  'BedWars',
-  "Dandy's World",
-  'Anime Vanguards',
-  'Blade Ball',
-  'Tower Defense Simulator',
-  'King Legacy',
-  'Toilet Tower Defense',
-  'Da Hood'
-]
+const identity = (game: RobloxCodeGame) => game.universeId ? `u:${game.universeId}` : game.placeId ? `p:${game.placeId}` : `n:${robloxNameKey(game.name)}`
+const same = (a: RobloxCodeGame, b: RobloxCodeGame) => a.universeId && b.universeId ? a.universeId === b.universeId : a.placeId && b.placeId ? a.placeId === b.placeId : robloxNameKey(a.name) === robloxNameKey(b.name)
+const codesKey = (game: RobloxCodeGame) => ['roblox-codes-v3', identity(game)]
+const CODE_PAGE_SIZE = 8
+const readUsed = (key: string): string[] => { try { const value = JSON.parse(localStorage.getItem(`eclipse-used-codes:${key}`) || '[]'); return Array.isArray(value) ? value.filter(value => typeof value === 'string').slice(0, 500) : [] } catch { return [] } }
 
-function cleanGameName(raw: string): string {
-  let s = raw
-    .replace(/\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji}/gu, ' ')
-    .replace(/\[[^\]]*\]/g, ' ')
-    .replace(/\([^)]*\)/g, ' ')
-    .replace(/\{[^}]*\}/g, ' ')
-    .replace(/\b\d+(\.\d+)+\b/g, ' ')
-    .replace(/\b(code|codes|update|release|event)\b/gi, ' ')
-    .replace(/[^\w\s'-]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return s || raw.trim()
-}
+export function RobloxCodesHub({ className = '' }: { className?: string }) {
+  const { language } = useTranslation(), de = language === 'de', client = useQueryClient()
+  const tr = (german: string, english: string) => de ? german : english
+  const [game, setGame] = useState<RobloxCodeGame>(ROBLOX_CODE_GAMES[0])
+  const [live, setLive] = useState<RobloxExperience | null>(null)
+  const [follow, setFollow] = useState(true)
+  const [query, setQuery] = useState(''), [search, setSearch] = useState(''), [searchOpen, setSearchOpen] = useState(false), [highlight, setHighlight] = useState(0)
+  const [expired, setExpired] = useState(false), [copied, setCopied] = useState<string | null>(null), [refreshing, setRefreshing] = useState(false)
+  const [notify, setNotify] = useState(() => { try { return localStorage.getItem('roblox_sound_notify') === 'true' } catch { return false } })
+  const [used, setUsed] = useState<string[]>(() => readUsed(identity(game))), [hideUsed, setHideUsed] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(CODE_PAGE_SIZE), [expiredCount, setExpiredCount] = useState(CODE_PAGE_SIZE)
+  const selected = useRef(game), followRef = useRef(follow), selectionVersion = useRef(0), copyTimer = useRef<ReturnType<typeof setTimeout>>()
+  const root = useRef<HTMLElement>(null)
+  selected.current = game; followRef.current = follow
+  const choose = (next: RobloxCodeGame, manual = true) => {
+    selectionVersion.current++
+    setGame(next); setQuery(''); setSearch(''); setSearchOpen(false); setExpired(false); setCopied(null)
+    setVisibleCount(CODE_PAGE_SIZE); setExpiredCount(CODE_PAGE_SIZE)
+    setUsed(readUsed(identity(next)))
+    if (manual) setFollow(false)
+  }
+  useEffect(() => { const timer = setTimeout(() => { setSearch(query.trim()); setHighlight(0) }, 250); return () => clearTimeout(timer) }, [query])
+  const recommended = useQuery({ queryKey: ['roblox-code-games', ''], queryFn: () => window.electronAPI?.roblox?.searchGames?.('') || Promise.resolve([...ROBLOX_CODE_GAMES]), staleTime: 5 * 60_000, retry: false })
+  const suggestions = useQuery({ queryKey: ['roblox-code-games', search], queryFn: () => window.electronAPI?.roblox?.searchGames?.(search) || Promise.resolve(ROBLOX_CODE_GAMES.filter(item => !search || robloxNameKey(item.name).includes(robloxNameKey(search)))), staleTime: 5 * 60_000, retry: false, enabled: searchOpen })
+  const codes = useQuery({ queryKey: codesKey(game), queryFn: async (): Promise<RobloxGameCodesResult> => {
+    if (!window.electronAPI?.roblox?.getCodes) return { ...game, gameName: game.name, activeCodes: [], expiredCodes: [], lastUpdated: 0, status: 'unavailable' }
+    return window.electronAPI.roblox.getCodes(game.name, game.placeId, game.universeId)
+  }, staleTime: 60_000, retry: false, refetchOnWindowFocus: false })
 
-function isSameGame(a?: string | null, b?: string | null): boolean {
-  if (!a || !b) return false
-  const na = a.toLowerCase().trim()
-  const nb = b.toLowerCase().trim()
-  if (na === nb) return true
-  const ca = cleanGameName(a).toLowerCase().trim()
-  const cb = cleanGameName(b).toLowerCase().trim()
-  if (ca === cb) return true
-  if (ca && cb && (ca.includes(cb) || cb.includes(ca))) return true
-  return false
-}
-
-interface RobloxCodesHubProps {
-  className?: string
-}
-
-export const RobloxCodesHub: React.FC<RobloxCodesHubProps> = ({ className = '' }) => {
-  const { t } = useTranslation()
-  const tRef = useRef(t)
-  tRef.current = t
-
-  const [activeExp, setActiveExp] = useState<RobloxExperience | null>(null)
-  const [selectedGame, setSelectedGame] = useState<string>('Steal An Egg')
-  const [searchQuery, setSearchQuery] = useState<string>('')
-  const [codesResult, setCodesResult] = useState<RobloxGameCodesResult | null>(null)
-  const [isLoadingCodes, setIsLoadingCodes] = useState<boolean>(false)
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
-  const [copiedCode, setCopiedCode] = useState<string | null>(null)
-  const [showExpired, setShowExpired] = useState<boolean>(false)
-
-  // ─── Sound Notification Settings & History ────────────────────────────────
-  const [isSoundNotifyActive, setIsSoundNotifyActive] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('roblox_sound_notify') === 'true'
-    } catch {
-      return false
+  useEffect(() => {
+    let active = true
+    const version = selectionVersion.current
+    void window.electronAPI?.roblox?.getActiveExperience?.().then(experience => {
+      if (!active) return
+      setLive(experience)
+      if (experience?.name && followRef.current && selectionVersion.current === version) choose(experience, false)
+    }).catch(() => {})
+    const stopLive = window.electronAPI?.roblox?.onExperienceChange?.(experience => {
+      setLive(experience)
+      if (experience?.name && followRef.current) {
+        if (!same(selected.current, experience)) choose(experience, false)
+        else if (experience.iconUrl && selected.current.iconUrl !== experience.iconUrl) setGame(previous => ({ ...previous, iconUrl: experience.iconUrl }))
+      }
+    })
+    const stopCodes = window.electronAPI?.roblox?.onCodesUpdated?.(result => {
+      if (same(selected.current, { name: result.gameName, placeId: result.placeId, universeId: result.universeId })) client.setQueryData(codesKey(selected.current), result)
+    })
+    const selectEvent = (event: Event) => {
+      const detail = (event as CustomEvent).detail
+      if (typeof detail?.gameName === 'string') choose({ name: detail.gameName, placeId: detail.placeId, universeId: detail.universeId, iconUrl: detail.iconUrl })
     }
-  })
-  const lastNotifiedGameRef = useRef<string>('')
-
-  const toggleSoundNotify = () => {
-    const next = !isSoundNotifyActive
-    setIsSoundNotifyActive(next)
+    const outside = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setSearchOpen(false) }
+    window.addEventListener('roblox:select-game-codes', selectEvent)
+    document.addEventListener('pointerdown', outside)
+    return () => { active = false; stopLive?.(); stopCodes?.(); clearTimeout(copyTimer.current); window.removeEventListener('roblox:select-game-codes', selectEvent); document.removeEventListener('pointerdown', outside) }
+  }, [client])
+  const data = codes.data, available = data?.activeCodes || [], visible = hideUsed ? available.filter(item => !used.includes(item.code)) : available
+  const displayed = visible.slice(0, visibleCount)
+  const displayedExpired = data?.expiredCodes.slice(0, expiredCount) || []
+  const icon = game.iconUrl || data?.iconUrl || recommended.data?.find(item => same(item, game))?.iconUrl
+  const usedKey = data ? identity({ name: data.gameName, placeId: data.placeId, universeId: data.universeId }) : identity(game)
+  useEffect(() => setUsed(readUsed(usedKey)), [usedKey])
+  useEffect(() => {
+    if (!data || data.stale || !data.activeCodes.length) return
+    const key = `eclipse-code-history:${usedKey}`
     try {
-      localStorage.setItem('roblox_sound_notify', String(next))
+      const previous = JSON.parse(localStorage.getItem(key) || '[]')
+      const found = data.activeCodes.filter(item => !Array.isArray(previous) || !previous.includes(item.code))
+      localStorage.setItem(key, JSON.stringify(data.activeCodes.map(item => item.code)))
+      if (notify && found.length) {
+        playNotificationSound('cosmic_shimmer')
+        useUIStore.getState().showNotification(de ? `${found.length} neue Codes für ${data.gameName}` : `${found.length} new codes for ${data.gameName}`, 'success', 'Roblox Codes')
+      }
     } catch {}
-
-    if (next) {
-      playNotificationSound('cosmic_shimmer')
-      useUIStore.getState().showNotification(tRef.current('robloxCodesNotificationEnabled'), 'success', tRef.current('robloxCodesHubTitle'))
-    } else {
-      useUIStore.getState().showNotification(tRef.current('robloxCodesNotificationDisabled'), 'info', tRef.current('robloxCodesHubTitle'))
-    }
+  }, [data, notify, usedKey, de])
+  const refresh = async () => {
+    if (refreshing || !window.electronAPI?.roblox?.getCodes) return
+    const target = selected.current
+    setRefreshing(true)
+    try { const result = await window.electronAPI.roblox.getCodes(target.name, target.placeId, target.universeId, true); client.setQueryData(codesKey(target), result) }
+    catch { useUIStore.getState().showNotification(tr('Codes konnten nicht aktualisiert werden.', 'Could not refresh codes.'), 'error') }
+    finally { setRefreshing(false) }
   }
-
-  // ─── Fetch Codes for a given Game (100% Stable Reference) ─────────────────
-  const fetchCodesForGame = useCallback(async (gameName: string, placeId?: string, universeId?: string, forceRefresh = false) => {
-    const clean = gameName.trim()
-    if (!clean) return
-    setIsLoadingCodes(true)
-    try {
-      let res: RobloxGameCodesResult | null = null
-      if (window.electronAPI?.roblox?.getCodes) {
-        res = await window.electronAPI.roblox.getCodes(clean, placeId, universeId, forceRefresh)
-      } else {
-        // Fallback for preview
-        res = {
-          gameName: clean,
-          activeCodes: [
-            { code: 'RELEASE', reward: 'Free Starter Pack & Coins' },
-            { code: 'EASTER', reward: 'Free Boost & Speed' },
-            { code: 'FREEGEMS', reward: '500 Free Gems' },
-          ],
-          expiredCodes: [
-            { code: 'BETA', reward: '100 Gems', isExpired: true }
-          ],
-          lastUpdated: Date.now()
-        }
-      }
-      setCodesResult(res)
-
-      // ─── Sound & Notification Trigger when Codes are Discovered ───────────
-      if (res && res.activeCodes && res.activeCodes.length > 0) {
-        const notifyKey = `${clean.toLowerCase()}-${res.activeCodes.length}`
-        let isSoundOn = false
-        try {
-          isSoundOn = localStorage.getItem('roblox_sound_notify') === 'true'
-        } catch {}
-
-        if (isSoundOn && lastNotifiedGameRef.current !== notifyKey) {
-          lastNotifiedGameRef.current = notifyKey
-          playNotificationSound('cosmic_shimmer')
-          const gameTitle = cleanGameName(clean)
-          const msg = tRef.current('robloxCodesFoundMessage', { count: res.activeCodes.length, game: gameTitle })
-            || `🎉 ${res.activeCodes.length} aktive Codes für ${gameTitle} gefunden!`
-          useUIStore.getState().showNotification(msg, 'success', tRef.current('robloxCodesFoundTitle') || 'Roblox Codes')
-
-          // Native Windows Notification if available
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-            try {
-              new Notification(tRef.current('robloxCodesFoundTitle') || 'Roblox Codes', {
-                body: msg,
-                icon: res.iconUrl || undefined
-              })
-            } catch {}
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load Roblox codes:', err)
-    } finally {
-      setIsLoadingCodes(false)
-    }
-  }, [])
-
-  // ─── Listen to Popular Game Select Events (Mounts Once) ───────────────────
-  useEffect(() => {
-    const handleCustomSelect = (e: any) => {
-      const gName = e?.detail?.gameName
-      if (gName) {
-        setSelectedGame(gName)
-        setSearchQuery('')
-        fetchCodesForGame(gName)
-      }
-    }
-    window.addEventListener('roblox:select-game-codes', handleCustomSelect)
-    return () => window.removeEventListener('roblox:select-game-codes', handleCustomSelect)
-  }, [fetchCodesForGame])
-
-  // ─── Initialize Active Experience & Listeners (Mounts Once) ───────────────
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined
-
-    const init = async () => {
-      try {
-        if (window.electronAPI?.roblox?.getActiveExperience) {
-          const exp = await window.electronAPI.roblox.getActiveExperience()
-          if (exp?.name) {
-            setActiveExp(exp)
-            setSelectedGame(exp.name)
-            fetchCodesForGame(exp.name, exp.placeId, exp.universeId)
-            return
-          } else {
-            setActiveExp(null)
-          }
-        }
-      } catch (e) {
-        console.warn('Roblox initial experience check failed:', e)
-        setActiveExp(null)
-      }
-
-      fetchCodesForGame('Steal An Egg')
-    }
-
-    init()
-
-    if (window.electronAPI?.roblox?.onExperienceChange) {
-      unsubscribe = window.electronAPI.roblox.onExperienceChange((exp) => {
-        setActiveExp(exp)
-        if (exp?.name) {
-          setSelectedGame(exp.name)
-          fetchCodesForGame(exp.name, exp.placeId, exp.universeId)
-        }
-      })
-    }
-
-    return () => {
-      if (unsubscribe) unsubscribe()
-    }
-  }, [fetchCodesForGame])
-
-  // ─── Refresh Handler ──────────────────────────────────────────────────────
-  const handleRefresh = async () => {
-    setIsRefreshing(true)
-    try {
-      let currentExp: any = null
-      if (window.electronAPI?.roblox?.refreshExperience) {
-        currentExp = await window.electronAPI.roblox.refreshExperience()
-      }
-      setActiveExp(currentExp)
-      const isLive = currentExp && isSameGame(selectedGame, currentExp.name)
-      await fetchCodesForGame(
-        selectedGame,
-        isLive ? currentExp?.placeId : undefined,
-        isLive ? currentExp?.universeId : undefined,
-        true
-      )
-    } catch (e) {
-      console.error('Error refreshing Roblox experience:', e)
-    } finally {
-      setTimeout(() => setIsRefreshing(false), 400)
-    }
+  const copy = async (value: string, marker = value) => {
+    try { await copyText(value); setCopied(marker); clearTimeout(copyTimer.current); copyTimer.current = setTimeout(() => setCopied(null), 1800) }
+    catch { useUIStore.getState().showNotification(tr('Kopieren fehlgeschlagen.', 'Could not copy to clipboard.'), 'error') }
   }
-
-  // ─── Deduplicated Game List ───────────────────────────────────────────────
-  const gameChips = useMemo(() => {
-    const list: string[] = []
-    const seen = new Set<string>()
-
-    if (activeExp?.name) {
-      list.push(activeExp.name)
-      seen.add(cleanGameName(activeExp.name).toLowerCase().trim())
-    }
-
-    for (const g of POPULAR_GAMES) {
-      const norm = cleanGameName(g).toLowerCase().trim()
-      if (!seen.has(norm)) {
-        list.push(g)
-        seen.add(norm)
-      }
-    }
-
-    return list
-  }, [activeExp?.name])
-
-  // ─── Selection ────────────────────────────────────────────────────────────
-  const handleSelectGame = (game: string) => {
-    setSelectedGame(game)
-    setSearchQuery('')
-    const isLive = activeExp && isSameGame(game, activeExp.name)
-    fetchCodesForGame(game, isLive ? activeExp?.placeId : undefined, isLive ? activeExp?.universeId : undefined)
+  const markUsed = (code: string) => {
+    const next = used.includes(code) ? used.filter(item => item !== code) : [...used, code].slice(-500)
+    setUsed(next)
+    try { localStorage.setItem(`eclipse-used-codes:${usedKey}`, JSON.stringify(next)) } catch {}
   }
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!searchQuery.trim()) return
-    const q = searchQuery.trim()
-    setSelectedGame(q)
-    const isLive = activeExp && isSameGame(q, activeExp.name)
-    fetchCodesForGame(q, isLive ? activeExp?.placeId : undefined, isLive ? activeExp?.universeId : undefined)
-  }
-
-  // ─── Copy Code ────────────────────────────────────────────────────────────
-  const handleCopyCode = async (code: string) => {
-    try {
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(code)
-      } else {
-        const textArea = document.createElement('textarea')
-        textArea.value = code
-        document.body.appendChild(textArea)
-        textArea.select()
-        document.execCommand('copy')
-        document.body.removeChild(textArea)
-      }
-      setCopiedCode(code)
-      useUIStore.getState().showNotification(`${code} ${t('robloxCodeCopied')}`, 'success')
-      setTimeout(() => {
-        setCopiedCode(prev => (prev === code ? null : prev))
-      }, 1800)
-    } catch (err) {
-      console.error('Failed to copy code:', err)
-    }
-  }
-
-  const activeCodes = codesResult?.activeCodes || []
-  const expiredCodes = codesResult?.expiredCodes || []
-
-  return (
-    <div id="roblox-codes-hub" className={`w-full ${className} scroll-mt-24`}>
-      <div className="bg-[#0b0c10]/80 backdrop-blur-md border border-white/[0.06] rounded-2xl p-4 md:p-5">
-        
-        {/* ─── Minimalist Header: Title, Selected Game & Actions ────────── */}
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 flex-shrink-0">
-              <KeyRound size={12} />
-            </div>
-            <span className="text-xs font-bold text-white tracking-wide">Codes</span>
-            <span className="text-white/20">•</span>
-            <span className="text-xs font-semibold text-white/80 truncate max-w-[160px] sm:max-w-[220px]">
-              {cleanGameName(selectedGame)}
-            </span>
-            {activeCodes.length > 0 && (
-              <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded-md">
-                {activeCodes.length} aktiv
-              </span>
-            )}
-            {activeExp && isSameGame(activeExp.name, selectedGame) && (
-              <div className="hidden sm:flex items-center gap-1 text-[11px] text-emerald-400 ml-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-white/40 text-[10px]">Live</span>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {/* Sound Notification Icon Toggle */}
-            <button
-              onClick={toggleSoundNotify}
-              className={`w-7 h-7 rounded-lg border transition-all flex items-center justify-center cursor-pointer ${
-                isSoundNotifyActive
-                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
-                  : 'bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white hover:bg-white/[0.08]'
-              }`}
-              title={isSoundNotifyActive ? t('robloxCodesFoundSoundOn') : t('robloxCodesFoundSoundOff')}
-            >
-              {isSoundNotifyActive ? <BellRing size={13} className="animate-pulse" /> : <Bell size={13} />}
-            </button>
-
-            {/* Refresh Icon */}
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing || isLoadingCodes}
-              className="w-7 h-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] hover:border-white/20 text-white/50 hover:text-white flex items-center justify-center transition-all cursor-pointer disabled:opacity-50"
-              title={t('robloxRefreshCodes')}
-            >
-              <RefreshCw size={12} className={isRefreshing || isLoadingCodes ? 'animate-spin text-amber-400' : ''} />
-            </button>
-          </div>
-        </div>
-
-        {/* ─── Minimal Search & Chips Row ───────────────────────────────── */}
-        <div className="flex items-center gap-2 mb-3.5">
-          {/* Subtle Compact Search */}
-          <form onSubmit={handleSearchSubmit} className="relative w-32 sm:w-44 flex-shrink-0">
-            <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Suchen…"
-              className="w-full h-6 pl-6 pr-5 rounded-full bg-white/[0.03] hover:bg-white/[0.06] focus:bg-black/50 border border-white/[0.07] focus:border-white/20 text-[11px] text-white placeholder-white/30 outline-none transition-all"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white cursor-pointer"
-              >
-                <X size={10} />
-              </button>
-            )}
-          </form>
-
-          {/* Minimalist Game Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5 flex-1">
-            {gameChips.map((game) => {
-              const isSelected = isSameGame(selectedGame, game)
-              const isLive = activeExp && isSameGame(activeExp.name, game)
-
-              return (
-                <button
-                  key={game}
-                  onClick={() => handleSelectGame(game)}
-                  className={`h-6 px-2.5 rounded-full text-[11px] font-medium transition-all flex items-center gap-1.5 flex-shrink-0 cursor-pointer ${
-                    isSelected
-                      ? 'bg-white text-black font-bold shadow-sm'
-                      : 'bg-white/[0.03] text-white/50 hover:text-white hover:bg-white/[0.07] border border-transparent'
-                  }`}
-                >
-                  {isLive && (
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        isSelected ? 'bg-emerald-600' : 'bg-emerald-400 animate-pulse'
-                      }`}
-                    />
-                  )}
-                  <span>{cleanGameName(game)}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* ─── Codes Grid (Minimalist Voucher Cards) ────────────────────── */}
-        <div className="min-h-[75px]">
-          {isLoadingCodes ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="relative h-12 rounded-xl border border-white/[0.05] bg-white/[0.02] overflow-hidden px-3 py-2 flex items-center justify-between gap-2 select-none"
-                >
-                  <div className="cover-shimmer-container">
-                    <div className="cover-shimmer-wave" />
-                  </div>
-                  <div className="flex-1 space-y-1 z-10">
-                    <div className="w-20 h-3 rounded bg-white/[0.08]" />
-                    <div className="w-28 h-2 rounded bg-white/[0.04]" />
-                  </div>
-                  <div className="w-5 h-5 rounded bg-white/[0.04] z-10" />
-                </div>
-              ))}
-            </div>
-          ) : activeCodes.length === 0 ? (
-            <div className="py-6 text-center text-xs text-white/30">
-              {t('robloxNoCodesFound')}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
-              {activeCodes.map((item) => {
-                const isCopied = copiedCode === item.code
-
-                return (
-                  <div
-                    key={item.code}
-                    onClick={() => handleCopyCode(item.code)}
-                    className={`group relative px-3.5 py-2.5 rounded-xl border transition-all duration-150 cursor-pointer flex items-center justify-between gap-2.5 select-none ${
-                      isCopied
-                        ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
-                        : 'bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.06] hover:border-white/15'
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <span className="font-mono text-xs font-bold text-white group-hover:text-amber-300 transition-colors tracking-wider">
-                        {item.code}
-                      </span>
-                      <p className="text-[11px] text-white/40 truncate mt-0.5">
-                        {item.reward || 'Belohnung'}
-                      </p>
-                    </div>
-
-                    <div className="flex-shrink-0 flex items-center">
-                      {isCopied ? (
-                        <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 bg-emerald-500/15 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
-                          <Check size={11} className="stroke-[2.5]" />
-                          <span>Kopiert</span>
-                        </span>
-                      ) : (
-                        <div className="w-6 h-6 rounded-lg bg-white/[0.04] group-hover:bg-white/10 text-white/30 group-hover:text-white flex items-center justify-center transition-colors">
-                          <Copy size={11} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* ─── Expired Codes ────────────────────────────────────────────── */}
-        {expiredCodes.length > 0 && (
-          <div className="mt-3 pt-2.5 border-t border-white/[0.04]">
-            <button
-              onClick={() => setShowExpired(!showExpired)}
-              className="text-[11px] text-white/30 hover:text-white/60 transition-colors flex items-center gap-1 font-medium cursor-pointer"
-            >
-              <span>
-                {showExpired ? t('robloxHideExpired') : t('robloxShowExpired')} ({expiredCodes.length})
-              </span>
-              <ChevronDown
-                size={11}
-                className={`transition-transform duration-150 ${showExpired ? 'rotate-180' : ''}`}
-              />
-            </button>
-
-            {showExpired && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 mt-2">
-                {expiredCodes.map((item) => (
-                  <div
-                    key={item.code}
-                    className="px-2.5 py-1.5 rounded-lg bg-white/[0.015] border border-white/[0.03] text-[11px] flex items-center justify-between text-white/25"
-                  >
-                    <span className="font-mono line-through truncate">{item.code}</span>
-                    <span className="text-[10px] text-white/20 truncate ml-1">{item.reward}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-      </div>
-    </div>
-  )
+  const openSource = (url: string) => { void window.electronAPI?.openUrl?.(url) }
+  const card = (item: RobloxCodeItem, old = false) => <article key={item.code} className="rbx-code" data-used={used.includes(item.code) || undefined} data-expired={old || undefined}>
+    <div className="rbx-code-top"><code>{item.code}</code><button type="button" data-code-copy={item.code} onClick={() => void copy(item.code)} title={tr('Code kopieren', 'Copy code')} aria-label={`${tr('Kopieren', 'Copy')} ${item.code}`}>{copied === item.code ? <Check size={15} /> : <Copy size={15} />}</button></div>
+    <p>{item.reward || tr('Belohnung im Spiel', 'In-game reward')}</p>
+    {!!item.alternatives?.length && <details className="rbx-spelling"><summary>{tr('Andere Schreibweise', 'Other spelling')}</summary>{item.alternatives.map(code => <button type="button" key={code} onClick={() => void copy(code)}><code>{code}</code><Copy size={11} /></button>)}</details>}
+    <div className="rbx-code-bottom"><span className="rbx-code-origin" title={item.sourceName}>{item.conflicting ? tr('Quellen widersprechen sich', 'Sources disagree') : item.verification === 'developer' ? tr('Vom Entwickler', 'From the developer') : item.sourceName || tr('Community-Quelle', 'Community source')}</span>
+      {!old && <button type="button" className="rbx-code-used" data-code-used={item.code} aria-pressed={used.includes(item.code)} onClick={() => markUsed(item.code)} title={tr('Als verwendet markieren', 'Mark as used')}><CheckCheck size={13} />{used.includes(item.code) ? tr('Verwendet', 'Used') : tr('Merken', 'Mark used')}</button>}</div>
+  </article>
+  return <section ref={root} id="roblox-codes-hub" data-roblox-codes className={`rbx-codes ${className}`}>
+    <header className="rbx-codes-header"><div className="rbx-codes-title"><span className="rbx-section-icon"><KeyRound size={19} /></span><div><h2>{tr('Spielcodes', 'Game codes')}</h2><p>{tr('Dein Spiel finden. Code kopieren. Im Spiel einlösen.', 'Find your game. Copy a code. Redeem it in-game.')}</p></div></div><div className="rbx-header-actions"><button type="button" className="rbx-action" aria-pressed={notify} title={tr('Bei neuen Codes benachrichtigen', 'Notify me about new codes')} onClick={() => { const next = !notify; setNotify(next); try { localStorage.setItem('roblox_sound_notify', String(next)) } catch {} }}><Bell size={14} /></button><button type="button" className="rbx-action" onClick={() => void refresh()} disabled={refreshing || codes.isFetching} title={tr('Quellen neu prüfen', 'Check sources again')}><RefreshCw size={14} className={refreshing ? 'rbx-spin' : ''} /><span>{tr('Aktualisieren', 'Refresh')}</span></button></div></header>
+    <div className="rbx-codes-toolbar"><div className="rbx-code-search"><Search size={16} /><input data-code-search role="combobox" aria-expanded={searchOpen} aria-controls="rbx-code-results" aria-autocomplete="list" aria-activedescendant={searchOpen ? `rbx-search-${highlight}` : undefined} value={query} placeholder={tr('Spielname oder Roblox-Link suchen', 'Search a game name or Roblox link')} onFocus={() => setSearchOpen(true)} onChange={event => { setQuery(event.target.value); setSearchOpen(true) }} onKeyDown={event => {
+      if (event.key === 'Escape') { setSearchOpen(false); event.stopPropagation() }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setHighlight(value => Math.max(0, Math.min((suggestions.data?.length || 1) - 1, value + (event.key === 'ArrowDown' ? 1 : -1)))) }
+      if (event.key === 'Enter') { event.preventDefault(); const next = suggestions.data?.[highlight]; if (next && search === query.trim()) choose(next); else if (query.trim()) choose({ name: query.trim() }) }
+    }} />{query && <button type="button" onClick={() => setQuery('')} aria-label={tr('Suche leeren', 'Clear search')}><X size={14} /></button>}
+      {<DropdownSurface open={searchOpen} id="rbx-code-results" role="listbox" className="rbx-search-results">{suggestions.isFetching && <div className="rbx-search-note"><Loader2 size={14} className="rbx-spin" />{tr('Spiele werden gesucht…', 'Finding games…')}</div>}{suggestions.data?.map((item, i) => <button type="button" role="option" id={`rbx-search-${i}`} aria-selected={highlight === i} key={identity(item)} onClick={() => choose(item)}>{item.iconUrl ? <img src={item.iconUrl} alt="" /> : <span className="rbx-game-icon"><Gamepad2 size={18} /></span>}<span><strong>{cleanRobloxName(item.name)}</strong><small>{item.creatorName || (item.sources?.length ? tr('Im Codes-Verzeichnis', 'In the codes directory') : 'Roblox')}</small></span>{!!item.sources?.length && <KeyRound size={13} />}</button>)}{query.trim() && <button type="button" className="rbx-direct-search" onClick={() => choose({ name: query.trim() })}>{tr('Direkt nach Codes suchen für', 'Search codes directly for')} “{query.trim()}”<ArrowUpRight size={14} /></button>}{suggestions.isError && <p className="rbx-search-note">{tr('Suche nicht erreichbar. Du kannst den Spielnamen direkt eingeben.', 'Search is unavailable. You can still enter the game name directly.')}</p>}</DropdownSurface>}
+    </div>{live && <button type="button" className="rbx-live" data-active={follow || undefined} onClick={() => { setFollow(true); choose(live, false) }}><Radio size={14} /><span>{tr('Gerade gespielt', 'Playing now')}: {cleanRobloxName(live.name)}</span></button>}</div>
+    <nav className="rbx-game-tabs" aria-label={tr('Spiele mit Codes', 'Games with codes')}>{ROBLOX_CODE_GAMES.slice(0, 7).map(item => <button type="button" key={item.name} aria-pressed={same(game, item)} onClick={() => choose(item)}>{item.name}</button>)}</nav>
+    <div className="rbx-selected-game"><div className="rbx-selected-title">{icon ? <img src={icon} alt="" /> : <Gamepad2 size={22} />}<div><h3 data-code-game-title>{data?.gameName || cleanRobloxName(game.name)}</h3><p>{data?.stale ? tr('Gespeicherte Codes · Quellen werden erneut geprüft', 'Saved codes · checking sources again') : data?.lastUpdated ? `${tr('Geprüft um', 'Checked at')} ${new Intl.DateTimeFormat(de ? 'de-DE' : 'en-GB', { hour: '2-digit', minute: '2-digit' }).format(data.lastUpdated)}` : tr('Entwickler- und Community-Quellen', 'Developer and community sources')}</p></div></div><div className="rbx-code-count">{codes.isFetching || refreshing ? <Loader2 size={13} className="rbx-spin" /> : <span />}{available.length} {tr('verfügbar', 'available')}</div></div>
+    {codes.isPending ? <div className="rbx-codes-skeleton" aria-label={tr('Codes werden geladen', 'Loading codes')}>{[1, 2, 3, 4].map(i => <div key={i}><span /><span /></div>)}</div> : codes.isError || data?.status === 'unavailable' ? <div className="rbx-codes-empty"><KeyRound size={24} /><h4>{tr('Quellen gerade nicht erreichbar', 'Sources are currently unavailable')}</h4><p>{tr('Bitte erneut versuchen. Es werden keine Beispielcodes angezeigt.', 'Please try again shortly. No sample codes are substituted.')}</p><button className="rbx-action" onClick={() => void refresh()}>{tr('Erneut prüfen', 'Try again')}</button></div> : available.length === 0 ? <div className="rbx-codes-empty"><KeyRound size={24} /><h4>{tr('Momentan keine Codes gefunden', 'No codes found right now')}</h4><p>{tr('Nicht jedes Spiel veröffentlicht Codes. Neue Codes erscheinen hier nach der nächsten Quellenprüfung.', 'Some games do not publish codes. New codes appear here when the sources are checked again.')}</p></div> : <><div className="rbx-code-tools"><span>{tr('Verfügbare Codes', 'Available codes')}</span><div>{used.length > 0 && <button type="button" aria-pressed={hideUsed} onClick={() => { setHideUsed(value => !value); setVisibleCount(CODE_PAGE_SIZE) }}>{hideUsed ? tr('Verwendete zeigen', 'Show used') : tr('Verwendete ausblenden', 'Hide used')}</button>}<button data-code-copy-all type="button" disabled={visible.length === 0} onClick={() => void copy(visible.map(item => item.code).join('\n'), 'all')}><Copy size={12} />{copied === 'all' ? tr('Kopiert', 'Copied') : tr('Alle kopieren', 'Copy all')}</button></div></div><div id="rbx-active-codes" className="rbx-codes-grid">{displayed.map(item => card(item))}</div>
+      {visible.length > visibleCount && <div className="rbx-code-pagination"><button type="button" data-code-load-more aria-controls="rbx-active-codes" className="rbx-load-more" onClick={() => setVisibleCount(count => count + CODE_PAGE_SIZE)}>{tr('Mehr anzeigen', 'Load more')}<ChevronDown size={13} /></button><span>{displayed.length} / {visible.length}</span></div>}</>}
+    {!!data?.expiredCodes.length && <details className="rbx-expired" open={expired} onToggle={event => setExpired(event.currentTarget.open)}><summary>{tr('Abgelaufene Codes', 'Expired codes')}<span>{data.expiredCodes.length}</span><ChevronDown size={14} /></summary><div id="rbx-expired-codes" className="rbx-codes-grid">{displayedExpired.map(item => card(item, true))}</div>
+      {data.expiredCodes.length > expiredCount && <div className="rbx-code-pagination"><button type="button" data-expired-load-more aria-controls="rbx-expired-codes" className="rbx-load-more" onClick={() => setExpiredCount(count => count + CODE_PAGE_SIZE)}>{tr('Mehr anzeigen', 'Load more')}<ChevronDown size={13} /></button><span>{displayedExpired.length} / {data.expiredCodes.length}</span></div>}</details>}
+    <footer className="rbx-codes-footer"><span>{tr('Von Quellen als verfügbar gelistet. Die Gültigkeit prüft das jeweilige Spiel.', 'Listed as available by the sources. The game confirms whether a code is valid.')}</span><div>{data?.sources?.map(source => <button type="button" key={source.url} onClick={() => openSource(source.url)}>{source.name}<ArrowUpRight size={12} /></button>)}</div></footer>
+    <span className="sr-only" aria-live="polite">{copied ? tr('Code kopiert', 'Code copied') : ''}</span>
+  </section>
 }

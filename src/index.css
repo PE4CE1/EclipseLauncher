@@ -1,4 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Latin-Variable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 @tailwind base;
 @tailwind components;
@@ -18,12 +25,26 @@ html, body, #root {
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #040405;
+  background-color: #090a0c;
   background-image: 
     radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
     radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
   color: #fafafa;
 }
+
+/* A cached, static grain tile: no animation loop or full-screen live filter.
+   Only launcher windows use #root; the transparent game overlay stays clear. */
+#root::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  background: url('/textures/matte-grain.svg') repeat;
+  opacity: .032;
+}
+#root [class~="bg-[#040405]"] { background-color: #090a0c; }
+body.app-minimized #root::after { display: none; }
 
 ::selection {
   background: rgba(255, 255, 255, 0.15);
@@ -125,114 +146,74 @@ button[role="switch"] > span {
   border-radius: 8px;
 }
 
-/* ─── Ultra Clean Minimalist Cover Loading Shimmer ─── */
-@keyframes cover-shimmer-sweep {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-.cover-shimmer-container {
-  position: absolute;
-  inset: 0;
-  background-color: #08090d;
-  overflow: hidden;
-  user-select: none;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.cover-shimmer-wave {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background: linear-gradient(
-    105deg,
-    transparent 15%,
-    rgba(255, 255, 255, 0.06) 45%,
-    rgba(255, 255, 255, 0.13) 50%,
-    rgba(255, 255, 255, 0.06) 55%,
-    transparent 85%
-  );
-  transform: translateX(-100%);
-  animation: cover-shimmer-sweep 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  will-change: transform;
-}
-
-/* In performance mode: softer, subtle sweep with 0% CPU loss */
-html.performance-mode .cover-shimmer-wave,
-body.performance-mode .cover-shimmer-wave,
-body.game-performance-mode .cover-shimmer-wave {
-  animation-duration: 2.2s !important;
-  animation-iteration-count: infinite !important;
-  background: linear-gradient(
-    105deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.035) 45%,
-    rgba(255, 255, 255, 0.055) 50%,
-    rgba(255, 255, 255, 0.035) 55%,
-    transparent 80%
-  ) !important;
-}
-
 /* ─── Sidebar ─────────────────────────────────────────────────────────────── */
 .sidebar-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
-  border-radius: 8px;
+  padding: 9px 14px 9px 16px;
+  border-radius: 9px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  color: #71717a;
+  color: #8e8e98;
   font-size: 13px;
   font-weight: 500;
   position: relative;
+  border: 1px solid transparent;
+  outline: none;
 }
-.sidebar-item:hover {
-  background: rgba(255, 255, 255, 0.03);
-  color: #fafafa;
+.sidebar-item:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.04);
+  color: #f4f4f5;
 }
 .sidebar-item.active {
-  background: rgba(255, 255, 255, 0.06);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.025) 100%);
+  border-color: rgba(255, 255, 255, 0.12);
   color: #ffffff;
   font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 .sidebar-item.active::before {
   content: '';
   position: absolute;
-  left: 0;
+  left: 4px;
   top: 50%;
   transform: translateY(-50%);
-  width: 2px;
-  height: 40%;
+  width: 3px;
+  height: 16px;
   background: #ffffff;
-  border-radius: 0 4px 4px 0;
+  border-radius: 9999px;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.6), 0 0 2px rgba(255, 255, 255, 0.9);
 }
 
 .sidebar-game-item {
   position: relative;
+  border-radius: 9px;
+  border: 1px solid transparent;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
+.sidebar-game-item:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.04);
+}
 .sidebar-game-item.active {
-  background: rgba(255, 255, 255, 0.06) !important;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.025) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
   color: #ffffff !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 .sidebar-game-item.active::before {
   content: '';
   position: absolute;
-  left: 0;
+  left: 4px;
   top: 50%;
   transform: translateY(-50%);
-  width: 2.5px;
-  height: 48%;
+  width: 3px;
+  height: 16px;
   background: #ffffff;
-  border-radius: 0 4px 4px 0;
+  border-radius: 9999px;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.6), 0 0 2px rgba(255, 255, 255, 0.9);
 }
 
 /* ─── Badge ───────────────────────────────────────────────────────────────── */
@@ -389,7 +370,12 @@ body.game-performance-mode .cover-shimmer-wave {
   color: #374151;
 }
 
-/* ─── Ultra Performance Mode & Minimized Engine (0% FPS Loss) ────────────── */
+/* Reduced background rendering; the focused launcher retains its visual effects. */
+body.app-minimized *:not(.launch-screen, .launch-screen *),
+body.app-minimized *:not(.launch-screen, .launch-screen *)::before,
+body.app-minimized *:not(.launch-screen, .launch-screen *)::after {
+  animation-play-state: paused !important;
+}
 html.performance-mode,
 body.performance-mode,
 body.app-minimized,
@@ -398,14 +384,11 @@ body.game-performance-mode {
   scroll-behavior: auto !important;
 }
 
-html.performance-mode *,
-html.performance-mode *::before,
-html.performance-mode *::after,
-body.performance-mode *,
-body.performance-mode *::before,
-body.performance-mode *::after,
-body.app-minimized *,
-body.game-performance-mode * {
+/* The ambient layers preserve their clocks through their own pause state. */
+html.performance-mode *:not(.launch-screen, .launch-screen *, .launcher-atmosphere, .launcher-atmosphere *),
+body.performance-mode *:not(.launch-screen, .launch-screen *, .launcher-atmosphere, .launcher-atmosphere *),
+body.app-minimized *:not(.launch-screen, .launch-screen *, .launcher-atmosphere, .launcher-atmosphere *),
+body.game-performance-mode *:not(.launch-screen, .launch-screen *, .launcher-atmosphere, .launcher-atmosphere *) {
   /* Instant 0.001ms transitions to eliminate latency without breaking JS transitionend events */
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
@@ -418,6 +401,27 @@ body.game-performance-mode * {
   box-shadow: none !important;
   text-shadow: none !important;
   filter: none !important;
+}
+
+html.performance-mode *:not(.launch-screen, .launch-screen *)::before,
+html.performance-mode *:not(.launch-screen, .launch-screen *)::after,
+body.performance-mode *:not(.launch-screen, .launch-screen *)::before,
+body.performance-mode *:not(.launch-screen, .launch-screen *)::after,
+body.app-minimized *:not(.launch-screen, .launch-screen *)::before,
+body.app-minimized *:not(.launch-screen, .launch-screen *)::after,
+body.game-performance-mode *:not(.launch-screen, .launch-screen *)::before,
+body.game-performance-mode *:not(.launch-screen, .launch-screen *)::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+html.performance-mode [class*="backdrop-blur"],
+body.performance-mode [class*="backdrop-blur"],
+body.game-performance-mode [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 
@@ -481,34 +485,43 @@ body.game-performance-mode .splash-corona-glow {
   visibility: hidden !important;
 }
 
-/* Guarantee that TopBar and structural header UI containers are always visible in performance mode */
-html.performance-mode header,
-body.performance-mode header,
-html.performance-mode .topbar,
-body.performance-mode .topbar {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  background-color: #07080a !important;
+/* Ensure bulletproof smooth spinner rotation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* Ensure cover loading shimmer remains active and smooth in performance mode (compositor-only, 0% CPU loss) */
-html.performance-mode .cover-shimmer-wave,
-body.performance-mode .cover-shimmer-wave,
-body.game-performance-mode .cover-shimmer-wave {
-  animation-duration: 2.2s !important;
-  animation-iteration-count: infinite !important;
-  animation-play-state: running !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  background: linear-gradient(
-    105deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.035) 45%,
-    rgba(255, 255, 255, 0.065) 50%,
-    rgba(255, 255, 255, 0.035) 55%,
-    transparent 80%
-  ) !important;
+.animate-spin {
+  animation: spin 0.8s linear infinite !important;
+  transform-origin: center center !important;
 }
 
+@keyframes store-hero-reveal { from { opacity: 0; } to { opacity: 1; } }
+.hero-frame--incoming { animation: store-hero-reveal 600ms cubic-bezier(.22,.61,.36,1) both; }
+.store-game-card {
+  transform: translateY(0);
+  transition: transform 180ms cubic-bezier(.22,.61,.36,1);
+}
+.store-card-art { transition: border-color 180ms ease; }
+@media (hover: hover) and (pointer: fine) {
+  /* Move the paint-contained card with its cover so the top corners stay intact. */
+  .store-game-card:hover { transform: translateY(-3px); }
+  .store-game-card:hover .store-card-art { border-color: rgba(255,255,255,.18); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-frame--incoming { animation: none; }
+  .store-game-card, .store-card-art, .store-game-card img { transition: none !important; }
+  .store-game-card:hover { transform: none; }
+}
 
+/* ─── Overlay Widgets (Instant crisp spawn with zero animation delay) ───── */
+.overlay-widget-animated,
+#widget-performance,
+#widget-performance * {
+  animation: none !important;
+  transition: none !important;
+}

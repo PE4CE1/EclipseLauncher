@@ -1,6 +1,8 @@
 import { create } from 'zustand'
+import { mergeUpdateInfo, updatePercent } from '../services/updatePresentation'
 import type { ActiveView } from '../types/game'
 import type { SteamGame, SteamAppDetails } from '../services/steamService'
+import type { ToastDetails } from '../types/notifications'
 
 export interface EclipseNotificationItem {
   id: string
@@ -12,8 +14,7 @@ export interface EclipseNotificationItem {
 }
 
 interface UIStore {
-  activeView: ActiveView
-  setActiveView: (view: ActiveView) => void
+  activeView: ActiveView  setActiveView: (view: ActiveView) => void
   activeSettingsTab: string
   setActiveSettingsTab: (tab: string) => void
 
@@ -69,12 +70,12 @@ interface UIStore {
   setCurrency: (c: 'EUR' | 'USD') => void
   toggleCurrency: () => void
 
-  notification: { title?: string; message: string; type: 'success' | 'error' | 'info'; duration?: number } | null
+  notification: ({ id: string; title?: string; message: string; type: 'success' | 'error' | 'info'; duration?: number } & ToastDetails) | null
   notificationHistory: EclipseNotificationItem[]
   isNotificationDropdownOpen: boolean
   setIsNotificationDropdownOpen: (v: boolean) => void
   toggleNotificationDropdown: () => void
-  showNotification: (message: string, type?: 'success' | 'error' | 'info', title?: string, duration?: number) => void
+  showNotification: (message: string, type?: 'success' | 'error' | 'info', title?: string, duration?: number, details?: ToastDetails) => void
   clearNotification: () => void
   markAllNotificationsRead: () => void
   clearNotificationHistory: () => void
@@ -88,13 +89,20 @@ interface UIStore {
 
   isChangelogOpen: boolean
   setIsChangelogOpen: (v: boolean) => void
+
+  isSteamMonitorOpen: boolean
+  setIsSteamMonitorOpen: (v: boolean) => void
+  toggleSteamMonitor: () => void
 }
 
 let notificationTimer: any = null
 
+const initialSteamMonitorOpen = localStorage.getItem('eclipse_steam_monitor_open') !== null
+  ? localStorage.getItem('eclipse_steam_monitor_open') === 'true'
+  : true
+
 export const useUIStore = create<UIStore>((set) => ({
-  activeView: 'home',
-  activeSettingsTab: 'general',
+  activeView: 'home',  activeSettingsTab: 'general',
   currency: (localStorage.getItem('eclipse_currency') as 'EUR' | 'USD') || 'EUR',
   setCurrency: (c) => {
     localStorage.setItem('eclipse_currency', c)
@@ -108,6 +116,16 @@ export const useUIStore = create<UIStore>((set) => ({
   setActiveSettingsTab: (tab) => set({ activeSettingsTab: tab }),
   isChangelogOpen: false,
   setIsChangelogOpen: (v) => set({ isChangelogOpen: v }),
+  isSteamMonitorOpen: initialSteamMonitorOpen,
+  setIsSteamMonitorOpen: (v) => {
+    localStorage.setItem('eclipse_steam_monitor_open', String(v))
+    set({ isSteamMonitorOpen: v })
+  },
+  toggleSteamMonitor: () => set((state) => {
+    const next = !state.isSteamMonitorOpen
+    localStorage.setItem('eclipse_steam_monitor_open', String(next))
+    return { isSteamMonitorOpen: next }
+  }),
   history: ['home'],
   historyIndex: 0,
   canGoBack: false,
@@ -115,11 +133,14 @@ export const useUIStore = create<UIStore>((set) => ({
 
   setActiveView: (view) => set((state) => {
     if (state.activeView === view && !state.isGameModalOpen) return state
+    if (state.activeView === view) return {      isGameModalOpen: false, selectedGameId: null, selectedGameName: null,
+    }
     const newHistory = [...state.history.slice(0, state.historyIndex + 1), view]
     const newIndex = newHistory.length - 1
     return {
-      activeView: view,
-      isGameModalOpen: false,
+      activeView: view,      isGameModalOpen: false,
+      selectedGameId: null,
+      selectedGameName: null,
       history: newHistory,
       historyIndex: newIndex,
       canGoBack: newIndex > 0,
@@ -129,13 +150,15 @@ export const useUIStore = create<UIStore>((set) => ({
 
   goBack: () => set((state) => {
     if (state.isGameModalOpen) {
-      return { isGameModalOpen: false }
+      return { isGameModalOpen: false, selectedGameId: null, selectedGameName: null }
     }
     if (state.historyIndex > 0) {
       const newIndex = state.historyIndex - 1
       const prevView = state.history[newIndex]
       return {
-        activeView: prevView,
+        activeView: prevView,        isGameModalOpen: false,
+        selectedGameId: null,
+        selectedGameName: null,
         historyIndex: newIndex,
         canGoBack: newIndex > 0,
         canGoForward: newIndex < state.history.length - 1,
@@ -149,7 +172,9 @@ export const useUIStore = create<UIStore>((set) => ({
       const newIndex = state.historyIndex + 1
       const nextView = state.history[newIndex]
       return {
-        activeView: nextView,
+        activeView: nextView,        isGameModalOpen: false,
+        selectedGameId: null,
+        selectedGameName: null,
         historyIndex: newIndex,
         canGoBack: newIndex > 0,
         canGoForward: newIndex < state.history.length - 1,
@@ -168,8 +193,8 @@ export const useUIStore = create<UIStore>((set) => ({
   updateInfo: null,
   setUpdateState: (status, progress, info) => set((state) => ({ 
     updateStatus: status,
-    updateProgress: progress !== undefined ? progress : state.updateProgress,
-    updateInfo: info !== undefined ? info : state.updateInfo
+    updateProgress: status === 'available' ? 0 : status === 'downloaded' ? 100 : progress !== undefined ? updatePercent(progress) : state.updateProgress,
+    updateInfo: mergeUpdateInfo(state.updateInfo, status, info)
   })),
 
   featuredGame: null,
@@ -180,7 +205,7 @@ export const useUIStore = create<UIStore>((set) => ({
   setSelectedGameId: (id) => set({ selectedGameId: id }),
 
   isGameModalOpen: false,
-  setIsGameModalOpen: (v) => set({ isGameModalOpen: v }),
+  setIsGameModalOpen: (v) => set(v ? { isGameModalOpen: true } : { isGameModalOpen: false, selectedGameId: null, selectedGameName: null }),
 
   isFriendsOpen: false,
   setIsFriendsOpen: (v) => set({ isFriendsOpen: v }),
@@ -195,7 +220,8 @@ export const useUIStore = create<UIStore>((set) => ({
     const newHistory = [...state.history.slice(0, state.historyIndex + 1), 'profile' as ActiveView]
     const newIndex = newHistory.length - 1
     return {
-      activeView: 'profile',
+      activeView: 'profile',      selectedGameId: null,
+      selectedGameName: null,
       selectedFriendId: id,
       history: newHistory,
       historyIndex: newIndex,
@@ -208,7 +234,12 @@ export const useUIStore = create<UIStore>((set) => ({
   }),
   closeFriendProfile: () => set({ isFriendProfileOpen: false, selectedFriendId: null }),
 
-  openGameDetails: (appId, name) => set({ selectedGameId: appId, selectedGameName: name || null, isGameModalOpen: true }),
+  openGameDetails: (appId, name) => set((state) => {
+    if (state.isGameModalOpen && state.selectedGameId === appId && state.selectedGameName === (name || null)) {
+      return state
+    }
+    return { selectedGameId: appId, selectedGameName: name || null, isGameModalOpen: true }
+  }),
 
   sidebarCollapsed: false,
   setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
@@ -226,7 +257,7 @@ export const useUIStore = create<UIStore>((set) => ({
   setIsNotificationDropdownOpen: (v) => set({ isNotificationDropdownOpen: v }),
   toggleNotificationDropdown: () => set((state) => ({ isNotificationDropdownOpen: !state.isNotificationDropdownOpen })),
 
-  showNotification: (message, type = 'info', title, duration = 5000) => {
+  showNotification: (message, type = 'info', title, duration = 5000, details) => {
     if (notificationTimer) clearTimeout(notificationTimer)
     
     // Add to persistent notification history
@@ -240,12 +271,12 @@ export const useUIStore = create<UIStore>((set) => ({
     }
 
     set((state) => {
-      const updatedHistory = [newItem, ...state.notificationHistory].slice(0, 50)
-      try {
+      const updatedHistory = details?.private ? state.notificationHistory : [newItem, ...state.notificationHistory].slice(0, 50)
+      try { if (!details?.private) {
         localStorage.setItem('eclipse_notification_history', JSON.stringify(updatedHistory))
-      } catch {}
+      } } catch {}
       return {
-        notification: { message, type, title, duration },
+        notification: { ...details, id: newItem.id, message, type, title, duration },
         notificationHistory: updatedHistory
       }
     })

@@ -1,5 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { translate, type TranslationKey } from '../../i18n/translate'
+import { useGameStore } from '../../store/gameStore'
 
 interface Props {
   children: ReactNode
@@ -30,6 +32,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
+      const t = (key: TranslationKey) => translate(useGameStore.getState().settings?.language, key)
       return (
         <div className="flex flex-col items-center justify-center h-screen bg-[#040405] text-white p-8 select-none">
           <div className="bg-[#111317] border border-white/10 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl flex flex-col items-center">
@@ -37,9 +40,9 @@ export class ErrorBoundary extends Component<Props, State> {
               <AlertTriangle size={28} />
             </div>
             
-            <h2 className="text-lg font-bold text-white mb-2">Oberfläche neu laden</h2>
+            <h2 className="text-lg font-bold text-white mb-2">{t('uiReloadInterface')}</h2>
             <p className="text-xs text-white/50 mb-6 leading-relaxed">
-              Ein unerwarteter Fehler ist aufgetreten. Klicke unten, um Eclipse Launcher neu zu laden.
+              {t('uiUnexpectedError')}
             </p>
 
             <button
@@ -47,7 +50,7 @@ export class ErrorBoundary extends Component<Props, State> {
               className="w-full py-3 bg-white text-black font-bold text-xs rounded-xl flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
             >
               <RefreshCw size={14} />
-              <span>Eclipse neu laden</span>
+              <span>{t('uiReloadEclipse')}</span>
             </button>
           </div>
         </div>

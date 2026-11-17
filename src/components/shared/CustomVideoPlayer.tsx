@@ -1,10 +1,13 @@
+import { useTranslation } from '../../hooks/useTranslation'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Play, Pause, Volume2, Volume1, VolumeX, Maximize, Loader2, RotateCcw } from 'lucide-react'
-import Hls from 'hls.js'
+import { Play, Pause, Volume2, Volume1, VolumeX, Maximize, Minimize, Loader2, RotateCcw } from 'lucide-react'
+import type Hls from 'hls.js'
+import {useMediaCleanup} from '../../hooks/useMediaCleanup'
 
 interface CustomVideoPlayerProps {
   src: string | string[]
   poster?: string
+  suspended?: boolean
 }
 
 function formatTime(seconds: number) {
@@ -14,12 +17,19 @@ function formatTime(seconds: number) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-export function CustomVideoPlayer({ src, poster }: CustomVideoPlayerProps) {
+export function CustomVideoPlayer({ src, poster, suspended = false }: CustomVideoPlayerProps) {
+  const { t } = useTranslation()
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  useMediaCleanup(containerRef)
   const hlsRef = useRef<Hls | null>(null)
+  const wantsPlayback = useRef(true)
+  const suspendedRef = useRef(suspended)
+  const controlsTimer = useRef<ReturnType<typeof setTimeout>>()
+  suspendedRef.current = suspended
 
-  const candidateSources = (Array.isArray(src) ? src : [src]).filter(Boolean)
+  const candidateSources = [...new Set((Array.isArray(src) ? src : [src]).filter(Boolean))]
+  const sourceKey = candidateSources.join('\n')
   const [sourceIdx, setSourceIdx] = useState(0)
   const currentSrc = candidateSources[sourceIdx] || ''
   
@@ -51,13 +61,20 @@ export function CustomVideoPlayer({ src, poster }: CustomVideoPlayerProps) {
   const [showControls, setShowControls] = useState(true)
   const [isHoveringVolume, setIsHoveringVolume] = useState(false)
   const [hasError, setHasError] = useState(false)
+  const [retry, setRetry] = useState(0)
+  const [fullscreen, setFullscreen] = useState(false)
+  const [fullscreenError, setFullscreenError] = useState(false)
 
   // Reset state when src prop changes
   useEffect(() => {
     setSourceIdx(0)
+    wantsPlayback.current = true
     setHasError(false)
     setIsLoading(true)
-  }, [src])
+    setProgress(0)
+    setCurrentTime(0)
+    setDuration(0)
+  }, [sourceKey])
 
   // Setup video source (HLS vs Native MP4/WebM)
   useEffect(() => {
@@ -76,61 +93,69 @@ export function CustomVideoPlayer({ src, poster }: CustomVideoPlayerProps) {
       hlsRef.current = null
     }
 
+    let disposed = false
+    let ownedHls: Hls | null = null
+    const failSource = () => {
+      if (disposed) return
+      if (sourceIdx < candidateSources.length - 1) setSourceIdx(previous => previous + 1)
+      else { setIsLoading(false); setHasError(true) }
+    }
+    const play = () => {
+      if (!wantsPlayback.current || suspendedRef.current) return Promise.resolve()
+      return video.play().catch(() => { if (!disposed) setIsPlaying(false) })
+    }
     const isHls = currentSrc.includes('.m3u8')
 
-    if (isHls && Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: false,
-        backBufferLength: 60,
-      })
-      hlsRef.current = hls
-
-      hls.loadSource(currentSrc)
-      hls.attachMedia(video)
-
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        setIsLoading(false)
-        video.play().catch(() => {
-          setIsPlaying(false)
-        })
-      })
-
-      hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) {
-          console.warn('[CustomVideoPlayer] HLS fatal error on source:', currentSrc, data.type)
-          hls.destroy()
-          hlsRef.current = null
-          // Fall back to next source
-          if (sourceIdx < candidateSources.length - 1) {
-            setSourceIdx(prev => prev + 1)
-          } else {
-            setIsLoading(false)
-            setHasError(true)
-          }
-        }
-      })
-    } else if (isHls && video.canPlayType('application/vnd.apple.mpegurl')) {
+    if (!isHls || video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = currentSrc
       video.load()
-      video.play().catch(() => {
-        setIsPlaying(false)
-      })
+      void play()
     } else {
-      video.src = currentSrc
-      video.load()
-      video.play().catch(() => {
-        setIsPlaying(false)
+      import('hls.js').then(({ default: Hls }) => {
+        if (disposed) return
+        if (!Hls.isSupported()) { failSource(); return }
+        const hls = new Hls({ enableWorker: true, lowLatencyMode: false, backBufferLength: 60 })
+        ownedHls = hls
+        hlsRef.current = hls
+        hls.loadSource(currentSrc)
+        hls.attachMedia(video)
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (disposed) return
+          setIsLoading(false)
+          void play()
+        })
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            console.warn('[CustomVideoPlayer] HLS fatal error:', data.type)
+            hls.destroy()
+            if (hlsRef.current === hls) hlsRef.current = null
+            failSource()
+          }
+        })
+      }).catch(error => {
+        console.warn('[CustomVideoPlayer] Could not load HLS player:', error)
+        failSource()
       })
     }
 
     return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy()
-        hlsRef.current = null
-      }
+      disposed = true
+      ownedHls?.destroy()
+      if (hlsRef.current === ownedHls) hlsRef.current = null
+      video.pause()
     }
-  }, [currentSrc, sourceIdx, candidateSources.length])
+  }, [currentSrc, sourceIdx, candidateSources.length, retry])
+
+  useEffect(() => {
+    if (suspended) videoRef.current?.pause()
+    else if (wantsPlayback.current) void videoRef.current?.play().catch(() => setIsPlaying(false))
+  }, [suspended])
+
+  useEffect(() => {
+    const changed = () => { setFullscreen(document.fullscreenElement === containerRef.current); setFullscreenError(false) }
+    document.addEventListener('fullscreenchange', changed)
+    return () => { document.removeEventListener('fullscreenchange', changed) }
+  }, [])
 
   // Initialize and apply video volume/mute
   useEffect(() => {
@@ -155,19 +180,24 @@ export function CustomVideoPlayer({ src, poster }: CustomVideoPlayerProps) {
     }
   }, [])
 
-  // Auto-hide controls when playing
+  const revealControls = useCallback(() => {
+    setShowControls(true)
+    clearTimeout(controlsTimer.current)
+    const focused = document.activeElement
+    const controlFocused = focused !== containerRef.current && !!focused && containerRef.current?.contains(focused)
+    if (isPlaying && !isHoveringVolume && !controlFocused) controlsTimer.current = setTimeout(() => setShowControls(false), 2800)
+  }, [isPlaying, isHoveringVolume])
+
   useEffect(() => {
-    let timeout: NodeJS.Timeout
-    if (isPlaying && showControls && !isHoveringVolume) {
-      timeout = setTimeout(() => setShowControls(false), 2800)
-    }
-    return () => clearTimeout(timeout)
-  }, [isPlaying, showControls, isHoveringVolume])
+    revealControls()
+    return () => clearTimeout(controlsTimer.current)
+  }, [revealControls])
 
   const togglePlay = (e?: React.MouseEvent) => {
     e?.stopPropagation()
     if (videoRef.current) {
-      if (videoRef.current.paused) {
+      wantsPlayback.current = videoRef.current.paused
+      if (wantsPlayback.current && !suspendedRef.current) {
         videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {})
       } else {
         videoRef.current.pause()
@@ -256,18 +286,19 @@ export function CustomVideoPlayer({ src, poster }: CustomVideoPlayerProps) {
     }
   }
 
-  const toggleFullscreen = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen().catch(() => {})
-    } else {
-      document.exitFullscreen().catch(() => {})
-    }
+  const toggleFullscreen = (e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setFullscreenError(false)
+    const operation = document.fullscreenElement === containerRef.current
+      ? document.exitFullscreen() : containerRef.current?.requestFullscreen()
+    void operation?.catch(() => setFullscreenError(true))
   }
 
   const retryPlayback = (e: React.MouseEvent) => {
     e.stopPropagation()
     setSourceIdx(0)
+    wantsPlayback.current = true
+    setRetry(value => value + 1)
     setHasError(false)
     setIsLoading(true)
   }
@@ -277,10 +308,21 @@ export function CustomVideoPlayer({ src, poster }: CustomVideoPlayerProps) {
   return (
     <div 
       ref={containerRef}
+      data-video-player
+      tabIndex={0}
+      role="group"
+      aria-label={t('uiVideoPlayer')}
       className="relative w-full h-full max-w-full max-h-full rounded-2xl overflow-hidden shadow-2xl bg-black flex items-center justify-center group select-none"
-      onMouseMove={() => setShowControls(true)}
+      onMouseMove={revealControls}
+      onFocus={revealControls}
+      onBlur={revealControls}
       onMouseLeave={() => isPlaying && setShowControls(false)}
       onClick={togglePlay}
+      onKeyDown={event => {
+        if (event.target !== event.currentTarget || event.altKey || event.ctrlKey || event.metaKey) return
+        if (event.key === ' ' || event.key.toLowerCase() === 'k') { event.preventDefault(); togglePlay() }
+        if (event.key.toLowerCase() === 'f') { event.preventDefault(); toggleFullscreen() }
+      }}
     >
       {/* Loading Spinner */}
       {isLoading && !hasError && (
@@ -295,19 +337,19 @@ export function CustomVideoPlayer({ src, poster }: CustomVideoPlayerProps) {
       {hasError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/80 p-6 text-center">
           {poster && (
-            <img src={poster} alt="Poster" className="absolute inset-0 w-full h-full object-cover opacity-20 filter blur-sm" />
+            <img src={poster} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20 filter blur-sm" />
           )}
           <div className="relative z-10 flex flex-col items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
               <Play size={20} className="text-white fill-white ml-0.5" />
             </div>
-            <p className="text-sm font-semibold text-white/90">Trailer could not be streamed</p>
+            <p className="text-sm font-semibold text-white/90">{t('uiTrailerUnavailable')}</p>
             <button
               onClick={retryPlayback}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-xs text-white transition-colors cursor-pointer"
             >
               <RotateCcw size={13} />
-              <span>Retry</span>
+              <span>{t('uiRetry')}</span>
             </button>
           </div>
         </div>
@@ -316,7 +358,7 @@ export function CustomVideoPlayer({ src, poster }: CustomVideoPlayerProps) {
       <video
         ref={videoRef}
         poster={poster}
-        autoPlay
+        autoPlay={!suspended}
         playsInline
         className={`w-full h-full object-contain transition-opacity duration-300 ${isLoading ? 'opacity-40' : 'opacity-100'}`}
         onLoadStart={() => setIsLoading(true)}
@@ -333,14 +375,13 @@ export function CustomVideoPlayer({ src, poster }: CustomVideoPlayerProps) {
       {/* Controls Overlay */}
       {!hasError && (
         <div 
-          className={`absolute bottom-0 left-0 right-0 p-5 pt-28 bg-gradient-to-t from-black/95 via-black/50 to-transparent transition-opacity duration-300 ${
+          className={`absolute bottom-0 left-0 right-0 p-5 pt-28 pointer-events-none bg-gradient-to-t from-black/95 via-black/50 to-transparent transition-opacity duration-300 ${
             showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
-          onClick={e => e.stopPropagation()}
         >
           {/* Progress Scrub Bar */}
           <div 
-            className="w-full h-1.5 bg-white/20 hover:h-2.5 rounded-full mb-4 cursor-pointer relative group/progress transition-all"
+            className={`w-full h-2 bg-white/20 rounded-full mb-4 cursor-pointer relative group/progress ${showControls ? 'pointer-events-auto' : ''}`}
             onClick={handleProgressClick}
           >
             <div 
@@ -360,8 +401,9 @@ export function CustomVideoPlayer({ src, poster }: CustomVideoPlayerProps) {
             <div className="flex items-center gap-4">
               <button 
                 onClick={togglePlay} 
-                className="p-1.5 rounded-lg hover:bg-white/10 hover:text-white transition-all focus:outline-none cursor-pointer"
-                title={isPlaying ? 'Pause' : 'Play'}
+                data-video-play
+                className={`p-1.5 rounded-lg hover:bg-white/10 hover:text-white transition-colors focus-visible:outline cursor-pointer ${showControls ? 'pointer-events-auto' : ''}`}
+                title={isPlaying ? t('uiVideoPause') : t('uiVideoPlay')}
               >
                 {isPlaying ? <Pause size={20} className="fill-current" /> : <Play size={20} className="fill-current ml-0.5" />}
               </button>
@@ -376,14 +418,15 @@ export function CustomVideoPlayer({ src, poster }: CustomVideoPlayerProps) {
               
               {/* Volume Control with Hover Slider */}
               <div 
-                className="flex items-center gap-2 group/volume relative py-1 px-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                className={`flex items-center gap-2 group/volume relative py-1 px-1.5 rounded-lg hover:bg-white/10 transition-colors ${showControls ? 'pointer-events-auto' : ''}`}
+                onClick={event => event.stopPropagation()}
                 onMouseEnter={() => setIsHoveringVolume(true)}
                 onMouseLeave={() => setIsHoveringVolume(false)}
               >
                 <button 
                   onClick={toggleMute} 
                   className="hover:text-white transition-colors focus:outline-none flex items-center justify-center cursor-pointer"
-                  title={isMuted ? 'Unmute' : 'Mute'}
+                  title={isMuted ? t('uiVideoUnmute') : t('uiVideoMute')}
                 >
                   {effectiveVolume === 0 ? (
                     <VolumeX size={20} className="text-red-400" />
@@ -398,6 +441,7 @@ export function CustomVideoPlayer({ src, poster }: CustomVideoPlayerProps) {
                 <div className="w-20 md:w-24 h-5 flex items-center cursor-pointer">
                   <input
                     type="range"
+                    aria-label={t('uiVideoVolume')}
                     min="0"
                     max="1"
                     step="0.02"
@@ -411,16 +455,18 @@ export function CustomVideoPlayer({ src, poster }: CustomVideoPlayerProps) {
               {/* Fullscreen Button */}
               <button 
                 onClick={toggleFullscreen} 
-                className="p-1.5 rounded-lg hover:bg-white/10 hover:text-white transition-colors focus:outline-none cursor-pointer"
-                title="Fullscreen"
+                data-video-fullscreen
+                className={`p-1.5 rounded-lg hover:bg-white/10 hover:text-white transition-colors focus-visible:outline cursor-pointer ${showControls ? 'pointer-events-auto' : ''}`}
+                title={fullscreen ? t('uiCloseFullscreen') : t('uiFullscreen')}
               >
-                <Maximize size={18} />
+                {fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
               </button>
 
             </div>
           </div>
         </div>
       )}
+      {fullscreenError && <p role="alert" className="absolute top-3 left-3 right-3 rounded-lg bg-black/85 p-3 text-xs text-white pointer-events-none">{t('uiFullscreenFailed')}</p>}
     </div>
   )
 }

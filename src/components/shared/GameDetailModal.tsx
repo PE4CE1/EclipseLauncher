@@ -1,14 +1,25 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import DOMPurify from 'dompurify'
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   Check, Plus, Play, X, Loader2, Trash2, Download,
   Folder, Clock, Users, Tag, Star, Gamepad2, Monitor,
   Cpu, Globe, ExternalLink, ShieldCheck, CheckCircle2,
-  Layers, Sparkles, Flame, Trophy, ChevronLeft
+  Layers, Sparkles, Flame, Trophy, ChevronLeft, Key, Newspaper
 } from 'lucide-react'
+import {
+  getCheapestKeyDeal,
+  isGameFreeToPlay,
+} from '../../services/keyforsteamService'
+import { GameDealsModal } from './GameDealsModal'
+import { useGamePriceComparison } from '../../hooks/useGamePriceComparison'
+import { useDialogFocus } from '../../hooks/useDialogFocus'
 import { useUIStore } from '../../store/uiStore'
 import { useGameStore } from '../../store/gameStore'
+import { useShallow } from 'zustand/react/shallow'
+import { findInstalledGame } from '../../services/gameInstallation'
+import { getNonSteamGame } from '../../services/nonSteamGames'
+import { getNonSteamArtwork } from '../../services/nonSteamArtwork'
 import { useSourceStore } from '../../store/sourceStore'
 import { useSteamGameDetail } from '../../hooks/useGames'
 import { getDownloadsForGame } from '../../services/downloadEngine'
@@ -19,6 +30,11 @@ import {
   getSteamReviewSummary,
   getSteamDBSummary,
   fetchRealPriceAndAllTimeLow,
+  findSteamIdByName,
+  getHardcodedSteamId,
+  isPlaceholderAppName,
+  extractAppIdFromPlaceholder,
+  getKnownSteamGameName,
   SteamReviewSummary,
   SteamDBSummary,
   RealPriceInfo
@@ -26,8 +42,10 @@ import {
 import { useDownloadStore } from '../../store/downloadStore'
 import { DownloadOptionsModal } from '../downloads/DownloadOptionsModal'
 import { SmartImage } from './SmartImage'
+import { DecodedMediaImage } from './DecodedMediaImage'
 import { useTranslation } from '../../hooks/useTranslation'
 import { CustomVideoPlayer } from './CustomVideoPlayer'
+import { GameUpdates } from './GameUpdates'
 import steamLogoImg from '../../assets/steam-logo.png'
 import robloxLogoImg from '../../assets/Roblox-Logo-Icon.png'
 import robloxHeroImg from '../../assets/roblox/hero.png'
@@ -35,17 +53,34 @@ import { RobloxCodesHub } from '../roblox/RobloxCodesHub'
 import { RobloxPopularGames } from '../roblox/RobloxPopularGames'
 import { RobloxPlaytimeStrip } from '../roblox/RobloxPlaytimeStrip'
 import type { LibraryGame } from '../../types/game'
+import '../layout/scene-motion.css'
 
 export function GameDetailModal() {
   const selectedGameId = useUIStore(state => state.selectedGameId)
   const selectedGameName = useUIStore(state => state.selectedGameName)
   const isGameModalOpen = useUIStore(state => state.isGameModalOpen)
+  // Closing must remove every detail layer in this commit. Retaining an exit
+  // frame lets Back/Escape flash the old game over the restored page.
+  if (!isGameModalOpen || (!selectedGameId && !selectedGameName)) return null
+  return <div key={selectedGameId ?? selectedGameName}
+    className="launcher-page-surface absolute inset-0 z-40 flex flex-col bg-[#07080a] game-detail-modal-overlay text-white select-none overflow-hidden"
+    >
+    <GameDetailContent selectedGameId={selectedGameId} selectedGameName={selectedGameName} isGameModalOpen={isGameModalOpen} />
+  </div>
+}
+
+function GameDetailContent({ selectedGameId, selectedGameName, isGameModalOpen }: {
+  selectedGameId: number | null; selectedGameName: string | null; isGameModalOpen: boolean
+}) {
   const setIsGameModalOpen = useUIStore(state => state.setIsGameModalOpen)
   const showNotification = useUIStore(state => state.showNotification)
   const currency = useUIStore(state => state.currency)
   const toggleCurrency = useUIStore(state => state.toggleCurrency)
   const setIsLightboxOpen = useUIStore(state => state.setIsLightboxOpen)
-  const { library, addToLibrary, removeFromLibrary, installedGames, activeGame, stopPlaySession, settings } = useGameStore()
+  const { library, addToLibrary, removeFromLibrary, installedGames, activeGame, stopPlaySession, settings } = useGameStore(useShallow(state => ({
+    library: state.library, addToLibrary: state.addToLibrary, removeFromLibrary: state.removeFromLibrary,
+    installedGames: state.installedGames, activeGame: state.activeGame, stopPlaySession: state.stopPlaySession, settings: state.settings,
+  })))
   const { sources } = useSourceStore()
   const { launchGame } = useScanner()
 
@@ -59,45 +94,100 @@ export function GameDetailModal() {
   const [priceInfo, setPriceInfo] = useState<RealPriceInfo | null>(null)
   const [selectedMediaIdx, setSelectedMediaIdx] = useState(0)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [updatesOpen, setUpdatesOpen] = useState(false)
+  const closeUpdates = useCallback(() => setUpdatesOpen(false), [])
   const [reqTab, setReqTab] = useState<'minimum' | 'recommended'>('minimum')
-  const [logoState, setLogoState] = useState<'loading' | 'loaded' | 'error'>('loading')
+  const [logoState, setLogoState] = useState<'loading' | 'loaded' | 'error' | 'text'>('loading')
+  const [isDealsModalOpen, setIsDealsModalOpen] = useState(false)
+  const lightboxPanel = useRef<HTMLDivElement>(null)
+  useDialogFocus(lightboxPanel, () => setLightboxIndex(null), lightboxIndex !== null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
-  const steamId = selectedGameId && selectedGameId > 0 ? selectedGameId : null
-  const isRoblox = steamId === 999001 || (steamId === 0 && selectedGameName?.toLowerCase() === 'roblox') || (selectedGameName?.toLowerCase() === 'roblox') || (selectedGameId === 999001)
-  const { data: detail, isLoading } = useSteamGameDetail(steamId)
+  const externalGame = getNonSteamGame(selectedGameName)
+  const rawSteamId = !externalGame && selectedGameId && selectedGameId > 0 ? selectedGameId : null
+  const fallbackSteamId = !rawSteamId && selectedGameName ? (extractAppIdFromPlaceholder(selectedGameName) || getHardcodedSteamId(selectedGameName)) : null
+  const steamId = rawSteamId || fallbackSteamId || null
+  const knownName = steamId ? getKnownSteamGameName(steamId) : null
+  const effectiveGameName = (selectedGameName && isPlaceholderAppName(selectedGameName, steamId || undefined) && knownName) ? knownName : selectedGameName
+
+  const isRoblox = steamId === 999001 || (steamId === 0 && effectiveGameName?.toLowerCase() === 'roblox') || (effectiveGameName?.toLowerCase() === 'roblox') || (selectedGameId === 999001)
+  const steamLang = language === 'de' ? 'german' : 'english'
+  const steamCc = currency === 'USD' ? 'US' : 'DE'
+  const { data: detail, isLoading } = useSteamGameDetail(isGameModalOpen ? steamId : null, steamLang, steamCc)
+  const isKeyforsteamEnabled = settings.keyforsteamEnabled !== false
+  // Library ownership and a missing/zero store price must not hide the comparison.
+  const canShowKeyforsteam = isKeyforsteamEnabled && !isRoblox && !externalGame && !!(detail?.name || effectiveGameName)
+  const isFreeGame = Boolean(
+    isRoblox || externalGame ||
+    isGameFreeToPlay(
+      effectiveGameName || detail?.name,
+      steamId,
+      detail?.is_free || priceInfo?.isFree,
+      detail?.genres
+    )
+  )
+  const dealQuery = useGamePriceComparison(detail?.name || effectiveGameName || '', steamId, currency, 'de', language,
+    isGameModalOpen && canShowKeyforsteam)
+  const cheapestKeyDeal = useMemo(() => getCheapestKeyDeal(dealQuery.data?.deals || []), [dealQuery.data])
+
+  // Auto-resolve missing steamId on the fly if opened without valid ID
+  useEffect(() => {
+    if (!isGameModalOpen) return
+    if (!steamId && effectiveGameName && !isRoblox) {
+      let active = true
+      findSteamIdByName(effectiveGameName).then(resolved => {
+        const current = useUIStore.getState()
+        if (active && current.isGameModalOpen && current.selectedGameId === selectedGameId && current.selectedGameName === selectedGameName && resolved && resolved > 0) {
+          useUIStore.getState().openGameDetails(resolved, effectiveGameName)
+        }
+      }).catch(() => {})
+      return () => { active = false }
+    }
+  }, [steamId, effectiveGameName, isRoblox, isGameModalOpen, selectedGameId, selectedGameName])
 
   // Reset state and scroll position on game change or modal open
   useEffect(() => {
     setSelectedMediaIdx(0)
     setReqTab('minimum')
-    setLogoState('loading')
     setLightboxIndex(null)
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = 0
     }
-  }, [steamId, selectedGameName, isGameModalOpen])
+  }, [steamId, effectiveGameName, isGameModalOpen])
+
+  useEffect(() => {
+    if (isRoblox || !steamId) return
+    // Decide the title presentation during entry. A slow optional logo must
+    // never replace an already visible heading later in the same visit.
+    const timer = setTimeout(() => setLogoState(current => current === 'loading' ? 'text' : current), 160)
+    return () => clearTimeout(timer)
+  }, [steamId, isRoblox])
 
   // Synchronize fullscreen lightbox state with global UIStore
-  useEffect(() => {
-    setIsLightboxOpen(lightboxIndex !== null)
-    return () => setIsLightboxOpen(false)
-  }, [lightboxIndex, setIsLightboxOpen])
+  useLayoutEffect(() => {
+    setIsLightboxOpen(lightboxIndex !== null || updatesOpen || isDealsModalOpen)
+  }, [lightboxIndex, updatesOpen, isDealsModalOpen, setIsLightboxOpen])
+  useEffect(() => () => setIsLightboxOpen(false), [setIsLightboxOpen])
 
   // Fetch SteamDB, Steam Insights & Real Pricing with All-Time Low
   useEffect(() => {
-    if (steamId) {
-      getLivePlayerCount(steamId as number).then(setPlayerCount)
-      getSteamReviewSummary(steamId as number, language === 'de' ? 'german' : 'english').then(setReviewsSummary)
-      getSteamDBSummary(steamId as number).then(setSteamDBSummary)
-      fetchRealPriceAndAllTimeLow(steamId as number, currency).then(setPriceInfo)
-    } else {
+    if (!isGameModalOpen || !steamId) {
       setPlayerCount(null)
       setReviewsSummary(null)
       setSteamDBSummary(null)
       setPriceInfo(null)
+      return
     }
-  }, [steamId, language, currency])
+    getLivePlayerCount(steamId as number).then(setPlayerCount)
+    getSteamReviewSummary(steamId as number, language === 'de' ? 'german' : 'english').then(setReviewsSummary)
+    getSteamDBSummary(steamId as number).then(setSteamDBSummary)
+    fetchRealPriceAndAllTimeLow(
+      steamId as number,
+      currency,
+      detail?.price_overview,
+      detail?.name || effectiveGameName || undefined
+    ).then(setPriceInfo)
+  }, [steamId, language, currency, isGameModalOpen, detail?.price_overview, detail?.name, effectiveGameName])
 
   // Map detail to our game structure
   const game = detail ? {
@@ -119,39 +209,39 @@ export function GameDetailModal() {
       total: detail.achievements.total,
       list: detail.achievements.highlighted || []
     } : null
-  } : selectedGameName ? {
-    name: selectedGameName,
+  } : (effectiveGameName || selectedGameName) ? {
+    name: effectiveGameName || selectedGameName || 'Game',
     shortDescription: isRoblox
       ? (language === 'de'
           ? 'Roblox ist die ultimative virtuelle Welt, in der du Millionen von Community-Erlebnissen spielen, kreieren und mit Freunden teilen kannst.'
           : 'Roblox is the ultimate virtual universe where you can play, create, and share experiences with friends.')
-      : 'Local game in library.',
+      : externalGame?.description[language === 'de' ? 'de' : 'en'] || (language === 'de' ? 'Lokales Spiel in der Bibliothek.' : 'Local game in library.'),
     aboutTheGame: isRoblox
       ? (language === 'de'
           ? '<p>Roblox ist die weltweite virtuelle Gaming- & Metaverse-Plattform mit Millionen von Community-Erlebnissen – von RP und Simulatoren bis hin zu actiongeladenen Abenteuern.</p><p>Mit <strong>Eclipse Launcher</strong> profitierst du von automatischer Sub-Game-Erkennung, Live-Promo-Codes für beliebte Erlebnisse und nützlichen Gaming-Tools!</p>'
           : '<p>Roblox is the ultimate virtual universe that lets you create, share experiences with friends, and be anything you can imagine. Join millions of players across endless immersive worlds!</p><p>With <strong>Eclipse Launcher</strong>, enjoy automatic sub-game tracking, instant promo codes for top experiences, and enhanced gaming tools!</p>')
-      : '',
+      : externalGame ? `<p>${externalGame.description[language === 'de' ? 'de' : 'en']}</p>` : '',
     pcRequirements: isRoblox ? {
-      minimum: 'OS: Windows 10/11 (64-bit)\nProcessor: Intel Core i3 2.0 GHz or AMD equivalent\nMemory: 4 GB RAM\nGraphics: DirectX 11 compatible GPU\nNetwork: Broadband Internet connection\nStorage: 1 GB available space',
-      recommended: 'OS: Windows 10/11 (64-bit)\nProcessor: Intel Core i5 or AMD Ryzen equivalent\nMemory: 8 GB RAM\nGraphics: NVIDIA GeForce GTX 1060 or AMD Radeon RX 580\nNetwork: Broadband Internet connection\nStorage: 2 GB available space'
+      minimum: language === 'de' ? 'Betriebssystem: Windows 10/11 (64 Bit)\nProzessor: Intel Core i3 2,0 GHz oder vergleichbarer AMD-Prozessor\nArbeitsspeicher: 4 GB RAM\nGrafik: DirectX-11-kompatible Grafikkarte\nNetzwerk: Breitband-Internetverbindung\nSpeicherplatz: 1 GB verfügbar' : 'OS: Windows 10/11 (64-bit)\nProcessor: Intel Core i3 2.0 GHz or AMD equivalent\nMemory: 4 GB RAM\nGraphics: DirectX 11 compatible GPU\nNetwork: Broadband Internet connection\nStorage: 1 GB available space',
+      recommended: language === 'de' ? 'Betriebssystem: Windows 10/11 (64 Bit)\nProzessor: Intel Core i5 oder vergleichbarer AMD-Ryzen-Prozessor\nArbeitsspeicher: 8 GB RAM\nGrafik: NVIDIA GeForce GTX 1060 oder AMD Radeon RX 580\nNetzwerk: Breitband-Internetverbindung\nSpeicherplatz: 2 GB verfügbar' : 'OS: Windows 10/11 (64-bit)\nProcessor: Intel Core i5 or AMD Ryzen equivalent\nMemory: 8 GB RAM\nGraphics: NVIDIA GeForce GTX 1060 or AMD Radeon RX 580\nNetwork: Broadband Internet connection\nStorage: 2 GB available space'
     } : null,
     releaseDate: isRoblox ? 'Sep 1, 2006' : undefined,
-    developers: isRoblox ? ['Roblox Corporation'] : [],
-    publishers: isRoblox ? ['Roblox Corporation'] : [],
-    genres: isRoblox ? [{ id: 'sandbox', description: 'Sandbox' }, { id: 'mmo', description: 'MMO' }, { id: 'multiplayer', description: 'Multiplayer' }] : [],
+    developers: isRoblox ? ['Roblox Corporation'] : externalGame ? [externalGame.publisher] : [],
+    publishers: isRoblox ? ['Roblox Corporation'] : externalGame ? [externalGame.publisher] : [],
+    genres: isRoblox ? [{ id: 'sandbox', description: 'Sandbox' }, { id: 'mmo', description: 'MMO' }, { id: 'multiplayer', description: language === 'de' ? 'Mehrspieler' : 'Multiplayer' }] : [],
     categories: [],
     supportedLanguages: '',
     priceOverview: undefined,
-    isFree: isRoblox ? true : false,
+    isFree: !!(isRoblox || externalGame),
     metacritic: undefined,
     platforms: { windows: true, mac: false, linux: false },
     achievements: null
   } : null
 
   const availableDownloads = useMemo(() => {
-    if (!game?.name) return []
+    if (!isGameModalOpen || !game?.name) return []
     return getDownloadsForGame(game.name)
-  }, [game?.name, sources])
+  }, [game?.name, sources, isGameModalOpen])
 
   const mediaItems = useMemo(() => {
     const items: Array<{ type: 'video' | 'image'; url: string | string[]; thumb: string; id: string; name?: string }> = []
@@ -181,16 +271,43 @@ export function GameDetailModal() {
     }
     if (detail?.screenshots) {
       detail.screenshots.forEach(s => {
-        items.push({ type: 'image', url: s.path_full, thumb: s.path_full, id: `screen-${s.id}` })
+        items.push({ type: 'image', url: s.path_full, thumb: s.path_thumbnail || s.path_full, id: `screen-${s.id}` })
       })
     }
+
+    // Fallback: If no screenshots/videos are available yet for a valid Steam game, supply hero & header
+    if (items.length === 0 && externalGame) {
+      const image = getNonSteamArtwork(externalGame.name)?.hero || externalGame.hero
+      items.push({ type: 'image', url: image, thumb: image, id: `publisher-${externalGame.id}`, name: externalGame.name })
+    }
+    if (items.length === 0 && steamId && steamId !== 999001) {
+      items.push({
+        type: 'image',
+        url: `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${steamId}/library_hero.jpg`,
+        thumb: `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${steamId}/header.jpg`,
+        id: `hero-${steamId}`,
+        name: (game?.name || effectiveGameName) || undefined
+      })
+      items.push({
+        type: 'image',
+        url: `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${steamId}/header.jpg`,
+        thumb: `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${steamId}/header.jpg`,
+        id: `header-${steamId}`,
+        name: (game?.name || effectiveGameName) || undefined
+      })
+    }
+
     return items
-  }, [detail])
+  }, [detail, steamId, game?.name, effectiveGameName, externalGame])
+
+  const safeMediaIdx = (selectedMediaIdx >= 0 && selectedMediaIdx < mediaItems.length) ? selectedMediaIdx : 0
+  const activeMedia = mediaItems[safeMediaIdx]
 
   // Keyboard navigation inside lightbox (Escape, ArrowLeft, ArrowRight)
   useEffect(() => {
     if (lightboxIndex === null) return
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.fullscreenElement) return
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
@@ -205,27 +322,37 @@ export function GameDetailModal() {
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
   }, [lightboxIndex, mediaItems.length])
 
-  const isInLibrary = library.some(g =>
-    (steamId && g.steamId === steamId) ||
-    (isRoblox && (g.id === 'roblox' || g.name.toLowerCase() === 'roblox' || g.steamId === 999001)) ||
-    (game && g.name.toLowerCase() === game.name.toLowerCase()) ||
-    (selectedGameName && g.name.toLowerCase() === selectedGameName.toLowerCase())
-  )
-  const installed = installedGames.find(g =>
-    (g.appId && g.appId === String(steamId)) ||
-    (steamId && g.steamId === steamId) ||
-    (isRoblox && (g.id === 'roblox' || g.name.toLowerCase() === 'roblox' || g.steamId === 999001)) ||
-    (game && g.name.toLowerCase().includes(game.name.toLowerCase().slice(0, 8)))
-  )
-  const libraryItem = library.find(g =>
-    (steamId && g.steamId === steamId) ||
-    (isRoblox && (g.id === 'roblox' || g.name.toLowerCase() === 'roblox' || g.steamId === 999001)) ||
-    (game && g.name.toLowerCase() === game.name.toLowerCase()) ||
-    (selectedGameName && g.name.toLowerCase() === selectedGameName.toLowerCase())
-  )
-  const gameInstallPath = installed?.installPath || libraryItem?.installPath
-
   const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
+
+  const isInLibrary = useMemo(() => {
+    if (!isGameModalOpen) return false
+    return library.some(g =>
+      (steamId && g.steamId === steamId) ||
+      (isRoblox && (g.id === 'roblox' || g.name?.toLowerCase() === 'roblox' || g.steamId === 999001)) ||
+      (game?.name && g.name && (g.name.toLowerCase() === game.name.toLowerCase() || normalize(g.name) === normalize(game.name))) ||
+      (effectiveGameName && g.name && (g.name.toLowerCase() === effectiveGameName.toLowerCase() || normalize(g.name) === normalize(effectiveGameName))) ||
+      (selectedGameName && g.name && (g.name.toLowerCase() === selectedGameName.toLowerCase() || normalize(g.name) === normalize(selectedGameName)))
+    )
+  }, [library, steamId, isRoblox, game?.name, effectiveGameName, selectedGameName, isGameModalOpen])
+
+  const installed = useMemo(() => {
+    if (!isGameModalOpen) return null
+    return findInstalledGame(installedGames, {
+      steamId: steamId || (isRoblox ? 999001 : undefined),
+      name: effectiveGameName || selectedGameName || game?.name || undefined,
+    }) || null
+  }, [installedGames, steamId, isRoblox, effectiveGameName, selectedGameName, selectedGameId, game?.name, isGameModalOpen])
+
+  const libraryItem = useMemo(() => {
+    if (!isGameModalOpen) return null
+    return library.find(g =>
+      (steamId && g.steamId === steamId) ||
+      (isRoblox && (g.id === 'roblox' || g.name?.toLowerCase() === 'roblox' || g.steamId === 999001)) ||
+      (game?.name && g.name && (g.name.toLowerCase() === game.name.toLowerCase() || normalize(g.name) === normalize(game.name))) ||
+      (effectiveGameName && g.name && (g.name.toLowerCase() === effectiveGameName.toLowerCase() || normalize(g.name) === normalize(effectiveGameName))) ||
+      (selectedGameName && g.name && (g.name.toLowerCase() === selectedGameName.toLowerCase() || normalize(g.name) === normalize(selectedGameName)))
+    ) || null
+  }, [library, steamId, isRoblox, game?.name, effectiveGameName, selectedGameName, isGameModalOpen])
 
   const isCurrentlyPlaying = !!(
     activeGame && (
@@ -275,9 +402,9 @@ export function GameDetailModal() {
     if (isInLibrary) {
       const existingGame = library.find(g =>
         (steamId && g.steamId === steamId) ||
-        (isRoblox && (g.id === 'roblox' || g.name.toLowerCase() === 'roblox' || g.steamId === 999001)) ||
-        (game && g.name.toLowerCase() === game.name.toLowerCase()) ||
-        (selectedGameName && g.name.toLowerCase() === selectedGameName.toLowerCase())
+        (isRoblox && (g.id === 'roblox' || g.name?.toLowerCase() === 'roblox' || g.steamId === 999001)) ||
+        (game?.name && g.name && g.name.toLowerCase() === game.name.toLowerCase()) ||
+        (selectedGameName && g.name && g.name.toLowerCase() === selectedGameName.toLowerCase())
       )
       if (existingGame) {
         removeFromLibrary(existingGame.id)
@@ -304,7 +431,7 @@ export function GameDetailModal() {
     }
   }
 
-  async function handleDownload(uri: string, title: string, downloadPath: string, isHttp: boolean, autoExtract: boolean, autoDelete = false): Promise<boolean> {
+  async function handleDownload(uri: string, title: string, downloadPath: string, isHttp: boolean, autoExtract: boolean, autoDelete = false, mirrors: string[] = []): Promise<boolean> {
     const gameTitle = game?.name || title
     const appSettings = useGameStore.getState().settings
 
@@ -339,9 +466,9 @@ export function GameDetailModal() {
 
     if (window.electronAPI) {
       const downloadPromise = window.electronAPI.startNativeDownload
-        ? window.electronAPI.startNativeDownload(uri, gameTitle, downloadPath, autoExtract, autoDelete)
+        ? window.electronAPI.startNativeDownload(uri, gameTitle, downloadPath, autoExtract, autoDelete, mirrors)
         : (isHttp 
-            ? window.electronAPI.startHttpDownload(uri, gameTitle, downloadPath, autoExtract, autoDelete)
+            ? window.electronAPI.startHttpDownload(uri, gameTitle, downloadPath, autoExtract, autoDelete, mirrors)
             : window.electronAPI.startDownload(uri, downloadPath, autoExtract, autoDelete))
         
       try {
@@ -349,15 +476,18 @@ export function GameDetailModal() {
         if (res && res.success) {
           const cover = steamId ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${steamId}/header.jpg` : undefined
           if (res.infoHash && cover) {
+            const current = useDownloadStore.getState().downloads[res.infoHash]
             useDownloadStore.getState().updateDownload({
-              infoHash: res.infoHash,
-              name: gameTitle,
-              progress: 0,
-              downloadSpeed: 0,
-              timeRemaining: 0,
-              downloaded: 0,
-              length: 0,
-              status: 'downloading',
+              ...(current || {
+                infoHash: res.infoHash,
+                name: gameTitle,
+                progress: 0,
+                downloadSpeed: 0,
+                timeRemaining: 0,
+                downloaded: 0,
+                length: 0,
+                status: 'downloading' as const,
+              }),
               coverUrl: cover
             })
           }
@@ -397,10 +527,14 @@ export function GameDetailModal() {
   // Estimated All-Time Low
   const historicalLowFormatted = useMemo(() => {
     if (game?.isFree) return t('freeToPlay')
-    if (!game?.priceOverview?.initial) return null
+    if (!game?.priceOverview?.initial || game.priceOverview.initial <= 0) return null
     const base = game.priceOverview.initial / 100
-    if (discountPercent >= 75) return `${(game.priceOverview.final / 100).toFixed(2)} ${game.priceOverview.currency} (-${discountPercent}%)`
-    const low = (base * 0.25).toFixed(2)
+    if (base <= 0) return null
+    if (discountPercent >= 75) {
+      const finalPriceStr = (game.priceOverview.final / 100).toFixed(2).replace('.', ',')
+      return `${finalPriceStr} ${game.priceOverview.currency} (-${discountPercent}%)`
+    }
+    const low = (base * 0.25).toFixed(2).replace('.', ',')
     return `${low} ${game.priceOverview.currency} (-75%)`
   }, [game?.isFree, game?.priceOverview, discountPercent, t])
 
@@ -445,20 +579,13 @@ export function GameDetailModal() {
   const sameDevPub = !!(dev && pub && dev.trim().toLowerCase() === pub.trim().toLowerCase())
 
   return (
-    <AnimatePresence>
-      {isGameModalOpen && (steamId || selectedGameName) && (
-        <motion.div 
-          className="absolute inset-0 z-40 flex flex-col bg-[#07080a] game-detail-modal-overlay text-white select-none overflow-hidden"
-          initial={{ opacity: 1 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.1 }}
-        >
+    <>
           {/* Main Full-Width Scrollable Canvas (Top Bar removed as requested) */}
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
+          <div ref={scrollContainerRef} className="game-detail-scroll flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
             
             {/* Cinematic Hero Backdrop */}
-            <div className="relative w-full h-[52vh] min-h-[360px] max-h-[520px] flex-shrink-0 overflow-hidden bg-[#07080a]">
+            <div className="game-detail-hero relative w-full h-[52vh] min-h-[360px] max-h-[520px] flex-shrink-0 overflow-hidden bg-[#07080a]">
+              <div className="game-detail-scenery absolute inset-0">
               <SmartImage 
                 key={steamId || selectedGameName}
                 appId={steamId ?? undefined} 
@@ -469,48 +596,53 @@ export function GameDetailModal() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#07080a] via-[#07080a]/35 to-transparent pointer-events-none" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#07080a]/75 via-[#07080a]/20 to-transparent pointer-events-none" />
+              </div>
 
               {/* Title & Actions Bar */}
-              <div className="absolute bottom-6 left-6 md:left-10 xl:left-14 right-6 md:right-10 xl:right-14 flex flex-col md:flex-row md:items-end justify-between gap-6 z-10">
-                <div className="flex flex-col gap-2 max-w-3xl">
+              <div className="game-heading absolute bottom-6 left-6 md:left-10 xl:left-14 right-6 md:right-10 xl:right-14 z-10">
+                <div className="game-identity flex flex-col gap-2 max-w-3xl">
                   
                   {/* Official Game Logo Artwork with Seamless Plain Text Fallback */}
                   {isRoblox ? (
-                    <div className="relative min-h-[80px] flex items-end">
+                    <div className="game-title-slot">
                       <img
                         src={robloxLogoImg}
                         alt="Roblox"
                         className="max-h-24 md:max-h-32 object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] filter contrast-105"
                       />
                     </div>
-                  ) : steamId && logoState !== 'error' ? (
-                    <div className="relative min-h-[80px] flex items-end">
-                      <img
-                        key={steamId}
-                        src={getLogoUrl(steamId)}
-                        alt={game?.name}
-                        className="max-h-28 md:max-h-36 lg:max-h-44 max-w-md lg:max-w-xl object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] filter contrast-105"
-                        onLoad={() => setLogoState('loaded')}
-                        onError={(e) => {
-                          const target = e.currentTarget
-                          if (!target.dataset.triedFallback) {
-                            target.dataset.triedFallback = 'true'
-                            target.src = `https://cdn.cloudflare.steamstatic.com/steam/apps/${steamId}/logo.png`
-                          } else {
-                            setLogoState('error')
-                          }
-                        }}
-                      />
-                    </div>
                   ) : (
-                    <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-none drop-shadow-md">
-                      {game?.name}
-                    </h1>
+                    <div className="game-title-slot">
+                      {steamId && logoState !== 'error' && (
+                        <img
+                          key={steamId}
+                          src={getLogoUrl(steamId)}
+                          alt={game?.name || effectiveGameName || selectedGameName || undefined}
+                          className={`max-h-28 md:max-h-36 lg:max-h-44 max-w-md lg:max-w-xl object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] filter contrast-105 transition-opacity duration-150 ${
+                            logoState === 'loaded' ? 'opacity-100 block' : 'opacity-0 absolute pointer-events-none'
+                          }`}
+                          onLoad={() => setLogoState(current => current === 'loading' ? 'loaded' : current)}
+                          onError={(e) => {
+                            const target = e.currentTarget
+                            if (!target.dataset.triedFallback) {
+                              target.dataset.triedFallback = 'true'
+                              target.src = `https://cdn.cloudflare.steamstatic.com/steam/apps/${steamId}/logo.png`
+                            } else {
+                              setLogoState('error')
+                            }
+                          }}
+                        />
+                      )}
+                      {(!steamId || logoState !== 'loaded') && (
+                        <h1 className={`text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-none transition-opacity duration-150 ${steamId && logoState === 'loading' ? 'opacity-0' : 'opacity-100'}`}>
+                          {effectiveGameName || game?.name || selectedGameName}
+                        </h1>
+                      )}
+                    </div>
                   )}
 
                   {/* Game Metadata Facts Row */}
-                  {(game?.releaseDate || dev || pub) && (
-                    <div className="flex flex-wrap items-center gap-2.5 text-xs text-white/50 pt-0.5">
+                    <div className="game-facts flex flex-wrap items-center gap-2.5 text-xs text-white/50">
                       {game?.releaseDate && (
                         <span className="flex items-center gap-1.5">
                           <span className="text-white/30">{t('releasedOn')}:</span>
@@ -548,21 +680,26 @@ export function GameDetailModal() {
                         </>
                       )}
                     </div>
-                  )}
 
                   {/* Badges & Quick Action Chips Row */}
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <div className="game-quick-actions">
+                  <div className="game-badges flex items-center gap-2 pt-1">
                     {/* Playtime Badge */}
                     <div 
-                      className="h-7 px-3 rounded-lg bg-white/[0.05] border border-white/10 flex items-center gap-1.5 text-xs font-semibold text-white/90 shadow-sm flex-shrink-0"
-                      title={language === 'de' ? 'Gesamte Spielzeit' : 'Total Playtime'}
+                      className="game-playtime h-7 px-3 rounded-lg bg-white/[0.05] border border-white/10 flex items-center gap-1.5 text-xs font-semibold text-white/90 shadow-sm flex-shrink-0"
+                      title={playtimeFormatted}
+                      aria-label={playtimeFormatted}
                     >
                       <Clock size={12} className={totalPlaytimeMins > 0 ? "text-emerald-400" : "text-white/40"} />
-                      <span>{playtimeFormatted}</span>
+                      <span className="game-playtime-full">{playtimeFormatted}</span>
+                      <span className="game-playtime-short" aria-hidden="true">{totalPlaytimeMins >= 60 ? `${(totalPlaytimeMins/60).toLocaleString(language === 'de' ? 'de-DE' : 'en-US',{maximumFractionDigits:1})} h` : `${totalPlaytimeMins} min`}</span>
                     </div>
 
                     {steamId && !isRoblox && (
                       <>
+                        <button id="game-updates-open" onClick={() => setUpdatesOpen(true)} className="game-quick-link" title={t('uiGameUpdates')}>
+                          <Newspaper size={12} /><span>{t('uiGameUpdatesButton')}</span>
+                        </button>
                         <button
                           onClick={() => {
                             if (window.electronAPI?.openUrl) {
@@ -571,11 +708,12 @@ export function GameDetailModal() {
                               window.location.href = `steam://store/${steamId}`
                             }
                           }}
-                          className="h-7 px-3 rounded-lg bg-white/[0.04] hover:bg-[#1b2838] border border-white/10 hover:border-[#66c0f4]/50 text-white/70 hover:text-[#66c0f4] text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm group hover:scale-[1.02] active:scale-95"
+                          className="game-quick-link game-quick-link--steam game-quick-link--compact-icon group"
+                          aria-label="Steam"
                           title={language === 'de' ? 'In Steam Desktop App öffnen' : 'Open in Steam Desktop App'}
                         >
                           <img src={steamLogoImg} alt="Steam" className="w-3.5 h-3.5 object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
-                          <span>Steam</span>
+                          <span className="game-quick-label">Steam</span>
                         </button>
 
                         <button
@@ -586,14 +724,36 @@ export function GameDetailModal() {
                               window.open(`https://steamdb.info/app/${steamId}/`, '_blank')
                             }
                           }}
-                          className="h-7 px-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-blue-400/40 text-white/70 hover:text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm group hover:scale-[1.02] active:scale-95"
+                          className="game-quick-link game-quick-link--compact-icon group"
+                          aria-label="SteamDB"
                           title={language === 'de' ? 'Auf SteamDB im Browser ansehen' : 'Open SteamDB in Browser'}
                         >
                           <span className="text-[10px] font-black text-blue-400 leading-none">DB</span>
-                          <span>SteamDB</span>
-                          <ExternalLink size={10} className="text-white/40 group-hover:text-white/80 transition-colors" />
+                          <span className="game-quick-label">SteamDB</span>
+                          <ExternalLink size={10} className="game-quick-extra text-white/40 group-hover:text-white/80 transition-colors" />
                         </button>
                       </>
+                    )}
+
+                    {canShowKeyforsteam && (
+                      <button
+                        data-deals-trigger
+                        onClick={() => setIsDealsModalOpen(true)}
+                        className="game-quick-link game-quick-link--keys"
+                        title={t('dealsTitle')}
+                      >
+                        <Key size={12} />
+                        <span>Keyforsteam</span>
+                        {cheapestKeyDeal ? (
+                          <span className="game-key-price">
+                            <span>{language === 'de' ? 'ab' : 'from'}</span><strong>{cheapestKeyDeal.priceFormatted}</strong>
+                          </span>
+                        ) : (
+                          <span className="game-key-price game-key-price--pending">
+                            {t('uiKeyOffers')}
+                          </span>
+                        )}
+                      </button>
                     )}
 
                     {isRoblox && (
@@ -614,10 +774,11 @@ export function GameDetailModal() {
                       </button>
                     )}
                   </div>
+                  </div>
                 </div>
 
                 {/* Main Action Buttons Bar */}
-                <div className="flex items-center gap-2.5 sm:gap-3 flex-nowrap flex-shrink-0 max-w-full">
+                <div className="game-actions flex items-center gap-2.5 sm:gap-3 flex-nowrap flex-shrink-0 max-w-full">
                   {/* Play / Install / Cancel Button */}
                   {installed ? (
                     <>
@@ -716,7 +877,7 @@ export function GameDetailModal() {
                           {isKilling ? (
                             <>
                               <Loader2 size={14} className="animate-spin text-white/50" />
-                              <span>Stopping...</span>
+                              <span>{t('uiStopping')}</span>
                             </>
                           ) : isCurrentlyPlaying ? (
                             <>
@@ -730,7 +891,7 @@ export function GameDetailModal() {
                               ) : (
                                 <Play size={13} className="fill-current" />
                               )}
-                              <span>{installed.installed === false ? 'Install' : t('playNow')}</span>
+                              <span>{installed.installed === false ? t('uiInstall') : t('playNow')}</span>
                             </>
                           )}
                         </button>
@@ -815,7 +976,7 @@ export function GameDetailModal() {
               </>
             ) : (
               <div className="w-full px-6 md:px-10 xl:px-14 py-4">
-                <div className="bg-[#0b0c10]/80 backdrop-blur-md border border-white/[0.06] rounded-2xl p-4 md:p-5 grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.06]">
+                <div className="launcher-card bg-[var(--launcher-card,#0b0c10cc)] backdrop-blur-md border border-white/[0.06] rounded-2xl p-4 md:p-5 grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.06]">
                   
                   {/* 1. Players Now */}
                   <div className="pt-3 lg:pt-0 lg:px-4 first:pt-0 first:px-0">
@@ -832,7 +993,7 @@ export function GameDetailModal() {
                       {liveCount !== null ? liveCount.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : t('inGame')}
                     </div>
                     <div className="text-[11px] text-white/40 mt-0.5 truncate">
-                      24h: <span className="text-white/70 font-semibold">{peak24h ? peak24h.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : (isStatsLoading ? '...' : 'N/A')}</span> • Peak: <span className="text-white/70 font-semibold">{allTimePeak ? allTimePeak.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : (isStatsLoading ? '...' : 'N/A')}</span>
+                      24h: <span className="text-white/70 font-semibold">{peak24h ? peak24h.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : (isStatsLoading ? '...' : 'N/A')}</span>  {t('uiPeak')} <span className="text-white/70 font-semibold">{allTimePeak ? allTimePeak.toLocaleString(language === 'de' ? 'de-DE' : 'en-US') : (isStatsLoading ? '...' : 'N/A')}</span>
                     </div>
                   </div>
 
@@ -884,9 +1045,15 @@ export function GameDetailModal() {
                     {/* Current Price & Strikethrough if on sale */}
                     <div className="flex items-baseline gap-2">
                       <div className="text-xl font-black text-white tracking-tight truncate">
-                        {priceInfo?.isFree ? t('freeToPlay') : (priceInfo?.finalFormatted || currentPriceFormatted)}
+                        {isFreeGame
+                          ? t('freeToPlay')
+                          : (priceInfo && priceInfo.finalPrice > 0 && priceInfo.finalFormatted
+                              ? priceInfo.finalFormatted
+                              : (currentPriceFormatted && currentPriceFormatted !== '0,00 €' && currentPriceFormatted !== '$0.00'
+                                  ? currentPriceFormatted
+                                  : (isLoading || isStatsLoading ? '...' : t('freeToPlay'))))}
                       </div>
-                      {priceInfo?.hasDiscount && priceInfo?.initialFormatted && (
+                      {priceInfo?.hasDiscount && priceInfo?.initialFormatted && priceInfo.initialPrice > 0 && (
                         <span className="text-xs text-white/40 line-through font-semibold">
                           {priceInfo.initialFormatted}
                         </span>
@@ -895,15 +1062,23 @@ export function GameDetailModal() {
 
                     {/* Real All-Time Low */}
                     <div className="text-[11px] text-white/40 mt-0.5 truncate">
-                      {priceInfo?.isFree ? (
-                        <span className="text-emerald-400/80 font-medium">Free To Play</span>
+                      {isFreeGame ? (
+                        <span className="text-emerald-400/80 font-medium">{t('freeToPlay')}</span>
                       ) : (
-                        <>
-                          {t('allTimeLow')}: <span className="text-white/80 font-bold">{priceInfo?.allTimeLowFormatted || historicalLowFormatted || 'N/A'}</span>{' '}
-                          {priceInfo?.allTimeLowDiscountPercent ? (
-                            <span className="text-emerald-400/90 font-bold">(-{priceInfo.allTimeLowDiscountPercent}%)</span>
-                          ) : null}
-                        </>
+                        (priceInfo && priceInfo.allTimeLowPrice > 0 && priceInfo.allTimeLowFormatted) ? (
+                          <>
+                            {t('allTimeLow')}: <span className="text-white/80 font-bold">{priceInfo.allTimeLowFormatted}</span>{' '}
+                            {priceInfo.allTimeLowDiscountPercent ? (
+                              <span className="text-emerald-400/90 font-bold">(-{priceInfo.allTimeLowDiscountPercent}%)</span>
+                            ) : null}
+                          </>
+                        ) : (historicalLowFormatted && !historicalLowFormatted.startsWith('0,00') && !historicalLowFormatted.startsWith('$0.00')) ? (
+                          <>
+                            {t('allTimeLow')}: <span className="text-white/80 font-bold">{historicalLowFormatted}</span>
+                          </>
+                        ) : (
+                          <span className="text-white/30">{language === 'de' ? 'Niedrigster getrackter Preis' : 'Lowest tracked price'}</span>
+                        )
                       )}
                     </div>
                   </div>
@@ -950,29 +1125,30 @@ export function GameDetailModal() {
                     
                     {/* Left (Col 8/9): 16:9 Cinema Viewport with Ambient Glow Blur */}
                     <div 
-                      onClick={() => setLightboxIndex(selectedMediaIdx)}
+                      onClick={() => setLightboxIndex(safeMediaIdx)}
                       className="lg:col-span-8 xl:col-span-9 aspect-video w-full rounded-2xl overflow-hidden border border-white/[0.08] bg-black relative group cursor-pointer shadow-2xl flex items-center justify-center"
                     >
                       {/* Ambient Glow Blur Backdrop of current media */}
-                      {mediaItems[selectedMediaIdx] && (
+                      {activeMedia && (
                         <div 
                           className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-35 scale-125 pointer-events-none transform-gpu"
-                          style={{ backgroundImage: `url(${mediaItems[selectedMediaIdx].thumb})` }}
+                          style={{ backgroundImage: `url(${activeMedia.thumb})` }}
                         />
                       )}
                       <div className="absolute inset-0 bg-black/40 pointer-events-none" />
 
                       {/* Foreground Video or Image */}
                       <div className="relative z-10 w-full h-full flex items-center justify-center">
-                        {mediaItems[selectedMediaIdx]?.type === 'video' ? (
+                        {activeMedia?.type === 'video' ? (
                           <CustomVideoPlayer 
-                            src={mediaItems[selectedMediaIdx].url} 
-                            poster={mediaItems[selectedMediaIdx].thumb}
+                            src={activeMedia.url}
+                            poster={activeMedia.thumb}
+                            suspended={lightboxIndex !== null || updatesOpen || isDealsModalOpen}
                           />
                         ) : (
                           <img 
-                            src={Array.isArray(mediaItems[selectedMediaIdx]?.url) ? (mediaItems[selectedMediaIdx]?.url as string[])[0] : (mediaItems[selectedMediaIdx]?.url || mediaItems[selectedMediaIdx]?.thumb)} 
-                            alt="Featured screenshot"
+                            src={Array.isArray(activeMedia?.url) ? (activeMedia?.url as string[])[0] : (activeMedia?.url || activeMedia?.thumb)}
+                            alt={t('uiFeaturedScreenshot')}
                             className="w-full h-full object-contain"
                             referrerPolicy="no-referrer"
                             loading="lazy"
@@ -980,9 +1156,9 @@ export function GameDetailModal() {
                         )}
                       </div>
 
-                      <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white/80 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                      <button data-media-expand onClick={event => { event.stopPropagation(); setLightboxIndex(safeMediaIdx) }} className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white/80 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity z-20">
                         {t('clickToExpand')}
-                      </div>
+                      </button>
                     </div>
 
                     {/* Right (Col 4/3): Thumbnails List (Bounded to exact height of left video, never overflows) */}
@@ -991,9 +1167,10 @@ export function GameDetailModal() {
                         {mediaItems.map((item, idx) => (
                           <button
                             key={item.id}
+                            data-media-index={idx}
                             onClick={() => setSelectedMediaIdx(idx)}
                             className={`relative flex-shrink-0 w-36 lg:w-full aspect-video rounded-xl overflow-hidden border transition-all text-left bg-black group ${
-                              selectedMediaIdx === idx 
+                              safeMediaIdx === idx
                                 ? 'border-white ring-2 ring-white/30 scale-[0.99]' 
                                 : 'border-white/[0.06] opacity-50 hover:opacity-100'
                             }`}
@@ -1034,8 +1211,8 @@ export function GameDetailModal() {
               <div className="lg:col-span-8 flex flex-col gap-6">
                 
                 {/* About this game Box */}
-                {game?.aboutTheGame && (
-                  <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-6 backdrop-blur-sm">
+                {game?.aboutTheGame ? (
+                  <div className="rounded-2xl launcher-card bg-[var(--launcher-card,#0b0c10cc)] border border-white/[0.06] p-6 backdrop-blur-sm">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-white/[0.05]">
                       <h3 className="text-base font-bold text-white flex items-center gap-2">
                         <Sparkles size={16} className="text-white/50" />
@@ -1059,10 +1236,19 @@ export function GameDetailModal() {
 
                     <div 
                       className="text-white/70 text-sm leading-relaxed prose prose-invert max-w-none prose-p:my-2 prose-headings:text-white prose-a:text-blue-400"
-                      dangerouslySetInnerHTML={{ __html: game.aboutTheGame }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(game.aboutTheGame, { USE_PROFILES: { html: true }, FORBID_TAGS: ['style', 'form', 'iframe', 'input', 'button'], FORBID_ATTR: ['style', 'srcset'] }) }}
                     />
                   </div>
-                )}
+                ) : isLoading ? (
+                  <div className="rounded-2xl launcher-card bg-[var(--launcher-card,#0b0c10cc)] border border-white/[0.06] p-6 backdrop-blur-sm animate-pulse flex flex-col gap-4">
+                    <div className="h-6 bg-white/10 rounded w-1/4" />
+                    <div className="space-y-2">
+                      <div className="h-4 bg-white/5 rounded w-full" />
+                      <div className="h-4 bg-white/5 rounded w-5/6" />
+                      <div className="h-4 bg-white/5 rounded w-3/4" />
+                    </div>
+                  </div>
+                ) : null}
 
               </div>
 
@@ -1071,7 +1257,7 @@ export function GameDetailModal() {
                 
                 {/* 1. Achievements Card (Placed at the top of Right Column as requested) */}
                 {game?.achievements && (
-                  <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-5 backdrop-blur-sm">
+                  <div className="rounded-2xl launcher-card bg-[var(--launcher-card,#0b0c10cc)] border border-white/[0.06] p-5 backdrop-blur-sm">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
                         <Trophy size={14} className="text-amber-400" />
@@ -1102,7 +1288,7 @@ export function GameDetailModal() {
 
                 {/* 2. System Requirements Card (Directly beneath Achievements) */}
                 {game?.pcRequirements && (game.pcRequirements.minimum || game.pcRequirements.recommended) && (
-                  <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-5 backdrop-blur-sm">
+                  <div className="rounded-2xl launcher-card bg-[var(--launcher-card,#0b0c10cc)] border border-white/[0.06] p-5 backdrop-blur-sm">
                     <div className="flex items-center justify-between mb-4">
                       <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
                         <Cpu size={14} className="text-white/50" />
@@ -1152,7 +1338,7 @@ export function GameDetailModal() {
                 )}
 
                 {/* 3. Game Information & Steam Details (With integrated SteamDB & Store Page buttons) */}
-                <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-5 backdrop-blur-sm space-y-3 text-xs">
+                <div className="rounded-2xl launcher-card bg-[var(--launcher-card,#0b0c10cc)] border border-white/[0.06] p-5 backdrop-blur-sm space-y-3 text-xs">
                   <div className="flex items-center justify-between">
                     <h4 className="font-bold text-white/80 uppercase tracking-wider text-[11px]">{t('gameInformation')}</h4>
                   </div>
@@ -1195,13 +1381,13 @@ export function GameDetailModal() {
 
                 {/* 4. Supported Languages */}
                 {game?.supportedLanguages && (
-                  <div className="rounded-2xl bg-[#0b0c10]/80 border border-white/[0.06] p-5 backdrop-blur-sm text-xs">
+                  <div className="rounded-2xl launcher-card bg-[var(--launcher-card,#0b0c10cc)] border border-white/[0.06] p-5 backdrop-blur-sm text-xs">
                     <h4 className="font-bold text-white/80 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1.5">
                       <Globe size={13} /> {t('supportedLanguages')}
                     </h4>
                     <div 
                       className="text-white/50 leading-relaxed text-[11px] prose-strong:text-white/80"
-                      dangerouslySetInnerHTML={{ __html: game.supportedLanguages }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(game.supportedLanguages, { ALLOWED_TAGS: ['b', 'br', 'strong', 'i', 'em', 'span'], ALLOWED_ATTR: [] }) }}
                     />
                   </div>
                 )}
@@ -1213,49 +1399,44 @@ export function GameDetailModal() {
           </div>
 
           {/* Download Options Modal */}
+          {updatesOpen && steamId && <GameUpdates appId={steamId} name={game?.name || effectiveGameName || ''} artwork={detail?.header_image} onClose={closeUpdates} />}
           <DownloadOptionsModal 
             isOpen={isDownloadOptionsOpen}
             onClose={() => setIsDownloadOptionsOpen(false)}
             gameName={game?.name || t('unknown')}
+            coverUrl={steamId ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${steamId}/header.jpg` : undefined}
             downloads={availableDownloads}
             onDownload={handleDownload}
           />
 
           {/* Fullscreen Lightbox Overlay with Ambient Glow Blur Background (Rendered in Portal at Highest Z-Index) */}
           {createPortal(
-            <AnimatePresence>
+            <>
               {lightboxIndex !== null && (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center p-6 select-none overflow-hidden"
+                <div
+                  ref={lightboxPanel}
+                  data-game-lightbox
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={t('uiFullscreenView')}
+                  className="fixed inset-0 z-[99999] bg-[#070709] flex flex-col items-center justify-center p-6 select-none overflow-hidden"
                   onClick={() => setLightboxIndex(null)}
                 >
                   {/* Dedicated Close Button in Top-Right */}
                   <div className="absolute top-5 right-6 z-30 flex items-center gap-3">
-                    <span className="text-[11px] text-white/50 font-mono hidden sm:inline-block">ESC to close</span>
+                    <span className="text-[11px] text-white/50 font-mono hidden sm:inline-block">{t('uiEscClose')}</span>
                     <button
+                      data-lightbox-close data-dialog-close
                       onClick={(e) => {
                         e.stopPropagation()
                         setLightboxIndex(null)
                       }}
                       className="w-10 h-10 rounded-full bg-black/70 hover:bg-white/20 border border-white/20 text-white/80 hover:text-white flex items-center justify-center transition-all shadow-2xl"
-                      title="Close fullscreen view (Esc)"
+                      title={t('uiCloseFullscreen')}
                     >
                       <X size={20} />
                     </button>
                   </div>
-
-                  {/* Ambient Blurred Background of current media in Lightbox */}
-                  {mediaItems[lightboxIndex] && (
-                    <div 
-                      className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-35 scale-125 pointer-events-none transform-gpu"
-                      style={{ backgroundImage: `url(${mediaItems[lightboxIndex].thumb})` }}
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-black/40 pointer-events-none" />
 
                   <div className="relative z-10 flex-1 w-full max-w-7xl flex items-center justify-center min-h-0 pb-20">
                     {mediaItems[lightboxIndex]?.type === 'video' ? (
@@ -1266,25 +1447,25 @@ export function GameDetailModal() {
                         />
                       </div>
                     ) : (
-                      <img 
-                        key={Array.isArray(mediaItems[lightboxIndex]?.url) ? (mediaItems[lightboxIndex]?.url as string[])[0] : (mediaItems[lightboxIndex]?.url || mediaItems[lightboxIndex]?.thumb)}
+                      <DecodedMediaImage
                         src={Array.isArray(mediaItems[lightboxIndex]?.url) ? (mediaItems[lightboxIndex]?.url as string[])[0] : (mediaItems[lightboxIndex]?.url || mediaItems[lightboxIndex]?.thumb)} 
-                        alt="Fullscreen view" 
+                        preview={mediaItems[lightboxIndex]?.thumb}
+                        alt={t('uiFullscreenView')}
                         className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain bg-black/80 border border-white/15"
-                        referrerPolicy="no-referrer"
-                        onClick={(e) => e.stopPropagation()}
                       />
                     )}
 
                     {mediaItems.length > 1 && (
                       <>
                         <button 
+                          data-lightbox-previous
                           onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex - 1 + mediaItems.length) % mediaItems.length) }}
                           className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/70 hover:bg-white/20 text-white flex items-center justify-center transition-all border border-white/20 shadow-2xl"
                         >
                           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
                         </button>
                         <button 
+                          data-lightbox-next
                           onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex + 1) % mediaItems.length) }}
                           className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/70 hover:bg-white/20 text-white flex items-center justify-center transition-all border border-white/20 shadow-2xl"
                         >
@@ -1314,14 +1495,22 @@ export function GameDetailModal() {
                       </div>
                     </div>
                   )}
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>,
+            </>,
             document.body
           )}
 
-        </motion.div>
-      )}
-    </AnimatePresence>
+          {/* In-App Deals & Stores Modal */}
+          <GameDealsModal
+            isOpen={isDealsModalOpen && canShowKeyforsteam}
+            onClose={() => setIsDealsModalOpen(false)}
+            gameName={detail?.name || game?.name || selectedGameName || ''}
+            steamId={steamId}
+            currency={currency}
+            region="de"
+          />
+
+    </>
   )
 }

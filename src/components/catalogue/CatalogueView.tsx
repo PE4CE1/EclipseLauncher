@@ -1,13 +1,15 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { useTranslation } from '../../hooks/useTranslation'
+import React, { useState, useEffect, useMemo } from 'react'
+import { SceneTransition } from '../shared/SceneTransition'
 import { Search, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { useCatalogueStore } from '../../store/catalogueStore'
 import { useGamesDB, GameDBEntry } from '../../hooks/useGamesDB'
 import { hasGameInSource } from '../../services/downloadEngine'
+import { useSourceStore } from '../../store/sourceStore'
 import { SmartImage } from '../shared/SmartImage'
 import { CatalogueFilters } from './CatalogueFilters'
-import type { SteamSearchItem, SteamGame } from '../../services/steamService'
+import { CoverLoading } from '../shared/CoverLoading'
 
 function useDebounce<T>(value: T, delay: number): T {
   const [deb, setDeb] = useState(value)
@@ -18,152 +20,10 @@ function useDebounce<T>(value: T, delay: number): T {
   return deb
 }
 
-/** Minimal card for the catalogue grid — uses SteamSearchItem (lightweight) */
-function CatalogueCard({ item, index }: { item: SteamSearchItem; index: number }) {
-  const { openGameDetails } = useUIStore()
-  const cardRef2 = useRef<HTMLDivElement>(null)
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (document.documentElement.classList.contains('performance-mode')) return
-    const el = cardRef2.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const centerX = rect.width / 2
-    const centerY = rect.height / 2
-    
-    const rotateX = ((y - centerY) / centerY) * -7
-    const rotateY = ((x - centerX) / centerX) * 7
-    const px = (x / rect.width) * 100
-    const py = (y / rect.height) * 100
-    
-    el.style.setProperty('--rx', `${rotateX}deg`)
-    el.style.setProperty('--ry', `${rotateY}deg`)
-    el.style.setProperty('--mx', `${px}%`)
-    el.style.setProperty('--my', `${py}%`)
-  }
-
-  const handleMouseLeave = () => {
-    const el = cardRef2.current
-    if (!el) return
-    el.style.setProperty('--rx', '0deg')
-    el.style.setProperty('--ry', '0deg')
-    el.style.setProperty('--mx', '50%')
-    el.style.setProperty('--my', '50%')
-  }
-  
-  const appId = item.id || (item as any).appid || (item as any).app_id
-
-  function handleOpenGamePreview(id: number) {
-    if (id) openGameDetails(id, item.name)
-  }
-
-  return (
-    <motion.div
-      id={`cat-card-${item.id}`}
-      className="game-card group"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.02, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      onClick={() => { if (appId) handleOpenGamePreview(appId) }}
-    >
-      <div 
-        ref={cardRef2}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        className="relative aspect-[2/3] rounded-xl border border-white/5 bg-transparent transition-all duration-200 ease-out group-hover:shadow-[0_20px_40px_-10px_rgba(255,255,255,0.1)] group-hover:border-white/20 group-hover:scale-[1.02]"
-        style={{
-          transform: 'perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg))',
-          transformStyle: 'preserve-3d',
-        }}
-      >
-        <div className="absolute inset-0 overflow-hidden rounded-xl bg-[#090a0f] [transform:translateZ(0)]">
-          <SmartImage
-            appId={appId}
-            type="poster"
-            alt={item.name}
-            className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
-          />
-
-          {/* Subtle glass overlay */}
-          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.03] transition-colors duration-300 z-20 pointer-events-none opacity-0 group-hover:opacity-100" />
-          
-          {/* Dynamic Parallax Glare */}
-          <div 
-            className="dynamic-glare absolute inset-0 z-30 pointer-events-none rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-            style={{
-              background: 'radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12) 0%, transparent 60%)'
-            }}
-          />
-
-          {/* Discount badge */}
-          {(item.price?.discount_percent ?? 0) > 0 && (
-            <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded z-50">
-              -{item.price!.discount_percent}%
-            </div>
-          )}
-
-          {/* Hover overlay */}
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-40">
-            <div className="bg-black/70 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-semibold text-white shadow-lg">
-              View Details
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3 px-1 transition-all duration-300 group-hover:translate-y-1">
-        <p className="text-xs font-semibold text-hub-text truncate">{item.name}</p>
-        {item.price ? (
-          <p className="text-[11px] text-hub-muted mt-0.5">
-            {item.price.final === 0 ? (
-              <span className="text-white/90 font-medium">Free to Play</span>
-            ) : (
-              item.price.final_formatted
-            )}
-          </p>
-        ) : <p className="text-[11px] text-hub-border mt-0.5">#{appId}</p>}
-      </div>
-    </motion.div>
-  )
-}
-
 /** Minimal card for local DB entries */
-const DbGameCard = React.memo(function DbGameCard({ game, index }: { game: GameDBEntry; index: number }) {
-  const { openGameDetails } = useUIStore()
-  const cardRef3 = useRef<HTMLDivElement>(null)
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (document.documentElement.classList.contains('performance-mode')) return
-    const el = cardRef3.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const centerX = rect.width / 2
-    const centerY = rect.height / 2
-    
-    const rotateX = ((y - centerY) / centerY) * -7
-    const rotateY = ((x - centerX) / centerX) * 7
-    const px = (x / rect.width) * 100
-    const py = (y / rect.height) * 100
-    
-    el.style.setProperty('--rx', `${rotateX}deg`)
-    el.style.setProperty('--ry', `${rotateY}deg`)
-    el.style.setProperty('--mx', `${px}%`)
-    el.style.setProperty('--my', `${py}%`)
-  }
-
-  const handleMouseLeave = () => {
-    const el = cardRef3.current
-    if (!el) return
-    el.style.setProperty('--rx', '0deg')
-    el.style.setProperty('--ry', '0deg')
-    el.style.setProperty('--mx', '50%')
-    el.style.setProperty('--my', '50%')
-  }
-  
+const DbGameCard = React.memo(function DbGameCard({ game }: { game: GameDBEntry }) {
+  const { t } = useTranslation()
+  const openGameDetails = useUIStore(s => s.openGameDetails)
   const appId = game.id
 
   function handleOpenGamePreview(id: number) {
@@ -171,30 +31,20 @@ const DbGameCard = React.memo(function DbGameCard({ game, index }: { game: GameD
   }
 
   return (
-    <motion.div
+    <div
       id={`cat-db-${appId}`}
-      className="game-card group cursor-pointer"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.02, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="game-card store-game-card group cursor-pointer"
       onClick={() => { if (appId) handleOpenGamePreview(appId) }}
     >
       <div 
-        ref={cardRef3}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        className="relative aspect-[2/3] rounded-xl border border-white/5 bg-transparent transition-all duration-200 ease-out group-hover:shadow-[0_20px_40px_-10px_rgba(255,255,255,0.1)] group-hover:border-white/20 group-hover:scale-[1.02]"
-        style={{
-          transform: 'perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg))',
-          transformStyle: 'preserve-3d',
-        }}
+        className="store-card-art relative aspect-[2/3] rounded-xl border border-white/5 bg-[#090a0f]"
       >
-        <div className="absolute inset-0 overflow-hidden rounded-xl bg-[#090a0f] [transform:translateZ(0)]">
+        <div className="absolute inset-0 overflow-hidden rounded-xl bg-[#090a0f]">
           <SmartImage
             appId={appId}
             type="poster"
             alt={game.name}
-            className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+            className="w-full h-full"
           />
           
           {game.ccu !== undefined && game.ccu > 0 && (
@@ -204,47 +54,45 @@ const DbGameCard = React.memo(function DbGameCard({ game, index }: { game: GameD
             </div>
           )}
 
-          {/* Subtle glass overlay */}
-          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.03] transition-colors duration-300 z-20 pointer-events-none opacity-0 group-hover:opacity-100" />
           
-          {/* Dynamic Parallax Glare */}
-          <div 
-            className="dynamic-glare absolute inset-0 z-30 pointer-events-none rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-            style={{
-              background: 'radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12) 0%, transparent 60%)'
-            }}
-          />
-
           {/* Hover overlay */}
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-40">
             <div className="bg-black/70 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-semibold text-white shadow-lg">
-              View Details
+
+              {t('uiViewDetails')}
             </div>
           </div>
         </div>
       </div>
-      <div className="mt-3 px-1 transition-all duration-300 group-hover:translate-y-1">
-        <p className="text-xs font-semibold text-hub-text truncate transition-colors group-hover:text-white">{game.name}</p>
-        <p className="text-[11px] text-hub-muted mt-0.5 truncate">{game.developer || '—'}</p>
+      <div className="mt-3 px-1">
+        <p className="h-4 leading-4 text-xs font-semibold text-hub-text truncate transition-colors group-hover:text-white">{game.name}</p>
+        <p className="h-4 leading-4 text-[11px] text-hub-muted mt-0.5 truncate">{game.developer || '—'}</p>
       </div>
-    </motion.div>
+    </div>
   )
 })
 
 export function CatalogueView() {
-  const { searchQuery, setSearchQuery } = useUIStore()
+  const { t, locale } = useTranslation()
+  const searchQuery = useUIStore(s => s.searchQuery)
+  const setSearchQuery = useUIStore(s => s.setSearchQuery)
   const [localQuery, setLocalQuery] = useState(searchQuery)
   const debouncedQuery = useDebounce(localQuery, 450)
 
   const { db, isLoading } = useGamesDB()
   const store = useCatalogueStore()
+  const sources = useSourceStore(state => state.sources)
 
   // Apply filters
   const filteredDB = useMemo(() => {
     let result = db.filter(g => g.id !== 999001 && !g.name?.toLowerCase().includes('roblox'))
 
+    if (store.isModern && db.some(game => Number.isInteger(game.year))) {
+      result = result.filter(game => game.year !== undefined && game.year >= 2015)
+    }
+
     // Year Filter
-    if (store.yearRange[0] > 2000 || store.yearRange[1] < 2026) {
+    if (db.some(game => Number.isInteger(game.year)) && (store.yearRange[0] > 2000 || store.yearRange[1] < 2026)) {
       result = result.filter(g => g.year && g.year >= store.yearRange[0] && g.year <= store.yearRange[1])
     }
 
@@ -321,7 +169,7 @@ export function CatalogueView() {
     })
 
     return result
-  }, [db, debouncedQuery, store.selectedDevs, store.selectedPubs, store.selectedSources, store.sortBy, store.yearRange])
+  }, [db, debouncedQuery, store.selectedDevs, store.selectedPubs, store.selectedSources, store.sortBy, store.yearRange, store.isModern, sources])
 
   const ITEMS_PER_PAGE = 30
   const totalPages = Math.ceil(filteredDB.length / ITEMS_PER_PAGE)
@@ -331,10 +179,10 @@ export function CatalogueView() {
     <div className="h-full flex overflow-hidden">
       
       {/* Left Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative custom-scrollbar bg-transparent">
+      <div className="catalogue-scroll view-scroll flex-1 flex flex-col min-w-0 overflow-y-auto relative custom-scrollbar bg-transparent">
         
         {/* Search header */}
-        <div className="sticky top-0 z-20 bg-[#07080a]/80 backdrop-blur-xl border-b border-white/[0.08] px-6 py-4 shadow-xl">
+        <div className="launcher-toolbar sticky top-0 z-20 bg-[#07080a]/80 backdrop-blur-xl border-b border-white/[0.08] px-6 py-4 shadow-xl">
           <div className="flex items-center gap-4">
             <div className="relative flex-1 max-w-2xl">
               <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
@@ -343,7 +191,7 @@ export function CatalogueView() {
                 type="text"
                 value={localQuery}
                 onChange={e => { setLocalQuery(e.target.value); setSearchQuery(e.target.value) }}
-                placeholder="Search the entire Steam catalogue…"
+                placeholder={t('uiSearchCatalogue')}
                 className="w-full bg-black/90 border border-white/10 hover:border-white/20 focus:border-white/30 rounded-full pl-10 pr-10 py-2 text-sm h-10 text-white placeholder-white/40 focus:outline-none focus:bg-black transition-all shadow-inner"
                 autoComplete="off"
               />
@@ -360,22 +208,22 @@ export function CatalogueView() {
               )}
             </div>
 
-            <div className="text-sm text-hub-muted">
-              {filteredDB.length.toLocaleString()} games found
+            <div className="text-sm text-hub-muted tabular-nums whitespace-nowrap min-w-[10rem] text-right">
+              {filteredDB.length === 1 ? t('uiOneGameFound') : t('uiGamesFound', { count: filteredDB.length.toLocaleString(locale) })}
             </div>
           </div>
         </div>
 
       {/* Grid */}
-      <div className="p-6">
+      <SceneTransition sceneKey={`${store.currentPage}:${isLoading}:${currentPageData.map(game => game.id).join(',')}`} data-catalogue-results className="p-6">
         {isLoading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
-            {Array.from({ length: 18 }).map((_, i) => (
+            {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
               <div key={i}>
-                <div className="skeleton aspect-[2/3] rounded-xl" />
-                <div className="mt-2 space-y-1.5">
-                  <div className="skeleton h-3 w-3/4 rounded" />
-                  <div className="skeleton h-2.5 w-1/2 rounded" />
+                <div className="relative overflow-hidden aspect-[2/3] rounded-xl"><CoverLoading/></div>
+                <div className="mt-3 px-1">
+                  <div className="cover-loading-line h-4 w-3/4 rounded" />
+                  <div className="cover-loading-line h-4 mt-0.5 w-1/2 rounded" />
                 </div>
               </div>
             ))}
@@ -383,14 +231,14 @@ export function CatalogueView() {
         ) : filteredDB.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24">
             <Search size={40} className="text-hub-border mb-4" />
-            <p className="text-hub-muted text-lg font-medium">No games match your filters</p>
-            <p className="text-hub-border text-sm mt-1">Try adjusting the sidebar filters or search term</p>
+            <p className="text-hub-muted text-lg font-medium">{t('uiNoFilterMatches')}</p>
+            <p className="text-hub-border text-sm mt-1">{t('uiAdjustFilters')}</p>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
-              {currentPageData.map((game: GameDBEntry, i: number) => (
-                <DbGameCard key={game.id} game={game} index={i} />
+              {currentPageData.map((game: GameDBEntry) => (
+                <DbGameCard key={game.id} game={game} />
               ))}
             </div>
 
@@ -398,6 +246,7 @@ export function CatalogueView() {
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 mt-12 mb-8">
                 <button
+                  aria-label={t('uiPreviousPage')}
                   onClick={() => store.setCurrentPage(Math.max(1, store.currentPage - 1))}
                   disabled={store.currentPage === 1}
                   className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all"
@@ -431,6 +280,7 @@ export function CatalogueView() {
                   {totalPages > 5 && store.currentPage < totalPages - 2 && (
                     <div className="flex items-center gap-1.5">
                       <input 
+                        aria-label={t('uiPageNumber')}
                         type="number"
                         min={1} max={totalPages}
                         placeholder="..."
@@ -457,6 +307,7 @@ export function CatalogueView() {
                   )}
                 </div>
                 <button
+                  aria-label={t('uiNextPage')}
                   onClick={() => store.setCurrentPage(Math.min(totalPages, store.currentPage + 1))}
                   disabled={store.currentPage === totalPages}
                   className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all"
@@ -467,7 +318,7 @@ export function CatalogueView() {
             )}
           </>
         )}
-      </div>
+      </SceneTransition>
       </div>
 
       {/* Right Sidebar Filters */}

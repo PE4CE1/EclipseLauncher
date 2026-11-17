@@ -1,5 +1,5 @@
 import * as os from 'os'
-import { exec } from 'child_process'
+import { execFile } from 'child_process'
 import { screen } from 'electron'
 
 export interface HardwareSpecs {
@@ -11,6 +11,7 @@ export interface HardwareSpecs {
 }
 
 let cachedHardware: HardwareSpecs | null = null
+let pendingHardware: Promise<HardwareSpecs> | null = null
 
 function cleanCpuName(raw: string): string {
   if (!raw) return 'Unknown CPU'
@@ -50,36 +51,38 @@ function cleanGpuName(raw: string): string {
 
 export function detectHardwareSpecs(): Promise<HardwareSpecs> {
   if (cachedHardware) {
-    return Promise.resolve(cachedHardware)
+    return Promise.resolve({ ...cachedHardware })
   }
+  if (pendingHardware) return pendingHardware.then(result => ({ ...result }))
 
-  return new Promise((resolve) => {
+  const query = new Promise<HardwareSpecs>((resolve) => {
     const rawCpu = os.cpus()?.[0]?.model || 'Unknown CPU'
     const cpu = cleanCpuName(rawCpu)
 
     const totalRamGB = Math.round(os.totalmem() / (1024 * 1024 * 1024))
     const ram = `${totalRamGB} GB RAM`
 
-    let osName = 'Windows'
+    let osName = process.platform === 'win32' ? 'Windows' : os.type()
     const release = os.release()
     if (release.startsWith('10.0.')) {
       const build = parseInt(release.split('.')[2] || '0', 10)
       osName = build >= 22000 ? 'Windows 11' : 'Windows 10'
     }
 
-    let displayStr = '1080p'
+    let displayStr = 'Unknown display'
     try {
       const primary = screen.getPrimaryDisplay()
       if (primary) {
         const { width, height } = primary.size
-        displayStr = `${width}x${height}`
+        const scale = primary.scaleFactor || 1
+        displayStr = `${Math.round(width * scale)}x${Math.round(height * scale)}`
       }
     } catch (_) {}
 
     // Query Windows Management Instrumentation for GPU Name
     if (process.platform === 'win32') {
-      exec('powershell -NoProfile -Command "(Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name) -join \', \'"', { timeout: 4000 }, (err, stdout) => {
-        const gpu = (!err && stdout) ? cleanGpuName(stdout) : 'NVIDIA / AMD Graphics'
+      execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "(Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name) -join ', '"], { timeout: 4000, windowsHide: true }, (err, stdout) => {
+        const gpu = (!err && stdout) ? cleanGpuName(stdout) : 'Unknown GPU'
         cachedHardware = {
           cpu,
           gpu,
@@ -87,7 +90,7 @@ export function detectHardwareSpecs(): Promise<HardwareSpecs> {
           display: displayStr,
           os: osName
         }
-        resolve(cachedHardware)
+        resolve({ ...cachedHardware })
       })
     } else {
       cachedHardware = {
@@ -97,7 +100,9 @@ export function detectHardwareSpecs(): Promise<HardwareSpecs> {
         display: displayStr,
         os: osName
       }
-      resolve(cachedHardware)
+      resolve({ ...cachedHardware })
     }
   })
+  pendingHardware = query.finally(() => { pendingHardware = null })
+  return pendingHardware.then(result => ({ ...result }))
 }

@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 import { Minus, Square, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useUIStore } from '../../store/uiStore'
-import { updateSocialPresence } from '../../services/socialService'
+import { QuickAccess } from './QuickAccess'
 // @ts-ignore
 import eclipseLogo from '../../assets/logo.png'
 
@@ -10,65 +10,50 @@ const isElectron = !!window.electronAPI
 
 function minimize() { isElectron && window.electronAPI.minimizeWindow() }
 function maximize() { isElectron && window.electronAPI.maximizeWindow() }
-async function close() {
+function close() {
   if (isElectron) {
-    try {
-      await updateSocialPresence('offline', null)
-    } catch {}
+    // Closing can just hide Eclipse to the tray. The app's unload handler owns
+    // offline presence, so background recording does not appear offline.
     window.electronAPI.closeWindow()
   }
 }
 
-export function TitleBar() {
-  const [isHovered, setIsHovered] = useState(false)
-  const [clicks, setClicks] = useState(0)
-  const { triggerEclipseCinema, isEclipseCinemaActive } = useUIStore()
-
-  // Reset clicks after 2s of inactivity
-  useEffect(() => {
-    if (clicks > 0 && clicks < 3 && !isEclipseCinemaActive) {
-      const t = setTimeout(() => setClicks(0), 2000)
-      return () => clearTimeout(t)
-    }
-  }, [clicks, isEclipseCinemaActive])
+export function TitleBar({ minimal = false }: { minimal?: boolean }) {
+  const { t, language } = useTranslation()
+  const triggerEclipseCinema = useUIStore(s => s.triggerEclipseCinema)
+  const isEclipseCinemaActive = useUIStore(s => s.isEclipseCinemaActive)
 
   const handleLogoClick = () => {
-    if (isEclipseCinemaActive) return
-    const newClicks = clicks + 1
-    if (newClicks >= 3) {
-      triggerEclipseCinema()
-      setClicks(0)
-    } else {
-      setClicks(newClicks)
-    }
+    if (!minimal && !isEclipseCinemaActive) triggerEclipseCinema()
   }
+  const eclipseLabel = language === 'de' ? 'Nächste Sonnenfinsternis anzeigen' : 'View the next eclipse'
 
   return (
-    <div className={`h-8 bg-transparent flex items-center justify-between drag-region flex-shrink-0 z-50 transition-opacity duration-300 ${
-      isEclipseCinemaActive ? 'opacity-0 pointer-events-none' : 'opacity-100'
-    }`}>
-      {/* Left: App branding with Easter Egg */}
+    <div className="h-8 bg-transparent flex items-center justify-between drag-region flex-shrink-0 z-50">
+      {/* App branding */}
       <div className="flex items-center gap-2 no-drag relative px-4">
-        <motion.div 
+        <motion.button
+          type="button"
+          disabled={minimal}
+          data-eclipse-trigger
+          aria-label={eclipseLabel}
+          aria-expanded={isEclipseCinemaActive}
+          aria-haspopup="dialog"
+          data-active={isEclipseCinemaActive || undefined}
+          title={eclipseLabel}
           onClick={handleLogoClick}
-          className="w-5 h-5 rounded-md flex items-center justify-center relative overflow-hidden cursor-pointer shadow-[0_0_10px_rgba(255,255,255,0.15)]"
-          onHoverStart={() => setIsHovered(true)}
-          onHoverEnd={() => setIsHovered(false)}
-          animate={{ 
-            scale: clicks === 1 ? 1.2 : clicks === 2 ? 1.45 : isHovered ? 1.1 : 1,
-            boxShadow: clicks === 1 
-              ? '0 0 15px rgba(255,255,255,0.5)' 
-              : clicks >= 2 
-                ? '0 0 25px rgba(255,200,100,0.8)' 
-                : '0 0 10px rgba(255,255,255,0.15)',
-          }}
-          transition={{ duration: 0.2 }}
+          className="w-5 h-5 p-0 border-0 bg-transparent rounded-md flex items-center justify-center relative cursor-pointer focus-visible:outline focus-visible:outline-1 focus-visible:outline-orange-300/60"
+          initial={false}
+          style={{ boxShadow: isEclipseCinemaActive ? '0 0 16px rgba(239,128,41,0.45)' : 'none' }}
+          animate={{ scale: isEclipseCinemaActive ? [1, 1.14, 1] : 1 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         >
           <img src={eclipseLogo} alt="Eclipse Logo" className="w-full h-full object-cover z-10" />
-        </motion.div>
+        </motion.button>
         <span className="text-xs font-bold tracking-widest text-white/50 uppercase">
           ECLIPSE
         </span>
+        <QuickAccess location="titlebar"/>
       </div>
 
       {/* Window controls */}
@@ -77,7 +62,7 @@ export function TitleBar() {
           id="titlebar-minimize"
           onClick={minimize}
           className="w-10 h-8 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all"
-          aria-label="Minimize"
+          aria-label={t('uiMinimize')}
         >
           <Minus size={14} />
         </button>
@@ -85,7 +70,7 @@ export function TitleBar() {
           id="titlebar-maximize"
           onClick={maximize}
           className="w-10 h-8 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all"
-          aria-label="Maximize"
+          aria-label={t('uiMaximize')}
         >
           <Square size={12} />
         </button>
@@ -93,7 +78,7 @@ export function TitleBar() {
           id="titlebar-close"
           onClick={close}
           className="w-10 h-8 flex items-center justify-center text-white/50 hover:text-white hover:bg-red-500/80 transition-all rounded-none"
-          aria-label="Close"
+          aria-label={t('close')}
         >
           <X size={14} />
         </button>

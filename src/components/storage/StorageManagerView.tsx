@@ -1,11 +1,13 @@
-import { useState, useEffect, useMemo } from 'react'
+import { Select } from '../shared/Select'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HardDrive, FolderOpen, RefreshCw, Search, Gamepad2, ChevronRight, Trash2 } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
 import { useTranslation } from '../../hooks/useTranslation'
-import { getHeaderUrl } from '../../services/assetHelper'
+import { PosterArt } from '../shared/PosterArt'
+import './storage-manager.css'
 import type { DriveInfo, GameStorageItem } from '../../types/game'
 
 /**
@@ -13,14 +15,6 @@ import type { DriveInfo, GameStorageItem } from '../../types/game'
  * (Prevents square images like Roblox from expanding taller than other games)
  */
 function StorageGameThumb({ game }: { game: GameStorageItem }) {
-  const [imgFailed, setImgFailed] = useState(false)
-
-  const isRoblox = game.name.toLowerCase().includes('roblox')
-  const steamId = game.steamId || (isRoblox ? 999001 : undefined)
-  const imageUrl = !imgFailed && steamId 
-    ? getHeaderUrl(steamId) 
-    : (!imgFailed && game.iconUrl ? game.iconUrl : null)
-
   return (
     <div
       style={{
@@ -33,30 +27,19 @@ function StorageGameThumb({ game }: { game: GameStorageItem }) {
       }}
       className="rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-hidden flex-shrink-0 relative shadow-sm group-hover:border-white/20 transition-all flex items-center justify-center select-none"
     >
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt={game.name}
-          onError={() => setImgFailed(true)}
-          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-        />
-      ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-white/[0.02] text-white/30">
-          <Gamepad2 size={18} />
-          <span className="text-[9px] font-mono text-white/40 truncate max-w-[85px] px-1 mt-0.5">
-            {game.name}
-          </span>
-        </div>
-      )}
+      <PosterArt game={game} shape="landscape" className="bg-transparent" />
     </div>
   )
 }
 
 export function StorageManagerView() {
-  const { language } = useTranslation()
+  const { t, language } = useTranslation()
   const isDe = language === 'de'
-  const { openGameDetails, showNotification } = useUIStore()
-  const { installedGames, removeFromLibrary } = useGameStore()
+  const openGameDetails = useUIStore(s => s.openGameDetails)
+  const showNotification = useUIStore(s => s.showNotification)
+  const installedGames = useGameStore(state => state.installedGames)
+  const removeFromLibrary = useGameStore(state => state.removeFromLibrary)
+  const requestVersion = useRef(0)
 
   const [drives, setDrives] = useState<DriveInfo[]>([])
   const [rawGameSizes, setRawGameSizes] = useState<GameStorageItem[]>([])
@@ -70,7 +53,8 @@ export function StorageManagerView() {
   const [isUninstalling, setIsUninstalling] = useState(false)
 
   const loadStorageData = async () => {
-    if (drives.length === 0) setIsLoading(true)
+    const version = ++requestVersion.current
+    setIsLoading(true)
     try {
       const drivePromise = window.electronAPI?.storage?.getDrives
         ? window.electronAPI.storage.getDrives()
@@ -81,18 +65,21 @@ export function StorageManagerView() {
         : Promise.resolve([])
 
       const [driveData, sizes] = await Promise.all([drivePromise, sizesPromise])
-      if (driveData && driveData.length > 0) setDrives(driveData)
-      if (sizes && sizes.length > 0) setRawGameSizes(sizes)
+      if (version !== requestVersion.current) return
+      setDrives(Array.isArray(driveData) ? driveData : [])
+      setRawGameSizes(Array.isArray(sizes) ? sizes : [])
     } catch (e) {
       console.error('[StorageView] Error loading storage data:', e)
     } finally {
-      setIsLoading(false)
+      if (version === requestVersion.current) setIsLoading(false)
     }
   }
 
+  const installationKey = installedGames.map(game => `${game.id}:${game.installPath || ''}`).join('|')
   useEffect(() => {
-    loadStorageData()
-  }, [installedGames.length])
+    void loadStorageData()
+    return () => { ++requestVersion.current }
+  }, [installationKey])
 
   // Filter out any games that are 0B (uninstalled or 0 bytes)
   const validGames = useMemo(() => {
@@ -189,88 +176,28 @@ export function StorageManagerView() {
   }, [validGames, selectedDrive, searchQuery, sortBy])
 
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar p-6 lg:p-8 space-y-6 select-none max-w-6xl mx-auto relative">
-      {/* ─── Header ─────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.06] pb-5">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white flex-shrink-0">
-            <HardDrive size={18} />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-white tracking-tight">
-              {isDe ? 'Speicherplatz' : 'Storage'}
-            </h1>
-            <p className="text-xs text-white/40 mt-0.5">
-              {drives.length} {isDe ? 'Laufwerke' : 'Drives'} • {formatGB(totalGamesBytes)} {isDe ? 'Spiele' : 'Games'} • {formatGB(totalFreeBytes)} {isDe ? 'Frei' : 'Free'}
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={loadStorageData}
-          disabled={isLoading}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-semibold text-white/80 hover:text-white transition-all cursor-pointer disabled:opacity-50"
-        >
-          <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
-          <span>{isDe ? 'Aktualisieren' : 'Refresh'}</span>
-        </button>
-      </div>
-
-      {/* ─── Minimalist Drive Cards (Monochrome, Clean) ─────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {drives.map((drive) => {
-          const driveGamesBytes = validGames
-            .filter(g => g.drive.toLowerCase() === drive.deviceId.toLowerCase())
-            .reduce((sum, g) => sum + (g.sizeBytes || 0), 0)
-
-          const isSelected = selectedDrive === drive.deviceId
-
-          return (
-            <div
-              key={drive.deviceId}
-              onClick={() => setSelectedDrive(isSelected ? 'all' : drive.deviceId)}
-              className={`p-4 rounded-xl border transition-all cursor-pointer relative ${
-                isSelected
-                  ? 'bg-white/[0.08] border-white/30 shadow-lg'
-                  : 'bg-white/[0.02] border-white/[0.06] hover:border-white/15 hover:bg-white/[0.04]'
-              }`}
-            >
-              {/* Top row */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-md bg-white/10 text-white border border-white/15">
-                    {drive.deviceId}
-                  </span>
-                  <span className="text-xs font-medium text-white truncate">
-                    {drive.volumeName || (isDe ? 'Lokales Laufwerk' : 'Local Drive')}
-                  </span>
-                </div>
-
-                <span className="text-xs font-mono text-white/60">
-                  {drive.usedPercentage}%
-                </span>
-              </div>
-
-              {/* Clean Single Monochrome Progress Bar */}
-              <div className="mt-3.5 h-1.5 w-full bg-white/[0.06] rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${Math.min(100, Math.max(0, drive.usedPercentage))}%` }}
-                  className="h-full bg-white/85 rounded-full transition-all duration-300"
-                />
-              </div>
-
-              {/* Bottom details */}
-              <div className="mt-2.5 flex items-center justify-between text-[11px] text-white/40 font-mono">
-                <span>{formatGB(drive.freeBytes)} {isDe ? 'frei' : 'free'}</span>
-                <span>{formatGB(driveGamesBytes)} {isDe ? 'Spiele' : 'games'}</span>
-              </div>
-            </div>
-          )
+    <div className="storage-manager view-scroll launcher-page-surface h-full overflow-y-auto custom-scrollbar p-6 lg:p-8 space-y-6 select-none max-w-6xl mx-auto relative">
+      <header className="storage-summary">
+        <div><span>{isDe ? 'Installierte Spiele' : 'Installed games'}</span><strong>{validGames.length.toLocaleString(isDe ? 'de-DE' : 'en-US')}</strong></div>
+        <div><span>{isDe ? 'Von Spielen belegt' : 'Used by games'}</span><strong>{formatGB(totalGamesBytes)}</strong></div>
+        <div><span>{isDe ? 'Freier Speicher' : 'Free space'}</span><strong>{formatGB(totalFreeBytes)}</strong></div>
+        <button type="button" onClick={() => { void loadStorageData() }} disabled={isLoading}><RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />{isDe ? 'Aktualisieren' : 'Refresh'}</button>
+      </header>
+      <div className="storage-drives" role="group" aria-label={isDe ? 'Laufwerk auswählen' : 'Select drive'}>
+        {drives.map(drive => {
+          const gameBytes = validGames.filter(game => game.drive.toLowerCase() === drive.deviceId.toLowerCase()).reduce((sum, game) => sum + (game.sizeBytes || 0), 0)
+          const used = Math.max(0, Math.min(100, drive.usedPercentage || 0))
+          const gamesPercent = drive.totalBytes > 0 ? Math.min(used, gameBytes / drive.totalBytes * 100) : 0
+          return <button key={drive.deviceId} type="button" className="storage-drive" aria-pressed={selectedDrive === drive.deviceId} data-full={used >= 90 || undefined} onClick={() => setSelectedDrive(selectedDrive === drive.deviceId ? 'all' : drive.deviceId)}>
+            <span className="storage-drive-heading"><span><HardDrive size={15} /><b>{drive.deviceId}</b><span>{drive.volumeName || (isDe ? 'Lokales Laufwerk' : 'Local drive')}</span></span><small>{used.toLocaleString(isDe ? 'de-DE' : 'en-US', { maximumFractionDigits: 1 })}%</small></span>
+            <span className="storage-drive-bar" aria-hidden="true"><i style={{ width: `${gamesPercent}%` }} /><i style={{ width: `${Math.max(0, used - gamesPercent)}%` }} /></span>
+            <span className="storage-drive-space"><strong>{formatGB(drive.freeBytes)} <small>{isDe ? 'frei' : 'free'}</small></strong><span>{formatGB(drive.totalBytes)} {isDe ? 'gesamt' : 'total'}</span></span>
+            <span className="storage-drive-games"><i />{formatGB(gameBytes)} {isDe ? 'Spiele' : 'games'}</span>
+          </button>
         })}
       </div>
-
       {/* ─── Control Bar: Segmented Drive Filter & Search ─────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+      <div className="storage-toolbar flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         {/* Minimalist Segmented Control */}
         <div className="flex items-center p-0.5 bg-black/40 rounded-lg border border-white/[0.08] overflow-x-auto">
           <button
@@ -281,7 +208,7 @@ export function StorageManagerView() {
                 : 'text-white/50 hover:text-white'
             }`}
           >
-            {isDe ? 'Alle' : 'All'} ({validGames.length})
+            {isDe ? t('uiAll') : t('uiAll')} ({validGames.length})
           </button>
 
           {drives.map(d => {
@@ -311,12 +238,14 @@ export function StorageManagerView() {
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder={isDe ? 'Spiel filtern...' : 'Filter game...'}
+              aria-label={isDe ? 'Installierte Spiele durchsuchen' : 'Search installed games'}
+              placeholder={isDe ? 'Spiel suchen…' : 'Search games…'}
               className="w-full bg-white/[0.03] border border-white/[0.08] focus:border-white/25 rounded-lg pl-8 pr-2.5 py-1 text-xs text-white placeholder-white/30 focus:outline-none transition-all"
             />
           </div>
 
-          <select
+          <Select
+            aria-label={isDe ? 'Sortierung' : 'Sort order'}
             value={sortBy}
             onChange={(e: any) => setSortBy(e.target.value)}
             className="bg-white/[0.03] border border-white/[0.08] text-white/70 rounded-lg px-2 py-1 text-xs font-medium focus:outline-none cursor-pointer"
@@ -324,12 +253,12 @@ export function StorageManagerView() {
             <option value="size-desc" className="bg-[#0b0c10] text-white">{isDe ? 'Größte zuerst' : 'Largest'}</option>
             <option value="size-asc" className="bg-[#0b0c10] text-white">{isDe ? 'Kleinste zuerst' : 'Smallest'}</option>
             <option value="name-asc" className="bg-[#0b0c10] text-white">A-Z</option>
-          </select>
+          </Select>
         </div>
       </div>
 
       {/* ─── Completely Uniform, Clean Games List ─────────────────── */}
-      <div className="bg-[#0b0c10] border border-white/[0.08] rounded-xl overflow-hidden shadow-xl">
+      <div className="storage-game-list launcher-card bg-[var(--launcher-card,#0b0c10)] border border-white/[0.08] rounded-xl overflow-hidden shadow-xl">
         {filteredGames.length === 0 ? (
           <div className="p-16 text-center text-xs text-white/30 flex flex-col items-center justify-center gap-2">
             <Gamepad2 size={24} className="text-white/20" />
@@ -342,7 +271,7 @@ export function StorageManagerView() {
                 <div
                   key={game.id || index}
                   onClick={() => game.steamId && openGameDetails(game.steamId, game.name)}
-                  className="p-3.5 px-4 flex items-center justify-between gap-4 hover:bg-white/[0.025] transition-colors cursor-pointer group min-h-[72px]"
+                  className="storage-game-row p-3.5 px-4 flex items-center justify-between gap-4 hover:bg-white/[0.025] transition-colors cursor-pointer group min-h-[72px]"
                 >
                   {/* Left: Strict Uniform 104x58 Thumbnail Artwork & Game Title */}
                   <div className="flex items-center gap-3.5 min-w-0 flex-1">
@@ -416,16 +345,12 @@ export function StorageManagerView() {
                 exit={{ opacity: 0, scale: 0.96, y: 6 }}
                 transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-[#0c0d12] border border-white/[0.12] rounded-2xl p-5 max-w-[370px] w-full shadow-2xl space-y-4 select-none pointer-events-auto"
+                className="bg-[var(--launcher-dialog,#0c0d12)] border border-white/[0.12] rounded-2xl p-5 max-w-[370px] w-full shadow-2xl space-y-4 select-none pointer-events-auto"
               >
                 {/* Optional Steam Header Banner Artwork */}
                 {gameToUninstall.steamId ? (
                   <div className="w-full h-24 rounded-xl overflow-hidden border border-white/[0.08] relative shadow-inner">
-                    <img
-                      src={getHeaderUrl(gameToUninstall.steamId)}
-                      alt={gameToUninstall.name}
-                      className="w-full h-full object-cover"
-                    />
+                    <PosterArt game={gameToUninstall} shape="landscape" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] via-transparent to-transparent" />
                     <span className="absolute bottom-2.5 right-2.5 font-mono text-[11px] font-bold px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-white border border-white/15 shadow">
                       {gameToUninstall.sizeFormatted}
@@ -459,7 +384,7 @@ export function StorageManagerView() {
                     disabled={isUninstalling}
                     className="w-full py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.09] text-xs font-semibold text-white/70 hover:text-white transition-colors cursor-pointer border border-white/[0.06]"
                   >
-                    {isDe ? 'Abbrechen' : 'Cancel'}
+                    {isDe ? 'Abbrechen' : t('cancel')}
                   </button>
 
                   <button

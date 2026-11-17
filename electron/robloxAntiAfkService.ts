@@ -1,5 +1,6 @@
 import { execFile, exec, execSync } from 'child_process'
-import { app, powerMonitor, ipcMain } from 'electron'
+import { app, powerMonitor } from 'electron'
+import { ipcMain } from './ipcSecurity'
 import path from 'path'
 import fs from 'fs'
 

@@ -1,10 +1,14 @@
 import { useClipStore } from '../store/clipStore'
-import { triggerInstantClip } from './clipEngine'
+import { triggerInstantClip } from './clipEngineLifecycle'
 
 let isVoiceActive = false
+let isVoiceEngineInitialized = false
 let unsubHotword: (() => void) | null = null
 
 export function initVoiceEngine() {
+  if (isVoiceEngineInitialized) return
+  isVoiceEngineInitialized = true
+
   if (window.electronAPI?.voice?.onHotwordDetected) {
     unsubHotword = window.electronAPI.voice.onHotwordDetected((data: { text: string; confidence: number }) => {
       console.log(`[VoiceEngine] Hotword "${data.text}" detected! Triggering instant clip...`)

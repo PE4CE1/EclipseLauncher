@@ -1,49 +1,46 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createReferenceStorage } from './referenceStorage'
+import { runtimeMode } from '../services/runtimeMode'
+import { withoutRetiredSettings } from '../services/retiredSettings'
+import { withKeyforsteamDefaults } from '../services/keyforsteamDefaults'
+import { getHardcodedSteamId, isPlaceholderAppName, extractAppIdFromPlaceholder, getKnownSteamGameName, KNOWN_GAME_PREVIEWS } from '../services/steamService'
 import type { InstalledGame, LibraryGame, AppSettings } from '../types/game'
 
-const normalize = (str?: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
+import { deduplicateByAliases, normalizeGameName as normalize } from '../services/gameDeduplication'
 
 export function deduplicateLibrary(games: LibraryGame[]): LibraryGame[] {
   if (!Array.isArray(games)) return []
-  const seen = new Map<string, LibraryGame>()
-
-  for (const game of games) {
-    if (!game || !game.name) continue
-    const normName = normalize(game.name)
-    const steamKey = game.steamId ? `steam_${game.steamId}` : null
-
-    let matchedKey: string | null = null
-    if (steamKey && seen.has(steamKey)) {
-      matchedKey = steamKey
-    } else if (seen.has(normName)) {
-      matchedKey = normName
+  const prepared = games.filter(game => game && typeof game.name === 'string' && game.name.trim()).map(game => {
+    const steamId = game.steamId || extractAppIdFromPlaceholder(game.name) || undefined
+    const name = steamId && isPlaceholderAppName(game.name, steamId)
+      ? getKnownSteamGameName(steamId) || game.name
+      : game.name
+    return { ...game, name, steamId }
+  })
+  return deduplicateByAliases(prepared, game => [
+    ...(game.id ? [`id_${game.id}`] : []),
+    ...(game.steamId ? [`steam_${game.steamId}`] : []),
+    ...(normalize(game.name) ? [`name_${normalize(game.name)}`] : []),
+  ], (existing, game) => {
+    const steamId = existing.steamId || game.steamId
+    const name = !isPlaceholderAppName(game.name, steamId) ? game.name
+      : !isPlaceholderAppName(existing.name, steamId) ? existing.name
+      : (steamId ? getKnownSteamGameName(steamId) : null) || existing.name
+    return {
+      ...existing,
+      ...game,
+      name,
+      id: existing.id || game.id,
+      steamId,
+      installed: existing.installed || game.installed,
+      installPath: existing.installPath || game.installPath,
+      launchUrl: existing.launchUrl || game.launchUrl,
+      playTimeMinutes: Math.max(existing.playTimeMinutes || 0, game.playTimeMinutes || 0),
+      lastPlayed: Math.max(existing.lastPlayed || 0, game.lastPlayed || 0),
+      isFavorite: existing.isFavorite || game.isFavorite,
     }
-
-    if (matchedKey) {
-      const existing = seen.get(matchedKey)!
-      const merged: LibraryGame = {
-        ...existing,
-        ...game,
-        id: existing.id || game.id,
-        steamId: existing.steamId || game.steamId,
-        installed: existing.installed || game.installed,
-        installPath: existing.installPath || game.installPath,
-        launchUrl: existing.launchUrl || game.launchUrl,
-        playTimeMinutes: Math.max(existing.playTimeMinutes || 0, game.playTimeMinutes || 0),
-        lastPlayed: Math.max(existing.lastPlayed || 0, game.lastPlayed || 0),
-        isFavorite: existing.isFavorite || game.isFavorite,
-      }
-      seen.set(matchedKey, merged)
-      seen.set(normName, merged)
-      if (steamKey) seen.set(steamKey, merged)
-    } else {
-      seen.set(normName, game)
-      if (steamKey) seen.set(steamKey, game)
-    }
-  }
-
-  return Array.from(new Set(seen.values()))
+  })
 }
 
 interface GameStore {
@@ -53,18 +50,19 @@ interface GameStore {
 
   // User library
   library: LibraryGame[]
+  setLibrary: (library: LibraryGame[]) => void
   addToLibrary: (game: LibraryGame) => void
   removeFromLibrary: (id: string) => void
   toggleFavorite: (id: string) => void
   updateLastPlayed: (id: string) => void
 
   // Playtime & Sessions
-  activeGame: { id: string; name: string; startTime: number; lastTick?: number } | null
-  startPlaySession: (gameIdOrName: string, name: string) => void
+  activeGame: { id: string; name: string; startTime: number; lastTick?: number; authoritative?: boolean } | null
+  startPlaySession: (gameIdOrName: string, name: string, authoritative?: boolean, startedAt?: number) => void
   stopPlaySession: () => void
   tickPlaySession: () => void
   addPlayTime: (gameIdOrName: string, minutes: number, name?: string) => void
-  syncPlaytimeFromDisk: (diskDb: Record<string, { playTimeMinutes: number; lastPlayed?: number; steamId?: number }>) => void
+  syncPlaytimeFromDisk: (diskDb: Record<string, { playTimeMinutes: number; lastPlayed?: number; steamId?: number }>, authoritative?: boolean) => void
 
   // Recently played (ordered IDs)
   lastPlayed: string[]
@@ -91,6 +89,7 @@ export const useGameStore = create<GameStore>()(
       setInstalledGames: (games) => set({ installedGames: games }),
 
       library: [],
+      setLibrary: (library) => set({ library: deduplicateLibrary(library) }),
       addToLibrary: (game) =>
         set((state) => {
           const normGameName = normalize(game.name)
@@ -122,7 +121,11 @@ export const useGameStore = create<GameStore>()(
           return { library: deduplicateLibrary([game, ...state.library]) }
         }),
       removeFromLibrary: (id) =>
-        set((state) => ({ library: state.library.filter((g) => g.id !== id) })),
+        set((state) => ({
+          library: state.library.filter((g) => g.id !== id),
+          favoriteIds: state.favoriteIds.filter(favoriteId => favoriteId !== id),
+          lastPlayed: state.lastPlayed.filter(gameId => gameId !== id),
+        })),
       toggleFavorite: (id) =>
         set((state) => ({
           favoriteIds: state.favoriteIds.includes(id)
@@ -141,9 +144,10 @@ export const useGameStore = create<GameStore>()(
         })),
 
       activeGame: null,
-      startPlaySession: (gameIdOrName, name) =>
+      startPlaySession: (gameIdOrName, name, authoritative = false, startedAt) =>
         set((state) => {
           const gameName = name || gameIdOrName
+          const startTime = authoritative && Number.isFinite(startedAt) && startedAt! > 0 ? Math.min(startedAt!, Date.now()) : Date.now()
           const norm = normalize(gameName)
           const isRoblox = norm === 'roblox' || gameIdOrName === 'roblox' || gameIdOrName === '999001'
           const isMatch = (g: any) =>
@@ -154,7 +158,7 @@ export const useGameStore = create<GameStore>()(
             (isRoblox && (g.id === 'roblox' || normalize(g.name) === 'roblox' || g.steamId === 999001))
 
           return {
-            activeGame: { id: gameIdOrName, name: gameName, startTime: Date.now(), lastTick: Date.now() },
+            activeGame: { id: gameIdOrName, name: gameName, startTime, lastTick: Date.now(), authoritative },
             lastPlayed: [gameIdOrName, ...state.lastPlayed.filter((x) => x !== gameIdOrName)].slice(0, 20),
             installedGames: state.installedGames.map((g) =>
               isMatch(g) ? { ...g, lastPlayed: Date.now() } : g
@@ -170,13 +174,13 @@ export const useGameStore = create<GameStore>()(
           if (!state.activeGame) return { activeGame: null }
           const now = Date.now()
           const last = state.activeGame.lastTick || state.activeGame.startTime
-          const deltaMins = Math.max(0, Math.round((now - last) / 60000))
+          const deltaMins = Math.max(0, (now - last) / 60000)
           const gameId = state.activeGame.id
           const gameName = state.activeGame.name
           const norm = normalize(gameName)
           const isRoblox = norm === 'roblox' || gameId === 'roblox' || gameId === '999001'
 
-          if (deltaMins > 0 && window.electronAPI?.addPlaytime) {
+          if (deltaMins > 0 && !state.activeGame.authoritative && window.electronAPI?.addPlaytime) {
             window.electronAPI.addPlaytime(gameId, deltaMins, gameName, isRoblox ? 999001 : undefined).catch(() => {})
           }
 
@@ -188,10 +192,10 @@ export const useGameStore = create<GameStore>()(
             (isRoblox && (g.id === 'roblox' || normalize(g.name) === 'roblox' || g.steamId === 999001))
 
           const installedGames = state.installedGames.map((g) =>
-            isMatch(g) ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
+            isMatch(g) ? { ...g, playTimeMinutes: (g.playTimeMinutes || 0) + deltaMins, lastPlayed: now } : g
           )
           const library = state.library.map((g) =>
-            isMatch(g) ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
+            isMatch(g) ? { ...g, playTimeMinutes: (g.playTimeMinutes || 0) + deltaMins, lastPlayed: now } : g
           )
 
           return { activeGame: null, installedGames, library }
@@ -210,7 +214,7 @@ export const useGameStore = create<GameStore>()(
           const norm = normalize(gameName)
           const isRoblox = norm === 'roblox' || gameId === 'roblox' || gameId === '999001'
 
-          if (window.electronAPI?.addPlaytime) {
+          if (!state.activeGame.authoritative && window.electronAPI?.addPlaytime) {
             window.electronAPI.addPlaytime(gameId, deltaMins, gameName, isRoblox ? 999001 : undefined).catch(() => {})
           }
 
@@ -222,14 +226,14 @@ export const useGameStore = create<GameStore>()(
             (isRoblox && (g.id === 'roblox' || normalize(g.name) === 'roblox' || g.steamId === 999001))
 
           const installedGames = state.installedGames.map((g) =>
-            isMatch(g) ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
+            isMatch(g) ? { ...g, playTimeMinutes: (g.playTimeMinutes || 0) + deltaMins, lastPlayed: now } : g
           )
           const library = state.library.map((g) =>
-            isMatch(g) ? { ...g, playTimeMinutes: Math.round((g.playTimeMinutes || 0) + deltaMins), lastPlayed: now } : g
+            isMatch(g) ? { ...g, playTimeMinutes: (g.playTimeMinutes || 0) + deltaMins, lastPlayed: now } : g
           )
 
           return {
-            activeGame: { ...state.activeGame, lastTick: now },
+            activeGame: { ...state.activeGame, lastTick: last + deltaMins * 60000 },
             installedGames,
             library
           }
@@ -262,7 +266,7 @@ export const useGameStore = create<GameStore>()(
           return { installedGames, library }
         }),
 
-      syncPlaytimeFromDisk: (diskDb) =>
+      syncPlaytimeFromDisk: (diskDb, authoritative = false) =>
         set((state) => {
           if (!diskDb || typeof diskDb !== 'object') return state
           
@@ -272,11 +276,11 @@ export const useGameStore = create<GameStore>()(
             if (diskEntry && typeof diskEntry.playTimeMinutes === 'number') {
               return {
                 ...g,
-                playTimeMinutes: Math.round(Math.max(g.playTimeMinutes || 0, diskEntry.playTimeMinutes)),
+                playTimeMinutes: authoritative ? diskEntry.playTimeMinutes : Math.max(g.playTimeMinutes || 0, diskEntry.playTimeMinutes),
                 lastPlayed: Math.max(g.lastPlayed || 0, diskEntry.lastPlayed || 0)
               }
             }
-            return { ...g, playTimeMinutes: Math.round(g.playTimeMinutes || 0) }
+            return g
           })
 
           const library = state.library.map(g => {
@@ -285,11 +289,11 @@ export const useGameStore = create<GameStore>()(
             if (diskEntry && typeof diskEntry.playTimeMinutes === 'number') {
               return {
                 ...g,
-                playTimeMinutes: Math.round(Math.max(g.playTimeMinutes || 0, diskEntry.playTimeMinutes)),
+                playTimeMinutes: authoritative ? diskEntry.playTimeMinutes : Math.max(g.playTimeMinutes || 0, diskEntry.playTimeMinutes),
                 lastPlayed: Math.max(g.lastPlayed || 0, diskEntry.lastPlayed || 0)
               }
             }
-            return { ...g, playTimeMinutes: Math.round(g.playTimeMinutes || 0) }
+            return g
           })
 
           return { installedGames, library }
@@ -303,6 +307,7 @@ export const useGameStore = create<GameStore>()(
       setScanMessage: (msg) => set({ scanMessage: msg }),
 
       settings: {
+        avatarFrame: 'steam',
         username: (() => {
           const syncId = typeof window !== 'undefined' ? (window as any).electronAPI?.account?.initialIdentity : null
           return (syncId?.username && syncId.username !== 'User' && syncId.username !== 'Eclipse Player') ? syncId.username : 'User'
@@ -320,16 +325,19 @@ export const useGameStore = create<GameStore>()(
           return syncId?.accountSecret || undefined
         })(),
         theme: 'dark',
-        language: 'en',
+        language: 'de',
         autoScan: true,
         scanUninstalledSteam: true,
         autoScanSplash: true,
         autoCheckUpdates: true,
-        exitInsteadOfMinimize: true,
+        exitInsteadOfMinimize: false,
+        exitInsteadOfMinimizeMigrated_v1_3_0: true,
         hideToTray: false,
+        freeGamesNotifications: true,
         startOnBoot: true,
         startMinimized: false,
         launchInLibrary: false,
+        launchInClips: false,
         discordRpc: true,
         discordRpcIdle: true,
         discordRpcShowDownloads: true,
@@ -339,13 +347,22 @@ export const useGameStore = create<GameStore>()(
         discordRpcRobloxSubGame: true,
         discordRpcAnimatedText: false,
         hardwareAcceleration: true,
-        performanceMode: true,
+        backgroundLighting: true,
+        showHardwareSpecs: false,
+        keyforsteamEnabled: true,
+        keyforsteamDefaultsVersion: 1,
+        keyforsteamRegion: 'de',
         overlayPerformance: false,
         overlayCrosshair: false,
-        overlayGeneralAlwaysOn: true,
+        overlayGeneralAlwaysOn: false,
         overlayRobloxTimer: false,
         overlayRobloxCps: false,
-        overlayRobloxAntiAfk: false,
+        overlayCps: false,
+        overlayController: false,
+        overlayRLController: false,
+        rlControllerSkin: 'ps5_white',
+        rlControllerUrl: 'https://gamepadviewer.com/?p=1&s=ps5_white',
+        rlControllerScale: 80,
         overlayControllerStreamOnly: false,
         overlayControllerStreamWindow: false,
         overlayControllerStreamPos: 'bottom_right',
@@ -371,15 +388,21 @@ export const useGameStore = create<GameStore>()(
           rlSteamAvatar: { xPct: 0.65, yPct: 0.50 },
           media: { xPct: 0.02, yPct: 0.85 },
         },
+        overlayClipNotification: true,
+        overlayClipToastColor: '#ff6600',
       },
 
 
-      updateSettings: (data) =>
-        set((state) => ({ settings: { ...state.settings, ...data } })),
+      updateSettings: (data) => {
+        const patch = withoutRetiredSettings(data)
+        set((state) => Object.entries(patch).every(([key, value]) => Object.is(state.settings[key as keyof AppSettings], value))
+          ? state : { settings: { ...state.settings, ...patch } })
+      },
     }),
     {
       name: 'gamehub-store',
-      partialize: (state) => ({
+      storage: createReferenceStorage(() => localStorage, runtimeMode === 'clips'),
+      partialize: (state) => runtimeMode === 'clips' ? { settings: state.settings } : ({
         installedGames: state.installedGames,
         library: state.library,
         lastPlayed: state.lastPlayed,
@@ -387,14 +410,72 @@ export const useGameStore = create<GameStore>()(
         settings: state.settings,
       }),
       onRehydrateStorage: () => (state) => {
+        if (state && Array.isArray(state.installedGames)) {
+          state.installedGames = state.installedGames.map(g => {
+            let name = g.name
+            const numId = g.steamId || (g.appId ? Number(g.appId) : extractAppIdFromPlaceholder(name))
+            if (numId && isPlaceholderAppName(name, numId)) {
+              const known = getKnownSteamGameName(numId)
+              if (known) {
+                name = known
+              }
+            }
+            const knownId = numId || (name ? getHardcodedSteamId(name) : undefined)
+            if (knownId || name !== g.name) {
+              const norm = name ? name.toLowerCase().trim() : ''
+              const knownPreview = (knownId && KNOWN_GAME_PREVIEWS[knownId]) || (norm && KNOWN_GAME_PREVIEWS[norm])
+              const cleanIcon = knownPreview || ((g.iconUrl && !g.iconUrl.includes('capsule_') && !g.iconUrl.includes('tiny_image'))
+                ? g.iconUrl
+                : (knownId ? `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${knownId}/header.jpg` : undefined))
+              return {
+                ...g,
+                name,
+                steamId: knownId || g.steamId,
+                iconUrl: cleanIcon,
+              }
+            }
+            return g
+          })
+        }
         if (state && Array.isArray(state.library)) {
+          state.library = state.library.map(g => {
+            let name = g.name
+            const numId = g.steamId || (g.appId ? Number(g.appId) : extractAppIdFromPlaceholder(name)) || undefined
+            if (numId && isPlaceholderAppName(name, numId)) {
+              const known = getKnownSteamGameName(numId)
+              if (known) {
+                name = known
+              }
+            }
+            const knownId = numId || (name ? getHardcodedSteamId(name) : undefined)
+            if (knownId || name !== g.name) {
+              const norm = name ? name.toLowerCase().trim() : ''
+              const knownPreview = (knownId && KNOWN_GAME_PREVIEWS[knownId]) || (norm && KNOWN_GAME_PREVIEWS[norm])
+              const cleanIcon = knownPreview || ((g.iconUrl && !g.iconUrl.includes('capsule_') && !g.iconUrl.includes('tiny_image'))
+                ? g.iconUrl
+                : (knownId ? `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${knownId}/header.jpg` : undefined))
+              return {
+                ...g,
+                name,
+                steamId: knownId || g.steamId,
+                iconUrl: cleanIcon,
+              }
+            }
+            return g
+          })
           state.library = deduplicateLibrary(state.library)
         }
         if (state && state.settings) {
-          if (!localStorage.getItem('eclipse_perf_default_v128')) {
-            state.settings.performanceMode = true
-            localStorage.setItem('eclipse_perf_default_v128', 'true')
+          state.settings = withKeyforsteamDefaults(withoutRetiredSettings(state.settings))
+          if (!localStorage.getItem('eclipse_exit_minimize_v130')) {
+            state.settings.exitInsteadOfMinimize = false
+            state.settings.exitInsteadOfMinimizeMigrated_v1_3_0 = true
+            localStorage.setItem('eclipse_exit_minimize_v130', 'true')
+            if (window.electronAPI) {
+              window.electronAPI.setSettings({ exitInsteadOfMinimize: false, exitInsteadOfMinimizeMigrated_v1_3_0: true })
+            }
           }
+          state.settings.backgroundLighting ??= true
           // Zero-Flicker Identity Auto-Sanitizer:
           // Immediately heal friendCode from initialIdentity if localStorage has a legacy code or missing code
           const syncIdent = (typeof window !== 'undefined' && (window as any).electronAPI?.account?.initialIdentity) || null

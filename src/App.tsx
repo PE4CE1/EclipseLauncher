@@ -1,72 +1,99 @@
-import { useState, useEffect } from 'react'
-import { AnimatePresence, motion, MotionConfig } from 'framer-motion'
+import { useWindowActivity } from './hooks/useWindowActivity'
+import { desktopFetch as fetch } from './services/httpClient'
+import { useState, useEffect, useLayoutEffect, useRef, memo, lazy, Suspense } from 'react'
+import { MotionConfig } from 'framer-motion'
 import { Sidebar } from './components/layout/Sidebar'
 import { TitleBar } from './components/layout/TitleBar'
 import { TopBar } from './components/layout/TopBar'
-import { HomeView } from './components/home/HomeView'
-import { CatalogueView } from './components/catalogue/CatalogueView'
-import { LibraryView } from './components/library/LibraryView'
-import { DownloadsView } from './components/downloads/DownloadsView'
-import { SettingsView } from './components/settings/SettingsView'
-import { ProfileView } from './components/profile/ProfileView'
-import { NotificationsView } from './components/notifications/NotificationsView'
-import { EclipseInfoView } from './components/eclipse/EclipseInfoView'
-import { ClipsView } from './components/clips/ClipsView'
-import { StorageManagerView } from './components/storage/StorageManagerView'
-import { EclipseCinemaModal } from './components/eclipse/EclipseCinemaModal'
-import { GameDetailModal } from './components/shared/GameDetailModal'
+import { LauncherAtmosphere } from './components/layout/LauncherAtmosphere'
 import { Notification } from './components/shared/Notification'
-import { FriendsWindow } from './components/friends/FriendsWindow'
-import { AddFriendModal } from './components/friends/AddFriendModal'
-import { SplashView } from './components/splash/SplashView'
-import { ChangelogModal } from './components/eclipse/ChangelogModal'
-import { APP_VERSION } from './services/updateService'
+import { APP_VERSION, checkStartupUpdates } from './services/updateService'
 import { useUIStore } from './store/uiStore'
 import { useGameStore } from './store/gameStore'
 import { useDownloadStore } from './store/downloadStore'
-import { useScanner } from './hooks/useScanner'
 import { sendAppNotification } from './services/notificationService'
-import { initSocialNetwork, updateSocialPresence } from './services/socialService'
-import { initClipEngine } from './services/clipEngine'
+import { initSocialNetwork, updateSocialPresence } from './services/socialClient'
+import { scheduleBackgroundTask } from './services/startupScheduler'
+import { getNonSteamGame, repairNonSteamIdentity } from './services/nonSteamGames'
+import { watchNativeGameSession } from './services/nativeGameSession'
+import { watchNativeGameRegistry } from './services/nativeGameRegistry'
+import { initClipEngine } from './services/clipEngineLifecycle'
 import { initVoiceEngine } from './services/voiceEngine'
+import { findSteamIdByName, getHardcodedSteamId, isPlaceholderAppName, extractAppIdFromPlaceholder, getKnownSteamGameName, resolveSteamAppName, resolveGamePreviewImage, KNOWN_GAME_PREVIEWS } from './services/steamService'
 import { useThemeStore } from './store/themeStore'
+import { useShallow } from 'zustand/react/shallow'
+import { SceneTransition } from './components/shared/SceneTransition'
+import { FreeGamesView } from './components/freegames/FreeGamesView'
+import './components/layout/scene-motion.css'
+import './components/settings/settings-surfaces.css'
 
-const pageVariants = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit:    { opacity: 0 },
+const GameDetailModal = lazy(() => import('./components/shared/GameDetailModal').then(module => ({ default: module.GameDetailModal })))
+const FriendsWindow = lazy(() => import('./components/friends/FriendsWindow').then(module => ({ default: module.FriendsWindow })))
+const AddFriendModal = lazy(() => import('./components/friends/AddFriendModal').then(module => ({ default: module.AddFriendModal })))
+const SplashView = lazy(() => import('./components/splash/SplashView').then(module => ({ default: module.SplashView })))
+const EclipseCinemaModal = lazy(() => import('./components/eclipse/EclipseCinemaModal').then(module => ({ default: module.EclipseCinemaModal })))
+const ChangelogModal = lazy(() => import('./components/eclipse/ChangelogModal').then(module => ({ default: module.ChangelogModal })))
+
+const MemoHomeView = memo(lazy(() => import('./components/home/HomeView').then(module => ({ default: module.HomeView }))))
+const MemoCatalogueView = memo(lazy(() => import('./components/catalogue/CatalogueView').then(module => ({ default: module.CatalogueView }))))
+const MemoLibraryView = memo(lazy(() => import('./components/library/LibraryView').then(module => ({ default: module.LibraryView }))))
+const MemoDownloadsView = memo(lazy(() => import('./components/downloads/DownloadsView').then(module => ({ default: module.DownloadsView }))))
+const MemoSettingsView = memo(lazy(() => import('./components/settings/SettingsView').then(module => ({ default: module.SettingsView }))))
+const MemoProfileView = memo(lazy(() => import('./components/profile/ProfileView').then(module => ({ default: module.ProfileView }))))
+const MemoNotificationsView = memo(lazy(() => import('./components/notifications/NotificationsView').then(module => ({ default: module.NotificationsView }))))
+const MemoEclipseInfoView = memo(lazy(() => import('./components/eclipse/EclipseInfoView').then(module => ({ default: module.EclipseInfoView }))))
+const MemoClipsView = memo(lazy(() => import('./components/clips/ClipsView').then(module => ({ default: module.ClipsView }))))
+const MemoStorageManagerView = memo(lazy(() => import('./components/storage/StorageManagerView').then(module => ({ default: module.StorageManagerView }))))
+const MemoFreeGamesView = memo(FreeGamesView)
+
+const VIEW_COMPONENTS = {
+  home: MemoHomeView, catalogue: MemoCatalogueView, library: MemoLibraryView,
+  downloads: MemoDownloadsView, settings: MemoSettingsView, profile: MemoProfileView,
+  notifications: MemoNotificationsView, 'eclipse-info': MemoEclipseInfoView,
+  clips: MemoClipsView, storage: MemoStorageManagerView, 'free-games': MemoFreeGamesView,
 }
 
 function ViewRouter() {
-  const { activeView } = useUIStore()
-
-  const views: Record<string, JSX.Element> = {
-    home:          <HomeView />,
-    catalogue:     <div className="h-full pt-16"><CatalogueView /></div>,
-    library:       <div className="h-full pt-16"><LibraryView /></div>,
-    downloads:     <div className="h-full pt-16"><DownloadsView /></div>,
-    settings:      <div className="h-full pt-16"><SettingsView /></div>,
-    profile:       <div className="h-full pt-16"><ProfileView /></div>,
-    notifications: <div className="h-full pt-16 bg-[#040405]" style={{ backgroundColor: '#040405' }}><NotificationsView /></div>,
-    'eclipse-info':<div className="h-full pt-16"><EclipseInfoView /></div>,
-    clips:         <div className="h-full pt-16"><ClipsView /></div>,
-    storage:       <div className="h-full pt-16"><StorageManagerView /></div>,
-  }
-
-  return (
-    <div className="h-full w-full relative">
-      {views[activeView] ?? <HomeView />}
-    </div>
-  )
+  const activeView = useUIStore(state => state.activeView)
+  const covered = useUIStore(state => state.isGameModalOpen)
+  const view = Object.prototype.hasOwnProperty.call(VIEW_COMPONENTS, activeView) ? activeView as keyof typeof VIEW_COMPONENTS : 'home'
+  const View = VIEW_COMPONENTS[view]
+  return <SceneTransition sceneKey={`${view}:${covered}`} animateOnMount enabled={!covered} data-view-scene={view} className={view === 'home' ? 'h-full w-full relative' : 'h-full w-full relative pt-16'}>
+    <View />
+  </SceneTransition>
 }
 
 export default function App() {
+  useEffect(()=>window.electronAPI?.onSettingsUpdate?.(patch=>{
+    const enabled=patch.overlayPerformance
+    if(typeof enabled==='boolean')useGameStore.setState(state=>state.settings.overlayPerformance===enabled?state:{settings:{...state.settings,overlayPerformance:enabled}})
+  }),[])
   const [showSplash, setShowSplash] = useState(true)
+  const isFriendsOpen = useUIStore(state => state.isFriendsOpen)
+  const isAddFriendOpen = useUIStore(state => state.isAddFriendOpen)
+  const isCinemaOpen = useUIStore(state => state.isEclipseCinemaActive)
+  const isChangelogOpen = useUIStore(state => state.isChangelogOpen)
+  const openPanels = (isFriendsOpen ? 1 : 0) | (isAddFriendOpen ? 2 : 0) | (isCinemaOpen ? 4 : 0) | (isChangelogOpen ? 8 : 0)
+  // Keep a panel mounted after its first use so its exit animation can complete.
+  const [mountedPanels, setMountedPanels] = useState(0)
+  useEffect(() => { if (openPanels) setMountedPanels(previous => previous | openPanels) }, [openPanels])
   const isGameModalOpen = useUIStore(state => state.isGameModalOpen)
-  const settings = useGameStore(state => state.settings)
-  const { scan } = useScanner()
+  const viewLayer = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (viewLayer.current) viewLayer.current.inert = isGameModalOpen
+  }, [isGameModalOpen])
+  const [hasOpenedGameDetails, setHasOpenedGameDetails] = useState(false)
+  useEffect(() => { if (isGameModalOpen) setHasOpenedGameDetails(true) }, [isGameModalOpen])
+  const settings = useGameStore(useShallow(({ settings: s }) => ({
+    backgroundLighting: s.backgroundLighting,
+    launchInLibrary: s.launchInLibrary,
+    launchInClips: s.launchInClips,
+  })))
+  const windowActive = useWindowActivity()
 
   // Sync disk playtime and setup game process listeners
+  useEffect(() => watchNativeGameRegistry(window.electronAPI, useGameStore), [])
+
   useEffect(() => {
     if (window.electronAPI?.getPlaytime) {
       window.electronAPI.getPlaytime().then((db) => {
@@ -125,39 +152,229 @@ export default function App() {
         if (saved.avatarUrl && !current.avatarUrl) patch.avatarUrl = saved.avatarUrl
         if (saved.steamProfileUrl && !current.steamProfileUrl) patch.steamProfileUrl = saved.steamProfileUrl
         if (saved.steamLevel && !current.steamLevel) patch.steamLevel = saved.steamLevel
+        if (saved.language) {
+          patch.language = saved.language
+        } else if (current.language && window.electronAPI?.setSettings) {
+          window.electronAPI.setSettings({ language: current.language }).catch(() => {})
+        }
+        if (typeof saved.backgroundLighting === 'boolean') patch.backgroundLighting = saved.backgroundLighting
+        if (typeof saved.launchInLibrary === 'boolean') patch.launchInLibrary = saved.launchInLibrary
+        if (typeof saved.launchInClips === 'boolean') patch.launchInClips = saved.launchInClips
         if (Object.keys(patch).length > 0) {
           useGameStore.getState().updateSettings(patch)
         }
       }).catch(() => {})
     }
 
+    // Global Self-Heal: Resolve missing steam IDs and placeholder game names on startup
+    const healMissingSteamIds = async () => {
+      const current = useGameStore.getState().installedGames || []
+      const currentLib = useGameStore.getState().library || []
+      if (current.length === 0 && currentLib.length === 0) return
+
+      let changedInstalled = false
+      const updated = current.map(g => {
+        if (getNonSteamGame(g.name)) {
+          const repaired = repairNonSteamIdentity(g)
+          if (g.steamId !== repaired.steamId || g.iconUrl !== repaired.iconUrl || g.name !== repaired.name) changedInstalled = true
+          return repaired
+        }
+        let name = g.name
+        const numId = g.steamId || (g.appId ? Number(g.appId) : extractAppIdFromPlaceholder(name))
+        if (numId && isPlaceholderAppName(name, numId)) {
+          const known = getKnownSteamGameName(numId)
+          if (known) {
+            name = known
+            changedInstalled = true
+          }
+        }
+        if (!g.steamId && numId) {
+          changedInstalled = true
+          return {
+            ...g,
+            name,
+            steamId: numId,
+            iconUrl: g.iconUrl || `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${numId}/header.jpg`,
+          }
+        }
+        if (!g.steamId && g.platform !== 'steam' && name) {
+          const knownId = getHardcodedSteamId(name)
+          if (knownId) {
+            changedInstalled = true
+            return {
+              ...g,
+              name,
+              steamId: knownId,
+              iconUrl: g.iconUrl || `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${knownId}/header.jpg`,
+            }
+          }
+        }
+        if (name !== g.name) {
+          changedInstalled = true
+          return { ...g, name }
+        }
+        return g
+      })
+      if (changedInstalled) {
+        useGameStore.getState().setInstalledGames(updated)
+      }
+
+      let changedLib = false
+      const updatedLib = currentLib.map(g => {
+        if (getNonSteamGame(g.name)) {
+          const repaired = repairNonSteamIdentity(g)
+          if (g.steamId !== repaired.steamId || g.iconUrl !== repaired.iconUrl || g.name !== repaired.name) changedLib = true
+          return repaired
+        }
+        let name = g.name
+        const numId = g.steamId || (g.appId ? Number(g.appId) : extractAppIdFromPlaceholder(name))
+        if (numId && isPlaceholderAppName(name, numId)) {
+          const known = getKnownSteamGameName(numId)
+          if (known) {
+            name = known
+            changedLib = true
+          }
+        }
+        if (!g.steamId && numId) {
+          changedLib = true
+          return {
+            ...g,
+            name,
+            steamId: numId,
+            iconUrl: g.iconUrl || `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${numId}/header.jpg`,
+          }
+        }
+        if (name !== g.name) {
+          changedLib = true
+          return { ...g, name }
+        }
+        return g
+      })
+      if (changedLib) {
+        useGameStore.getState().setLibrary(updatedLib)
+      }
+
+      // Background lookup for any remaining placeholder games across both installedGames and library
+      const allToCheck = [...updated, ...updatedLib]
+      const remainingPlaceholders = allToCheck.filter(g => {
+        const numId = g.steamId || (g.appId ? Number(g.appId) : extractAppIdFromPlaceholder(g.name))
+        return isPlaceholderAppName(g.name, numId || undefined)
+      })
+      if (remainingPlaceholders.length > 0) {
+        const uniqueAppIds = Array.from(new Set(
+          remainingPlaceholders
+            .map(g => g.steamId || (g.appId ? Number(g.appId) : extractAppIdFromPlaceholder(g.name)))
+            .filter((id): id is number => typeof id === 'number' && id > 0)
+        ))
+
+        for (const numId of uniqueAppIds) {
+          const resolved = await resolveSteamAppName(numId)
+          if (resolved && !isPlaceholderAppName(resolved, numId)) {
+            const fresh = useGameStore.getState().installedGames
+            useGameStore.getState().setInstalledGames(
+              fresh.map(fg => {
+                const fgNum = fg.steamId || (fg.appId ? Number(fg.appId) : extractAppIdFromPlaceholder(fg.name))
+                return (fgNum === numId) ? { ...fg, name: resolved, steamId: numId } : fg
+              })
+            )
+            const freshLib = useGameStore.getState().library
+            useGameStore.getState().setLibrary(
+              freshLib.map(fl => {
+                const flNum = fl.steamId || (fl.appId ? Number(fl.appId) : extractAppIdFromPlaceholder(fl.name))
+                return (flNum === numId) ? { ...fl, name: resolved, steamId: numId } : fl
+              })
+            )
+          }
+        }
+      }
+
+      // Background lookup for any other unresolved non-Steam games
+      const freshCurrent = useGameStore.getState().installedGames
+      const remaining = freshCurrent.filter(g => !g.steamId && g.platform !== 'steam' && g.name && !isPlaceholderAppName(g.name, g.appId))
+      if (remaining.length > 0) {
+        const results = await Promise.allSettled(
+          remaining.map(async g => ({
+            id: g.id,
+            steamId: await findSteamIdByName(g.name)
+          }))
+        )
+        const idMap = new Map<string, number>()
+        results.forEach(r => {
+          if (r.status === 'fulfilled' && r.value.steamId) {
+            idMap.set(r.value.id, r.value.steamId)
+          }
+        })
+        if (idMap.size > 0) {
+          const fresh = useGameStore.getState().installedGames
+          useGameStore.getState().setInstalledGames(
+            fresh.map(g => {
+              if (idMap.has(g.id)) {
+                const sid = idMap.get(g.id)!
+                return {
+                  ...g,
+                  steamId: sid,
+                  iconUrl: g.iconUrl || `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${sid}/header.jpg`
+                }
+              }
+              return g
+            })
+          )
+        }
+      }
+
+      // Self-heal game icon URLs:
+      // 1. Games known to lack standard static headers (e.g. 3722330 Shift At Midnight, 4704690 Meccha Chameleon) get their known preview
+      // 2. Standard games restore their normal static header image if their iconUrl was inadvertently overwritten with a capsule
+      const currentInstalled = useGameStore.getState().installedGames
+      let iconSanitized = false
+      const sanitizedGames = currentInstalled.map(g => {
+        const norm = g.name ? g.name.toLowerCase().trim() : ''
+        const knownPreview = (g.steamId && KNOWN_GAME_PREVIEWS[g.steamId]) || (norm && KNOWN_GAME_PREVIEWS[norm])
+        if (knownPreview) {
+          if (g.iconUrl !== knownPreview) {
+            iconSanitized = true
+            return { ...g, iconUrl: knownPreview }
+          }
+          return g
+        }
+        // If a standard Steam game's iconUrl was overwritten with a preview capsule, restore normal header
+        if (g.steamId && g.steamId !== 999001 && g.iconUrl && (g.iconUrl.includes('capsule_') || g.iconUrl.includes('tiny_image'))) {
+          iconSanitized = true
+          return {
+            ...g,
+            iconUrl: `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${g.steamId}/header.jpg`
+          }
+        }
+        return g
+      })
+      if (iconSanitized) {
+        useGameStore.getState().setInstalledGames(sanitizedGames)
+      }
+    }
+    const cancelHealing = scheduleBackgroundTask(healMissingSteamIds, 3000)
+
     // Initialize Eclipse Clips Studio Background Engine & Replay Hotkeys
-    initClipEngine()
+    const disposeClips=initClipEngine()
     initVoiceEngine()
 
-    const unsubStart = window.electronAPI?.onGameStarted?.((data) => {
+    const gameSession = watchNativeGameSession(window.electronAPI, (data) => {
       if (data?.name) {
-        useGameStore.getState().startPlaySession(data.name, data.name)
-        if (useGameStore.getState().settings.gamePerformanceMode !== false) {
-          document.body.classList.add('game-performance-mode')
-        }
+        const state = useGameStore.getState()
+        if (state.activeGame?.authoritative && state.activeGame.name === data.name && state.activeGame.startTime === data.startTime) return
+        state.startPlaySession(data.name, data.name, true, data.startTime)
         updateSocialPresence('ingame', data.name).catch(() => {})
       }
-    })
-
-    const unsubStop = window.electronAPI?.onGameStopped?.(() => {
+    }, reconcileOnly => {
+      if (reconcileOnly && !useGameStore.getState().activeGame?.authoritative) return
       useGameStore.getState().stopPlaySession()
+      window.electronAPI?.getPlaytime?.().then(db => {
+        if (db) useGameStore.getState().syncPlaytimeFromDisk(db, true)
+      }).catch(() => {})
       document.body.classList.remove('game-performance-mode')
       updateSocialPresence('online', null).catch(() => {})
     })
-
-    const unsubMin = window.electronAPI?.onAppMinimized?.(() => {
-      document.body.classList.add('app-minimized')
-    })
-
-    const unsubRes = window.electronAPI?.onAppRestored?.(() => {
-      document.body.classList.remove('app-minimized')
-    })
+    const refreshGameSession = () => { void gameSession.refresh() }
+    window.addEventListener('focus', refreshGameSession)
 
     const interval = setInterval(() => {
       const state = useGameStore.getState()
@@ -167,26 +384,27 @@ export default function App() {
     }, 30000)
 
     return () => {
-      unsubStart?.()
-      unsubStop?.()
-      unsubMin?.()
-      unsubRes?.()
+      cancelHealing()
+      disposeClips()
+      gameSession.dispose()
+      window.removeEventListener('focus', refreshGameSession)
       clearInterval(interval)
       document.body.classList.remove('game-performance-mode')
-      document.body.classList.remove('app-minimized')
     }
   }, [])
 
-  // Background library scan and startup preferences
+  // The splash owns library preparation; only restore the preferred destination here.
   useEffect(() => {
-    const currentSettings = useGameStore.getState().settings
-    if (currentSettings.launchInLibrary) {
-      useUIStore.getState().setActiveView('library')
-    }
-    if (currentSettings.autoScan !== false) {
-      scan().catch((e) => console.warn('[App] Background scan error:', e))
-    }
-  }, [])
+    if (!showSplash) return
+    useUIStore.getState().setActiveView(settings.launchInClips ? 'clips' : settings.launchInLibrary ? 'library' : 'home')
+  }, [showSplash, settings.launchInClips, settings.launchInLibrary])
+
+  useEffect(() => {
+    if (showSplash) return
+    return scheduleBackgroundTask(() => {
+      if (!localStorage.getItem(`eclipse_changelog_seen_${APP_VERSION}`)) useUIStore.getState().setIsChangelogOpen(true)
+    }, 1000)
+  }, [showSplash])
 
   // Anti-Idle Repaint Guard: Ensures GPU surface wakes immediately on user return
   useEffect(() => {
@@ -209,29 +427,38 @@ export default function App() {
     window.addEventListener('mousedown', handleActivity, { passive: true })
     window.addEventListener('keydown', handleActivity, { passive: true })
     window.addEventListener('focus', handleWake)
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        handleWake()
-      }
-    })
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') handleWake()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
       window.removeEventListener('mousemove', handleActivity)
       window.removeEventListener('mousedown', handleActivity)
       window.removeEventListener('keydown', handleActivity)
       window.removeEventListener('focus', handleWake)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [])
 
-  // Initialize Cloudflare D1 Real-Time Social Sync
+  // Authentication and the social SDK do not block the cached library UI.
   useEffect(() => {
-    initSocialNetwork()
-  }, [])
+    if (showSplash) return
+    return scheduleBackgroundTask(initSocialNetwork)
+  }, [showSplash])
 
 
   // Listen to standalone Friends Window events
+  useEffect(() => window.electronAPI?.onOpenFreeGames?.(() => {
+    useUIStore.getState().setActiveView('free-games')
+  }), [])
+
   useEffect(() => {
     const unsubAdd = (window as any).electronAPI?.onShowAddFriendModal?.(() => {
+      if (useUIStore.getState().isAddFriendOpen) {
+        requestAnimationFrame(() => window.electronAPI?.addFriendModalReady?.())
+        return
+      }
       useUIStore.getState().setIsAddFriendOpen(true)
     })
     const unsubProfile = (window as any).electronAPI?.onShowFriendProfileModal?.((friendId: string) => {
@@ -240,6 +467,25 @@ export default function App() {
     return () => {
       unsubAdd?.()
       unsubProfile?.()
+    }
+  }, [])
+
+  // Listen to Tray Game Launches
+  useEffect(() => {
+    if (!window.electronAPI?.onTrayLaunchGame) return
+    const unlisten = window.electronAPI.onTrayLaunchGame((data: any) => {
+      if (!data) return
+      const name = data.displayName || data.name
+      const lang = useGameStore.getState().settings.language === 'de' ? 'de' : 'en'
+      if (name) {
+        useUIStore.getState().showNotification(
+          lang === 'de' ? `Starte ${name}...` : `Launching ${name}...`,
+          'info'
+        )
+      }
+    })
+    return () => {
+      unlisten?.()
     }
   }, [])
 
@@ -340,17 +586,12 @@ export default function App() {
   useEffect(() => {
     if (!window.electronAPI?.onUpdaterEvent) return;
 
-    const currentSettings = useGameStore.getState().settings;
-    if (currentSettings.autoCheckUpdates && window.electronAPI.checkUpdate) {
-      window.electronAPI.checkUpdate();
-    }
-
-    return window.electronAPI.onUpdaterEvent((payload) => {
+    const unsubscribe = window.electronAPI.onUpdaterEvent((payload) => {
       const { status, data } = payload;
       let progress = undefined;
       let info = undefined;
       
-      if (status === 'downloading' && data?.percent) {
+      if (status === 'downloading' && typeof data?.percent === 'number') {
         progress = data.percent;
       }
       if (status === 'available' || status === 'downloaded' || status === 'error') {
@@ -388,6 +629,8 @@ export default function App() {
 
       useUIStore.getState().setUpdateState(status as any, progress, info);
     });
+    const cancelCheck = scheduleBackgroundTask(() => checkStartupUpdates(useGameStore.getState().settings.autoCheckUpdates !== false))
+    return () => { cancelCheck(); unsubscribe() }
   }, [])
 
   // Mouse thumb buttons (Back/Forward)
@@ -411,11 +654,19 @@ export default function App() {
     return () => window.removeEventListener('mouseup', handleMouseUp)
   }, [])
 
-  // Global Keybind: Escape to close GameDetailModal
+  // Global Keybinds: Escape to close modal, F9 to toggle Steam Monitor Window
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isGameModalOpen) {
+      if (e.key === 'Escape' && isGameModalOpen && !document.fullscreenElement) {
         useUIStore.getState().setIsGameModalOpen(false)
+      }
+      if (e.key === 'F9') {
+        e.preventDefault()
+        if (window.electronAPI?.toggleSteamMonitorWindow) {
+          window.electronAPI.toggleSteamMonitorWindow()
+        } else if (window.electronAPI?.openSteamMonitorWindow) {
+          window.electronAPI.openSteamMonitorWindow()
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -424,7 +675,8 @@ export default function App() {
 
   // Process Monitor & Discord Activity
   const activeGame = useGameStore(state => state.activeGame)
-  const isPerformanceMode = Boolean(settings.performanceMode || (activeGame && settings.gamePerformanceMode !== false))
+  const isGamePerformanceMode = Boolean(!windowActive && activeGame)
+  const isPerformanceMode = !windowActive
 
   // Sync performance mode class whenever activeGame or settings change
   useEffect(() => {
@@ -436,64 +688,21 @@ export default function App() {
       document.body.classList.remove('performance-mode')
     }
 
-    if (activeGame && settings.gamePerformanceMode !== false) {
+    if (isGamePerformanceMode) {
       document.body.classList.add('game-performance-mode')
     } else {
       document.body.classList.remove('game-performance-mode')
     }
-  }, [isPerformanceMode, activeGame, settings.gamePerformanceMode])
+  }, [isPerformanceMode, isGamePerformanceMode])
 
-  const downloads = useDownloadStore(state => state.downloads)
-  const discordRpcEnabled = settings.discordRpc !== false
-  const discordRpcIdleEnabled = settings.discordRpcIdle !== false
-  const discordRpcShowDownloads = settings.discordRpcShowDownloads !== false
-  const discordRpcPrivacyMode = !!settings.discordRpcPrivacyMode
-  const discordActivityStyle = settings.discordActivityStyle || settings.discordRpcActivityStyle || 'clipping'
-
+  const activeDownloadName = useDownloadStore(state => Object.values(state.downloads).find(d => d.status === 'downloading' || d.status === 'extracting')?.name)
+  // Only the native process monitor chooses the game. The renderer contributes
+  // Eclipse download state, including an explicit end notification.
   useEffect(() => {
-    if (!discordRpcEnabled && !discordRpcIdleEnabled && !discordRpcShowDownloads) {
-      if (window.electronAPI?.clearDiscordActivity) {
-        window.electronAPI.clearDiscordActivity()
-      }
-      return
-    }
+    void window.electronAPI?.updateDiscordDownload?.(activeDownloadName || null).catch(() => {})
+  }, [activeDownloadName])
 
-    const isAnimated = settings.discordRpcAnimatedText ?? false
-
-    if (activeGame) {
-      if (discordRpcEnabled && window.electronAPI?.setDiscordActivity) {
-        window.electronAPI.setDiscordActivity(activeGame.name, activeGame.startTime, discordRpcPrivacyMode, discordActivityStyle, undefined, undefined, undefined, undefined, undefined, isAnimated)
-        return
-      } else if (!discordRpcEnabled) {
-        if (discordRpcIdleEnabled && window.electronAPI?.setDiscordIdleActivity) {
-          window.electronAPI.setDiscordIdleActivity(isAnimated)
-        } else if (window.electronAPI?.clearDiscordActivity) {
-          window.electronAPI.clearDiscordActivity()
-        }
-        return
-      }
-    }
-
-    const activeDownload = Object.values(downloads).find(d => d.status === 'downloading' || d.status === 'extracting')
-    if (activeDownload && discordRpcShowDownloads) {
-      if (window.electronAPI?.setDiscordDownloadActivity) {
-        window.electronAPI.setDiscordDownloadActivity(activeDownload.name, isAnimated)
-      }
-      return
-    }
-
-    if (discordRpcIdleEnabled) {
-      if (window.electronAPI?.setDiscordIdleActivity) {
-        window.electronAPI.setDiscordIdleActivity(isAnimated)
-      }
-    } else {
-      if (window.electronAPI?.clearDiscordActivity) {
-        window.electronAPI.clearDiscordActivity()
-      }
-    }
-  }, [activeGame, downloads, discordRpcEnabled, discordRpcIdleEnabled, discordRpcShowDownloads, discordRpcPrivacyMode, discordActivityStyle, settings.discordRpcRobloxSubGame, settings.discordRpcAnimatedText])
-
-  // Live Cloud Presence Heartbeat (Every 15s) & on activeGame change
+  // Well below the server's 150-second presence TTL, including background timer throttling.
   useEffect(() => {
     const pushPresence = () => {
       const currentActive = useGameStore.getState().activeGame
@@ -505,7 +714,7 @@ export default function App() {
     }
 
     pushPresence()
-    const heartbeat = setInterval(pushPresence, 15000)
+    const heartbeat = setInterval(pushPresence, 60000)
 
     return () => clearInterval(heartbeat)
   }, [activeGame])
@@ -520,64 +729,64 @@ export default function App() {
     return () => {
       window.removeEventListener('beforeunload', handleUnload)
       window.removeEventListener('pagehide', handleUnload)
-      updateSocialPresence('offline', null)
     }
   }, [])
 
   return (
-    <MotionConfig reducedMotion={isPerformanceMode ? "always" : "never"}>
-      <div className="flex flex-col h-screen bg-hub-base select-none overflow-hidden relative">
-        {/* Custom frameless title bar */}
-        <TitleBar />
+    <MotionConfig reducedMotion={isPerformanceMode ? "always" : "user"}>
+      <div className="launcher-shell h-screen bg-hub-base select-none overflow-hidden relative" data-atmosphere={!activeThemeId || undefined} data-unfocused={!windowActive || undefined}>
+        <LauncherAtmosphere enabled={!activeThemeId && settings.backgroundLighting !== false} focused={windowActive} active={windowActive && !activeGame && !isCinemaOpen} />
+        <div className="launcher-chrome flex flex-col h-full relative z-[1]">
+          {/* Custom frameless title bar */}
+          <TitleBar />
 
-        {/* Main layout */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Fixed Sidebar */}
-          <Sidebar />
+          {/* Main layout */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Fixed Sidebar */}
+            {!showSplash && <Sidebar />}
 
-          {/* Content area */}
-          <div className="flex-1 overflow-hidden relative">
-            {/* Main views and GameDetailModal (both extend from top y=0 behind TopBar) */}
-            <main className="h-full w-full overflow-hidden relative">
-              <ViewRouter />
-              <GameDetailModal />
-            </main>
+            {/* Content area */}
+            <div className="launcher-content flex-1 overflow-hidden relative">
+              {/* Main views and GameDetailModal (both extend from top y=0 behind TopBar) */}
+              <main className="h-full w-full overflow-hidden relative">
+                <div ref={viewLayer} className="launcher-view h-full w-full" data-covered={isGameModalOpen || undefined} aria-hidden={isGameModalOpen || undefined}>
+                  {!showSplash && <Suspense fallback={<div className="h-full w-full" aria-busy="true" />}><ViewRouter /></Suspense>}
+                </div>
+                <Suspense fallback={null}>
+                  {(isGameModalOpen || hasOpenedGameDetails) && <GameDetailModal />}
+                </Suspense>
+              </main>
 
-            {/* Frosted Glass TopBar: Floats on Top of EVERYTHING */}
-            <TopBar />
+              {/* Frosted Glass TopBar: Floats on Top of EVERYTHING */}
+              {!showSplash && <TopBar />}
+            </div>
           </div>
+
+          {/* Toast notifications */}
+          <Notification />
+
+          {/* Friends Overlay Windows */}
+          <Suspense fallback={null}>{!!((openPanels | mountedPanels) & 1) && <FriendsWindow />}</Suspense>
+          <Suspense fallback={null}>{!!((openPanels | mountedPanels) & 2) && <AddFriendModal />}</Suspense>
+          <Suspense fallback={null}>{!!((openPanels | mountedPanels) & 4) && <EclipseCinemaModal />}</Suspense>
+          <Suspense fallback={null}>{!!((openPanels | mountedPanels) & 8) && <ChangelogModal />}</Suspense>
+
+          {/* Startup Splash Screen */}
+          <Suspense fallback={null}>
+            {showSplash && (
+              <SplashView
+                onComplete={() => {
+                  setShowSplash(false)
+                  // Show changelog once per version after install or update
+                  const seenKey = `eclipse_changelog_seen_${APP_VERSION}`
+                  if (!localStorage.getItem(seenKey)) {
+                    useUIStore.getState().setIsChangelogOpen(true)
+                  }
+                }}
+              />
+            )}
+          </Suspense>
         </div>
-
-        {/* Toast notifications */}
-        <Notification />
-        
-        {/* Friends Overlay Windows */}
-        <FriendsWindow />
-        <AnimatePresence>
-          <AddFriendModal />
-        </AnimatePresence>
-
-        {/* Cinematic Easter Egg Eclipse Animation */}
-        <EclipseCinemaModal />
-
-        {/* Clean Version Update Changelog Modal (shown once after update/install) */}
-        <ChangelogModal />
-
-        {/* Startup Splash Screen */}
-        <AnimatePresence>
-          {showSplash && (
-            <SplashView 
-              onComplete={() => {
-                setShowSplash(false)
-                // Show changelog once per version after install or update
-                const seenKey = `eclipse_changelog_seen_${APP_VERSION}`
-                if (!localStorage.getItem(seenKey)) {
-                  useUIStore.getState().setIsChangelogOpen(true)
-                }
-              }} 
-            />
-          )}
-        </AnimatePresence>
       </div>
     </MotionConfig>
   )

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { Crosshair } from './widgets/Crosshair'
 import { Performance } from './widgets/Performance'
 import { RobloxTimer } from './widgets/RobloxTimer'
@@ -7,11 +7,31 @@ import { RocketLeagueHUD } from './widgets/RocketLeagueHUD'
 import { RLSteamAvatarHUD } from './widgets/RLSteamAvatarHUD'
 import { ControllerOverlay } from './widgets/ControllerOverlay'
 import { MediaOverlayWidget } from './widgets/MediaOverlayWidget'
+import { ClipToastOverlay, ClipToastData } from './widgets/ClipToastOverlay'
+import { useOverlayMetrics } from './useOverlayMetrics'
+import { normalizeOverlayPositions, sameOverlayPositions } from './overlayGeometry'
+import { OverlayWidget } from './OverlayWidget'
+import './overlay-widgets.css'
+import { createPerformanceMetricsSelector } from '../../services/performanceMetrics'
+import { resolveGameCrosshair, identifyCrosshairGame } from '../../services/gameCrosshairs'
+import { CS2Stats } from './widgets/CS2Stats'
+
+function LivePerformance({ pid, ...props }: Omit<Parameters<typeof Performance>[0], 'metrics'> & { pid?: number }) {
+  const config = props.config
+  const select = useMemo(() => createPerformanceMetricsSelector(config,pid), [pid, config?.cpu, config?.gpu, config?.ram, config?.fps])
+  const metrics = useOverlayMetrics(select)
+  return <Performance {...props} metrics={metrics} />
+}
+function LiveRobloxTimer(props: Omit<Parameters<typeof RobloxTimer>[0], 'idleTime'>) {
+  const idleTime = useOverlayMetrics(data => data.idleTime || 0)
+  return <RobloxTimer {...props} idleTime={idleTime} />
+}
 
 type Pos = { xPct: number; yPct: number }
-type Positions = { performance: Pos; robloxTimer: Pos; robloxCps: Pos; crosshair: Pos; rlHud: Pos; rlSteamAvatar: Pos; rlController: Pos; media: Pos }
+type Positions = { performance: Pos; robloxTimer: Pos; robloxCps: Pos; crosshair: Pos; rlHud: Pos; rlSteamAvatar: Pos; rlController: Pos; media: Pos; cs2Stats:Pos }
 
 const DEFAULT_POSITIONS: Positions = {
+  cs2Stats:{xPct:0.02,yPct:0.3},
   performance: { xPct: 0.02, yPct: 0.03 },
   robloxTimer: { xPct: 0.75, yPct: 0.03 },
   robloxCps: { xPct: 0.75, yPct: 0.12 },
@@ -23,6 +43,7 @@ const DEFAULT_POSITIONS: Positions = {
 }
 
 const WIDGET_APPROX_SIZE: Record<string, { w: number; h: number }> = {
+  cs2Stats:{w:215,h:165},
   performance: { w: 110, h: 60 },
   robloxTimer: { w: 165, h: 80 },
   robloxCps: { w: 130, h: 32 },
@@ -35,16 +56,20 @@ const WIDGET_APPROX_SIZE: Record<string, { w: number; h: number }> = {
 
 export function OverlayApp() {
   const [activeGame, setActiveGame] = useState<any>(null)
-  const [metrics, setMetrics] = useState({ cpu: 0, gpu: 0, ram: 0, ramMB: 0, totalMB: 0, idleTime: 0 })
   const [rlData, setRlData] = useState<any>(null)
   const [editMode, setEditMode] = useState(false)
   const editModeRef = useRef(false)
   const [editGameData, setEditGameData] = useState<any>(null)
   const [positions, setPositions] = useState<Positions>(DEFAULT_POSITIONS)
   const positionsRef = useRef<Positions>(DEFAULT_POSITIONS)
+  const [clipToast, setClipToast] = useState<ClipToastData | null>(null)
+  const handleDismissClipToast = useCallback(() => {
+    setClipToast(null)
+    window.electronAPI?.dismissClipToast?.()
+  }, [])
 
   const dragging = useRef<{
-    key: string; startMX: number; startMY: number; startPx: number; startPy: number; currentPx: number; currentPy: number
+    key: string; startMX: number; startMY: number; startPx: number; startPy: number; currentPx: number; currentPy: number; mouseX: number; mouseY: number; width: number; height: number
   } | null>(null)
 
   // Force transparent background
@@ -58,35 +83,26 @@ export function OverlayApp() {
   }, [])
 
   const [initialSettings, setInitialSettings] = useState<any>(null)
+  const stateRevision = useRef(0)
+  const settingsRevision = useRef(0)
 
-  // Load exact persisted settings from main process immediately on mount
+  // Load exact persisted settings & active overlay state immediately on mount
   useEffect(() => {
+    let disposed=false
+    const revision=settingsRevision.current
     window.electronAPI?.getSettings?.().then((s: any) => {
-      if (s) {
+      if (s && !disposed && revision===settingsRevision.current) {
         setInitialSettings(s)
         if (s.overlayPositions && !editModeRef.current) {
-          const merged = { ...DEFAULT_POSITIONS, ...s.overlayPositions }
+          const merged = normalizeOverlayPositions(DEFAULT_POSITIONS, s.overlayPositions)
           positionsRef.current = merged
-          setPositions(merged)
+          setPositions(previous => sameOverlayPositions(previous, merged) ? previous : merged)
         }
       }
     })
-  }, [])
 
-  // Sync performance mode class to overlay window DOM
-  useEffect(() => {
-    const isPerf = Boolean(
-      initialSettings?.performanceMode || 
-      (activeGame && initialSettings?.gamePerformanceMode !== false)
-    )
-    if (isPerf) {
-      document.documentElement.classList.add('performance-mode')
-      document.body.classList.add('performance-mode')
-    } else {
-      document.documentElement.classList.remove('performance-mode')
-      document.body.classList.remove('performance-mode')
-    }
-  }, [initialSettings?.performanceMode, initialSettings?.gamePerformanceMode, activeGame])
+    return () => {disposed=true}
+  }, [])
 
   // Subscribe to IPC events
   useEffect(() => {
@@ -94,48 +110,89 @@ export function OverlayApp() {
 
     if (window.electronAPI?.onOverlayUpdate) {
       cleanups.push(window.electronAPI.onOverlayUpdate((data: any) => {
-        setActiveGame(data)
+        stateRevision.current++;settingsRevision.current++
         if (data?.settings) {
+          const s = data.settings
+          const normalized: any = {
+            ...s,
+            overlayPerformance: s.performance !== undefined ? s.performance : s.overlayPerformance,
+            overlayCrosshair: s.crosshair !== undefined ? s.crosshair : s.overlayCrosshair,
+            overlayCps: s.cps !== undefined ? s.cps : s.overlayCps,
+            overlayRobloxTimer: s.robloxTimer !== undefined ? s.robloxTimer : s.overlayRobloxTimer,
+            overlayRobloxCps: s.robloxCps !== undefined ? s.robloxCps : s.overlayRobloxCps,
+            overlayRobloxAntiAfk: s.robloxAntiAfk !== undefined ? s.robloxAntiAfk : s.overlayRobloxAntiAfk,
+            overlayRLHud: s.rlHud !== undefined ? s.rlHud : s.overlayRLHud,
+            overlayRLSteam: s.overlayRLSteam,
+            overlayController: s.overlayController,
+            overlayControllerStreamOnly: s.overlayControllerStreamOnly,
+            overlayMedia: s.overlayMedia,
+            language: s.language,
+          }
+          setActiveGame({ ...data, settings: normalized })
           setInitialSettings((prev: any) => ({
             ...prev,
-            ...(data.settings.metrics ? { overlayMetrics: data.settings.metrics } : {}),
-            ...data.settings
+            ...(s.metrics ? { overlayMetrics: s.metrics } : {}),
+            ...normalized
           }))
+        } else {
+          setActiveGame(data)
         }
         if (!editModeRef.current && data?.positions) {
-          const merged = { ...DEFAULT_POSITIONS, ...data.positions }
+          const merged = normalizeOverlayPositions(DEFAULT_POSITIONS, data.positions)
           positionsRef.current = merged
-          setPositions(merged)
+          setPositions(previous => sameOverlayPositions(previous, merged) ? previous : merged)
         }
       }))
     }
 
     if (window.electronAPI?.onSettingsUpdate) {
       cleanups.push(window.electronAPI.onSettingsUpdate((newSettings: any) => {
+        settingsRevision.current++
         if (newSettings) {
-          setInitialSettings((prev: any) => ({ ...prev, ...newSettings }))
-          setEditGameData((prev: any) => prev ? {
-            ...prev,
-            settings: { ...prev.settings, ...newSettings }
-          } : prev)
-          setActiveGame((prev: any) => prev ? {
-            ...prev,
-            settings: { ...prev.settings, ...newSettings }
-          } : prev)
+          const normalized: any = {
+            ...newSettings,
+            performance: newSettings.overlayPerformance !== undefined ? newSettings.overlayPerformance : newSettings.performance,
+            crosshair: newSettings.overlayCrosshair !== undefined ? newSettings.overlayCrosshair : newSettings.crosshair,
+            cps: newSettings.overlayCps !== undefined ? newSettings.overlayCps : newSettings.cps,
+            robloxTimer: newSettings.overlayRobloxTimer !== undefined ? newSettings.overlayRobloxTimer : newSettings.robloxTimer,
+            robloxCps: newSettings.overlayRobloxCps !== undefined ? newSettings.overlayRobloxCps : newSettings.robloxCps,
+            robloxAntiAfk: newSettings.overlayRobloxAntiAfk !== undefined ? newSettings.overlayRobloxAntiAfk : newSettings.robloxAntiAfk,
+            rlHud: newSettings.overlayRLHud !== undefined ? newSettings.overlayRLHud : newSettings.rlHud,
+            overlayRLHud: newSettings.overlayRLHud !== undefined ? newSettings.overlayRLHud : newSettings.rlHud,
+            overlayRLSteam: newSettings.overlayRLSteam,
+            overlayController: newSettings.overlayController,
+            overlayMedia: newSettings.overlayMedia,
+            language: newSettings.language,
+          }
+          setInitialSettings((prev: any) => ({ ...prev, ...normalized }))
+          const crosshairChanged = ['overlayCrosshair','crosshairConfig','overlayGameCrosshairs'].some(key => key in newSettings)
+          const mergeGameSettings = (prev: any) => {
+            if (!prev) return prev
+            const crosshair = crosshairChanged ? resolveGameCrosshair(newSettings, prev) : {
+              enabled: prev.settings?.crosshair ?? prev.settings?.overlayCrosshair,
+              config: prev.settings?.crosshairConfig,
+            }
+            return { ...prev, settings: { ...prev.settings, ...normalized,
+              crosshair: crosshair.enabled, overlayCrosshair: crosshair.enabled, crosshairConfig: crosshair.config,
+            } }
+          }
+          setEditGameData(mergeGameSettings)
+          setActiveGame(mergeGameSettings)
         }
       }))
     }
 
-    if (window.electronAPI?.onMetricsUpdate) {
-      cleanups.push(window.electronAPI.onMetricsUpdate((data) => {
-        setMetrics(data)
-      }))
-    }
 
     if ((window.electronAPI as any)?.onRLMMRUpdate) {
+      let revision = 0
       cleanups.push((window.electronAPI as any).onRLMMRUpdate((data: any) => {
+        revision++
         setRlData(data)
       }))
+      const requested = revision
+      let active = true
+      void window.electronAPI?.getRLState?.().then(data => { if (active && revision === requested) setRlData(data) }).catch(() => {})
+      cleanups.push(() => { active = false })
     }
 
     if (window.electronAPI?.onOverlayEditStart) {
@@ -145,9 +202,9 @@ export function OverlayApp() {
         if (gameData) {
           setEditGameData(gameData)
           if (gameData.positions) {
-            const merged = { ...DEFAULT_POSITIONS, ...gameData.positions }
+            const merged = normalizeOverlayPositions(DEFAULT_POSITIONS, gameData.positions)
             positionsRef.current = merged
-            setPositions(merged)
+            setPositions(previous => sameOverlayPositions(previous, merged) ? previous : merged)
           }
         }
       }))
@@ -161,54 +218,93 @@ export function OverlayApp() {
       }))
     }
 
-    return () => cleanups.forEach(c => c())
+    if ((window.electronAPI as any)?.onClipSavedToast) {
+      cleanups.push((window.electronAPI as any).onClipSavedToast((data: any) => {
+        if (data) {
+          stateRevision.current++
+          setClipToast({
+            id: data.id || data.timestamp || Date.now(),
+            title: data.title || 'Highlight Clip',
+            gameTitle: data.gameTitle || 'Gameplay',
+            duration: data.duration || 30,
+            thumbnailUrl: data.thumbnailUrl || data.thumbnailDataUrl,
+            status: data.status, language: data.language,
+            color: data.color || initialSettings?.overlayClipToastColor || '#ff6600',
+          })
+        }
+      }))
+    }
+
+    const requestedState=stateRevision.current
+    let disposed=false
+    window.electronAPI?.getOverlayState?.().then((state: any) => {
+      if (state && !disposed && stateRevision.current===requestedState) {
+        if (state.pendingClipToast) {
+          const d = state.pendingClipToast
+          setClipToast({
+            id: d.id || d.timestamp || Date.now(),
+            title: d.title || 'Highlight Clip',
+            gameTitle: d.gameTitle || 'Gameplay',
+            duration: d.duration || 30,
+            thumbnailUrl: d.thumbnailUrl || d.thumbnailDataUrl,
+            status: d.status, language: d.language,
+            color: d.color || initialSettings?.overlayClipToastColor || '#ff6600',
+          })
+        }
+        if (state.gameData) {
+          setActiveGame(state.gameData)
+          if (state.gameData.positions && !editModeRef.current) {
+            const merged = normalizeOverlayPositions(DEFAULT_POSITIONS, state.gameData.positions)
+            positionsRef.current = merged
+            setPositions(previous => sameOverlayPositions(previous, merged) ? previous : merged)
+          }
+        }
+        if (state.isEditMode) {
+          setEditMode(true)
+          editModeRef.current = true
+          if (state.editGameData) {
+            setEditGameData(state.editGameData)
+          }
+        }
+      }
+    })
+
+    return () => {disposed=true;cleanups.forEach(c => c())}
   }, [])
 
   const rafRef = useRef<number | null>(null)
 
+  const flushDrag = useCallback(() => {
+    const drag = dragging.current
+    if (!drag) return
+    const x = Math.max(0, Math.min(Math.max(0, window.innerWidth - drag.width), drag.startPx + drag.mouseX - drag.startMX))
+    const y = Math.max(0, Math.min(Math.max(0, window.innerHeight - drag.height), drag.startPy + drag.mouseY - drag.startMY))
+    drag.currentPx = x
+    drag.currentPy = y
+    positionsRef.current = { ...positionsRef.current, [drag.key]: { xPct: x / window.innerWidth, yPct: y / window.innerHeight } }
+    const element = document.getElementById(`widget-${drag.key}`)
+    if (element) { element.style.left = `${x}px`; element.style.top = `${y}px` }
+  }, [])
+
   // Drag logic for edit mode
   const onMouseMove = useCallback((e: MouseEvent) => {
     if (!dragging.current) return
-    const { key, startMX, startMY, startPx, startPy } = dragging.current
-    
-    // Read mouse coords synchronously
-    const mx = e.clientX
-    const my = e.clientY
-
+    dragging.current.mouseX = e.clientX
+    dragging.current.mouseY = e.clientY
     if (rafRef.current !== null) return
 
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null
-      if (!dragging.current) return
-      
-      const sz = WIDGET_APPROX_SIZE[key] || { w: 100, h: 50 }
-      const dx = mx - startMX
-      const dy = my - startMY
-      const maxX = window.innerWidth - sz.w
-      const maxY = window.innerHeight - sz.h
-      const newPx = Math.max(0, Math.min(maxX, startPx + dx))
-      const newPy = Math.max(0, Math.min(maxY, startPy + dy))
-      
-      const xPct = newPx / window.innerWidth
-      const yPct = newPy / window.innerHeight
-
-      dragging.current.currentPx = newPx
-      dragging.current.currentPy = newPy
-      positionsRef.current = {
-        ...positionsRef.current,
-        [key]: { xPct, yPct }
-      }
-      
-      const el = document.getElementById(`widget-${key}`)
-      if (el) {
-        el.style.left = `${xPct * 100}%`
-        el.style.top = `${yPct * 100}%`
-      }
+      flushDrag()
     })
-  }, [])
+  }, [flushDrag])
 
-  const onMouseUp = useCallback(() => {
+  const onMouseUp = useCallback((event: MouseEvent) => {
     if (dragging.current) {
+      dragging.current.mouseX = event.clientX
+      dragging.current.mouseY = event.clientY
+      if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null }
+      flushDrag()
       const key = dragging.current.key
       const finalXPct = dragging.current.currentPx / window.innerWidth
       const finalYPct = dragging.current.currentPy / window.innerHeight
@@ -222,21 +318,35 @@ export function OverlayApp() {
     }
     window.removeEventListener('mousemove', onMouseMove)
     window.removeEventListener('mouseup', onMouseUp)
-  }, [onMouseMove])
+  }, [onMouseMove, flushDrag])
+
+  useEffect(() => () => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+  }, [onMouseMove, onMouseUp])
 
   const startDrag = (key: string, e: React.MouseEvent) => {
     if (!editMode || key === 'crosshair') return
     e.preventDefault()
     e.stopPropagation()
     const pos = positionsRef.current[key as keyof Positions] || DEFAULT_POSITIONS[key as keyof Positions]
+    const element = document.getElementById(`widget-${key}`)
+    const bounds = element?.getBoundingClientRect()
+    const contentBounds = element?.firstElementChild?.getBoundingClientRect()
+    const fallback = WIDGET_APPROX_SIZE[key] || { w: 100, h: 50 }
     dragging.current = {
       key,
       startMX: e.clientX,
       startMY: e.clientY,
-      startPx: pos.xPct * window.innerWidth,
-      startPy: pos.yPct * window.innerHeight,
-      currentPx: pos.xPct * window.innerWidth,
-      currentPy: pos.yPct * window.innerHeight,
+      startPx: bounds?.left ?? pos.xPct * window.innerWidth,
+      startPy: bounds?.top ?? pos.yPct * window.innerHeight,
+      currentPx: bounds?.left ?? pos.xPct * window.innerWidth,
+      currentPy: bounds?.top ?? pos.yPct * window.innerHeight,
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      width: Math.max(bounds?.width || 0, contentBounds?.width || 0) || fallback.w,
+      height: Math.max(bounds?.height || 0, contentBounds?.height || 0) || fallback.h,
     }
     window.addEventListener('mousemove', onMouseMove)
     window.addEventListener('mouseup', onMouseUp)
@@ -250,9 +360,53 @@ export function OverlayApp() {
     await window.electronAPI?.exitOverlayEdit()
   }
 
-  // Allow clicking buttons on interactive widgets (e.g. Media Player)
+
+  const displayGame = editMode ? editGameData || activeGame : activeGame
+  const ds = displayGame?.settings || {}
+
+  const resolveBool = (shortKey: string, longKey: string, defaultVal: boolean = false): boolean => {
+    if (editMode && editGameData?.settings) {
+      if (editGameData.settings[shortKey] !== undefined) return Boolean(editGameData.settings[shortKey])
+      if (editGameData.settings[longKey] !== undefined) return Boolean(editGameData.settings[longKey])
+    }
+    if (ds[shortKey] !== undefined) return Boolean(ds[shortKey])
+    if (ds[longKey] !== undefined) return Boolean(ds[longKey])
+    if (initialSettings?.[longKey] !== undefined) return Boolean(initialSettings[longKey])
+    if (initialSettings?.[shortKey] !== undefined) return Boolean(initialSettings[shortKey])
+    return defaultVal
+  }
+
+  const settings = {
+    cs2Stats:resolveBool('overlayCS2Stats','overlayCS2Stats')&&(editMode||identifyCrosshairGame(displayGame)==='cs2'),
+    performance: resolveBool('performance', 'overlayPerformance'),
+    crosshair: resolveBool('crosshair', 'overlayCrosshair'),
+    robloxTimer: resolveBool('robloxTimer', 'overlayRobloxTimer'),
+    robloxCps: resolveBool('robloxCps', 'overlayRobloxCps'),
+    robloxAntiAfk: resolveBool('robloxAntiAfk', 'overlayRobloxAntiAfk'),
+    cps: resolveBool('cps', 'overlayCps'),
+    rlHud: resolveBool('rlHud', 'overlayRLHud'),
+    overlayRLHud: resolveBool('rlHud', 'overlayRLHud'),
+    overlayRLSteam: resolveBool('overlayRLSteam', 'overlayRLSteam'),
+    overlayController: resolveBool('overlayController', 'overlayController'),
+    overlayControllerStreamOnly: resolveBool('overlayControllerStreamOnly', 'overlayControllerStreamOnly'),
+    overlayRLController: resolveBool('overlayRLController', 'overlayRLController') || resolveBool('overlayController', 'overlayController'),
+    rlControllerSkin: ds.rlControllerSkin || initialSettings?.rlControllerSkin || 'ps5_white',
+    rlControllerUrl: ds.rlControllerUrl || initialSettings?.rlControllerUrl || 'https://gamepadviewer.com/?p=1&s=ps5_white',
+    rlControllerScale: ds.rlControllerScale ?? initialSettings?.rlControllerScale ?? 80,
+    metrics: ds.metrics || initialSettings?.overlayMetrics || { fps: true, cpu: true, ram: true, gpu: true, ping: false, time: true, layout: 'vertical' },
+    crosshairConfig: ds.crosshairConfig || initialSettings?.crosshairConfig,
+    steamProfileUrl: ds.steamProfileUrl || initialSettings?.steamProfileUrl,
+    rlScoreboardKeyCtrl: ds.rlScoreboardKeyCtrl || initialSettings?.rlScoreboardKeyCtrl || 'Button 8',
+    rlSteamAvatarScale: ds.rlSteamAvatarScale ?? initialSettings?.rlSteamAvatarScale ?? 85,
+    overlayMedia: resolveBool('overlayMedia', 'overlayMedia'),
+    overlayMediaSource: ds.overlayMediaSource || initialSettings?.overlayMediaSource || 'all',
+    overlayMediaAutoHide: resolveBool('overlayMediaAutoHide', 'overlayMediaAutoHide'),
+    overlayMediaVisualizer: ds.overlayMediaVisualizer !== false && initialSettings?.overlayMediaVisualizer !== false,
+  }
+
+  // Allow clicking buttons on interactive widgets (e.g. Media Player) ONLY when media widget is active
   useEffect(() => {
-    if (editMode) return
+    if (editMode || !settings.overlayMedia) return
 
     let wasOverInteractive = false
     const onMouseMove = (e: MouseEvent) => {
@@ -280,35 +434,41 @@ export function OverlayApp() {
       window.removeEventListener('mousemove', onMouseMove)
       window.electronAPI?.setOverlayIgnoreMouse?.(true)
     }
-  }, [editMode])
+  }, [editMode, settings.overlayMedia])
 
-  const displayGame = activeGame || editGameData
-  const ds = displayGame?.settings || {}
-  const settings = {
-    performance: ds.performance ?? initialSettings?.overlayPerformance ?? true,
-    crosshair: ds.crosshair ?? initialSettings?.overlayCrosshair ?? true,
-    robloxTimer: ds.robloxTimer ?? initialSettings?.overlayRobloxTimer ?? false,
-    robloxCps: ds.robloxCps ?? initialSettings?.overlayRobloxCps ?? false,
-    robloxAntiAfk: ds.robloxAntiAfk ?? initialSettings?.overlayRobloxAntiAfk ?? false,
-    cps: ds.cps ?? initialSettings?.overlayCps ?? false,
-    rlHud: ds.rlHud ?? initialSettings?.overlayRLHud ?? false,
-    overlayRLHud: ds.rlHud ?? initialSettings?.overlayRLHud ?? false,
-    overlayRLSteam: ds.overlayRLSteam ?? initialSettings?.overlayRLSteam ?? false,
-    overlayController: ds.overlayController ?? initialSettings?.overlayController ?? false,
-    overlayControllerStreamOnly: ds.overlayControllerStreamOnly ?? initialSettings?.overlayControllerStreamOnly ?? false,
-    overlayRLController: ds.overlayRLController ?? (initialSettings?.overlayRLController || initialSettings?.overlayController) ?? false,
-    rlControllerSkin: ds.rlControllerSkin ?? initialSettings?.rlControllerSkin ?? 'ps5_white',
-    rlControllerUrl: ds.rlControllerUrl ?? initialSettings?.rlControllerUrl ?? 'https://gamepadviewer.com/?p=1&s=ps5_white',
-    rlControllerScale: ds.rlControllerScale ?? initialSettings?.rlControllerScale ?? 80,
-    metrics: ds.metrics ?? initialSettings?.overlayMetrics ?? { fps: true, cpu: true, ram: true, gpu: true, ping: false, time: true, layout: 'vertical' },
-    crosshairConfig: ds.crosshairConfig ?? initialSettings?.crosshairConfig,
-    steamProfileUrl: ds.steamProfileUrl ?? initialSettings?.steamProfileUrl,
-    rlScoreboardKeyCtrl: ds.rlScoreboardKeyCtrl ?? initialSettings?.rlScoreboardKeyCtrl ?? 'Button 8',
-    rlSteamAvatarScale: ds.rlSteamAvatarScale ?? initialSettings?.rlSteamAvatarScale ?? 85,
-    overlayMedia: ds.overlayMedia ?? initialSettings?.overlayMedia ?? false,
-    overlayMediaSource: ds.overlayMediaSource ?? initialSettings?.overlayMediaSource ?? 'all',
-    overlayMediaAutoHide: ds.overlayMediaAutoHide ?? initialSettings?.overlayMediaAutoHide ?? false,
-    overlayMediaVisualizer: ds.overlayMediaVisualizer === false || initialSettings?.overlayMediaVisualizer === false ? false : true,
+  const currentLang = initialSettings?.language || activeGame?.settings?.language ||
+    (navigator.language?.toLowerCase().startsWith('de') ? 'de' : 'en')
+
+  // Guard: Never render uninitialized widgets before settings or active game are loaded
+  if (!initialSettings && !activeGame && !editGameData && !clipToast) {
+    return null
+  }
+
+  const isRealGameRunning = Boolean(activeGame && activeGame.name && activeGame.name !== 'Desktop')
+  const isDesktopOverlayAllowed = Boolean(
+    (activeGame?.name === 'Desktop' && (activeGame?.settings?.overlayGeneralAlwaysOn || initialSettings?.overlayGeneralAlwaysOn)) ||
+    initialSettings?.overlayGeneralAlwaysOn
+  )
+  const isPermanentWidgetAllowed = editMode || isRealGameRunning || isDesktopOverlayAllowed
+
+  // Guard: If no game is running and not in edit mode, ensure at least one visible widget is active
+  const isAnyWidgetActive = Boolean(
+    isPermanentWidgetAllowed && (
+      settings.performance ||
+      settings.cs2Stats ||
+      settings.crosshair ||
+      settings.cps ||
+      settings.robloxTimer ||
+      settings.robloxCps ||
+      settings.rlHud ||
+      settings.overlayRLSteam ||
+      (!settings.overlayControllerStreamOnly && (settings.overlayController || settings.overlayRLController)) ||
+      settings.overlayMedia
+    )
+  )
+
+  if (!editMode && !isRealGameRunning && !isAnyWidgetActive && !clipToast) {
+    return null
   }
 
   const renderWidget = (key: string, children: React.ReactNode) => {
@@ -327,14 +487,14 @@ export function OverlayApp() {
     }
 
     return (
-      <div
+      <OverlayWidget
         id={`widget-${key}`}
         key={key}
+        xPct={xPct}
+        yPct={yPct}
+        centered={isCrosshair}
         onMouseDown={editMode && !isCrosshair ? (e) => startDrag(key, e) : undefined}
         style={{
-          position: 'absolute',
-          left: `${xPct * 100}%`,
-          top: `${yPct * 100}%`,
           cursor: editMode && !isCrosshair ? 'grab' : 'default',
           pointerEvents: (editMode && !isCrosshair) || key === 'media' ? 'auto' : 'none',
           zIndex: 10,
@@ -350,7 +510,7 @@ export function OverlayApp() {
           }} />
         )}
         {children}
-      </div>
+      </OverlayWidget>
     )
   }
 
@@ -384,19 +544,19 @@ export function OverlayApp() {
       )}
 
       {/* Widgets */}
-      {settings.performance && renderWidget('performance',
-        <Performance metrics={metrics} config={settings.metrics} editMode={editMode} />
+      {isPermanentWidgetAllowed && settings.performance && renderWidget('performance',
+        <LivePerformance config={settings.metrics} editMode={editMode} language={currentLang} pid={activeGame?.pid} />
       )}
-      {settings.robloxTimer && (editMode || displayGame?.name === 'Roblox') && renderWidget('robloxTimer',
-        <RobloxTimer startTime={displayGame?.startTime || Date.now()} idleTime={metrics.idleTime} antiAfkEnabled={settings.robloxAntiAfk} />
+      {isPermanentWidgetAllowed && settings.robloxTimer && (editMode || displayGame?.name === 'Roblox') && renderWidget('robloxTimer',
+        <LiveRobloxTimer startTime={displayGame?.startTime || Date.now()} antiAfkEnabled={settings.robloxAntiAfk} language={currentLang} />
       )}
-      {(settings.cps || (settings.robloxCps && (editMode || displayGame?.name === 'Roblox')) || (editMode && (settings.cps || settings.robloxCps))) && renderWidget('robloxCps',
-        <RobloxCPS />
+      {isPermanentWidgetAllowed && (settings.cps || (settings.robloxCps && (editMode || displayGame?.name === 'Roblox')) || (editMode && (settings.cps || settings.robloxCps))) && renderWidget('robloxCps',
+        <RobloxCPS language={currentLang} />
       )}
-      {settings.rlHud && (editMode || displayGame?.name === 'Rocket League') && renderWidget('rlHud',
-        <RocketLeagueHUD data={rlData} />
+      {isPermanentWidgetAllowed && settings.rlHud && (editMode || displayGame?.name === 'Rocket League') && renderWidget('rlHud',
+        <RocketLeagueHUD data={rlData} language={currentLang} />
       )}
-      {settings.overlayRLSteam && (editMode || displayGame?.name === 'Rocket League') && settings.steamProfileUrl && renderWidget('rlSteamAvatar',
+      {isPermanentWidgetAllowed && settings.overlayRLSteam && (editMode || displayGame?.name === 'Rocket League') && settings.steamProfileUrl && renderWidget('rlSteamAvatar',
         <RLSteamAvatarHUD 
           steamUrl={settings.steamProfileUrl} 
           scale={settings.rlSteamAvatarScale} 
@@ -404,35 +564,48 @@ export function OverlayApp() {
           isEditMode={editMode}
         />
       )}
-      {(!settings.overlayControllerStreamOnly || editMode) && (settings.overlayController || (settings.overlayRLController && (editMode || displayGame?.name === 'Rocket League')) || (editMode && (settings.overlayController || settings.overlayRLController))) && renderWidget('rlController',
+      {isPermanentWidgetAllowed && (!settings.overlayControllerStreamOnly || editMode) && (settings.overlayController || (settings.overlayRLController && (editMode || displayGame?.name === 'Rocket League')) || (editMode && (settings.overlayController || settings.overlayRLController))) && renderWidget('rlController',
         <ControllerOverlay 
           skin={settings.rlControllerSkin}
           url={settings.rlControllerUrl} 
           scale={settings.rlControllerScale} 
           isEditMode={editMode}
+          language={currentLang}
         />
       )}
-      {settings.crosshair && renderWidget('crosshair',
+      {isPermanentWidgetAllowed && settings.crosshair && renderWidget('crosshair',
         <Crosshair config={settings.crosshairConfig} />
       )}
-      {(settings.overlayMedia || editMode) && renderWidget('media',
+      {isPermanentWidgetAllowed&&settings.cs2Stats&&renderWidget('cs2Stats',<CS2Stats language={currentLang} editMode={editMode}/>)}
+      {isPermanentWidgetAllowed && settings.overlayMedia && renderWidget('media',
         <MediaOverlayWidget 
           editMode={editMode} 
           autoHide={settings.overlayMediaAutoHide}
           mediaSource={settings.overlayMediaSource}
           showVisualizer={settings.overlayMediaVisualizer}
-          language={initialSettings?.language || 'de'}
+          language={currentLang}
+        />
+      )}
+
+      {/* Clip Saved Toast Notification Overlay (bottom-right) */}
+      {clipToast && (
+        <ClipToastOverlay
+          key={clipToast.id}
+          toast={clipToast}
+          onDismiss={handleDismissClipToast}
+          language={clipToast.language || currentLang}
+          color={clipToast.color || initialSettings?.overlayClipToastColor || '#ff6600'}
         />
       )}
 
       {/* Edit mode UI */}
       {editMode && (() => {
-        const isDe = (initialSettings?.language || 'en') === 'de'
+        const isDe = currentLang === 'de'
         return (
           <div style={{
             position: 'absolute', bottom: 26, left: '50%', transform: 'translateX(-50%)',
             display: 'flex', alignItems: 'center', gap: 14,
-            background: 'rgba(10, 11, 16, 0.88)', backdropFilter: 'blur(20px) saturate(180%)',
+            background: 'rgba(10, 11, 16, 0.96)',
             border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: 12,
             padding: '7px 10px 7px 16px',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
@@ -444,7 +617,7 @@ export function OverlayApp() {
               color: 'rgba(255, 255, 255, 0.8)', letterSpacing: '0.02em',
             }}>
               <span style={{ fontSize: 13 }}>🖱️</span>
-              <span>{isDe ? 'Widgets ziehen zum Positionieren' : 'Drag widgets to reposition'}</span>
+              <span>{isDe ? 'Elemente ziehen zum Positionieren' : 'Drag elements to reposition'}</span>
             </div>
 
             <div style={{ width: 1, height: 18, background: 'rgba(255, 255, 255, 0.1)' }} />

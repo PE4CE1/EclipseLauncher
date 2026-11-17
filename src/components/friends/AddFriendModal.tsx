@@ -1,263 +1,112 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { X, Copy, Check, Loader2 } from 'lucide-react';
-import { useTranslation } from '../../hooks/useTranslation';
-import { useUIStore } from '../../store/uiStore';
-import { useGameStore } from '../../store/gameStore';
-import { fetchSteamUserProfile } from '../../services/steamService';
-import { addFriendByCode, sendFriendRequest, getOrCreateFriendCode, syncMyProfile, fetchUserProfile } from '../../services/socialService';
-import { sendAppNotification } from '../../services/notificationService';
-import type { EclipseFriend } from '../../types/game';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { X, Copy, Check, Loader2, UserPlus, UserRound } from 'lucide-react'
+import { useTranslation } from '../../hooks/useTranslation'
+import { useDialogFocus } from '../../hooks/useDialogFocus'
+import { useUIStore } from '../../store/uiStore'
+import { useGameStore } from '../../store/gameStore'
+import { fetchSteamUserProfile } from '../../services/steamService'
+import { addFriendByCode, getOrCreateFriendCode, syncMyProfile, fetchUserProfile } from '../../services/socialService'
+import { sendAppNotification } from '../../services/notificationService'
+import { copyText } from '../../services/clipboard'
+import type { EclipseFriend } from '../../types/game'
+import './friends.css'
 
-export const AddFriendModal: React.FC = () => {
-  const { t } = useTranslation();
-  const { isAddFriendOpen, setIsAddFriendOpen, openFriendProfile } = useUIStore();
-  const { settings, updateSettings } = useGameStore();
-  const [friendCodeInput, setFriendCodeInput] = useState('');
-  const [copied, setCopied] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const syncInitial = typeof window !== 'undefined' ? (window as any).electronAPI?.account?.initialIdentity : null;
-  const myFriendCode = (settings.friendCode && settings.friendCode.startsWith('ECL-'))
-    ? settings.friendCode
-    : ((syncInitial?.friendCode && syncInitial.friendCode.startsWith('ECL-'))
-      ? syncInitial.friendCode
-      : getOrCreateFriendCode());
-
-  // Ensure friend code is in store and sync profile
-  useEffect(() => {
-    if (isAddFriendOpen) {
-      if (!settings.friendCode || !settings.friendCode.startsWith('ECL-')) {
-        const code = getOrCreateFriendCode();
-        if (code && code.startsWith('ECL-') && settings.friendCode !== code) {
-          updateSettings({ friendCode: code });
+export function AddFriendModal() {
+  const open=useUIStore(state=>state.isAddFriendOpen)
+  return open?<AddFriendDialog/>:null
+}
+export function AddFriendDialog({embedded=false,onClose,onVisit}:{embedded?:boolean;onClose?:()=>void;onVisit?:(id:string)=>void}={}) {
+  const {t}=useTranslation()
+  const settings=useGameStore(state=>state.settings)
+  const close=()=>{
+    if(embedded){onClose?.();return}
+    useUIStore.getState().setIsAddFriendOpen(false)
+    void window.electronAPI?.addFriendModalClosed?.()
+  }
+  const [value,setValue]=useState(''),[copied,setCopied]=useState(false),[loading,setLoading]=useState<'add'|'profile'|null>(null),[error,setError]=useState('')
+  const panel=useRef<HTMLDivElement>(null),input=useRef<HTMLInputElement>(null),busy=useRef(false),mounted=useRef(false),copyTimer=useRef<ReturnType<typeof setTimeout>>()
+  const nativeCode=window.electronAPI?.account?.initialIdentity?.friendCode
+  const myCode=settings.friendCode?.startsWith('ECL-')?settings.friendCode:typeof nativeCode==='string'&&nativeCode.startsWith('ECL-')?nativeCode:''
+  useDialogFocus(panel,close,!embedded)
+  useLayoutEffect(()=>{
+    input.current?.focus({preventScroll:true})
+    if(embedded)return
+    // The native host waits for the opaque dialog to have a rendered frame.
+    let frame=requestAnimationFrame(()=>{frame=requestAnimationFrame(()=>{void window.electronAPI?.addFriendModalReady?.()})})
+    return()=>cancelAnimationFrame(frame)
+  },[])
+  useEffect(()=>{
+    mounted.current=true
+    if(!myCode)getOrCreateFriendCode()
+    if(!embedded)void syncMyProfile().catch(()=>{})
+    return()=>{mounted.current=false;clearTimeout(copyTimer.current)}
+  },[])
+  const copy=async()=>{
+    try{await copyText(myCode);if(!mounted.current)return;setCopied(true);clearTimeout(copyTimer.current);copyTimer.current=setTimeout(()=>setCopied(false),1800)}
+    catch{if(mounted.current)setError(t('friendsCopyFailed'))}
+  }
+  const translateError=(raw?:string)=>{
+    const text=(raw||'').toLowerCase()
+    if(/selbst|yourself|self/.test(text))return t('cannotAddSelf')
+    if(/bereits befreundet|already friends|already in your/.test(text))return t('alreadyFriends')
+    if(/bereits|already|ausstehend|pending/.test(text))return t('requestAlreadySent')
+    if(/kein spieler|not found|ungültig|invalid|nicht gefunden/.test(text))return t('playerNotFound')
+    return t('friendsActionFailed')
+  }
+  const perform=async(kind:'add'|'profile')=>{
+    const text=value.trim()
+    if(!text||busy.current)return
+    busy.current=true;setLoading(kind);setError('')
+    const normalized=text.toUpperCase().replace(/\s+/g,'')
+    const current=useGameStore.getState().settings
+    try{
+      if(kind==='profile'){
+        const profile=await fetchUserProfile(text)
+        if(!mounted.current)return
+        if(profile?.uid){close();if(onVisit)onVisit(profile.uid);else useUIStore.getState().openFriendProfile(profile.uid);return}
+        if(!normalized.startsWith('ECL-')){
+          const steam=await fetchSteamUserProfile(text)
+          if(!mounted.current)return
+          if(steam?.steamId64&&steam.username&&!steam.username.toLowerCase().includes('error')){close();if(onVisit)onVisit(steam.steamId64);else useUIStore.getState().openFriendProfile(steam.steamId64);return}
+        }
+        setError(t('playerNotFound'));return
+      }
+      const ownCode=(current.friendCode||myCode).toUpperCase().replace(/\s+/g,'')
+      if(normalized===ownCode||normalized===(current.userUid||'').toUpperCase()||(ownCode&&normalized.replace(/^ECL-/,'')===ownCode.replace(/^ECL-/,''))){setError(t('cannotAddSelf'));return}
+      if(current.eclipseFriends?.some(friend=>friend.id.toLowerCase()===text.toLowerCase()||friend.friendCode?.toUpperCase()===normalized)){setError(t('alreadyFriends'));return}
+      const result=await addFriendByCode(text)
+      if(!mounted.current)return
+      if(result.success){
+        close()
+        if(result.state==='incoming') { if(window.electronAPI?.openFriendsWindow)void window.electronAPI.openFriendsWindow();else useUIStore.getState().setIsFriendsOpen(true) }
+        void sendAppNotification({title:result.state==='friends'?t('alreadyFriends'):result.state==='incoming'?t('friendsRequestTitle'):t('friendsRequestSentTitle'),body:result.state==='incoming'?t('friendsIncomingHint'):result.state==='pending'?t('requestAlreadySent'):result.state==='friends'?t('alreadyFriends'):t('requestSentSuccess'),type:'success'})
+        return
+      }
+      if(!normalized.startsWith('ECL-')){
+        const profile=await fetchSteamUserProfile(text)
+        if(!mounted.current)return
+        if(profile?.steamId64&&profile.username&&!profile.username.toLowerCase().includes('error')){
+          const friends=useGameStore.getState().settings.eclipseFriends||[]
+          if(friends.some(friend=>friend.id===profile.steamId64)){setError(t('alreadyFriends'));return}
+          const friend:EclipseFriend={id:profile.steamId64,username:profile.username,avatarUrl:profile.avatarFull||'',status:profile.onlineState==='in-game'?'ingame':profile.onlineState==='online'?'online':'offline',steamProfileUrl:`https://steamcommunity.com/profiles/${profile.steamId64}`,level:profile.steamLevel||1,steamLevel:profile.steamLevel||1,steamRecentGames:profile.steamRecentGames||[],steamFavoriteBadge:profile.steamFavoriteBadge||undefined}
+          useGameStore.getState().updateSettings({eclipseFriends:[...friends,friend]})
+          close();void sendAppNotification({title:t('friendsAddedTitle'),body:t('friendsAddedBody',{name:friend.username}),type:'success'});return
         }
       }
-      syncMyProfile();
-    }
-  }, [isAddFriendOpen]);
-
-  if (!isAddFriendOpen) return null;
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(myFriendCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const translateError = (rawErr?: string) => {
-    if (!rawErr) return t('playerNotFound');
-    const lower = rawErr.toLowerCase();
-    if (lower.includes('kein spieler') || lower.includes('not found') || lower.includes('ungültig') || lower.includes('invalid') || lower.includes('nicht gefunden')) {
-      return t('playerNotFound');
-    }
-    if (lower.includes('selbst') || lower.includes('yourself') || lower.includes('self')) {
-      return t('cannotAddSelf');
-    }
-    if (lower.includes('bereits befreundet') || lower.includes('already friends') || lower.includes('already in your')) {
-      return t('alreadyFriends');
-    }
-    if (lower.includes('bereits') || lower.includes('already') || lower.includes('ausstehend') || lower.includes('pending')) {
-      return t('requestAlreadySent');
-    }
-    return t('playerNotFound');
-  };
-
-  const handleViewProfile = async () => {
-    const input = friendCodeInput.trim();
-    if (!input) return;
-    setError('');
-    setLoading(true);
-
-    try {
-      // 1. Look up in Cloudflare D1
-      const profile = await fetchUserProfile(input);
-      if (profile && profile.uid) {
-        setIsAddFriendOpen(false);
-        openFriendProfile(profile.uid);
-        return;
-      }
-
-      // 2. Steam Profile fallback (ONLY if not an Eclipse Friend Code format)
-      const cleanUpper = input.toUpperCase().replace(/\s+/g, '');
-      if (!cleanUpper.startsWith('ECL-')) {
-        const steamProfile = await fetchSteamUserProfile(input);
-        if (steamProfile && (steamProfile.steamId64 || steamProfile.username) && !steamProfile.username.toLowerCase().includes('error')) {
-          setIsAddFriendOpen(false);
-          openFriendProfile(steamProfile.steamId64 || input);
-          return;
-        }
-      }
-
-      setError(t('playerNotFound'));
-    } catch (err: any) {
-      setError(err?.message ? translateError(err.message) : t('profileLoadError'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddFriend = async () => {
-    const input = friendCodeInput.trim();
-    if (!input) return;
-    setError('');
-    setLoading(true);
-
-    const cleanInput = input.toUpperCase().replace(/\s+/g, '');
-    const myCode = settings.friendCode?.toUpperCase().replace(/\s+/g, '') || '';
-    const myUid = settings.userUid || '';
-
-    // Guard: Prevent adding self
-    if (cleanInput === myCode || cleanInput === myUid || (cleanInput.replace(/^ECL-/, '') === myCode.replace(/^ECL-/, '') && myCode)) {
-      setError(t('cannotAddSelf'));
-      setLoading(false);
-      return;
-    }
-
-    const currentFriends = settings.eclipseFriends || [];
-    if (currentFriends.some(f => f.id.toLowerCase() === input.toLowerCase() || (f.friendCode && f.friendCode.toUpperCase() === cleanInput))) {
-      setError(t('alreadyFriends'));
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // 1. Instant bilateral add via Cloudflare D1 Social Network
-      const addRes = await addFriendByCode(input);
-      if (addRes.success) {
-        setFriendCodeInput('');
-        setIsAddFriendOpen(false);
-        setLoading(false);
-        sendAppNotification({
-          title: settings.language === 'de' ? 'Freund hinzugefügt! 👥' : 'Friend Added! 👥',
-          body: addRes.message || (settings.language === 'de' ? 'Freund erfolgreich hinzugefügt.' : 'Friend added successfully.'),
-          type: 'success',
-          duration: 5000,
-        });
-        return;
-      }
-
-      // 2. Fallback to Steam Web Profile lookup ONLY if input is NOT an Eclipse Friend Code format
-      if (!cleanInput.startsWith('ECL-')) {
-        const profile = await fetchSteamUserProfile(input);
-        if (profile && (profile.steamId64 || profile.username) && !profile.username.toLowerCase().includes('error')) {
-          const friendId = profile.steamId64 || `steam_${input.toLowerCase().replace(/[^a-z0-9_]/g, '')}`;
-          if (currentFriends.some(f => f.id === friendId)) {
-            setError(t('alreadyFriends'));
-            setLoading(false);
-            return;
-          }
-
-          let status: 'online' | 'offline' | 'ingame' = 'offline';
-          if (profile.onlineState === 'in-game') status = 'ingame';
-          else if (profile.onlineState === 'online') status = 'online';
-
-          const newFriend: EclipseFriend = {
-            id: friendId,
-            username: profile.username || input,
-            avatarUrl: profile.avatarFull || '',
-            status: status,
-            steamProfileUrl: profile.steamId64 ? `https://steamcommunity.com/profiles/${profile.steamId64}` : `https://steamcommunity.com/id/${input}`,
-            level: profile.steamLevel || 1,
-            steamLevel: profile.steamLevel || 1,
-            steamRecentGames: profile.steamRecentGames || [],
-            steamFavoriteBadge: profile.steamFavoriteBadge || null,
-          };
-
-          updateSettings({
-            eclipseFriends: [...currentFriends, newFriend],
-          });
-
-          setFriendCodeInput('');
-          setIsAddFriendOpen(false);
-          sendAppNotification({
-            title: settings.language === 'de' ? 'Freund hinzugefügt! 👥' : 'Friend Added! 👥',
-            body: settings.language === 'de' 
-              ? `Steam-Freund ${newFriend.username} wurde hinzugefügt!` 
-              : `Steam friend ${newFriend.username} added successfully!`,
-            type: 'success',
-            duration: 5000,
-          });
-          return;
-        }
-      }
-
-      // No valid player found — show error
-      setError(translateError(addRes.error));
-    } catch (err: any) {
-      setError(translateError(err?.message));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-lg bg-[#181a1f] border border-white/5 rounded-xl shadow-2xl overflow-hidden"
-      >
-        <div className="flex items-center justify-between p-4 border-b border-white/5 bg-[#1b1d24]">
-          <h2 className="text-base font-bold text-white">{t('addFriendTitle')}</h2>
-          <button 
-            onClick={() => setIsAddFriendOpen(false)}
-            className="text-white/50 hover:text-white transition-colors p-1 cursor-pointer"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="p-6">
-          <div className="bg-[#111317] border border-white/5 rounded-lg p-4 flex items-center justify-between mb-8 group hover:border-white/20 transition-colors">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-white/70">{t('yourFriendCode')}:</span>
-              <span className="text-sm font-mono text-white tracking-wider font-bold">{myFriendCode}</span>
-            </div>
-            <button 
-              onClick={handleCopy}
-              className="text-white/40 hover:text-white transition-colors cursor-pointer"
-              title="Copy code"
-            >
-              {copied ? <Check size={18} className="text-green-400" /> : <Copy size={18} />}
-            </button>
-          </div>
-
-          <div className="mb-2">
-            <label className="block text-sm font-semibold text-white/70 mb-2">{t('friendCodeLabel')}</label>
-            <div className="flex items-center gap-3 w-full">
-              <input
-                type="text"
-                value={friendCodeInput}
-                onChange={(e) => setFriendCodeInput(e.target.value)}
-                placeholder={t('friendCodePlaceholder')}
-                className="flex-[2] bg-[#111317] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm outline-none focus:border-white/40 transition-colors font-mono"
-                onKeyDown={(e) => e.key === 'Enter' && handleAddFriend()}
-              />
-              <button 
-                onClick={handleAddFriend}
-                disabled={loading || !friendCodeInput.trim()}
-                className="flex-1 bg-white text-black font-bold px-4 py-2.5 rounded-lg text-sm hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center min-w-[100px] cursor-pointer shadow-sm"
-              >
-                {loading ? <Loader2 size={16} className="animate-spin" /> : t('add')}
-              </button>
-              <button 
-                onClick={handleViewProfile}
-                disabled={loading || !friendCodeInput.trim()}
-                className="flex-1 bg-transparent border border-white/20 text-white font-semibold px-4 py-2.5 rounded-lg text-sm hover:bg-white/10 transition-colors min-w-[110px] whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t('viewProfile')}
-              </button>
-            </div>
-            {error && <p className="text-red-400 text-xs mt-3">{error}</p>}
-            <p className="text-white/30 text-[11px] mt-6 leading-tight">
-              {t('friendCodeHint')}
-            </p>
-          </div>
-        </div>
-      </motion.div>
+      setError(translateError(result.error))
+    }catch{if(mounted.current)setError(t('friendsActionFailed'))}
+    finally{busy.current=false;if(mounted.current)setLoading(null)}
+  }
+  const content=<div ref={panel} className={'add-friend-dialog'+(embedded?' add-friend-embedded':'')} data-add-friend-dialog role={embedded?'region':'dialog'} aria-modal={embedded?undefined:true} aria-labelledby="add-friend-title" onKeyDown={event=>{if(embedded&&event.key==='Escape'){event.preventDefault();event.stopPropagation();close()}}} onClick={event=>event.stopPropagation()}>
+      <header className="add-friend-header"><div><span><UserPlus size={17}/></span><h2 id="add-friend-title">{t('addFriendTitle')}</h2></div><button data-dialog-close data-add-friend-close className="add-friend-close" onClick={close} aria-label={t('close')}><X size={18}/></button></header>
+      <div className="add-friend-body"><p className="add-friend-description">{t('friendsAddDescription')}</p><div className="add-friend-code"><div><span>{t('yourFriendCode')}</span><code>{myCode||'…'}</code></div><button data-friend-code-copy onClick={()=>void copy()} disabled={!myCode} aria-label={t('uiCopyCode')} title={t('uiCopyCode')}>{copied?<Check size={16}/>:<Copy size={16}/>}</button></div>
+        <form onSubmit={event=>{event.preventDefault();void perform('add')}} aria-busy={!!loading}><label htmlFor="add-friend-input">{t('friendCodeLabel')}</label><div className="add-friend-input"><UserRound size={15}/><input ref={input} id="add-friend-input" data-add-friend-input value={value} onChange={event=>{setValue(event.target.value);if(error)setError('')}} placeholder={t('friendCodePlaceholder')} autoComplete="off" maxLength={512}/></div>
+          {error&&<p className="add-friend-error" role="alert">{error}</p>}
+          <div className="add-friend-actions"><button type="button" data-friend-view-profile disabled={!!loading||!value.trim()} onClick={()=>void perform('profile')}>{loading==='profile'?<Loader2 size={13} className="add-friend-loading"/>:null}{t('viewProfile')}</button><button type="submit" data-friend-submit disabled={!!loading||!value.trim()}>{loading==='add'?<Loader2 size={13} className="add-friend-loading"/>:<UserPlus size={13}/>}{t('add')}</button></div>
+        </form>
+        <p className="add-friend-hint">{t('friendsCodeDescription')}</p>{copied&&<span role="status" className="sr-only">{t('friendsCodeCopied')}</span>}
+      </div>
     </div>
-  );
-};
+  return embedded?content:createPortal(<div className="add-friend-shade" data-add-friend-backdrop onClick={close}>{content}</div>,document.body)
+}

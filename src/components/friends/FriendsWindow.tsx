@@ -1,425 +1,141 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, Plus, ChevronRight, ChevronDown, User, MoreVertical, Trash2, Check, Gamepad2 } from 'lucide-react';
-import { useTranslation } from '../../hooks/useTranslation';
-import { useUIStore } from '../../store/uiStore';
-import { useGameStore } from '../../store/gameStore';
-import { 
-  removeFirebaseFriend, 
-  restoreFirebaseFriend, 
-  acceptFriendRequest, 
-  declineFriendRequest,
-} from '../../services/socialService';
-import { fetchSteamUserProfile } from '../../services/steamService';
-import { formatLastSeen } from '../../services/assetHelper';
+import { DropdownSurface } from '../shared/DropdownSurface'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { motion, useDragControls } from 'framer-motion'
+import { X, Search, Plus, ChevronDown, User, Users, MoreHorizontal, Trash2, Check, Gamepad2, RefreshCw, MessageCircle } from 'lucide-react'
+import { useTranslation } from '../../hooks/useTranslation'
+import { useUIStore } from '../../store/uiStore'
+import { useGameStore } from '../../store/gameStore'
+import { removeFirebaseFriend, restoreFirebaseFriend, acceptFriendRequest, declineFriendRequest, cancelFriendRequest, refreshFriendsPresence, isFirestorePermissionDenied } from '../../services/socialService'
+import { formatLastSeen } from '../../services/assetHelper'
+import { safeProfileMedia } from '../../services/profileModel'
+import type { EclipseFriend } from '../../types/game'
+import './friends.css'
+import { AddFriendDialog } from './AddFriendModal'
+import { FriendsChat } from './FriendsChat'
+import { FriendMuteControl } from './FriendMuteControl'
 
-interface FriendsWindowProps {
-  isStandalone?: boolean;
+function FriendAvatar({avatar,name,status}:{avatar?:string;name:string;status?:string}) {
+  const [failed,setFailed]=useState<string>()
+  const source=safeProfileMedia(avatar)
+  return <span className="friends-avatar"><span><User size={18}/>{source&&source!==failed&&<img src={source} alt="" decoding="async" onError={()=>setFailed(source)}/>}</span>{status&&<i data-status={status} aria-hidden="true"/>}</span>
 }
 
-export const FriendsWindow: React.FC<FriendsWindowProps> = ({ isStandalone = false }) => {
-  const { t, language } = useTranslation();
-  const { isFriendsOpen, setIsFriendsOpen, setIsAddFriendOpen, openFriendProfile } = useUIStore();
-  const { settings, updateSettings } = useGameStore();
-  const [isOnlineExpanded, setIsOnlineExpanded] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-
+export function FriendsWindow({isStandalone=false}:{isStandalone?:boolean}) {
+  const {t,language}=useTranslation()
+  const open=useUIStore(state=>state.isFriendsOpen)
+  const setOpen=useUIStore(state=>state.setIsFriendsOpen)
+  const setAdd=useUIStore(state=>state.setIsAddFriendOpen)
+  const openProfile=useUIStore(state=>state.openFriendProfile)
+  const settings=useGameStore(state=>state.settings)
+  const activeGame=useGameStore(state=>state.activeGame)
+  const [search,setSearch]=useState(''),[onlineExpanded,setOnlineExpanded]=useState(true),[offlineExpanded,setOfflineExpanded]=useState(true)
+  const [tab,setTab]=useState<'friends'|'requests'|'messages'>('friends')
+  const [chatFriend,setChatFriend]=useState<string|null>(null),[unreadChats,setUnreadChats]=useState(0)
+  const chat=(id:string)=>{setChatFriend(id);setTab('messages')}
   useEffect(() => {
-    if (isFriendsOpen) {
-      setIsLoading(true);
-      const timer = setTimeout(() => setIsLoading(false), 400);
-      return () => clearTimeout(timer);
-    }
-  }, [isFriendsOpen]);
-  
-  const [removedFriend, setRemovedFriend] = useState<any>(null);
-  const undoTimeoutRef = useRef<any>(null);
+    const api = window.electronAPI?.chatNotifications
+    if (!isStandalone || !api) return
+    let disposed = false, revision = 0
+    const stop = api.onOpen(peer => { revision++; chat(peer); void api.pending().catch(() => {}) })
+    const requested = revision
+    void api.pending().then(peer => { if (!disposed && revision === requested && peer) chat(peer) }).catch(() => {})
+    return () => { disposed = true; stop() }
+  }, [isStandalone])
+  const [adding,setAdding]=useState(false)
+  const [refreshing,setRefreshing]=useState(false),[error,setError]=useState(false),[removed,setRemoved]=useState<EclipseFriend|null>(null),[pending,setPending]=useState<string|null>(null)
+  const refreshLock=useRef(false),removeLock=useRef(false),mounted=useRef(false),undoTimer=useRef<ReturnType<typeof setTimeout>>()
+  const drag=useDragControls()
+  const origin=useRef({left:Math.max(12,window.innerWidth-364),top:Math.max(0,Math.min(80,window.innerHeight-540))})
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;clearTimeout(undoTimer.current)}},[])
+  const refresh=async(force=false)=>{
+    if(refreshLock.current)return
+    refreshLock.current=true;setRefreshing(true)
+    try{await refreshFriendsPresence(force);if(mounted.current)setError(false)}
+    catch{if(mounted.current)setError(true)}
+    finally{refreshLock.current=false;if(mounted.current)setRefreshing(false)}
+  }
+  useEffect(()=>{if(open)void refresh()},[open])
+  const friends=settings.eclipseFriends||[],requests=settings.incomingFriendRequests||[],outgoing=settings.outgoingFriendRequests||[]
+  const conversationOpen=tab==='messages'&&friends.some(friend=>friend.id===chatFriend)
+  const query=search.trim().toLocaleLowerCase(language)
+  const online=friends.filter(friend=>friend.status==='online'||friend.status==='ingame')
+  const filtered=friends.filter(friend=>!query||friend.username.toLocaleLowerCase(language).includes(query))
+  const onlineResults=filtered.filter(friend=>friend.status==='online'||friend.status==='ingame'),offlineResults=filtered.filter(friend=>friend.status==='offline')
+  const selfPlaying=!!activeGame
+  const visit=(id:string)=>{if(isStandalone&&window.electronAPI?.openFriendProfileModal)void window.electronAPI.openFriendProfileModal(id);else openProfile(id)}
+  const add=()=>setAdding(true)
+  const close=()=>{setOpen(false);if(isStandalone)void window.electronAPI?.closeFriendsWindow?.()}
+  const remove=async(friend:EclipseFriend)=>{
+    if(removeLock.current)return
+    removeLock.current=true
+    try{await removeFirebaseFriend(friend.id);if(mounted.current){setRemoved(friend);clearTimeout(undoTimer.current);undoTimer.current=setTimeout(()=>setRemoved(null),5000)}}
+    catch{if(mounted.current)setError(true)}
+    finally{removeLock.current=false}
+  }
+  const undo=async()=>{
+    if(!removed||removeLock.current)return
+    removeLock.current=true
+    try{await restoreFirebaseFriend(removed);if(mounted.current)setRemoved(null);clearTimeout(undoTimer.current)}catch{if(mounted.current)setError(true)}finally{removeLock.current=false}
+  }
+  const requestLock=useRef(false)
+  const requestAction=async(id:string,action:'accept'|'decline'|'cancel')=>{
+    if(requestLock.current)return
+    requestLock.current=true
+    setPending(id)
+    try{const result=await(action==='accept'?acceptFriendRequest(id):action==='cancel'?cancelFriendRequest(id):declineFriendRequest(id));if(mounted.current)setError(!result.success)}catch{if(mounted.current)setError(true)}finally{requestLock.current=false;if(mounted.current)setPending(null)}
+  }
+  if(!open)return null
+  return <motion.section initial={false} drag={!isStandalone} dragListener={false} dragControls={drag} dragMomentum={false}
+    dragConstraints={{left:-origin.current.left,right:Math.max(0,window.innerWidth-340)-origin.current.left,top:-origin.current.top,bottom:Math.max(0,window.innerHeight-540)-origin.current.top}}
+    className="friends-window" data-friends-window data-standalone={isStandalone||undefined} style={isStandalone?undefined:{left:origin.current.left,top:origin.current.top}} aria-label={t('friends')}>
+    <header className="friends-titlebar" data-friends-drag onPointerDown={event=>{if(!isStandalone&&!(event.target as HTMLElement).closest('button'))drag.start(event)}}>
+      <div><Users size={15}/><h2>{t('friends')}</h2><span>{online.length}</span></div>
+      <nav><button data-friends-refresh onClick={()=>void refresh(true)} disabled={refreshing} aria-label={t('friendsRefresh')} title={t('friendsRefresh')}><RefreshCw size={14} className={refreshing?'friends-refreshing':undefined}/></button><button data-friends-close onClick={close} aria-label={t('close')}><X size={17}/></button></nav>
+    </header>
+    {!conversationOpen&&<div className="friends-self"><FriendAvatar avatar={settings.avatarUrl} name={settings.username||'Eclipse'} status={selfPlaying?'ingame':'online'}/><div><strong>{settings.username||'Eclipse'}</strong><span data-playing={selfPlaying||undefined}>{selfPlaying&&<Gamepad2 size={11}/>}<span>{selfPlaying?activeGame?.name:t('online')}</span></span></div></div>}
+    {adding?<AddFriendDialog embedded onClose={()=>setAdding(false)} onVisit={visit}/>:<>
+    {!conversationOpen&&<div className="friends-toolbar"><label><Search size={14}/><input data-friends-search value={search} onChange={event=>setSearch(event.target.value)} placeholder={t('searchFriends')} aria-label={t('searchFriends')}/>{search&&<button onClick={()=>setSearch('')} aria-label={t('friendsClearSearch')}><X size={12}/></button>}</label><button data-friends-add className="friends-add" onClick={add}><Plus size={14}/>{t('add')}</button></div>}
+    {!conversationOpen&&<div className="friends-tabs" role="tablist" aria-label={t('friends')}><button role="tab" aria-selected={tab==='friends'} data-friends-tab="friends" onClick={()=>setTab('friends')}>{t('friends')}<span>{friends.length}</span></button><button role="tab" aria-selected={tab==='requests'} data-friends-tab="requests" onClick={()=>setTab('requests')}>{t('friendsRequests')}{(requests.length>0||outgoing.length>0)&&<span data-pending={requests.length>0||undefined}>{requests.length||outgoing.length}</span>}</button><button role="tab" aria-selected={tab==='messages'} data-friends-tab="messages" onClick={()=>setTab('messages')}>{language==='de'?'Nachrichten':'Messages'}{unreadChats>0&&<span data-pending>{unreadChats}</span>}</button></div>}
+    {tab!=='messages'&&<div className="friends-list" data-friends-list>
+      {(error||isFirestorePermissionDenied)&&<p className="friends-notice" role="status">{t('friendsSyncFailed')}</p>}
+      {tab==='requests'?<>
+        {requests.length>0&&<section className="friends-requests"><h3>{t('friendsRequests')}<span>{requests.length}</span></h3>{requests.map(request=><div key={request.fromUid} className="friend-request"><FriendAvatar avatar={request.fromAvatarUrl} name={request.fromUsername}/><div><button className="friend-request-profile" onClick={()=>visit(request.fromUid)}><strong>{request.fromUsername}</strong></button><span>{request.fromFriendCode}</span></div><button className="friend-request-accept" data-friend-accept={request.fromUid} disabled={!!pending} onClick={()=>void requestAction(request.fromUid,'accept')} aria-label={t('friendsAccept')} title={t('friendsAccept')}><Check size={12}/>{t('friendsAcceptShort')}</button><button data-friend-decline={request.fromUid} disabled={!!pending} onClick={()=>void requestAction(request.fromUid,'decline')} aria-label={t('friendsDecline')} title={t('friendsDecline')}><X size={14}/></button></div>)}</section>}
+        {outgoing.length>0&&<section className="friends-requests"><h3>{t('friendsSentRequests')}<span>{outgoing.length}</span></h3>{outgoing.map(request=><div key={request.toUid} className="friend-request"><FriendAvatar avatar={request.toAvatarUrl} name={request.toUsername}/><div><button className="friend-request-profile" onClick={()=>visit(request.toUid)}><strong>{request.toUsername}</strong></button><span>{request.toFriendCode}</span></div><button data-friend-cancel={request.toUid} disabled={!!pending} onClick={()=>void requestAction(request.toUid,'cancel')} title={t('friendsCancelRequest')} aria-label={t('friendsCancelRequest')}><X size={14}/></button></div>)}</section>}
+        {!requests.length&&!outgoing.length&&<div className="friends-request-empty"><Users size={25}/><strong>{t('friendsRequestsEmpty')}</strong><p>{t('friendsRequestsEmptyHint')}</p></div>}
+      </>:<>
+      {requests.length>0&&<button className="friends-request-hint" data-friends-show-requests onClick={()=>setTab('requests')}><Users size={13}/><span>{requests.length===1?t('friendsPendingSingle'):t('friendsPendingHint',{count:requests.length})}</span><ChevronDown size={12}/></button>}
+      {query&&filtered.length===0?<p className="friends-empty">{t('friendsNoResults')}</p>:<>
+        <section className="friends-group"><button data-friends-online className="friends-group-title" onClick={()=>setOnlineExpanded(value=>!value)} aria-expanded={onlineExpanded}><ChevronDown size={12} data-collapsed={!onlineExpanded||undefined}/><span>{t('online')}</span><small>{onlineResults.length}</small></button>{onlineExpanded&&(onlineResults.length?onlineResults.map(friend=><FriendRow key={friend.id} friend={friend} visit={visit} remove={remove} chat={chat}/>):<p className="friends-empty">{t('friendsNoOnline')}</p>)}</section>
+        <section className="friends-group"><button data-friends-offline className="friends-group-title" onClick={()=>setOfflineExpanded(value=>!value)} aria-expanded={offlineExpanded}><ChevronDown size={12} data-collapsed={!offlineExpanded||undefined}/><span>{t('offline')}</span><small>{offlineResults.length}</small></button>{offlineExpanded&&(offlineResults.length?offlineResults.map(friend=><FriendRow key={friend.id} friend={friend} visit={visit} remove={remove} chat={chat}/>):!friends.length&&<p className="friends-empty">{t('friendsEmpty')}</p>)}</section>
+      </>}
+      </>}
+    </div>}
+    <FriendsChat key={settings.userUid||'anonymous'} friends={friends} selected={chatFriend} select={setChatFriend} active={tab==='messages'} language={language} unreadChanged={setUnreadChats} identityKey={settings.userUid}/>
+    </>}
+    <footer className="friends-footer"><span><i/>{t('friendsOnlineCount',{count:online.length})}</span><span>ECLIPSE</span></footer>
+    {removed&&<div className="friends-undo" role="status"><span>{t('friendsRemoved',{name:removed.username})}</span><button onClick={()=>void undo()}>{/^\d{17}$/.test(removed.id)||removed.id.startsWith('steam_')?t('friendsUndo'):t('friendsRequestAgain')}</button></div>}
+  </motion.section>
+}
 
-  const handleRemoveFriend = (friendId: string) => {
-    const friend = settings.eclipseFriends?.find(f => f.id === friendId);
-    if (!friend) return;
-    
-    setRemovedFriend(friend);
-    removeFirebaseFriend(friendId);
-
-    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
-    undoTimeoutRef.current = setTimeout(() => {
-      setRemovedFriend(null);
-    }, 5000);
-  };
-
-  const handleUndoRemove = () => {
-    if (!removedFriend) return;
-    restoreFirebaseFriend(removedFriend);
-    setRemovedFriend(null);
-    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
-    }
-  }, []);
-
-  if (!isFriendsOpen) return null;
-
-  const friends = settings.eclipseFriends || [];
-  const incomingRequests = settings.incomingFriendRequests || [];
-  const onlineFriends = friends.filter(f => f.status !== 'offline');
-  const offlineFriends = friends.filter(f => f.status === 'offline');
-
-  const filteredOnline = onlineFriends.filter(f => f.username.toLowerCase().includes(searchQuery.toLowerCase()));
-  const filteredOffline = offlineFriends.filter(f => f.username.toLowerCase().includes(searchQuery.toLowerCase()));
-
-  const handleClose = () => {
-    setIsFriendsOpen(false);
-    if ((window as any).electronAPI?.closeFriendsWindow) {
-      (window as any).electronAPI.closeFriendsWindow();
-    }
-  };
-
-  const containerProps = isStandalone ? {
-    className: "w-full h-full bg-[#0a0a0c] flex flex-col overflow-hidden rounded-xl border border-white/10 shadow-2xl",
-  } : {
-    drag: true,
-    dragConstraints: { left: 0, right: window.innerWidth - 320, top: 0, bottom: window.innerHeight - 500 },
-    dragMomentum: false,
-    initial: { opacity: 0, scale: 0.95 },
-    animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.95 },
-    transition: { type: 'spring', damping: 25, stiffness: 300 } as any,
-    className: "fixed z-[100] w-[320px] h-[520px] bg-[#0a0a0c] border border-white/5 rounded-lg shadow-2xl flex flex-col overflow-hidden",
-    style: { left: window.innerWidth - 360, top: 80 }
-  };
-
-  return (
-    <AnimatePresence>
-      {isFriendsOpen && (
-        <motion.div {...(containerProps as any)}>
-          {/* Header (Drag Handle across desktop screens) */}
-          <div className="drag-handle flex items-center justify-between px-4 py-3 bg-[#0a0a0c] cursor-move border-b border-white/5 select-none" style={{ WebkitAppRegion: 'drag' } as any}>
-            <h3 className="text-sm font-bold text-white tracking-wide">{t('friends')}</h3>
-            <div className="flex items-center gap-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
-              <button className="text-white/50 hover:text-white transition-colors p-1 cursor-pointer" onClick={handleClose}>
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col p-4 overflow-y-auto custom-scrollbar bg-[#0a0a0c]">
-        
-        {/* Current User Info */}
-        <div className="flex items-center gap-4 mb-5 bg-[#141518] p-3 rounded-xl border border-white/5 shadow-inner">
-          <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-white/10 bg-[#2a2c33] flex-shrink-0">
-            {settings.avatarUrl ? (
-              <img src={settings.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-white/50"><User size={20} /></div>
-            )}
-            <div className="absolute bottom-1 right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#141518]"></div>
-          </div>
-          <div className="min-w-0">
-            <h4 className="font-bold text-white text-sm uppercase tracking-wide truncate">{settings.username || 'GUEST'}</h4>
-            <p className="text-[11px] text-white/50">{t('online')}</p>
-          </div>
-        </div>
-
-        {/* Incoming Friend Requests Section */}
-        {incomingRequests.length > 0 && (
-          <div className="mb-4 bg-white/[0.03] border border-white/10 rounded-xl p-3 shadow-sm" style={{ WebkitAppRegion: 'no-drag' } as any}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                <span>{settings.language === 'de' ? 'Freundschaftsanfragen' : 'Friend Requests'}</span>
-                <span className="w-4 h-4 rounded-full bg-white text-black text-[10px] font-extrabold flex items-center justify-center">
-                  {incomingRequests.length}
-                </span>
-              </span>
-            </div>
-            <div className="space-y-1.5">
-              {incomingRequests.map((req) => (
-                <div key={req.fromUid} className="flex items-center justify-between bg-[#111215] border border-white/5 p-2 rounded-lg gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-7 h-7 rounded-lg overflow-hidden bg-[#2a2c33] flex-shrink-0 flex items-center justify-center border border-white/10">
-                      {req.fromAvatarUrl ? (
-                        <img src={req.fromAvatarUrl} alt={req.fromUsername} className="w-full h-full object-cover" />
-                      ) : (
-                        <User size={13} className="text-white/50" />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <h5 className="text-xs font-bold text-white truncate">{req.fromUsername}</h5>
-                      <p className="text-[10px] text-white/40 font-mono truncate">{req.fromFriendCode || 'Eclipse'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => acceptFriendRequest(req.fromUid)}
-                      className="p-1.5 bg-white text-black hover:bg-white/90 rounded-md font-bold text-xs transition-all shadow-sm cursor-pointer"
-                      title={settings.language === 'de' ? 'Annehmen' : 'Accept'}
-                    >
-                      <Check size={13} strokeWidth={2.5} />
-                    </button>
-                    <button
-                      onClick={() => declineFriendRequest(req.fromUid)}
-                      className="p-1.5 bg-white/10 text-white/60 hover:text-white hover:bg-white/20 rounded-md transition-all cursor-pointer"
-                      title={settings.language === 'de' ? 'Ablehnen' : 'Decline'}
-                    >
-                      <X size={13} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Search & Add */}
-        <div className="flex gap-2 mb-5" style={{ WebkitAppRegion: 'no-drag' } as any}>
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
-            <input 
-              type="text" 
-              placeholder={t('searchFriends')} 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#141518] text-white text-xs pl-9 pr-3 py-2 rounded-lg outline-none border border-white/5 focus:border-white/20 transition-colors placeholder:text-white/30"
-            />
-          </div>
-          <button 
-            onClick={() => {
-              if ((window as any).electronAPI?.openAddFriendModal) {
-                (window as any).electronAPI.openAddFriendModal()
-              } else {
-                setIsAddFriendOpen(true)
-              }
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white text-black rounded-lg text-xs font-bold hover:bg-white/90 transition-colors shadow-sm cursor-pointer"
-          >
-            <Plus size={14} /> {t('add')}
-          </button>
-        </div>
-
-        {/* Online Section */}
-        {isLoading ? (
-          <div className="flex flex-col gap-2 mt-2">
-            <div className="h-4 w-24 bg-white/5 rounded skeleton mb-2"></div>
-            {[1, 2, 3].map(i => (
-              <div key={i} className="flex items-center gap-3 p-2">
-                <div className="w-10 h-10 rounded-lg bg-white/5 skeleton"></div>
-                <div className="flex-1">
-                  <div className="h-4 w-24 bg-white/5 rounded skeleton mb-2"></div>
-                  <div className="h-3 w-16 bg-white/5 rounded skeleton"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <>
-            <div className="mb-4" style={{ WebkitAppRegion: 'no-drag' } as any}>
-          <button 
-            onClick={() => setIsOnlineExpanded(!isOnlineExpanded)}
-            className="flex items-center gap-1.5 w-full text-left text-[11px] font-bold text-white/50 uppercase tracking-wider hover:text-white/80 transition-colors mb-2 cursor-pointer"
-          >
-            {isOnlineExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            {t('online').toUpperCase()} ({onlineFriends.length})
-          </button>
-          <AnimatePresence>
-            {isOnlineExpanded && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="flex flex-col gap-1"
-              >
-                {filteredOnline.length === 0 ? (
-                  <p className="text-xs text-white/30 italic pl-5">
-                    {settings.language === 'de' ? 'Keine Freunde online' : 'No friends online'}
-                  </p>
-                ) : (
-                  <AnimatePresence initial={false}>
-                    {filteredOnline.map(friend => (
-                      <motion.div
-                        key={friend.id}
-                        layout
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <FriendCard 
-                          friend={friend} 
-                          onClick={() => {
-                            if ((window as any).electronAPI?.openFriendProfileModal) {
-                              (window as any).electronAPI.openFriendProfileModal(friend.id)
-                            } else {
-                              openFriendProfile(friend.id)
-                            }
-                          }} 
-                          onRemove={() => handleRemoveFriend(friend.id)}
-                          t={t} 
-                          language={language}
-                        />
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Offline Section */}
-        {filteredOffline.length > 0 && (
-          <div style={{ WebkitAppRegion: 'no-drag' } as any}>
-            <div className="flex items-center gap-1.5 w-full text-left text-[11px] font-bold text-white/50 uppercase tracking-wider mb-2 pl-1 mt-4">
-              {t('offline').toUpperCase()} ({offlineFriends.length})
-            </div>
-            <div className="flex flex-col gap-1">
-              <AnimatePresence initial={false}>
-                {filteredOffline.map(friend => (
-                  <motion.div
-                    key={friend.id}
-                    layout
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <FriendCard 
-                      friend={friend} 
-                      onClick={() => {
-                        if ((window as any).electronAPI?.openFriendProfileModal) {
-                          (window as any).electronAPI.openFriendProfileModal(friend.id)
-                        } else {
-                          openFriendProfile(friend.id)
-                        }
-                      }} 
-                      onRemove={() => handleRemoveFriend(friend.id)}
-                      t={t} 
-                      language={language}
-                    />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          </div>
-        )}
-        </>
-        )}
-        </div>
-        
-        {/* Minimalist White Undo Toast */}
-        <AnimatePresence>
-          {removedFriend && (
-            <motion.div
-              initial={{ opacity: 0, y: 30, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 15, scale: 0.96, transition: { duration: 0.15 } }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="absolute bottom-3 left-3 right-3 bg-[#111215]/95 backdrop-blur-xl border border-white/15 rounded-xl px-3.5 py-2.5 flex items-center justify-between shadow-2xl z-50 select-none"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <Trash2 size={14} className="text-white/40 flex-shrink-0" />
-                <span className="text-xs text-white/80 truncate">
-                  {settings.language === 'de' ? 'Entfernt:' : 'Removed:'} <b className="text-white font-semibold">{removedFriend.username}</b>
-                </span>
-              </div>
-              <button 
-                onClick={handleUndoRemove}
-                className="text-[11px] font-bold text-black bg-white hover:bg-white/90 uppercase tracking-wider px-2.5 py-1 rounded-md transition-all shadow-sm flex-shrink-0 cursor-pointer"
-              >
-                {settings.language === 'de' ? 'Rückgängig' : 'Undo'}
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-};
-
-const FriendCard = ({ friend, onClick, onRemove, t, language }: { friend: any, onClick: () => void, onRemove: () => void, t: any, language: string }) => {
-  const isOnline = friend.status !== 'offline';
-  const isIngame = isOnline && friend.status === 'ingame' && Boolean(friend.currentGame);
-  const dotClass = isIngame 
-    ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]' 
-    : isOnline 
-      ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' 
-      : 'bg-white/20';
-  
-  const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-    if (showMenu) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showMenu]);
-
-  return (
-    <div 
-      onClick={onClick}
-      className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/[0.06] transition-all cursor-pointer group select-none border border-transparent hover:border-white/5"
-    >
-      <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-[#181a20] border border-white/10 flex-shrink-0">
-        {friend.avatarUrl ? (
-           <img src={friend.avatarUrl} alt={friend.username} className="w-full h-full object-cover" />
-        ) : (
-           <div className="w-full h-full flex items-center justify-center text-white/40"><User size={16}/></div>
-        )}
-        <div className={`absolute bottom-0.5 right-0.5 w-2.5 h-2.5 ${dotClass} rounded-full ring-2 ring-[#0e1014]`}></div>
-      </div>
-      <div className="flex-1 overflow-hidden min-w-0">
-        <h5 className={`text-[14px] font-semibold truncate tracking-tight ${isOnline ? 'text-white' : 'text-white/40'}`}>{friend.username}</h5>
-        <div className="text-xs truncate mt-0.5 flex items-center gap-1.5">
-          {isIngame ? (
-            <span className="inline-flex items-center gap-1.5 text-purple-300 font-medium truncate text-[11.5px]">
-              <Gamepad2 size={12} className="text-purple-400 flex-shrink-0" />
-              <span className="truncate">{friend.currentGame || (language === 'de' ? 'Im Spiel' : 'In-Game')}</span>
-            </span>
-          ) : isOnline ? (
-            <span className="text-emerald-400 font-medium text-[11.5px]">{t('online')}</span>
-          ) : (
-            <span className="text-white/35 font-normal text-[11px] truncate">{formatLastSeen(friend.lastSeen, language)}</span>
-          )}
-        </div>
-      </div>
-      
-      <div className="relative flex-shrink-0" ref={menuRef}>
-        <button 
-          onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-          className={`p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer ${showMenu ? 'bg-white/10 text-white' : 'text-white/25 opacity-0 group-hover:opacity-100 group-hover:text-white/60 hover:!text-white'}`}
-          title={language === 'de' ? 'Optionen' : 'Options'}
-        >
-          <MoreVertical size={15} />
-        </button>
-        <AnimatePresence>
-          {showMenu && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, transformOrigin: 'top right' }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.1 }}
-              className="absolute right-0 top-full mt-1 w-44 bg-[#181a20] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 p-1 backdrop-blur-xl"
-            >
-              <button 
-                onClick={(e) => { e.stopPropagation(); setShowMenu(false); onRemove(); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg transition-colors text-left font-medium cursor-pointer"
-              >
-                <Trash2 size={13} /> {language === 'de' ? 'Freund entfernen' : 'Remove Friend'}
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-};
+function FriendRow({friend,visit,remove,chat}:{friend:EclipseFriend;visit:(id:string)=>void;remove:(friend:EclipseFriend)=>Promise<void>;chat:(id:string)=>void}) {
+  const {t,language}=useTranslation()
+  const [menu,setMenu]=useState<{left:number;top:number}|null>(null)
+  const anchor=useRef<HTMLButtonElement>(null),popup=useRef<HTMLDivElement>(null)
+  useEffect(()=>{
+    if(!menu)return
+    popup.current?.querySelector('button')?.focus({preventScroll:true})
+    const close=()=>setMenu(null)
+    const outside=(event:PointerEvent)=>{if(!anchor.current?.contains(event.target as Node)&&!popup.current?.contains(event.target as Node))close()}
+    const key=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close();anchor.current?.focus({preventScroll:true})}}
+    document.addEventListener('pointerdown',outside);document.addEventListener('scroll',close,true);window.addEventListener('keydown',key,true);window.addEventListener('resize',close)
+    return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('scroll',close,true);window.removeEventListener('keydown',key,true);window.removeEventListener('resize',close)}
+  },[menu])
+  const playing=friend.status==='ingame'&&!!friend.currentGame
+  return <div className="friend-row" data-friend-row={friend.id} data-offline={friend.status==='offline'||undefined}>
+    <button className="friend-open" onClick={()=>visit(friend.id)}><FriendAvatar avatar={friend.avatarUrl} name={friend.username} status={friend.status}/><span><strong>{friend.username}</strong><span data-playing={playing||undefined}>{playing?<><Gamepad2 size={11}/><span>{friend.currentGame}</span></>:friend.status!=='offline'?t('online'):formatLastSeen(friend.lastSeen,language)}</span></span></button>
+    <button className="friend-chat-open" data-friend-chat={friend.id} disabled={!friend.friendCode&&/^\d{17}$/.test(friend.id)} aria-label={language==='de'?`Chat mit ${friend.username}`:`Chat with ${friend.username}`} title={language==='de'?'Nachricht schreiben':'Send a message'} onClick={()=>chat(friend.id)}><MessageCircle size={15}/></button>
+    <button ref={anchor} className="friend-options" aria-haspopup="menu" aria-expanded={!!menu} aria-label={t('friendsOptions',{name:friend.username})} onClick={()=>{if(menu){setMenu(null);return}const r=anchor.current!.getBoundingClientRect();setMenu({left:Math.max(8,Math.min(r.right-232,window.innerWidth-240)),top:Math.max(8,Math.min(r.bottom+5,window.innerHeight-100))})}}><MoreHorizontal size={16}/></button>
+    {createPortal(<DropdownSurface open={!!menu} ref={popup} role="menu" className="friend-menu" style={menu||undefined}><FriendMuteControl peer={friend.id} label menu done={()=>setMenu(null)}/><button role="menuitem" data-friend-remove={friend.id} onClick={()=>{setMenu(null);void remove(friend)}}><Trash2 size={13}/>{t('friendsRemove')}</button></DropdownSurface>,document.body)}
+  </div>
+}

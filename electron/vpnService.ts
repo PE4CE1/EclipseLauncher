@@ -1,10 +1,12 @@
-import { exec, spawn } from 'child_process'
+import { openExternalPath } from './externalLaunch'
+import { exec, execFile } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import { shell } from 'electron'
 import { promisify } from 'util'
 
 const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
 
 export interface DetectedVpn {
   id: string
@@ -149,7 +151,7 @@ export async function getVpnStatus(forceRefresh = false): Promise<VpnStatus> {
   try {
     const { stdout } = await execAsync(
       `powershell -NoProfile -Command "Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -Property Name, InterfaceDescription | ConvertTo-Json"`,
-      { timeout: 2500 }
+      { timeout: 2500, windowsHide: true }
     )
 
     const trimmed = (stdout || '').trim()
@@ -213,7 +215,7 @@ export async function detectInstalledVpns(forceRefresh = false): Promise<Detecte
   // Fast asynchronous process check using tasklist instead of heavy PowerShell
   let runningProcesses: string[] = []
   try {
-    const { stdout } = await execAsync('tasklist /NH /FO CSV', { timeout: 2000 })
+    const { stdout } = await execFileAsync('tasklist.exe', ['/NH', '/FO', 'CSV'], { timeout: 2000, windowsHide: true })
     const lines = stdout.split('\n')
     for (const line of lines) {
       const match = line.match(/^"([^"]+)"/)
@@ -252,7 +254,7 @@ export async function detectInstalledVpns(forceRefresh = false): Promise<Detecte
   try {
     const { stdout } = await execAsync(
       `powershell -NoProfile -Command "Get-VpnConnection | Select-Object -Property Name, ConnectionStatus | ConvertTo-Json"`,
-      { timeout: 2000 }
+      { timeout: 2000, windowsHide: true }
     )
     const trimmed = (stdout || '').trim()
     if (trimmed) {
@@ -302,12 +304,12 @@ export async function connectVpn(vpnId?: string): Promise<{ success: boolean; vp
 
   try {
     if (target.isWindowsNative && target.nativeName) {
-      await execAsync(`rasdial "${target.nativeName}"`, { timeout: 8000 })
+      await execFileAsync('rasdial.exe', [target.nativeName], { timeout: 8000, windowsHide: true })
       return { success: true, vpnName: target.name, isNative: true }
     }
 
     if (target.cli) {
-      exec(target.cli, (err) => {
+      exec(target.cli, { windowsHide: true, timeout: 8000 }, (err) => {
         if (err) console.warn('[VpnService] CLI connect error:', err)
       })
       await new Promise(r => setTimeout(r, 2500))
@@ -315,7 +317,8 @@ export async function connectVpn(vpnId?: string): Promise<{ success: boolean; vp
     }
 
     if (target.path && fs.existsSync(target.path)) {
-      shell.openPath(target.path)
+      const openError = await openExternalPath(target.path)
+      if (openError) throw new Error(openError)
       return { success: true, vpnName: target.name, isCLI: false }
     }
 
@@ -335,11 +338,11 @@ export async function disconnectVpn(vpnId?: string): Promise<{ success: boolean;
     const target = vpnId ? vpns.find(v => v.id === vpnId) : vpns[0]
 
     if (target?.isWindowsNative && target.nativeName) {
-      await execAsync(`rasdial "${target.nativeName}" /disconnect`, { timeout: 5000 })
+      await execFileAsync('rasdial.exe', [target.nativeName, '/disconnect'], { timeout: 5000, windowsHide: true })
       return { success: true, message: 'VPN getrennt.' }
     }
 
-    return { success: true, message: 'VPN getrennt.' }
+    return { success: false, message: 'Diese VPN-Verbindung muss im VPN-Client getrennt werden.' }
   } catch (e: any) {
     return { success: false, message: e.message || 'Trennen fehlgeschlagen' }
   }

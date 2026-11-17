@@ -1,146 +1,160 @@
 import { useState, useEffect, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  User, Library, Clock, Save, Edit3, Settings, Trophy, Gamepad2, 
-  UserPlus, Check, ArrowLeft, Loader2, Cpu, Zap, HardDrive, Monitor, 
-  Image as ImageIcon, Sparkles, Copy, ExternalLink, X, RefreshCw, 
-  MessageSquare, CheckCircle2, Award, Search, Play
-} from 'lucide-react'
+import { User, Save, Check, Loader2, Cpu, Image as ImageIcon, Sparkles, X, RefreshCw, MessageSquare, CheckCircle2, Play } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useUIStore } from '../../store/uiStore'
 import { useTranslation } from '../../hooks/useTranslation'
 import { syncMyProfile, fetchUserProfile, sendFriendRequest } from '../../services/socialService'
-import { fetchSteamUserProfile } from '../../services/steamService'
+import { fetchSteamUserProfile, isValidSteamBackground } from '../../services/steamService'
 import { formatLastSeen } from '../../services/assetHelper'
 import { sendAppNotification } from '../../services/notificationService'
-import type { EclipseFriend, SteamBadge, SteamProfileGame } from '../../types/game'
-
-const BANNER_PRESETS = [
-  { id: 'eclipse_solar', name: 'Total Solar Eclipse', url: 'https://images.unsplash.com/photo-1712625209079-4802d8168822?q=85&w=1600&auto=format&fit=crop' },
-  { id: 'cyberpunk', name: 'Cyberpunk Neon City', url: 'https://images.unsplash.com/photo-1604315841269-a1f298321670?q=85&w=1600&auto=format&fit=crop' },
-  { id: 'synthwave', name: 'Retro Synthwave Grid', url: 'https://images.unsplash.com/photo-1706466615917-e44750d177d7?q=85&w=1600&auto=format&fit=crop' },
-  { id: 'deep_nebula', name: 'Deep Cosmic Nebula', url: 'https://images.unsplash.com/photo-1502134249126-9f3755a50d78?q=85&w=1600&auto=format&fit=crop' },
-  { id: 'aurora', name: 'Nordic Aurora', url: 'https://images.unsplash.com/photo-1759675739458-6e5a4a60a117?q=85&w=1600&auto=format&fit=crop' },
-  { id: 'obsidian', name: 'Dark Obsidian Flow', url: 'https://images.unsplash.com/photo-1710438399422-2fca27686bcd?q=85&w=1600&auto=format&fit=crop' },
-  { id: 'blood_moon', name: 'Crimson Blood Moon', url: 'https://images.unsplash.com/photo-1523597020744-b68b1edd3e1c?q=85&w=1600&auto=format&fit=crop' },
-  { id: 'neon_gaming', name: 'Neon Battlestation', url: 'https://images.unsplash.com/photo-1616588589676-62b3bd4ff6d2?q=85&w=1600&auto=format&fit=crop' },
-]
+import type { SteamBadge, SteamProfileGame } from '../../types/game'
+import { buildProfileGames, formatProfileTime, profileGameKey, resolvePinnedGames, safeProfileMedia } from '../../services/profileModel'
+import { ProfileOverview, type ProfileDisplayGame } from './ProfileOverview'
+import { ProfileMedia } from './ProfileMedia'
+import { ProfileDialog } from './ProfileDialog'
+import { ProfileAvatar } from './ProfileAvatar'
+import { profileBannerPreset } from './ProfileBannerArt'
+import { ProfileBannerPicker } from './ProfileBannerPicker'
+import { profileAvatarFrameValue, steamFrameImage } from '../../services/steamProfileAppearance'
 
 const AVATAR_FRAMES = [
   { id: 'none', label: 'None', labelDe: 'Kein Rahmen', color: 'border-white/10' },
-  { id: 'eclipse_neon', label: 'Eclipse Glow', labelDe: 'Eclipse Glow', color: 'border-indigo-400 shadow-[0_0_12px_rgba(129,140,248,0.35)]' },
+  { id: 'eclipse_neon', label: 'Eclipse Glow', labelDe: 'Eclipse-Leuchten', color: 'border-indigo-400 shadow-[0_0_12px_rgba(129,140,248,0.35)]' },
   { id: 'cyberpunk', label: 'Cyberpunk', labelDe: 'Cyberpunk', color: 'border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.35)]' },
   { id: 'golden_vip', label: 'Gold VIP', labelDe: 'Gold VIP', color: 'border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.35)]' },
-  { id: 'fire_blaze', label: 'Fire Blaze', labelDe: 'Fire Blaze', color: 'border-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.35)]' },
+  { id: 'fire_blaze', label: 'Fire Blaze', labelDe: 'Feuerschein', color: 'border-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.35)]' },
   { id: 'emerald_pulse', label: 'Emerald', labelDe: 'Smaragd', color: 'border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.35)]' },
 ]
 
+function cleanPlaytime(str?: string): string {
+  if (typeof str !== 'string' || !str) return ''
+  return str
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&#160;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#39;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/<[^>]+>/g, '')
+    .replace(/[\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function formatLocalizedPlaytime(str?: string, lang: string = 'de'): string {
+  if (!str) return ''
+  const cleaned = cleanPlaytime(str)
+  if (!cleaned) return ''
+
+  // Match minutes: e.g. "45 Min. insgesamt", "45 mins on record", "45 min"
+  const minMatch = cleaned.match(/([\d.,]+)\s*(?:min|mins|minuten)/i)
+  if (minMatch) {
+    const num = minMatch[1]
+    return lang === 'de' ? `${num} Min. insgesamt` : `${num} mins on record`
+  }
+
+  // Match hours: e.g. "311 Std. insgesamt", "311 hrs on record", "311.5 hours", "311 Std."
+  const hrMatch = cleaned.match(/([\d.,]+)\s*(?:hrs?|std\.?|hours?|stunden?)/i)
+  if (hrMatch) {
+    let num = hrMatch[1]
+    if (lang === 'de') {
+      num = num.replace('.', ',')
+      return `${num} Std. insgesamt`
+    } else {
+      num = num.replace(',', '.')
+      return `${num} hrs on record`
+    }
+  }
+
+  // Generic number fallback
+  const anyNumMatch = cleaned.match(/([\d.,]+)/)
+  if (anyNumMatch) {
+    let num = anyNumMatch[1]
+    if (lang === 'de') {
+      num = num.replace('.', ',')
+      return `${num} Std. insgesamt`
+    } else {
+      num = num.replace(',', '.')
+      return `${num} hrs on record`
+    }
+  }
+
+  return cleaned
+}
+
+function CleanCheckbox({ checked, onChange, label, description }: { checked: boolean; onChange: () => void; label: string; description?: string }) {
+  return <label className="profile-checkbox flex items-start gap-3 cursor-pointer select-none">
+    <input type="checkbox" className="sr-only" checked={checked} onChange={onChange}/>
+    <span aria-hidden="true" className={`w-4 h-4 rounded-[4px] flex items-center justify-center border flex-shrink-0 mt-0.5 ${checked ? 'bg-white border-white text-black' : 'bg-white/[0.04] border-white/20'}`}>{checked && <Check size={11} strokeWidth={3}/>}</span>
+    <span className="flex-1"><span className="text-xs text-white/85 block font-medium">{label}</span>{description && <span className="text-[11px] text-white/40 block mt-0.5">{description}</span>}</span>
+  </label>
+}
+
+
 export function ProfileView() {
-  const { library, installedGames, settings, updateSettings, activeGame } = useGameStore()
-  const { setActiveView, openGameDetails, setActiveSettingsTab, selectedFriendId, setSelectedFriendId } = useUIStore()
+  const library = useGameStore(state => state.library)
+  const installedGames = useGameStore(state => state.installedGames)
+  const settings = useGameStore(state => state.settings)
+  const updateSettings = useGameStore(state => state.updateSettings)
+  const activeGame = useGameStore(state => state.activeGame)
+  const selectedFriendId = useUIStore(s => s.selectedFriendId)
+  const setSelectedFriendId = useUIStore(s => s.setSelectedFriendId)
   const { t, language } = useTranslation()
   
   const [fetchedProfile, setFetchedProfile] = useState<any | null>(null)
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
+  const [settledProfile, setSettledProfile] = useState<string | null>(null)
+  const [profileRevision, setProfileRevision] = useState(0)
   const [isSendingRequest, setIsSendingRequest] = useState(false)
   const [requestSent, setRequestSent] = useState(false)
-  const [copiedDiscord, setCopiedDiscord] = useState(false)
-  const [copiedFriendCode, setCopiedFriendCode] = useState(false)
 
   const friend = selectedFriendId ? settings.eclipseFriends?.find(f => f.id === selectedFriendId) : null
   const isViewingFriend = !!selectedFriendId
   const isAlreadyFriend = isViewingFriend && (!!friend || (settings.eclipseFriends?.some(f => f.id === selectedFriendId) ?? false))
 
-  // Fetch full live profile data when viewing a friend or searched player
   useEffect(() => {
+    let disposed = false
+    setIsLoadingProfile(Boolean(selectedFriendId))
+    setRequestSent(false)
+    setFetchedProfile(null)
     if (selectedFriendId) {
-      setIsLoadingProfile(true)
-      setRequestSent(false)
-      fetchUserProfile(selectedFriendId).then(async (data) => {
-        let finalProfile = data
-        const steamUrl = data?.steamProfileUrl || friend?.steamProfileUrl
+      void fetchUserProfile(selectedFriendId).then(async data => {
+        if (disposed) return
         if (data) {
-          if (steamUrl && (!data.steamBackgroundMovie && !data.steamBackgroundUrl)) {
-            try {
-              const steamData = await fetchSteamUserProfile(steamUrl)
-              if (steamData) {
-                finalProfile = {
-                  ...data,
-                  // Preserve Firebase live status and game title!
-                  status: data.status || 'offline',
-                  currentGame: data.currentGame || undefined,
-                  steamLevel: steamData.steamLevel ?? data.steamLevel,
-                  steamGamesCount: steamData.steamGamesCount ?? data.steamGamesCount,
-                  steamBadgesCount: steamData.steamBadgesCount ?? data.steamBadgesCount,
-                  steamFavoriteBadge: steamData.steamFavoriteBadge || data.steamFavoriteBadge,
-                  steamBadges: (steamData.steamBadges && steamData.steamBadges.length > 0) ? steamData.steamBadges : (data.steamBadges || []),
-                  steamGames: (steamData.steamGames && steamData.steamGames.length > 0) ? steamData.steamGames : (data.steamGames || []),
-                  steamRecentGames: (steamData.steamRecentGames && steamData.steamRecentGames.length > 0) ? steamData.steamRecentGames : (data.steamRecentGames || []),
-                  steamBackgroundUrl: steamData.steamBackgroundUrl || data.steamBackgroundUrl,
-                  steamBackgroundMovie: steamData.steamBackgroundMovie || data.steamBackgroundMovie,
-                  bannerUrl: data.bannerUrl || undefined,
-                }
-              }
-            } catch {}
-          }
-          setFetchedProfile(finalProfile)
-        } else {
-          // Fallback to Steam profile lookup if numeric ID or friend
-          try {
-            const steamData = await fetchSteamUserProfile(steamUrl || selectedFriendId)
-            if (steamData && steamData.steamId64) {
-              setFetchedProfile({
-                username: steamData.username,
-                avatarUrl: steamData.avatarFull,
-                level: steamData.steamLevel,
-                steamLevel: steamData.steamLevel,
-                steamGamesCount: steamData.steamGamesCount,
-                steamBadgesCount: steamData.steamBadgesCount,
-                steamFavoriteBadge: steamData.steamFavoriteBadge,
-                steamBadges: steamData.steamBadges || [],
-                steamGames: steamData.steamGames || [],
-                steamRecentGames: steamData.steamRecentGames || [],
-                steamBackgroundUrl: steamData.steamBackgroundUrl,
-                steamBackgroundMovie: steamData.steamBackgroundMovie,
-                bannerUrl: undefined,
-                steamProfileUrl: `https://steamcommunity.com/profiles/${steamData.steamId64}`,
-                status: steamData.onlineState === 'in-game' ? 'ingame' : (steamData.onlineState === 'online' ? 'online' : 'offline'),
-                currentGame: steamData.stateMessage ? steamData.stateMessage.replace(/<[^>]+>/g, ' ').replace(/^in-game:?\s*/i, '').trim() : undefined,
-              })
-            }
-          } catch {}
+          setFetchedProfile({ ...data, __profileId: selectedFriendId })
+          return
         }
-        setIsLoadingProfile(false)
-      }).catch(() => setIsLoadingProfile(false))
+        const steamUrl = friend?.steamProfileUrl || (/^\d{17}$/.test(selectedFriendId) ? selectedFriendId : '')
+        if (!steamUrl) return
+        const steam = await fetchSteamUserProfile(steamUrl)
+        if (disposed || !steam?.steamId64) return
+        setFetchedProfile({ ...steam, __profileId: selectedFriendId, username: steam.username, avatarUrl: steam.avatarFull,
+          steamProfileUrl: 'https://steamcommunity.com/profiles/' + steam.steamId64,
+          status: steam.onlineState === 'in-game' ? 'ingame' : steam.onlineState === 'online' ? 'online' : 'offline',
+          currentGame: steam.stateMessage?.replace(/<[^>]+>/g, ' ').replace(/^in-game:?\s*/i, '').trim(),
+        })
+      }).catch(() => {}).finally(() => { if (!disposed) { setIsLoadingProfile(false); setSettledProfile(selectedFriendId) } })
     } else {
-      setFetchedProfile(null)
-      // When viewing own profile, sync latest playtime & games to Firebase
-      syncMyProfile()
-
-      // Auto-fetch/refresh Steam data if steamProfileUrl is linked to ensure live background is always fresh
-      if (settings.steamProfileUrl) {
-        fetchSteamUserProfile(settings.steamProfileUrl).then(steamData => {
-          if (steamData) {
-            const patch: any = {
-              steamLevel: steamData.steamLevel ?? settings.steamLevel,
-              steamGamesCount: steamData.steamGamesCount ?? settings.steamGamesCount,
-              steamBadgesCount: steamData.steamBadgesCount ?? settings.steamBadgesCount,
-              steamRecentGames: steamData.steamRecentGames || settings.steamRecentGames,
-              steamFavoriteBadge: steamData.steamFavoriteBadge || settings.steamFavoriteBadge,
-              steamBadges: steamData.steamBadges || settings.steamBadges,
-              steamGames: steamData.steamGames || settings.steamGames,
-              steamBackgroundUrl: steamData.steamBackgroundUrl || settings.steamBackgroundUrl,
-              steamBackgroundMovie: steamData.steamBackgroundMovie || settings.steamBackgroundMovie,
-            }
-            updateSettings(patch)
-            if (window.electronAPI?.setSettings) {
-              window.electronAPI.setSettings(patch)
-            }
-          }
-        }).catch(err => console.warn('Auto Steam refresh error:', err))
-      }
+      void syncMyProfile().catch(() => {})
+      if (settings.steamProfileUrl) void fetchSteamUserProfile(settings.steamProfileUrl).then(steam => {
+        if (disposed || !steam) return
+        const current = useGameStore.getState().settings
+        if (current.steamProfileUrl !== settings.steamProfileUrl) return
+        const patch = {
+          steamLevel: steam.steamLevel ?? current.steamLevel, steamGamesCount: steam.steamGamesCount ?? current.steamGamesCount,
+          steamBadgesCount: steam.steamBadgesCount ?? current.steamBadgesCount, steamRecentGames: steam.steamRecentGames || current.steamRecentGames,
+          steamFavoriteBadge: steam.steamFavoriteBadge || current.steamFavoriteBadge, steamBadges: steam.steamBadges || current.steamBadges,
+          steamGames: steam.steamGames || current.steamGames,
+          steamAvatarFrameUrl: steam.steamAvatarFrameUrl !== undefined ? steam.steamAvatarFrameUrl : current.steamAvatarFrameUrl,
+          steamAvatarFrameStaticUrl: steam.steamAvatarFrameStaticUrl !== undefined ? steam.steamAvatarFrameStaticUrl : current.steamAvatarFrameStaticUrl,
+          steamBackgroundUrl: isValidSteamBackground(steam.steamBackgroundUrl) ? steam.steamBackgroundUrl : current.steamBackgroundUrl,
+          steamBackgroundMovie: isValidSteamBackground(steam.steamBackgroundMovie) ? steam.steamBackgroundMovie : current.steamBackgroundMovie,
+        }
+        updateSettings(patch)
+        void window.electronAPI?.setSettings?.(patch).catch(() => {})
+      }).catch(() => {})
     }
-  }, [selectedFriendId, settings.steamProfileUrl])
+    return () => { disposed = true }
+  }, [selectedFriendId, settings.steamProfileUrl, profileRevision])
 
   // Customization Form States
   const [isEditing, setIsEditing] = useState(false)
@@ -148,13 +162,14 @@ export function ProfileView() {
   const [editName, setEditName] = useState(settings.username || 'User')
   const [editAvatar, setEditAvatar] = useState(settings.avatarUrl || '')
   const [editBanner, setEditBanner] = useState(settings.bannerUrl || '')
-  const [editFrame, setEditFrame] = useState(settings.avatarFrame || 'none')
+  const [editBannerPosition, setEditBannerPosition] = useState(settings.profileBannerPosition ?? 44)
+  const [editFrame, setEditFrame] = useState(profileAvatarFrameValue(settings))
   const [editBio, setEditBio] = useState(settings.bio || '')
   const [editDiscord, setEditDiscord] = useState(settings.socialDiscord || '')
   const [editTwitch, setEditTwitch] = useState(settings.socialTwitch || '')
   const [editYoutube, setEditYoutube] = useState(settings.socialYoutube || '')
   const [editSteamUrl, setEditSteamUrl] = useState(settings.steamProfileUrl || '')
-  const [editShowHardware, setEditShowHardware] = useState(settings.showHardwareSpecs !== false)
+  const [editShowHardware, setEditShowHardware] = useState(Boolean(settings.showHardwareSpecs))
   const [editShowPlaytime, setEditShowPlaytime] = useState(settings.profileShowPlaytime !== false)
   const [editShowSteamStats, setEditShowSteamStats] = useState(settings.profileShowSteamStats !== false)
   const [editShowSteamBg, setEditShowSteamBg] = useState(settings.profileShowSteamBackground !== false)
@@ -167,13 +182,14 @@ export function ProfileView() {
       setEditName(settings.username || 'User')
       setEditAvatar(settings.avatarUrl || '')
       setEditBanner(settings.bannerUrl || '')
-      setEditFrame(settings.avatarFrame || 'none')
+      setEditBannerPosition(settings.profileBannerPosition ?? 44)
+      setEditFrame(profileAvatarFrameValue(settings))
       setEditBio(settings.bio || '')
       setEditDiscord(settings.socialDiscord || '')
       setEditTwitch(settings.socialTwitch || '')
       setEditYoutube(settings.socialYoutube || '')
       setEditSteamUrl(settings.steamProfileUrl || '')
-      setEditShowHardware(settings.showHardwareSpecs !== false)
+      setEditShowHardware(Boolean(settings.showHardwareSpecs))
       setEditShowPlaytime(settings.profileShowPlaytime !== false)
       setEditShowSteamStats(settings.profileShowSteamStats !== false)
       setEditShowSteamBg(settings.profileShowSteamBackground !== false)
@@ -181,7 +197,7 @@ export function ProfileView() {
   }, [settings, isEditing])
 
   // Combined stats resolution
-  const profileData = fetchedProfile || friend
+  const profileData = (fetchedProfile?.__profileId === selectedFriendId ? fetchedProfile : null) || friend
   const activeFriendCode = isViewingFriend 
     ? (profileData?.friendCode || friend?.friendCode) 
     : (settings.friendCode || (typeof window !== 'undefined' ? (window as any).electronAPI?.account?.initialIdentity?.friendCode : null))
@@ -203,9 +219,11 @@ export function ProfileView() {
     : settings.steamBackgroundUrl
 
   // 1. Full Profile View Background (Steam Live Video or Artwork)
-  const steamBg = isViewingFriend 
+  const rawSteamBg = isViewingFriend
     ? (profileData?.steamBackgroundMovie || profileData?.steamBackgroundUrl || friend?.steamBackgroundMovie || friend?.steamBackgroundUrl)
     : (settings.steamBackgroundMovie || settings.steamBackgroundUrl)
+
+  const steamBg = isValidSteamBackground(rawSteamBg) ? rawSteamBg : null
 
   const showSteamBg = isViewingFriend 
     ? (profileData?.showSteamBackground !== false) 
@@ -215,17 +233,14 @@ export function ProfileView() {
 
   // 2. Profile Card Banner (Presets or Custom Link) - strictly independent from Steam Background
   const rawUserBanner = isViewingFriend ? (profileData?.bannerUrl || friend?.bannerUrl) : settings.bannerUrl
-  const isSteamBgUrl = rawUserBanner && (
-    (steamBg && rawUserBanner === steamBg) || 
-    rawUserBanner.includes('steamstatic.com') || 
-    rawUserBanner.includes('community_assets/images/items') || 
-    rawUserBanner.includes('steamcommunity/public/images/items')
-  )
-  const displayBanner = (rawUserBanner && !isSteamBgUrl) ? rawUserBanner : BANNER_PRESETS[0].url
+  const displayBanner = rawUserBanner || ''
 
   const displayFrame = isViewingFriend
-    ? (profileData?.avatarFrame || friend?.avatarFrame || 'none')
-    : (settings.avatarFrame || 'none')
+    ? (profileData?.avatarFrame || friend?.avatarFrame || 'steam')
+    : profileAvatarFrameValue(settings)
+  const steamFrame = isViewingFriend ? (profileData?.steamAvatarFrameUrl !== undefined ? profileData.steamAvatarFrameUrl : friend?.steamAvatarFrameUrl) : settings.steamAvatarFrameUrl
+  const steamFrameStatic = isViewingFriend ? (profileData?.steamAvatarFrameStaticUrl !== undefined ? profileData.steamAvatarFrameStaticUrl : friend?.steamAvatarFrameStaticUrl) : settings.steamAvatarFrameStaticUrl
+  const bannerPosition = isViewingFriend ? profileData?.bannerPosition ?? friend?.bannerPosition ?? 44 : settings.profileBannerPosition ?? 44
 
   const displayBio = isViewingFriend
     ? (profileData?.bio || friend?.bio || '')
@@ -244,8 +259,8 @@ export function ProfileView() {
     : (settings.socialYoutube || '')
 
   const displayShowHardware = isViewingFriend
-    ? (profileData?.showHardwareSpecs !== false)
-    : (settings.showHardwareSpecs !== false)
+    ? Boolean(profileData?.showHardwareSpecs)
+    : Boolean(settings.showHardwareSpecs)
 
   const displayHardware = isViewingFriend
     ? (profileData?.hardwareSpecs || friend?.hardwareSpecs)
@@ -263,24 +278,34 @@ export function ProfileView() {
     ? (profileData?.steamBadgesCount ?? friend?.steamBadgesCount) 
     : settings.steamBadgesCount
 
-  const steamRecentGames = isViewingFriend 
+  const rawSteamRecentGames = isViewingFriend
     ? (profileData?.steamRecentGames || friend?.steamRecentGames || []) 
     : (settings.steamRecentGames || [])
+
+  const steamRecentGames = useMemo(() => {
+    return (Array.isArray(rawSteamRecentGames) ? rawSteamRecentGames : []).filter((g: any) => g && typeof g.name === 'string').slice(0, 20).map((g: any) => ({
+      ...g,
+      name: cleanPlaytime(g.name),
+      playtime: cleanPlaytime(g.playtime)
+    }))
+  }, [rawSteamRecentGames])
 
   const steamFavoriteBadge = isViewingFriend 
     ? (profileData?.steamFavoriteBadge || friend?.steamFavoriteBadge) 
     : settings.steamFavoriteBadge
 
-  const steamBadges: SteamBadge[] = isViewingFriend 
+  const rawSteamBadges = isViewingFriend
     ? (profileData?.steamBadges || friend?.steamBadges || []) 
     : (settings.steamBadges || [])
 
-  const steamGames: SteamProfileGame[] = isViewingFriend 
+  const rawSteamGames = isViewingFriend
     ? (profileData?.steamGames || friend?.steamGames || []) 
     : (settings.steamGames || [])
+  const steamBadges: SteamBadge[] = (Array.isArray(rawSteamBadges) ? rawSteamBadges : []).filter(badge => badge && typeof badge.name === 'string').slice(0, 200)
+  const steamGames: SteamProfileGame[] = (Array.isArray(rawSteamGames) ? rawSteamGames : []).filter(game => game && typeof game.name === 'string').slice(0, 5000)
 
-  const friendStatus = profileData?.status || friend?.status || 'offline'
-  const friendCurrentGame = friendStatus === 'ingame' ? (profileData?.currentGame || friend?.currentGame) : null
+  const friendStatus = friend?.status || profileData?.status || 'offline'
+  const friendCurrentGame = friendStatus === 'ingame' ? (friend ? friend.currentGame : profileData?.currentGame) : null
   
   let friendLastSeen: number | undefined = friend?.lastSeen
   if (profileData?.lastSeen) {
@@ -312,108 +337,56 @@ export function ProfileView() {
     return clean.endsWith('.webm') || clean.endsWith('.mp4') || url.includes('.webm') || url.includes('.mp4')
   }
 
-  // Local Playtime Calculations (for own profile)
-  const allUserGamesMap = new Map<string, any>()
-  library.forEach(g => allUserGamesMap.set(g.id || g.name, { ...g }))
-  installedGames.forEach(g => {
-    const key = g.id || g.name
-    let base = allUserGamesMap.get(key)
-    if (!base) {
-      const foundEntry = Array.from(allUserGamesMap.entries()).find(([k, lg]) => lg.name.toLowerCase() === g.name.toLowerCase())
-      if (foundEntry) {
-        base = foundEntry[1]
-        allUserGamesMap.delete(foundEntry[0])
-      }
-    }
-    const existingData = base || {}
-    allUserGamesMap.set(key, {
-      ...existingData,
-      ...g,
-      playTimeMinutes: Math.max(existingData.playTimeMinutes || 0, g.playTimeMinutes || 0),
-      lastPlayed: Math.max(existingData.lastPlayed || 0, g.lastPlayed || 0)
-    })
+  const allUserGames = useMemo(() => buildProfileGames(library, installedGames), [library, installedGames])
+  const ownSteamIds = useMemo(() => allUserGames.flatMap(game => game.steamId ? [game.steamId] : []), [allUserGames])
+  const showPlaytime = isViewingFriend ? profileData?.showPlaytime !== false : settings.profileShowPlaytime !== false
+  const showSteam = isViewingFriend ? profileData?.showSteamStats !== false : settings.profileShowSteamStats !== false
+  const ownTopGames = useMemo(() => [...allUserGames].filter(game => game.playTimeMinutes > 0).sort((a, b) => b.playTimeMinutes - a.playTimeMinutes).slice(0, 5), [allUserGames])
+  const publicGame = (game: any): ProfileDisplayGame => ({ id: String(game.id || game.appId || game.name), name: String(game.name || ''),
+    platform: game.platform || (game.steamId || game.appId ? 'steam' : 'custom'), steamId: Number(game.steamId || game.appId) || undefined,
+    installed: false, playTimeMinutes: showPlaytime && Number.isFinite(game.playTimeMinutes) ? Math.max(0, game.playTimeMinutes) : 0,
+    lastPlayed: showPlaytime && Number.isFinite(game.lastPlayed) ? Math.max(0, game.lastPlayed) : 0,
   })
+  const publicTopGames: ProfileDisplayGame[] = isViewingFriend && showPlaytime && Array.isArray(profileData?.topPlayedGames) ? profileData.topPlayedGames.filter((game: any) => game && typeof game.name === 'string').slice(0, 5).map(publicGame) : []
+  const displayTopGames = isViewingFriend ? publicTopGames : ownTopGames
+  const pinned: ProfileDisplayGame[] = isViewingFriend ? (Array.isArray(profileData?.pinnedGames) ? profileData.pinnedGames.filter((game: any) => game && typeof game.name === 'string').slice(0, 3).map(publicGame) : []) : resolvePinnedGames(allUserGames, settings.profilePinnedGames)
+  const publicSteamGames: ProfileDisplayGame[] = showSteam ? steamGames.map(game => ({ ...publicGame(game), steamPlaytime: showPlaytime ? formatLocalizedPlaytime(game.playtime, language) : undefined })) : []
+  const displayGames: ProfileDisplayGame[] = isViewingFriend ? [...new Map([...publicSteamGames, ...publicTopGames, ...pinned].map(game => [profileGameKey(game), game])).values()] : allUserGames
+  const displayTotalPlaytime = isViewingFriend ? (Number.isFinite(profileData?.totalPlaytimeMins) ? formatProfileTime(profileData.totalPlaytimeMins, language) : profileData?.totalPlaytimeHours || '—')
+    : formatProfileTime(allUserGames.reduce((sum, game) => sum + game.playTimeMinutes, 0), language)
+  const displayLibraryCount = isViewingFriend ? (profileData?.totalLibraryCount ?? (showSteam ? steamGamesCount : undefined) ?? displayGames.length) : allUserGames.length
+  const displayInstalledCount = isViewingFriend ? (profileData?.totalInstalledCount ?? '—') : allUserGames.filter(game => game.installed).length
+  const [saveError, setSaveError] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  async function savePins(keys: string[]) {
+    const patch = { profilePinnedGames: keys.slice(0, 3) }
+    const result = await window.electronAPI?.setSettings?.(patch)
+    if (result?.success === false) throw Error('Settings write failed')
+    updateSettings(patch)
+    void syncMyProfile().catch(() => {})
+  }
 
-  const allUserGames = Array.from(allUserGamesMap.values())
-  const totalPlaytimeMins = Math.round(allUserGames.reduce((acc, g) => acc + (g.playTimeMinutes || 0), 0))
-  const totalPlaytimeHours = totalPlaytimeMins >= 60 
-    ? (totalPlaytimeMins / 60).toFixed(1) + 'h' 
-    : `${totalPlaytimeMins}m`
-
-  const topPlayedGames = [...allUserGames]
-    .sort((a, b) => (b.playTimeMinutes || 0) - (a.playTimeMinutes || 0))
-    .filter(g => (g.playTimeMinutes || 0) > 0)
-    .slice(0, 5)
-
-  const totalLibraryCount = installedGames.length + library.filter(g => !installedGames.some(ig => ig.name === g.name)).length
-
-  // Profile Display Values
-  const displayTotalPlaytime = isViewingFriend 
-    ? (profileData?.totalPlaytimeHours || friend?.totalPlaytimeHours || (steamRecentGames.length > 0 ? (() => {
-        let hrs = 0
-        steamRecentGames.forEach((g: any) => {
-          const m = g.playtime ? g.playtime.match(/([\d.,]+)\s*hrs?/i) : null
-          if (m) hrs += parseFloat(m[1].replace(',', '.')) || 0
-        })
-        return hrs > 0 ? `${hrs.toFixed(1)}h` : '0h'
-      })() : '0h'))
-    : totalPlaytimeHours
-
-  const displayLibraryCount = isViewingFriend
-    ? (profileData?.totalLibraryCount ?? friend?.totalLibraryCount ?? steamGamesCount ?? (steamRecentGames.length || 0))
-    : totalLibraryCount
-
-  const displayInstalledCount = isViewingFriend
-    ? (profileData?.totalInstalledCount ?? friend?.totalInstalledCount ?? (friendStatus === 'ingame' ? (friendCurrentGame || 'In-Game') : (friendStatus === 'online' ? 'Online' : 'Offline')))
-    : installedGames.filter(g => g.installed !== false).length
-
-  const displayTopGames = isViewingFriend
-    ? (profileData?.topPlayedGames || friend?.topPlayedGames || [])
-    : topPlayedGames
-
-  function handleSave() {
-    const patch = {
-      username: editName,
-      avatarUrl: editAvatar,
-      bannerUrl: editBanner,
-      avatarFrame: editFrame,
-      bio: editBio,
-      socialDiscord: editDiscord,
-      socialTwitch: editTwitch,
-      socialYoutube: editYoutube,
-      steamProfileUrl: editSteamUrl,
-      showHardwareSpecs: editShowHardware,
-      profileShowPlaytime: editShowPlaytime,
-      profileShowSteamStats: editShowSteamStats,
-      profileShowSteamBackground: editShowSteamBg
+  async function handleSave() {
+    if (isSaving) return
+    setSaveError('')
+    if (!editName.trim()) { setSaveError(language === 'de' ? 'Bitte gib einen Namen ein.' : 'Please enter a name.'); return }
+    if ((editAvatar.trim() && !safeProfileMedia(editAvatar.trim())) || (editBanner.trim() && !profileBannerPreset(editBanner.trim()) && !safeProfileMedia(editBanner.trim()))) {
+      setSaveError(language === 'de' ? 'Bitte verwende einen gültigen Bild- oder Video-Link (https://).' : 'Please use a valid image or video URL (https://).'); return
     }
-
-    if (window.electronAPI?.setSettings) {
-      window.electronAPI.setSettings(patch).then(res => {
-        if (res?.success !== false) {
-          updateSettings(patch)
-          if (window.electronAPI?.account?.saveIdentity && patch.username) {
-            window.electronAPI.account.saveIdentity({ username: patch.username }).catch(() => {})
-          }
-          syncMyProfile()
-          setIsEditing(false)
-          sendAppNotification({
-            title: language === 'de' ? 'Profil gespeichert' : 'Profile Saved',
-            body: language === 'de' ? 'Änderungen wurden übernommen.' : 'Changes have been saved.',
-            type: 'success'
-          })
-        }
-      })
-    } else {
+    const patch = { username: editName.trim().slice(0, 64), avatarUrl: editAvatar.trim(), bannerUrl: editBanner.trim(), profileBannerPosition: editBannerPosition, avatarFrame: editFrame, profileAvatarFrameSelected: true,
+      bio: editBio.trim().slice(0, 160), socialDiscord: editDiscord.trim().slice(0, 100), socialTwitch: editTwitch.trim().slice(0, 200),
+      socialYoutube: editYoutube.trim().slice(0, 200), steamProfileUrl: editSteamUrl.trim(), showHardwareSpecs: editShowHardware,
+      profileShowPlaytime: editShowPlaytime, profileShowSteamStats: editShowSteamStats, profileShowSteamBackground: editShowSteamBg }
+    setIsSaving(true)
+    try {
+      const result = await window.electronAPI?.setSettings?.(patch)
+      if (result?.success === false) throw Error('Settings write failed')
       updateSettings(patch)
-      syncMyProfile()
+      void window.electronAPI?.account?.saveIdentity?.({ username: patch.username }).catch(() => {})
+      void syncMyProfile().catch(() => {})
       setIsEditing(false)
-      sendAppNotification({
-        title: language === 'de' ? 'Profil gespeichert' : 'Profile Saved',
-        body: language === 'de' ? 'Änderungen wurden übernommen.' : 'Changes have been saved.',
-        type: 'success'
-      })
-    }
+    } catch { setSaveError(language === 'de' ? 'Das Profil konnte nicht gespeichert werden. Bitte erneut versuchen.' : 'Could not save your profile. Please try again.') }
+    finally { setIsSaving(false) }
   }
 
   async function handleSyncSteam() {
@@ -428,6 +401,8 @@ export function ProfileView() {
         const patch: any = {
           username: profile.username,
           avatarUrl: profile.avatarFull,
+          steamAvatarFrameUrl: profile.steamAvatarFrameUrl ?? null,
+          steamAvatarFrameStaticUrl: profile.steamAvatarFrameStaticUrl ?? null,
           steamProfileUrl: editSteamUrl.trim(),
           steamLevel: profile.steamLevel ?? 0,
           steamGamesCount: profile.steamGamesCount ?? 0,
@@ -439,14 +414,15 @@ export function ProfileView() {
           steamBackgroundUrl: profile.steamBackgroundUrl,
           steamBackgroundMovie: profile.steamBackgroundMovie,
         }
-        updateSettings(patch)
         if (window.electronAPI?.setSettings) {
-          await window.electronAPI.setSettings(patch)
+          const result = await window.electronAPI.setSettings(patch)
+          if (result?.success === false) throw Error('Settings write failed')
         }
+        updateSettings(patch)
         if (window.electronAPI?.account?.saveIdentity) {
-          await window.electronAPI.account.saveIdentity({ username: profile.username })
+          void window.electronAPI.account.saveIdentity({ username: profile.username }).catch(() => {})
         }
-        await syncMyProfile()
+        void syncMyProfile().catch(() => {})
         sendAppNotification({
           title: language === 'de' ? 'Steam synchronisiert' : 'Steam Synced',
           body: language === 'de' ? `Profil von ${profile.username} erfolgreich verknüpft (inkl. Steam Live-Hintergrund).` : `Profile of ${profile.username} linked.`,
@@ -460,7 +436,7 @@ export function ProfileView() {
         })
       }
     } catch (e) {
-      console.warn('Steam sync error:', e)
+      setSaveError(language === 'de' ? 'Steam konnte nicht synchronisiert werden. Bitte erneut versuchen.' : 'Could not sync Steam. Please try again.')
     } finally {
       setIsSyncingSteam(false)
     }
@@ -472,20 +448,38 @@ export function ProfileView() {
     try {
       const specs = await window.electronAPI.getHardwareSpecs()
       if (specs) {
-        updateSettings({ hardwareSpecs: specs })
         if (window.electronAPI?.setSettings) {
-          await window.electronAPI.setSettings({ hardwareSpecs: specs })
+          const result = await window.electronAPI.setSettings({ hardwareSpecs: specs })
+          if (result?.success === false) throw Error('Settings write failed')
         }
-        await syncMyProfile()
+        updateSettings({ hardwareSpecs: specs })
+        void syncMyProfile().catch(() => {})
         sendAppNotification({
           title: language === 'de' ? 'Hardware aktualisiert' : 'Hardware Refreshed',
           body: language === 'de' ? 'PC-Komponenten wurden neu ausgelesen.' : 'PC specs refreshed.',
           type: 'success'
         })
       }
+    } catch {
+      setSaveError(language === 'de' ? 'Die Hardware konnte nicht aktualisiert werden.' : 'Could not refresh hardware.')
     } finally {
       setIsDetectingHardware(false)
     }
+  }
+
+  async function handleRefreshSteamFrame() {
+    if (!settings.steamProfileUrl || isSyncingSteam) return
+    setIsSyncingSteam(true); setSaveError('')
+    try {
+      const profile = await fetchSteamUserProfile(settings.steamProfileUrl)
+      if (!profile || profile.steamAvatarFrameUrl === undefined) throw Error('Steam frame unavailable')
+      const patch = { steamAvatarFrameUrl: profile.steamAvatarFrameUrl, steamAvatarFrameStaticUrl: profile.steamAvatarFrameStaticUrl ?? null }
+      const result = await window.electronAPI?.setSettings?.(patch)
+      if (result?.success === false) throw Error('Settings write failed')
+      updateSettings(patch)
+      void syncMyProfile().catch(() => {})
+    } catch { setSaveError(language === 'de' ? 'Der Steam-Rahmen konnte nicht aktualisiert werden. Bitte erneut versuchen.' : 'Could not refresh your Steam frame. Please try again.') }
+    finally { setIsSyncingSteam(false) }
   }
 
   async function handleSendFriendReq() {
@@ -495,46 +489,16 @@ export function ProfileView() {
       const codeOrUid = profileData?.friendCode || selectedFriendId
       const res = await sendFriendRequest(codeOrUid)
       if (res.success) {
+        if (res.state === 'incoming') {
+          if (window.electronAPI?.openFriendsWindow) void window.electronAPI.openFriendsWindow()
+          else useUIStore.getState().setIsFriendsOpen(true)
+          void sendAppNotification({ title: language==='de'?'Freundschaftsanfrage':'Friend request', body: language==='de'?'Du hast bereits eine Anfrage von diesem Spieler. Öffne Freunde, um sie anzunehmen.':'This player has already sent you a request. Open Friends to accept it.', type:'info' })
+          return
+        }
         setRequestSent(true)
         sendAppNotification({
           title: language === 'de' ? 'Anfrage gesendet! 👥' : 'Request Sent! 👥',
           body: res.message || (language === 'de' ? 'Freundschaftsanfrage übermittelt.' : 'Friend request sent.'),
-          type: 'success',
-          duration: 5000
-        })
-        return
-      }
-
-      const currentFriends = settings.eclipseFriends || []
-      const targetId = profileData?.uid || profileData?.steamId64 || selectedFriendId
-      if (targetId && !currentFriends.some(f => f.id === targetId)) {
-        const newFriend: EclipseFriend = {
-          id: targetId,
-          username: displayName,
-          avatarUrl: displayAvatar || '',
-          bannerUrl: displayBanner,
-          avatarFrame: displayFrame,
-          bio: displayBio,
-          status: friendStatus as any,
-          currentGame: friendCurrentGame || undefined,
-          steamProfileUrl: profileData?.steamProfileUrl || (selectedFriendId ? `https://steamcommunity.com/profiles/${selectedFriendId}` : undefined),
-          level: steamLevel || 1,
-          steamLevel: steamLevel || 1,
-          steamRecentGames: steamRecentGames || [],
-          steamFavoriteBadge: steamFavoriteBadge || null,
-          steamBadges: steamBadges || [],
-          steamGames: steamGames || [],
-          steamBackgroundUrl: steamBackgroundUrl,
-          steamBackgroundMovie: steamBackgroundMovie,
-          showSteamBackground: showSteamBg
-        }
-        updateSettings({
-          eclipseFriends: [...currentFriends, newFriend]
-        })
-        setRequestSent(true)
-        sendAppNotification({
-          title: language === 'de' ? 'Freund hinzugefügt! 👥' : 'Friend Added! 👥',
-          body: language === 'de' ? `Freund ${displayName} hinzugefügt.` : `Friend ${displayName} added.`,
           type: 'success',
           duration: 5000
         })
@@ -562,357 +526,33 @@ export function ProfileView() {
     return f ? f.color : 'border-white/10'
   }
 
-  // Reusable clean monochrome checkbox
-  const CleanCheckbox = ({ checked, onChange, label, description }: { checked: boolean; onChange: () => void; label: string; description?: string }) => (
-    <label className="flex items-start gap-3 cursor-pointer group select-none">
-      <div 
-        className={`w-4 h-4 rounded-[4px] flex items-center justify-center border transition-all duration-150 flex-shrink-0 mt-0.5 ${
-          checked 
-            ? 'bg-white border-white text-black shadow-sm' 
-            : 'bg-white/[0.04] border-white/20 group-hover:border-white/40'
-        }`}
-      >
-        {checked && <Check size={11} strokeWidth={3} className="text-black" />}
-      </div>
-      <div className="flex-1">
-        <span className="text-xs text-white/85 group-hover:text-white transition-colors block font-medium">
-          {label}
-        </span>
-        {description && (
-          <span className="text-[11px] text-white/40 block mt-0.5">
-            {description}
-          </span>
-        )}
-      </div>
-      <input type="checkbox" className="hidden" checked={checked} onChange={onChange} />
-    </label>
-  )
-
   return (
-    <div className="relative h-full overflow-y-auto bg-black select-none">
-      {/* ─── 1. Full Profile View Background with Direct CSS Alpha Mask Fade to Pure Black ─── */}
-      {activeProfileBg && (
-        <div 
-          className="absolute top-0 left-0 right-0 h-[1050px] pointer-events-none z-0 overflow-hidden"
-          style={{
-            WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 65%, rgba(0,0,0,0.4) 85%, rgba(0,0,0,0) 100%)',
-            maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 65%, rgba(0,0,0,0.4) 85%, rgba(0,0,0,0) 100%)',
-          }}
-        >
-          {isVideoBanner(activeProfileBg) ? (
-            <video 
-              src={activeProfileBg} 
-              autoPlay 
-              loop 
-              muted 
-              playsInline 
-              className="w-full h-full object-cover object-top filter brightness-[0.80] saturate-110" 
-            />
-          ) : (
-            <img 
-              src={activeProfileBg} 
-              alt="Steam Profile Background" 
-              className="w-full h-full object-cover object-top filter brightness-[0.80] saturate-110" 
-            />
-          )}
-          {/* Subtle bottom fade to guarantee clean transition to black at bottom */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80" />
-        </div>
-      )}
-
-      {/* Main Content Area */}
-      <div className="relative z-10 max-w-5xl mx-auto px-6 py-8 md:px-10 md:py-10 space-y-6">
-        
-        {/* ─── 2. Hero Header & Identity Card with Card Banner ─── */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl relative"
-        >
-          {/* Cover Banner (Presets, Steam Live Video, or Custom Link) */}
-          <div className="relative h-48 md:h-56 w-full overflow-hidden bg-[#06070a]">
-            {displayBanner && (
-              isVideoBanner(displayBanner) ? (
-                <video 
-                  src={displayBanner} 
-                  autoPlay 
-                  loop 
-                  muted 
-                  playsInline 
-                  className="w-full h-full object-cover object-center filter brightness-95" 
-                />
-              ) : (
-                <img 
-                  src={displayBanner} 
-                  alt="Profile Banner" 
-                  className="w-full h-full object-cover object-center filter brightness-95" 
-                />
-              )
-            )}
-            {/* Smooth Vignette Gradient Fade */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] via-[#0c0d12]/40 to-transparent" />
-            
-            {/* Quick Edit Background Button (local user) */}
-            {!isViewingFriend && !isEditing && (
-              <button 
-                onClick={() => { setIsEditing(true); setEditTab('banner'); }}
-                className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 text-white/80 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-              >
-                <ImageIcon size={13} /> {language === 'de' ? 'Hintergrund bearbeiten' : 'Edit Background'}
-              </button>
-            )}
-          </div>
-
-          {/* Profile Identity Details */}
-          <div className="px-6 pb-6 md:px-8 md:pb-8 pt-0 relative z-10 flex flex-col md:flex-row items-center md:items-end justify-between gap-5 -mt-14 md:-mt-16">
-            
-            {/* Avatar & User Details */}
-            <div className="flex flex-col md:flex-row items-center md:items-end gap-5 text-center md:text-left">
-              {/* Avatar with selected frame */}
-              <div className="relative group flex-shrink-0">
-                <div className={`w-28 h-28 md:w-32 md:h-32 rounded-full p-1 bg-[#0c0d12] border-2 ${getFrameClass(displayFrame)} transition-all duration-200 relative flex items-center justify-center shadow-xl`}>
-                  <div className="w-full h-full rounded-full overflow-hidden bg-black/90 flex items-center justify-center">
-                    {displayAvatar ? (
-                      <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <User size={48} className="text-white/30" />
-                    )}
-                  </div>
-                </div>
-
-                {!isViewingFriend && !isEditing && (
-                  <button
-                    onClick={() => { setIsEditing(true); setEditTab('frame'); }}
-                    className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-xs font-medium gap-1"
-                  >
-                    <Sparkles size={14} className="text-white/80" />
-                  </button>
-                )}
-              </div>
-
-              {/* Identity Typography & Badges */}
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
-                  <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight uppercase">
-                    {displayName}
-                  </h1>
-                  
-                  {activeFriendCode && (
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(activeFriendCode)
-                        setCopiedFriendCode(true)
-                        setTimeout(() => setCopiedFriendCode(false), 2000)
-                      }}
-                      className="inline-flex items-center gap-1 text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/60 hover:text-white transition-all cursor-pointer"
-                      title="Click to copy Friend Code"
-                    >
-                      <span>#{activeFriendCode}</span>
-                      {copiedFriendCode ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} className="opacity-40" />}
-                    </button>
-                  )}
-                </div>
-
-                {/* ─── Exact Steam Stats Pills (Screenshot Feature) ─── */}
-                {(isViewingFriend ? (profileData?.steamProfileUrl || friend?.steamProfileUrl) : settings.steamProfileUrl) && (
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-0.5">
-                    {/* Steam Logo */}
-                    <div className="w-7 h-7 rounded-full bg-[#1b2838] border border-[#2a475e]/70 flex items-center justify-center flex-shrink-0 shadow-sm" title="Linked Steam Profile">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" className="w-4 h-4" alt="Steam" />
-                    </div>
-
-                    {/* Level Pill */}
-                    {steamLevel !== undefined && (
-                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1b2838]/90 border border-[#2a475e]/80 text-[#66c0f4] text-xs font-bold shadow-sm">
-                        <Trophy size={13} className="text-[#66c0f4]" />
-                        <span>Level {steamLevel}</span>
-                      </div>
-                    )}
-
-                    {/* Games Count Pill */}
-                    {steamGamesCount !== undefined && steamGamesCount > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1b2838]/90 border border-[#2a475e]/80 text-[#66c0f4] text-xs font-bold shadow-sm">
-                        <Gamepad2 size={13} className="text-[#66c0f4]" />
-                        <span>{steamGamesCount} Games</span>
-                      </div>
-                    )}
-
-                    {/* Featured Favorite Badge Pill */}
-                    {steamFavoriteBadge && steamFavoriteBadge.name && (
-                      <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-[#1b2838]/90 border border-[#2a475e]/80 shadow-sm" title={steamFavoriteBadge.xp ? `${steamFavoriteBadge.name} (${steamFavoriteBadge.xp})` : steamFavoriteBadge.name}>
-                        {steamFavoriteBadge.iconUrl && (
-                          <img src={steamFavoriteBadge.iconUrl} alt={steamFavoriteBadge.name} className="w-5 h-5 object-contain flex-shrink-0" />
-                        )}
-                        <div className="text-left">
-                          <span className="text-[9px] font-bold text-[#66c0f4] uppercase tracking-wider block leading-none">FEATURED</span>
-                          <span className="text-xs font-bold text-white leading-none">{steamFavoriteBadge.name}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Minimalist Inline Status Pill */}
-                <div className="flex items-center justify-center md:justify-start pt-1">
-                  {isIngame ? (
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/25 text-xs text-purple-200 shadow-sm backdrop-blur-md">
-                      <span className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)] animate-pulse" />
-                      <Gamepad2 size={13} className="text-purple-400 flex-shrink-0" />
-                      <span className="text-purple-300 font-medium">
-                        {language === 'de' ? 'Spielt' : 'Playing'} <span className="text-white font-semibold">{currentGameName}</span>
-                      </span>
-                    </div>
-                  ) : isOnline ? (
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-xs text-emerald-200 shadow-sm backdrop-blur-md">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                      <span className="text-emerald-300 font-medium">{t('online')}</span>
-                    </div>
-                  ) : (
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs text-white/50 shadow-sm">
-                      <span className="w-2 h-2 rounded-full bg-white/20" />
-                      <span className="text-white/50 font-normal">{formatLastSeen(friendLastSeen, language)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Bio / Quote */}
-                {displayBio && (
-                  <p className="text-xs text-white/65 italic max-w-md pt-1 leading-relaxed">
-                    "{displayBio}"
-                  </p>
-                )}
-
-                {/* Social Links */}
-                {(displayDiscord || displayTwitch || displayYoutube) && (
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1.5">
-                    {displayDiscord && (
-                      <button 
-                        onClick={() => {
-                          navigator.clipboard.writeText(displayDiscord)
-                          setCopiedDiscord(true)
-                          setTimeout(() => setCopiedDiscord(false), 2000)
-                        }}
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-white/70 hover:text-white text-[11px] transition-colors cursor-pointer"
-                      >
-                        <span className="text-white/40">Discord:</span>
-                        <span>{displayDiscord}</span>
-                        {copiedDiscord ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} className="opacity-30" />}
-                      </button>
-                    )}
-                    {displayTwitch && (
-                      <a 
-                        href={`https://twitch.tv/${displayTwitch.replace('@', '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-white/70 hover:text-white text-[11px] transition-colors"
-                      >
-                        <span className="text-white/40">Twitch:</span>
-                        <span>{displayTwitch}</span>
-                        <ExternalLink size={10} className="opacity-30" />
-                      </a>
-                    )}
-                    {displayYoutube && (
-                      <a 
-                        href={`https://youtube.com/${displayYoutube.startsWith('@') ? displayYoutube : '@' + displayYoutube}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-white/70 hover:text-white text-[11px] transition-colors"
-                      >
-                        <span className="text-white/40">YouTube:</span>
-                        <span>{displayYoutube}</span>
-                        <ExternalLink size={10} className="opacity-30" />
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Profile Action Buttons */}
-            <div className="flex items-center gap-2.5 flex-shrink-0 pt-2 md:pt-0">
-              {!isViewingFriend ? (
-                <>
-                  <button 
-                    onClick={() => setIsEditing(true)}
-                    className="bg-white text-black font-semibold hover:bg-white/90 px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-                  >
-                    <Edit3 size={13} /> {t('editProfile')}
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setActiveSettingsTab('profile')
-                      setActiveView('settings')
-                    }}
-                    className="bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.08] px-3.5 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Settings size={13} /> {t('settings')}
-                  </button>
-                </>
-              ) : (
-                <>
-                  {!isAlreadyFriend && (
-                    <button 
-                      onClick={handleSendFriendReq}
-                      disabled={isSendingRequest || requestSent}
-                      className="bg-white text-black font-semibold hover:bg-white/90 px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-60"
-                    >
-                      {isSendingRequest ? (
-                        <Loader2 size={13} className="animate-spin" />
-                      ) : requestSent ? (
-                        <Check size={13} className="text-emerald-600" />
-                      ) : (
-                        <UserPlus size={13} />
-                      )}
-                      {requestSent 
-                        ? (language === 'de' ? 'Anfrage gesendet' : 'Request Sent') 
-                        : (language === 'de' ? 'Freund hinzufügen' : 'Add Friend')}
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => setSelectedFriendId(null)}
-                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-3.5 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <ArrowLeft size={13} /> {language === 'de' ? 'Mein Profil' : 'My Profile'}
-                  </button>
-                </>
-              )}
-            </div>
-
-          </div>
-        </motion.div>
-
-        {/* ─── Minimalist Edit Profile Modal / Section ─── */}
-        <AnimatePresence>
-          {isEditing && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.15 }}
-              className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-6 shadow-2xl relative"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-white/[0.06] mb-5">
-                <h3 className="text-sm font-bold text-white tracking-wide">
-                  {language === 'de' ? 'Profil bearbeiten' : 'Edit Profile'}
-                </h3>
-                <button 
-                  onClick={() => setIsEditing(false)}
-                  className="p-1.5 rounded-md text-white/40 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
+    <div className="view-scroll profile-page" data-profile-page>
+      {activeProfileBg && <div className="profile-wallpaper"><ProfileMedia src={activeProfileBg}/></div>}
+      {isViewingFriend && !profileData ? settledProfile !== selectedFriendId || isLoadingProfile ? <div className="profile-loading" role="status"><Loader2 size={18} className="animate-spin"/>{language === 'de' ? 'Profil wird geladen …' : 'Loading profile …'}</div> : <div className="profile-loading" data-profile-error><div><p>{language === 'de' ? 'Dieses Profil konnte nicht geladen werden.' : 'This profile could not be loaded.'}</p><div className="flex gap-3 mt-4"><button className="profile-button" onClick={() => { setSettledProfile(null); setProfileRevision(value => value + 1) }}>{language === 'de' ? 'Erneut versuchen' : 'Try again'}</button><button className="profile-button" onClick={() => setSelectedFriendId(null)}>{language === 'de' ? 'Mein Profil' : 'My profile'}</button></div></div></div> : <ProfileOverview key={selectedFriendId || 'own-profile'}
+        language={language} own={!isViewingFriend} name={displayName} avatar={displayAvatar} banner={displayBanner} bannerPosition={bannerPosition} frameClass={getFrameClass(displayFrame)} bio={displayBio} code={activeFriendCode}
+        steamFrame={displayFrame === 'steam' ? steamFrame : undefined} steamFrameStatic={displayFrame === 'steam' ? steamFrameStatic : undefined}
+        online={isOnline} playing={isIngame} gameName={currentGameName} startedAt={!isViewingFriend ? activeGame?.startTime : undefined} status={isViewingFriend ? friendStatusText : (language === 'de' ? 'Online' : 'Online')}
+        steamUrl={isViewingFriend ? profileData?.steamProfileUrl : settings.steamProfileUrl} steamLevel={steamLevel} steamGamesCount={steamGamesCount} favoriteBadge={steamFavoriteBadge}
+        discord={displayDiscord} twitch={displayTwitch} youtube={displayYoutube} showPlaytime={showPlaytime} showSteam={showSteam}
+        totalTime={displayTotalPlaytime} libraryCount={displayLibraryCount} installedCount={displayInstalledCount} games={displayGames} topGames={displayTopGames} pinned={pinned} badges={steamBadges} ownSteamIds={ownSteamIds}
+        recent={steamRecentGames.map((game: any) => ({ ...game, playtime: formatLocalizedPlaytime(game.playtime, language) }))} hardware={displayShowHardware ? displayHardware : undefined}
+        edit={tab => { setSaveError(''); setEditTab(tab); setIsEditing(true) }} savePins={savePins} back={() => setSelectedFriendId(null)}
+        addFriend={() => void handleSendFriendReq()} alreadyFriend={isAlreadyFriend} sending={isSendingRequest} requestSent={requestSent}/>}
+        <>
+          {isEditing && !isViewingFriend && (
+          <ProfileDialog close={() => { if (!isSaving) setIsEditing(false) }}>
+            <div className="profile-editor">
+              <header className="profile-editor-header"><div><h2 id="profile-edit-title">{language === 'de' ? 'Profil bearbeiten' : 'Edit profile'}</h2><p>{language === 'de' ? 'Dein Name, dein Look, deine Spiele.' : 'Your name, your look, your games.'}</p></div><button type="button" aria-label={language === 'de' ? 'Schließen' : 'Close'} disabled={isSaving} onClick={() => setIsEditing(false)}><X size={18}/></button></header>
               {/* Minimalist Flat Nav Tabs */}
-              <div className="flex flex-wrap gap-1.5 mb-6 border-b border-white/[0.06] pb-3">
+              <div className="profile-editor-nav" role="tablist" aria-label={language === 'de' ? 'Profil anpassen' : 'Customize profile'}>
                 {[
                   { id: 'general', label: language === 'de' ? 'Allgemein' : 'General', icon: User },
                   { id: 'banner', label: language === 'de' ? 'Banner' : 'Banner', icon: ImageIcon },
                   { id: 'bg_steam', label: language === 'de' ? 'Profil-Hintergrund' : 'Profile Background', icon: Play },
                   { id: 'frame', label: language === 'de' ? 'Avatar-Rahmen' : 'Avatar Frames', icon: Sparkles },
-                  { id: 'socials', label: language === 'de' ? 'Bio & Socials' : 'Bio & Socials', icon: MessageSquare },
-                  { id: 'steam', label: 'Steam Sync', icon: RefreshCw },
+                  { id: 'socials', label: language === 'de' ? 'Biografie & Links' : 'Bio & socials', icon: MessageSquare },
+                  { id: 'steam', label: t('uiSteamSync'), icon: RefreshCw },
                   { id: 'hardware', label: language === 'de' ? 'PC-Hardware' : 'Hardware Specs', icon: Cpu },
                 ].map(tab => {
                   const Icon = tab.icon
@@ -920,7 +560,9 @@ export function ProfileView() {
                   return (
                     <button
                       key={tab.id}
-                      onClick={() => setEditTab(tab.id as any)}
+                      data-profile-edit-tab={tab.id}
+                      type="button" role="tab" aria-selected={isActive}
+                      onClick={() => { setEditTab(tab.id as any); setSaveError('') }}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-2 ${
                         isActive 
                           ? 'bg-white/10 text-white font-semibold' 
@@ -941,7 +583,7 @@ export function ProfileView() {
                     <div>
                       <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">{t('username')}</label>
                       <input 
-                        type="text" 
+                        type="text" maxLength={64} aria-label={t('username')}
                         value={editName}
                         onChange={e => setEditName(e.target.value)}
                         className="w-full bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-white/20 transition-colors focus:outline-none"
@@ -988,64 +630,7 @@ export function ProfileView() {
                 </div>
               )}
 
-              {/* Tab 2: Card Banner (Presets & Custom Link) */}
-              {editTab === 'banner' && (
-                <div className="space-y-5">
-                  {/* Presets Grid */}
-                  <div>
-                    <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2.5">
-                      {language === 'de' ? 'Vorgegebene Vorlagen' : 'Presets'}
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
-                      {BANNER_PRESETS.map(preset => {
-                        const isSelected = editBanner === preset.url
-                        return (
-                          <div 
-                            key={preset.id}
-                            onClick={() => setEditBanner(preset.url)}
-                            className={`group relative h-20 rounded-xl overflow-hidden border cursor-pointer transition-all ${
-                              isSelected ? 'border-white ring-2 ring-white/50' : 'border-white/[0.08] hover:border-white/30'
-                            }`}
-                          >
-                            <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
-                            
-                            {isSelected && (
-                              <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow-sm">
-                                <Check size={10} className="text-black" strokeWidth={3} />
-                              </div>
-                            )}
-
-                            <span className="absolute bottom-1.5 left-2 text-[10px] font-semibold text-white drop-shadow-sm truncate max-w-[90%]">
-                              {preset.name}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Custom Banner Link */}
-                  <div className="pt-2">
-                    <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">
-                      {language === 'de' ? 'Eigener Banner-Link (Bild JPG/PNG oder Video MP4/WebM)' : 'Custom Banner Link (Image JPG/PNG or Video MP4/WebM)'}
-                    </label>
-                    <input 
-                      type="text" 
-                      placeholder="https://... (z. B. JPG, PNG, GIF, WebM oder MP4)"
-                      value={editBanner}
-                      onChange={e => setEditBanner(e.target.value)}
-                      className="w-full bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono transition-colors focus:outline-none"
-                    />
-                    {editBanner && (
-                      <div className="mt-2 text-[11px] text-white/40 flex items-center gap-1.5">
-                        <span>{language === 'de' ? 'Aktiver Banner-Link:' : 'Active Banner Link:'}</span>
-                        <span className="text-white/70 truncate max-w-sm">{editBanner}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              {editTab === 'banner' && <ProfileBannerPicker value={editBanner} onChange={setEditBanner} position={editBannerPosition} onPosition={setEditBannerPosition} games={allUserGames} language={language}/>}
 
               {/* Tab 2.5: Profil-Hintergrund (Steam Live Background) */}
               {editTab === 'bg_steam' && (
@@ -1082,18 +667,7 @@ export function ProfileView() {
                       </div>
 
                       <div className="relative h-44 rounded-xl overflow-hidden border border-white/10">
-                        {isVideoBanner(steamBg) ? (
-                          <video 
-                            src={steamBg} 
-                            autoPlay 
-                            loop 
-                            muted 
-                            playsInline 
-                            className="w-full h-full object-cover" 
-                          />
-                        ) : (
-                          <img src={steamBg} alt="Steam Background Preview" className="w-full h-full object-cover" />
-                        )}
+                        <ProfileMedia src={steamBg} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/20" />
                       </div>
                     </div>
@@ -1121,12 +695,21 @@ export function ProfileView() {
                   <label className="block text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">
                     {language === 'de' ? 'Avatar-Rahmen' : 'Avatar Frames'}
                   </label>
+                  <div className="profile-steam-frame-choice">
+                    <button id="profile-use-steam-frame" type="button" disabled={!steamFrameImage(settings.steamAvatarFrameUrl)} aria-pressed={editFrame === 'steam'} onClick={() => setEditFrame('steam')}>
+                      <ProfileAvatar avatar={editAvatar} name={editName} steamFrame={settings.steamAvatarFrameUrl} steamFrameStatic={settings.steamAvatarFrameStaticUrl} small/>
+                      <span><strong>{language === 'de' ? 'Mein Steam-Rahmen' : 'My Steam frame'}</strong><span>{steamFrameImage(settings.steamAvatarFrameUrl) ? (language === 'de' ? 'Verwendet den aktuell auf Steam ausgerüsteten Rahmen.' : 'Uses the frame currently equipped on Steam.') : (language === 'de' ? 'Noch kein ausgerüsteter Rahmen synchronisiert.' : 'No equipped frame has been synced yet.')}</span></span>
+                      {editFrame === 'steam' && <Check size={16}/>}
+                    </button>
+                    <button type="button" className="profile-text-button" disabled={isSyncingSteam} onClick={() => settings.steamProfileUrl ? void handleRefreshSteamFrame() : setEditTab('steam')}><RefreshCw size={12} className={isSyncingSteam ? 'animate-spin' : ''}/>{settings.steamProfileUrl ? (language === 'de' ? 'Von Steam aktualisieren' : 'Refresh from Steam') : (language === 'de' ? 'Steam verknüpfen' : 'Link Steam')}</button>
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
                     {AVATAR_FRAMES.map(frame => {
                       const isSelected = editFrame === frame.id
                       return (
-                        <div 
+                        <button type="button" aria-pressed={isSelected}
                           key={frame.id}
+                          data-avatar-frame={frame.id}
                           onClick={() => setEditFrame(frame.id)}
                           className={`p-3.5 rounded-xl border cursor-pointer flex flex-col items-center gap-2.5 transition-all ${
                             isSelected 
@@ -1134,10 +717,10 @@ export function ProfileView() {
                               : 'border-white/[0.08] bg-[#14161c] hover:border-white/20'
                           }`}
                         >
-                          <div className={`w-12 h-12 rounded-full p-1 bg-[#0c0d12] border-2 ${frame.color} flex items-center justify-center`}>
+                          <div className={`w-12 h-12 rounded-full p-1 launcher-card bg-[var(--launcher-card,#0c0d12)] border-2 ${frame.color} flex items-center justify-center`}>
                             <div className="w-full h-full rounded-full overflow-hidden bg-black/90 flex items-center justify-center">
                               {editAvatar ? (
-                                <img src={editAvatar} alt="preview" className="w-full h-full object-cover" />
+                                <img src={editAvatar} alt={t('uiPreview')} className="w-full h-full object-cover" />
                               ) : (
                                 <User size={16} className="text-white/40" />
                               )}
@@ -1146,7 +729,7 @@ export function ProfileView() {
                           <span className="text-[11px] font-medium text-white/90 text-center">
                             {language === 'de' ? frame.labelDe : frame.label}
                           </span>
-                        </div>
+                        </button>
                       )
                     })}
                   </div>
@@ -1213,7 +796,8 @@ export function ProfileView() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider block">
-                      Steam Integration
+
+                      {t('uiSteamIntegration')}
                     </span>
                     <p className="text-xs text-white/60">
                       {language === 'de' 
@@ -1229,7 +813,7 @@ export function ProfileView() {
                     <div className="flex flex-col sm:flex-row gap-2.5">
                       <input 
                         type="text" 
-                        placeholder="https://steamcommunity.com/id/... oder 76561198..."
+                        placeholder={t('uiSteamProfileInput')}
                         value={editSteamUrl}
                         onChange={e => setEditSteamUrl(e.target.value)}
                         className="flex-1 bg-[#14161c] border border-white/[0.08] focus:border-white/30 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none font-mono"
@@ -1305,12 +889,12 @@ export function ProfileView() {
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[10px] font-mono font-semibold uppercase text-white/40 block">Memory</span>
+                      <span className="text-[10px] font-mono font-semibold uppercase text-white/40 block">{t('uiMemory')}</span>
                       <p className="text-xs font-medium text-white break-words leading-relaxed">{displayHardware?.ram || '—'}</p>
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[10px] font-mono font-semibold uppercase text-white/40 block">Display & OS</span>
+                      <span className="text-[10px] font-mono font-semibold uppercase text-white/40 block">{t('uiDisplayOs')}</span>
                       <p className="text-xs font-medium text-white break-words leading-relaxed">
                         {displayHardware?.display || 'Primary Monitor'}
                         {displayHardware?.os ? ` • ${displayHardware.os}` : ''}
@@ -1320,306 +904,28 @@ export function ProfileView() {
                 </div>
               )}
 
+              {saveError && <p className="profile-error" role="alert">{saveError}</p>}
               {/* Action Buttons */}
               <div className="flex justify-end items-center gap-2.5 pt-5 border-t border-white/[0.06] mt-5">
                 <button 
+                  disabled={isSaving}
                   onClick={() => setIsEditing(false)}
                   className="px-4 py-2 text-xs font-medium text-white/60 hover:text-white transition-colors cursor-pointer"
                 >
                   {t('cancel')}
                 </button>
                 <button 
-                  onClick={handleSave}
-                  className="bg-white text-black hover:bg-white/90 px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                  disabled={isSaving}
+                  onClick={() => void handleSave()}
+                  className="profile-editor-save"
                 >
-                  <Save size={13} className="text-black" /> {t('save')}
+                  {isSaving ? <Loader2 size={13} className="animate-spin"/> : <Save size={13}/>} {t('save')}
                 </button>
               </div>
-            </motion.div>
+            </div>
+          </ProfileDialog>
           )}
-        </AnimatePresence>
-
-        {/* ─── System Specs (Hardware Rig) Bar ─── */}
-        {displayShowHardware && displayHardware && (displayHardware.cpu || displayHardware.gpu) && (
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
-          >
-            {/* Header */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 mb-4 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2">
-                <Cpu size={14} className="text-white/60" />
-                <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
-                  {language === 'de' ? 'System-Hardware' : 'System Hardware'}
-                </h3>
-                <span className="text-[10px] text-emerald-400/90 font-mono">
-                  • {language === 'de' ? 'automatisch erkannt' : 'auto-detected'}
-                </span>
-              </div>
-
-              {!isViewingFriend && (
-                <button
-                  onClick={() => {
-                    const next = !settings.showHardwareSpecs
-                    updateSettings({ showHardwareSpecs: next })
-                    if (window.electronAPI?.setSettings) {
-                      window.electronAPI.setSettings({ showHardwareSpecs: next })
-                    }
-                    syncMyProfile()
-                  }}
-                  className="text-[11px] font-medium text-white/40 hover:text-white transition-colors cursor-pointer"
-                >
-                  {settings.showHardwareSpecs !== false 
-                    ? (language === 'de' ? 'Sichtbar' : 'Visible') 
-                    : (language === 'de' ? 'Ausgeblendet' : 'Hidden')}
-                </button>
-              )}
-            </div>
-
-            {/* Clean Non-Truncated Specs Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {displayHardware.gpu && (
-                <div className="space-y-1">
-                  <span className="text-[10px] font-mono font-medium uppercase text-white/40 block">Graphics</span>
-                  <p className="text-xs font-medium text-white leading-relaxed whitespace-normal break-words">
-                    {displayHardware.gpu}
-                  </p>
-                </div>
-              )}
-
-              {displayHardware.cpu && (
-                <div className="space-y-1">
-                  <span className="text-[10px] font-mono font-medium uppercase text-white/40 block">Processor</span>
-                  <p className="text-xs font-medium text-white leading-relaxed whitespace-normal break-words">
-                    {displayHardware.cpu}
-                  </p>
-                </div>
-              )}
-
-              {displayHardware.ram && (
-                <div className="space-y-1">
-                  <span className="text-[10px] font-mono font-medium uppercase text-white/40 block">Memory</span>
-                  <p className="text-xs font-medium text-white leading-relaxed whitespace-normal break-words">
-                    {displayHardware.ram}
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <span className="text-[10px] font-mono font-medium uppercase text-white/40 block">Display & OS</span>
-                <p className="text-xs font-medium text-white leading-relaxed whitespace-normal break-words">
-                  {displayHardware.display ? displayHardware.display : 'Primary Monitor'}
-                  {displayHardware.os ? ` • ${displayHardware.os}` : ''}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ─── Stats Metrics Strip ─── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-          {(!isViewingFriend ? settings.profileShowPlaytime !== false : true) && (
-            <motion.div 
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="bg-[#0c0d12] border border-white/[0.08] rounded-xl p-4 shadow-sm"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-mono font-medium uppercase text-white/40 tracking-wider">
-                  {t('totalPlaytime')}
-                </span>
-                <Clock size={13} className="text-white/30" />
-              </div>
-              <p className="text-xl font-bold text-white tracking-tight">{displayTotalPlaytime}</p>
-            </motion.div>
-          )}
-
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-[#0c0d12] border border-white/[0.08] rounded-xl p-4 shadow-sm"
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-mono font-medium uppercase text-white/40 tracking-wider">
-                {t('gamesInLibrary')}
-              </span>
-              <Library size={13} className="text-white/30" />
-            </div>
-            <p className="text-xl font-bold text-white tracking-tight">{displayLibraryCount}</p>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="bg-[#0c0d12] border border-white/[0.08] rounded-xl p-4 shadow-sm"
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-mono font-medium uppercase text-white/40 tracking-wider">
-                {isViewingFriend ? 'Activity / Installed' : t('installedGames')}
-              </span>
-              <Save size={13} className="text-white/30" />
-            </div>
-            <p className="text-xl font-bold text-white tracking-tight">{displayInstalledCount}</p>
-          </motion.div>
-        </div>
-
-        {/* ─── Steam Badges Showcase ─── */}
-        {(settings.profileShowSteamStats !== false) && steamBadges && steamBadges.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
-          >
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2.5">
-                <Award size={15} className="text-amber-400/90" />
-                <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
-                  Steam Badges & Abzeichen
-                </h3>
-                <span className="text-[11px] font-mono text-white/40">
-                  ({steamBadges.length}{steamBadgesCount && steamBadgesCount > steamBadges.length ? ` von ${steamBadgesCount}` : ''})
-                </span>
-              </div>
-              {steamFavoriteBadge && (
-                <div className="flex items-center gap-1.5 text-[11px] text-amber-300/80 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
-                  <span>Favorite: {steamFavoriteBadge.name}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Badges Flow Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-              {steamBadges.map((badge, idx) => (
-                <div 
-                  key={`${badge.name}-${idx}`}
-                  className="bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/20 rounded-xl p-2.5 flex flex-col items-center gap-1.5 transition-all text-center group"
-                  title={`${badge.name}${badge.xp ? ` (${badge.xp})` : ''}`}
-                >
-                  <div className="w-10 h-10 flex items-center justify-center relative">
-                    <img 
-                      src={badge.iconUrl} 
-                      alt={badge.name} 
-                      className="max-w-full max-h-full object-contain filter group-hover:scale-110 transition-transform" 
-                    />
-                  </div>
-                  <span className="text-[10px] font-medium text-white/80 group-hover:text-white line-clamp-1 break-all">
-                    {badge.name}
-                  </span>
-                  {badge.xp && (
-                    <span className="text-[9px] font-mono text-white/40">
-                      {badge.xp}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* ─── Steam Games Showcase ─── */}
-        {/* ─── Steam Recent Games Showcase ─── */}
-        {(settings.profileShowSteamStats !== false) && steamRecentGames && steamRecentGames.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm space-y-4"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2.5">
-                <Gamepad2 size={15} className="text-[#66c0f4]" />
-                <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
-                  {language === 'de' ? 'Kürzlich auf Steam gespielt' : 'Recently Played on Steam'}
-                </h3>
-                <span className="text-[11px] font-mono text-white/40">
-                  ({steamRecentGames.length})
-                </span>
-              </div>
-            </div>
-
-            {/* Clean Recent Games Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 pt-1">
-              {steamRecentGames.map((game: any) => (
-                <div 
-                  key={game.appId || game.name} 
-                  onClick={() => {
-                    if (game.appId) openGameDetails(Number(game.appId), game.name)
-                  }}
-                  className="bg-white/[0.02] hover:bg-white/[0.05] rounded-xl overflow-hidden border border-white/[0.06] hover:border-white/20 transition-all shadow-sm cursor-pointer group flex flex-col"
-                >
-                  <div className="relative aspect-[460/215] w-full overflow-hidden bg-black/60">
-                    <img 
-                      src={game.iconUrl || `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appId}/header.jpg`} 
-                      alt={game.name} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] via-transparent to-transparent" />
-                  </div>
-                  <div className="p-3.5 space-y-1">
-                    <h4 className="font-semibold text-white text-xs truncate group-hover:text-white transition-colors">
-                      {game.name}
-                    </h4>
-                    <p className="text-[11px] text-[#66c0f4] font-medium font-mono">
-                      {game.playtime}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* ─── Most Played Local Games Section ─── */}
-        {displayTopGames.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl p-5 md:p-6 shadow-sm"
-          >
-            <h3 className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Trophy size={13} className="text-amber-400/90" />
-              {language === 'de' ? 'Meistgespielte Spiele (Eclipse)' : 'Most Played Games (Eclipse)'}
-            </h3>
-            <div className="divide-y divide-white/[0.04]">
-              {displayTopGames.map((game: any, idx: number) => {
-                const mins = Math.round(game.playTimeMinutes || 0)
-                const hrs = mins >= 60 ? (mins / 60).toFixed(1) + ' hrs' : `${mins} mins`
-                const sId = 'steamId' in game ? game.steamId : undefined
-
-                return (
-                  <div
-                    key={game.id || game.name}
-                    onClick={() => {
-                      if (sId) openGameDetails(sId, game.name)
-                    }}
-                    className="flex items-center justify-between py-2.5 px-2 hover:bg-white/[0.02] rounded-lg transition-colors cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-xs font-mono text-white/30 w-4 text-center">#{idx + 1}</span>
-                      <p className="text-xs font-medium text-white/90 group-hover:text-white transition-colors truncate">
-                        {game.name}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0 pl-3">
-                      <Clock size={11} className="text-white/30" />
-                      <span className="text-xs font-mono text-white/60">{hrs}</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </motion.div>
-        )}
-
-      </div>
+        </>
     </div>
   )
 }

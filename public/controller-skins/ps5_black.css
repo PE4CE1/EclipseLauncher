@@ -1,0 +1,191 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  overflow: hidden;
+  user-select: none;
+}
+.controller {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Base structural layout */
+.controller .triggers { position: absolute; width: 100%; top: 0; }
+.controller .trigger { position: absolute; opacity: 0; }
+.controller .bumpers { position: absolute; width: 100%; }
+.controller .bumper { position: absolute; opacity: 0; }
+.controller .arrows { position: absolute; }
+.controller .back, .controller .start { position: absolute; opacity: 0; }
+.controller .abxy { position: absolute; }
+.controller .button { position: absolute; opacity: 1; }
+.controller .dpad { position: absolute; }
+.controller .face { position: absolute; }
+.controller .sticks { position: absolute; }
+.controller .stick { position: absolute; opacity: 1; }
+
+
+.controller.ps5-black {
+    background: url(./ps5_black/base.png) no-repeat 0 0;
+    width: 794px;
+    height: 639px;
+}
+.ps5-black .sticks {
+    width: 367px;
+    height: 95px;
+    left: 222px;
+    top: 294px;
+    position: absolute;
+}
+.ps5-black .stick {
+    background: url(./ps5_black/stick.png) no-repeat 0 0;
+    width: 95px;
+    height: 95px;
+    position: absolute;
+    opacity: 1 !important;
+}
+.ps5-black .stick.pressed.left, .ps5-black .stick.pressed.right {
+    background-position: -95px 0;
+}
+.ps5-black .stick.left {
+    top: 0;
+    left: 0;
+}
+.ps5-black .stick.right {
+    top: 0;
+    left: 255px;
+}
+.ps5-black .abxy {
+    width: 181px;
+    height: 181px;
+    left: 559px;
+    top: 152px;
+    position: absolute;
+}
+.ps5-black .button {
+    background: url(./ps5_black/button.png) no-repeat;
+    width: 54px;
+    height: 54px;
+    position: absolute;
+    opacity: 1 !important;
+}
+.ps5-black .button.pressed {
+    background-position-y: -55px;
+}
+.ps5-black .button.a {
+    background-position-x: 0;
+    left: 59px;
+    top: 116px;
+}
+.ps5-black .button.b {
+    background-position-x: -54px;
+    left: 118px;
+    top: 59px;
+}
+.ps5-black .button.x {
+    background-position-x: -108px;
+    left: 0px;
+    top: 58px;
+}
+.ps5-black .button.y {
+    background-position-x: -162px;
+    left: 59px;
+    top: 0px;
+}
+.ps5-black .arrows {
+    left: 195px;
+    top: 140px;
+    width: 416px;
+    height: 57px;
+    position: absolute;
+}
+.ps5-black .back, .ps5-black .start {
+    background: url(./ps5_black/start.png) no-repeat;
+    width: 23px;
+    height: 37px;
+    margin-top: -8px;
+    opacity: 0;
+    position: absolute;
+}
+.ps5-black .back { left: 5px; }
+.ps5-black .start {
+    background-position: -23px 0;
+    right: 16px;
+}
+.ps5-black .bumpers {
+    width: 620px;
+    height: 36px;
+    left: 90px;
+    top: 98px;
+    position: absolute;
+}
+.ps5-black .bumper {
+    background: url(./ps5_black/bumper.png) no-repeat;
+    width: 114px;
+    height: 36px;
+    opacity: 0;
+    position: absolute;
+}
+.ps5-black .bumper.left { left: 0; }
+.ps5-black .bumper.right { right: 0; margin-right: 6px; transform: rotateY(180deg); }
+.ps5-black .triggers {
+    width: 593px;
+    height: 97px;
+    left: 100px;
+    top: 0;
+    position: absolute;
+}
+.ps5-black .trigger {
+    background: url(./ps5_black/trigger.png) no-repeat;
+    width: 100px;
+    height: 97px;
+    opacity: 0;
+    position: absolute;
+}
+.ps5-black .trigger.left { left: 0; }
+.ps5-black .trigger.right { right: 0; background-position: -100px 0; transform: rotateY(0); }
+.ps5-black .dpad {
+    position: absolute;
+    width: 125px;
+    height: 126px;
+    top: 171px;
+    left: 82px;
+}
+.ps5-black .face {
+    background: url(./ps5_black/dpad.png) no-repeat;
+    position: absolute;
+    opacity: 1 !important;
+}
+.ps5-black .face.up, .ps5-black .face.down {
+    width: 44px;
+    height: 58px;
+}
+.ps5-black .face.left, .ps5-black .face.right {
+    width: 57px;
+    height: 44px;
+}
+.ps5-black .face.up {
+    left: 45px;
+    top: 0;
+    background-position: 0px 0;
+}
+.ps5-black .face.down {
+    left: 45px;
+    bottom: -7px;
+    background-position: -44px 0;
+}
+.ps5-black .face.left {
+    top: 45px;
+    left: 0;
+    background-position: -88px 0;
+}
+.ps5-black .face.right {
+    top: 44px;
+    right: -7px;
+    background-position: -145px 0;
+}
+.ps5-black .face.pressed {
+    background-position-y: -58px;
+}

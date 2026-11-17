@@ -1,4 +1,7 @@
-import { ipcMain, BrowserWindow, shell } from 'electron'
+import { openExternalPath } from './externalLaunch'
+import { ipcMain } from './ipcSecurity'
+import { downloadServiceFile } from './serviceDownload'
+import { BrowserWindow, shell } from 'electron'
 import { spawn, exec } from 'child_process'
 import * as path from 'path'
 import * as fs from 'fs'
@@ -139,50 +142,14 @@ async function fetchLatestMillenniumVersion(): Promise<string> {
 /**
  * Downloads a file over HTTPS with redirect support
  */
-function downloadFile(url: string, destPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const follow = (targetUrl: string, maxRedirects = 5) => {
-      if (maxRedirects <= 0) {
-        resolve(false)
-        return
-      }
-
-      const req = https.get(targetUrl, {
-        headers: {
-          'User-Agent': 'EclipseLauncher'
-        },
-        timeout: 30000,
-      }, (res) => {
-        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          follow(res.headers.location, maxRedirects - 1)
-          return
-        }
-
-        if (res.statusCode !== 200) {
-          resolve(false)
-          return
-        }
-
-        const fileStream = fs.createWriteStream(destPath)
-        res.pipe(fileStream)
-        fileStream.on('finish', () => {
-          fileStream.close(() => resolve(true))
-        })
-        fileStream.on('error', () => {
-          try { fs.unlinkSync(destPath) } catch (_) {}
-          resolve(false)
-        })
-      })
-
-      req.on('error', () => resolve(false))
-      req.on('timeout', () => {
-        req.destroy()
-        resolve(false)
-      })
-    }
-
-    follow(url)
-  })
+async function downloadFile(url: string, destPath: string): Promise<boolean> {
+  try {
+    await downloadServiceFile(url, destPath)
+    return true
+  } catch (error) {
+    console.warn('[Addons] Download failed:', error)
+    return false
+  }
 }
 
 /**
@@ -529,7 +496,7 @@ export function initMillenniumIPC(getWindows: () => BrowserWindow[]) {
 
     for (const dir of candidates) {
       if (fs.existsSync(dir)) {
-        await shell.openPath(dir)
+        await openExternalPath(dir)
         return { success: true }
       }
     }
@@ -538,7 +505,7 @@ export function initMillenniumIPC(getWindows: () => BrowserWindow[]) {
     const target = path.join(steamDir, 'steamui', 'skins')
     try {
       fs.mkdirSync(target, { recursive: true })
-      await shell.openPath(target)
+      await openExternalPath(target)
       return { success: true }
     } catch (e: any) {
       return { success: false, error: e?.message }
@@ -548,7 +515,7 @@ export function initMillenniumIPC(getWindows: () => BrowserWindow[]) {
   // 6. Open Steambrew Themes Store in Browser
   ipcMain.handle('millennium:open-store', async () => {
     try {
-      await shell.openExternal('https://steambrew.app/themes')
+      await (await import('./externalLaunch')).openExternalApplication('https://steambrew.app/themes')
       return { success: true }
     } catch (e: any) {
       return { success: false, error: e?.message }
@@ -561,7 +528,7 @@ export function initMillenniumIPC(getWindows: () => BrowserWindow[]) {
     const millenniumDir = path.join(steamDir, 'millennium')
     const target = fs.existsSync(millenniumDir) ? millenniumDir : steamDir
     try {
-      await shell.openPath(target)
+      await openExternalPath(target)
       return { success: true }
     } catch (e: any) {
       return { success: false, error: e?.message }
@@ -586,7 +553,8 @@ export function initMillenniumIPC(getWindows: () => BrowserWindow[]) {
     }
 
     sendLog(t('startingInstaller', activeLang))
-    spawn(installerPath, [], { detached: true, stdio: 'ignore' }).unref()
+    const installer = await (await import('./externalLaunch')).spawnExternalApplication(installerPath, [], path.dirname(installerPath))
+    installer.unref()
     return { success: true }
   })
 }

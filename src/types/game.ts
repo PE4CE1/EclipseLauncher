@@ -1,3 +1,13 @@
+import type { CrosshairConfig } from '../services/crosshairConfig'
+import type { CrosshairFavorite } from '../services/crosshairFavorites'
+import type { CrosshairProfiles } from '../services/crosshairProfiles'
+import type { CrosshairGameId, GameCrosshairs } from '../services/gameCrosshairs'
+import type { SpicetifyResult } from './spicetify'
+import { desktopFetch as fetch } from '../services/httpClient'
+import type { FreeGameItem } from './freeGames'
+import type { AutoClipOptions } from './autoClips'
+import type { DownloadLinkStatus } from './downloads'
+import type { AutoLaunchStatus, MainWindowState } from './system'
 // ─── Installed / Local Games ─────────────────────────────────────────────────
 export interface InstalledGame {
   id: string
@@ -5,6 +15,7 @@ export interface InstalledGame {
   platform: 'steam' | 'epic' | 'custom'
   installPath: string
   launchUrl: string
+  executable?: string
   iconUrl?: string
   appId?: string
   steamId?: number        // resolved Steam AppID (may come from scan or name lookup)
@@ -18,8 +29,10 @@ export interface InstalledGame {
 export interface LibraryGame {
   id: string
   steamId?: number         // Steam AppID for asset resolution
+  appId?: string
   name: string
   coverImage?: string      // cached or fallback
+  iconUrl?: string
   platform: 'steam' | 'epic' | 'custom'
   installed: boolean
   installPath?: string
@@ -51,7 +64,7 @@ export interface DownloadItem {
   startedAt: number
 }
 
-export type ActiveView = 'home' | 'catalogue' | 'library' | 'downloads' | 'settings' | 'profile' | 'notifications' | 'eclipse-info' | 'clips' | 'storage' | 'plugins'
+export type ActiveView = 'home' | 'catalogue' | 'library' | 'downloads' | 'settings' | 'profile' | 'notifications' | 'eclipse-info' | 'clips' | 'storage' | 'plugins' | 'free-games'
 
 export interface SpicetifyStatus {
   isSpotifyInstalled: boolean
@@ -107,22 +120,7 @@ export interface RobloxTrackedExperience {
   iconUrl?: string
 }
 
-export interface RobloxCodeItem {
-  code: string
-  reward: string
-  isExpired?: boolean
-}
-
-export interface RobloxGameCodesResult {
-  gameName: string
-  placeId?: string
-  universeId?: string
-  iconUrl?: string
-  activeCodes: RobloxCodeItem[]
-  expiredCodes: RobloxCodeItem[]
-  source?: string
-  lastUpdated: number
-}
+export type { RobloxCodeItem, RobloxGameCodesResult } from './robloxCodes'
 
 export interface DriveInfo {
   deviceId: string
@@ -151,6 +149,9 @@ export interface MediaState {
   artist: string
   app: 'spotify' | 'youtube' | 'browser' | 'other' | null
   coverUrl?: string
+  sessionId?: string
+  controls?: { playPause: boolean; next: boolean; previous: boolean }
+  error?: 'unavailable' | 'unsupported'
 }
 
 export interface ControllerBatteryInfo {
@@ -158,7 +159,13 @@ export interface ControllerBatteryInfo {
   level: number
   charging: boolean
   model: string
+  vendor?: 'sony' | 'xbox' | 'nintendo' | 'unknown'
+  connectionType?: 'bluetooth' | 'usb' | 'wireless' | 'none'
+  hasExactLevel?: boolean
+  slot?: number
 }
+
+export type { ClipEditDraft } from '../services/clipEdits'
 
 export interface EclipseClip {
   id: string
@@ -170,28 +177,72 @@ export interface EclipseClip {
   videoUrl: string           // local-media:// path
   filePath: string           // absolute disk file path
   micFileName?: string       // name of the mic track file, if any
+  applicationAudio?: boolean
+  discordFileName?: string
+  gameAudioFileName?: string
+  desktopAudioFileName?: string
+  mediaVersion?: number
+  width?: number
+  height?: number
+  averageFps?: number
+  videoFileSize?: number
+  audioFileSize?: number
+  requestedFps?: number
+  requestedResolution?: string
+  requestedBitrate?: string
+  captureWidth?: number
+  captureHeight?: number
+  captureFps?: number
+  hasGameAudio?: boolean
+  hasMicAudio?: boolean
   fileSize: number           // in bytes
   createdAt: number          // timestamp in ms
-  resolution?: string        // e.g. "1080p"
+  resolution?: string        // e.g. "720p" or "1080p"
   fps?: number               // e.g. 60
+  bitrate?: string           // e.g. "10M"
   tags?: string[]
+  editDraft?: import('../services/clipEdits').ClipEditDraft
 }
 
-export interface ClipSettings {
+export interface ClipCaptureStatus {
+  engine?: 'native'; encoder?: string; active?: boolean; errorCode?: string
+  gpuScaling?: boolean; hdrTonemapped?: boolean
+  width?: number; height?: number; fps?: number
+  gameAudioAvailable?: boolean; micAvailable?: boolean
+  micRecovering?: boolean; micError?: string; micErrorDetail?: string
+  desktopAudioAvailable?: boolean
+  discordAvailable?: boolean
+  historyLimitSeconds?: number; error?: string
+}
+
+export interface ClipAnalysis {
+  success: boolean; error?: string; clip?: EclipseClip
+  game?: { available: boolean; url?: string; peaks: number[] }
+  desktop?: { available: boolean; url?: string; peaks: number[] }
+  discord?: { available: boolean; url?: string; peaks: number[] }
+  mic?: { available: boolean; url?: string; peaks: number[] }
+  separateAudio?: boolean; hasGameAudio?: boolean; hasMicAudio?: boolean
+}
+
+export interface ClipSettings extends AutoClipOptions {
   enabled: boolean
   replayDurationSeconds: number // 15, 30, 45, 60, 90, 120, 180, 300
   hotkey: string                // e.g. 'F8', 'F9', 'Alt+C', custom
   fullRecordHotkey?: string     // e.g. 'F9'
   qualityPreset?: 'low' | 'standard' | 'high' | 'custom'
   quality: '4k' | '1440p' | '1080p' | '720p' | '480p' | '360p'
-  fps: 60 | 30 | 24
-  bitrate?: '20M' | '15M' | '10M' | '8M' | '5M' | 'auto' | 'ultra' | 'high' | 'medium' | 'low'
+  fps: 120 | 60 | 30 | 24
+  bitrate?: '50M' | '30M' | '20M' | '15M' | '10M' | '8M' | '6M' | '5M' | '4M' | '3.5M' | '2.5M' | 'auto' | 'ultra' | 'high' | 'medium' | 'low' | string
   videoEncoder?: 'gpu' | 'cpu'
   selectedGpu?: string          // 'auto' or GPU name
   codec?: 'h264' | 'hevc' | 'av1' | 'vp9'
   format?: 'mp4' | 'webm' | 'mkv' // container format (default: 'mp4')
   
   // Audio Mode (Screenshot 2 & 3)
+  separateApplications?: boolean
+  gameAudioProcess?: string
+  captureDiscord?: boolean
+  captureDesktop?: boolean
   audioRecordingOption: 'all' | 'game_only' | 'game_and_discord'
   audioOutputDeviceId?: string  // 'auto' or deviceId
   audioOutputVolume: number     // 0 - 100
@@ -199,6 +250,7 @@ export interface ClipSettings {
   monoAudioInput?: boolean
   micDeviceId?: string          // 'auto' or deviceId
   micVolume: number             // 0 - 100
+  micSensitivity?: number       // Noise gate threshold in dB, e.g. -40 (range: -60 to -10 dB)
   gameAudioVolume?: number      // 0 - 100
   
   // Voice Capture (Beta)
@@ -288,8 +340,14 @@ export interface EclipseFriend {
   friendCode?: string
   bannerUrl?: string
   avatarFrame?: string
+  steamAvatarFrameUrl?: string | null
+  steamAvatarFrameStaticUrl?: string | null
+  bannerPosition?: number
   bio?: string
   profileAccentColor?: string
+  showPlaytime?: boolean
+  showSteamStats?: boolean
+  pinnedGames?: Array<{ id: string; name: string; platform?: 'steam' | 'epic' | 'custom'; steamId?: number | null; playTimeMinutes?: number; lastPlayed?: number }>
   socialDiscord?: string
   socialTwitch?: string
   socialYoutube?: string
@@ -315,6 +373,7 @@ export type ScanStatus = 'idle' | 'scanning' | 'complete' | 'error'
 
 // ─── Settings ────────────────────────────────────────────────────────────────
 export interface AppSettings {
+  appMode?: 'launcher' | 'clips'
   steamPath: string
   epicManifestPath: string
   theme: 'dark' | 'darker'
@@ -324,10 +383,13 @@ export interface AppSettings {
   autoScanSplash: boolean
   autoCheckUpdates: boolean
   exitInsteadOfMinimize: boolean
+  exitInsteadOfMinimizeMigrated_v1_3_0?: boolean
   hideToTray: boolean
+  freeGamesNotifications?: boolean
   startOnBoot: boolean
   startMinimized: boolean
   launchInLibrary: boolean
+  launchInClips?: boolean
   downloadPath: string
   autoExtractArchive?: boolean
   autoDeleteArchive?: boolean
@@ -337,8 +399,7 @@ export interface AppSettings {
   torboxKey?: string
   allDebridKey?: string
   hardwareAcceleration?: boolean
-  gamePerformanceMode?: boolean
-  performanceMode?: boolean
+  backgroundLighting?: boolean
   autoMinimizeOnGame?: boolean
   autoRestoreOnGameStop?: boolean
 
@@ -348,9 +409,17 @@ export interface AppSettings {
   trueBoostPowerPlan?: boolean
   trueBoostGamePriority?: boolean
   trueBoostSuspendBackground?: boolean
+
+  // Keyforsteam / Allkeyshop Integration
+  keyforsteamEnabled?: boolean
+  keyforsteamDefaultsVersion?: number
+  keyforsteamRegion?: 'de' | 'com' | 'fr' | 'es' | 'it'
   desktopNotifications?: boolean
   soundEffects?: boolean
   notificationSound?: string
+  chatNotificationPopups?: boolean
+  chatNotificationSound?: boolean
+  chatMutedFriends?: import('./notifications').MutedChats
   username: string
   avatarUrl: string
   bannerUrl?: string
@@ -376,9 +445,13 @@ export interface AppSettings {
   discordActivityStyle?: 'clipping' | 'playing'
   discordRpcRobloxSubGame?: boolean
   discordRpcAnimatedText?: boolean
+  discordRpcShowVersion?: boolean
   overlayPerformance: boolean
+  overlayPerformanceHotkey?: string
   overlayGeneralAlwaysOn?: boolean
   overlayMetrics: {
+    mirrored?: boolean
+    background?: 'glass' | 'clear' | 'solid'
     fps: boolean
     cpu: boolean
     ram: boolean
@@ -400,25 +473,20 @@ export interface AppSettings {
     next?: string
     prev?: string
   }
+  overlayClipNotification?: boolean
+  overlayClipToastColor?: string
   overlayControllerStreamOnly?: boolean
   overlayControllerStreamWindow?: boolean
   overlayControllerStreamPos?: 'bottom_right' | 'bottom_left' | 'top_right' | 'top_left'
   overlayControllerStreamScale?: number
   overlayStreamQuality?: '1440p60' | '1080p60' | '1080p30' | '720p60' | '720p30'
-  crosshairConfig: {
-    preset: string
-    color: string
-    size: number
-    thickness: number
-    gap: number
-    dot: boolean
-    dotSize: number
-    outline: boolean
-    outlineColor: string
-    opacity: number
-    tStyle: boolean
-    style: 'cross' | 'x' | 'circle'
-  }
+  crosshairConfig: CrosshairConfig
+  crosshairFavorites?: CrosshairFavorite[]
+  crosshairProfiles?: CrosshairProfiles
+  overlayGameCrosshairs?: GameCrosshairs
+  quickAccess?: import('../services/quickAccess').QuickAccessSettings
+  quickAccessLocations?: import('../services/quickAccess').QuickAccessLocations
+  overlayCS2Stats?: boolean
   overlayRobloxTimer: boolean
   overlayRobloxCps: boolean
   overlayRobloxAntiAfk?: boolean
@@ -429,6 +497,7 @@ export interface AppSettings {
   trnApiKey: string
   steamProfileUrl: string
   rlScoreboardKeyKb?: string
+  rlPlayerId?: string
   rlScoreboardKeyCtrl?: string
   rlSteamAvatarScale?: number
   rlControllerSkin?: 'ps5_white' | 'ps5_black' | 'ps4_white' | 'ps4_black' | 'xbox_one'
@@ -455,10 +524,18 @@ export interface AppSettings {
   friendCode?: string
   userUid?: string
   accountSecret?: string
+  accountRecoveryReady?: boolean
+  accountRecoveryError?: string
+  accountRecoveryErrorCode?: string
   socialApiUrl?: string
   profileShowPlaytime?: boolean
   profileShowSteamStats?: boolean
   profileShowSteamBackground?: boolean
+  profilePinnedGames?: string[]
+  profileAvatarFrameSelected?: boolean
+  profileBannerPosition?: number
+  steamAvatarFrameUrl?: string | null
+  steamAvatarFrameStaticUrl?: string | null
   overlayPositions: {
     performance: { xPct: number; yPct: number }
     robloxTimer: { xPct: number; yPct: number }
@@ -472,6 +549,10 @@ export interface AppSettings {
 
 // ─── Electron API (window.electronAPI) ──────────────────────────────────────
 export interface ElectronAPI {
+  nativeMicrophone?: import('./microphone').NativeMicrophoneAPI
+  addFriendModalReady?: () => Promise<{success:boolean}>
+  addFriendModalClosed?: () => Promise<{success:boolean}>
+  clipboard?: { writeText: (value: string) => Promise<{ success: boolean }> }
   isOverlay?: boolean
   minimizeWindow: () => void
   maximizeWindow: () => void
@@ -481,14 +562,21 @@ export interface ElectronAPI {
   setWindowSize: (w: number, h: number, center?: boolean) => void
   setWindowResizable: (resizable: boolean) => void
   invalidateWindow?: () => Promise<boolean>
-  setAutoLaunch: (enabled: boolean, startMinimized: boolean) => Promise<void>
+  setAutoLaunch: (enabled: boolean, startMinimized: boolean) => Promise<{ success: boolean; error?: string }>
+  getAutoLaunchStatus?: () => Promise<AutoLaunchStatus>
+  openStartupSettings?: () => Promise<void>
+  appMode?: 'launcher' | 'clips'
+  switchAppMode?: (mode: 'launcher' | 'clips') => Promise<{ success: boolean; error?: string }>
+  getWindowState?: () => Promise<MainWindowState>
+  onMemoryPressure?: (callback: () => void) => () => void
   createDesktopShortcut?: () => Promise<{ success: boolean; error?: string }>
   createGameShortcut?: (game: { name: string; installPath?: string; launchUrl?: string; steamId?: number; appId?: string }) => Promise<{ success: boolean; error?: string }>
   relaunchApp?: () => Promise<void>
-  showNativeNotification?: (options: { title: string; body: string }) => Promise<{ success: boolean }>
-  scanGames: () => Promise<{ success: boolean; games: InstalledGame[]; error?: string }>
+  showNativeNotification?: (options: { title: string; body: string; peerId?: string; silent?: boolean }) => Promise<{ success: boolean }>
+  scanGames: (options?: { scanUninstalledSteam?: boolean }) => Promise<{ success: boolean; games: InstalledGame[]; error?: string }>
   onScanProgress: (cb: (p: { stage: string; message: string; count: number }) => void) => () => void
   getCurrentGame: () => Promise<{ name: string; startTime: number } | null>
+  registerInstalledGames?: (games: Array<{ name: string; executable: string; steamId?: number }>) => Promise<{ registered: number }>
   launchGame: (launchUrl: string) => Promise<{ success: boolean; error?: string }>
   uninstallGame?: (game: { id: string; name: string; installPath?: string; launchUrl?: string; steamId?: number; appId?: string; platform?: string }) => Promise<{ success: boolean; error?: string; uninstallerLaunched?: boolean; trashed?: boolean }>
   stopGame: () => Promise<{ success: boolean; error?: string }>
@@ -501,21 +589,41 @@ export interface ElectronAPI {
   onOverlayEditStart: (cb: (gameData: any) => void) => () => void
   onOverlayEditEnd: (cb: () => void) => () => void
   setOverlayIgnoreMouse?: (ignore: boolean) => void
+  getFpsAccess?: () => Promise<{ supported: boolean; ready: boolean; pending: boolean; status: string }>
+  enableFpsAccess?: () => Promise<{ success: boolean; error?: string }>
   onMetricsUpdate: (cb: (data: { cpu: number; gpu: number; ram: number; ramMB: number; totalMB: number; idleTime: number }) => void) => () => void
   onCPSUpdate?: (cb: (data: { lmb: number; rmb: number; total: number; buttonClicked?: 'lmb' | 'rmb' }) => void) => () => void
-  startOverlayEdit: () => Promise<void>
+  onRLScoreboardToggle?: (callback: (open: boolean) => void) => () => void
+  getRLState?: () => Promise<import('./rocketLeague').RLRankData>
+  resetRLSession?: () => Promise<{ success: boolean }>
+  getOverlayState?: () => Promise<{ gameData: any; isEditMode: boolean; editGameData: any; visible?:boolean; rendererReady?:boolean; pendingClipToast?:any }>
+  startOverlayEdit: (game?: CrosshairGameId) => Promise<void>
+  getCS2Stats?:()=>Promise<import('./cs2Stats').CS2Stats>
+  resetCS2Stats?:()=>Promise<import('./cs2Stats').CS2Stats>
+  onCS2Stats?:(callback:(stats:import('./cs2Stats').CS2Stats)=>void)=>()=>void
   exitOverlayEdit: () => Promise<void>
   saveOverlayPositions: (positions: any) => Promise<{ success: boolean; error?: string }>
+  showClipToast?: (data: any) => Promise<{ success: boolean }>
+  dismissClipToast?: () => Promise<{ success: boolean }>
+  onClipSavedToast?: (cb: (data: any) => void) => () => void
   openExeDialog: () => Promise<string | null>
   getSettings: () => Promise<Partial<AppSettings>>
+  socialState?: import('./socialState').SocialStateAPI
+  chatNotifications?: import('./notifications').ChatNotificationAPI
   setSettings: (data: Partial<AppSettings>) => Promise<{ success: boolean; error?: string }>
   onSettingsUpdate?: (cb: (settings: Partial<AppSettings>) => void) => () => void
   openPath: (path: string) => Promise<{ success: boolean; error?: string }>
   onNavigate?: (cb: (direction: 'back' | 'forward') => void) => () => void
+  onOpenFreeGames?: (callback: () => void) => () => void
+  onFreeGamesUpdated?: (callback: () => void) => () => void
   onAppMinimized?: (cb: () => void) => () => void
   onAppRestored?: (cb: () => void) => () => void
+  checkFreeGamesNow?: () => Promise<{ success: boolean; found: number; newAlerts: number; games: FreeGameItem[] }>
+  getFreeGames?: () => Promise<FreeGameItem[]>
+  onTrayLaunchGame?: (cb: (data: any) => void) => () => void
 
   // Discord RPC
+  updateDiscordDownload?: (downloadName: string | null) => Promise<{ success: boolean }>
   setDiscordActivity: (gameName: string, startTime: number, isPrivacyMode?: boolean, style?: 'clipping' | 'playing', appId?: string | number, customIconUrl?: string, customState?: string, customSmallIconUrl?: string, customSmallText?: string, isAnimated?: boolean) => Promise<{ success: boolean; error?: string }>
   setDiscordDownloadActivity?: (downloadName: string, isAnimated?: boolean) => Promise<{ success: boolean; error?: string }>
   setDiscordIdleActivity: (isAnimated?: boolean) => Promise<{ success: boolean; error?: string }>
@@ -525,10 +633,11 @@ export interface ElectronAPI {
 
   // Native Download Engine
   startDownload: (magnetURI: string, downloadPath?: string, autoExtract?: boolean, autoDelete?: boolean) => Promise<{ success: boolean; infoHash?: string; error?: string }>
-  startHttpDownload: (url: string, name: string, downloadPath?: string, autoExtract?: boolean, autoDelete?: boolean) => Promise<{ success: boolean; infoHash?: string; provider?: string; error?: string }>
-  startNativeDownload: (url: string, gameTitle: string, downloadPath?: string, autoExtract?: boolean, autoDelete?: boolean) => Promise<{ success: boolean; infoHash?: string; provider?: string; error?: string }>
+  startHttpDownload: (url: string, name: string, downloadPath?: string, autoExtract?: boolean, autoDelete?: boolean, mirrors?: string[]) => Promise<{ success: boolean; infoHash?: string; provider?: string; error?: string }>
+  startNativeDownload: (url: string, gameTitle: string, downloadPath?: string, autoExtract?: boolean, autoDelete?: boolean, mirrors?: string[]) => Promise<{ success: boolean; infoHash?: string; provider?: string; error?: string }>
   testDebridKey: (provider: string, apiKey: string) => Promise<{ success: boolean; username?: string; type?: string; expiration?: string; error?: string }>
   checkLinkStatus: (url: string) => Promise<boolean>
+  inspectDownloadLink?: (url: string) => Promise<DownloadLinkStatus>
   pauseDownload: (infoHash: string) => Promise<void>
   resumeDownload: (infoHash: string) => Promise<void>
   cancelDownload: (infoHash: string) => Promise<void>
@@ -545,18 +654,32 @@ export interface ElectronAPI {
 
   // Cloudflare bypass
   getCachedSources: () => Promise<Array<{ url: string; name: string; lastSynced: number; data: any[] }>>
-  fetchAndCacheSource: (url: string) => Promise<{ success: boolean; name?: string; data?: any[]; error?: string }>
+  fetchAndCacheSource: (url: string) => Promise<import('./source').FetchSourceResult>
   clearSourceCache: (url?: string) => Promise<{ success: boolean }>
   saveRawSourceToCache: (url: string, name: string, data: any[]) => Promise<{ success: boolean }>
   fetchSourceCF: (url: string) => Promise<string | null>
 
   // Generic fetch (CORS bypass)
   utilFetch: (url: string, options?: any) => Promise<string | null>
-  openUrl: (url: string) => Promise<void>
+  requestText: (request: { id: string; url: string; method?: 'GET' | 'HEAD'; headers?: Record<string, string> }) => Promise<{
+    body: string; status: number; statusText: string; headers: [string, string][]; url: string
+  }>
+  cancelRequest: (id: string) => void
+  getCrosshairImage: (request: { id: string; url: string }) => Promise<{ imageData: string; width: number; height: number; animated: boolean; frames: number } | { error: 'limits' | 'invalid' | 'unavailable' }>
+  prefetchArtwork?: (request: { id: string; url: string }) => Promise<boolean>
+  openUrl: (url: string, fallbackUrl?: string) => Promise<any>
 
   // Friends Window
   openFriendsWindow: () => Promise<void>
   closeFriendsWindow: () => Promise<void>
+  openSteamMonitorWindow?: () => Promise<void>
+  closeSteamMonitorWindow?: () => Promise<void>
+  toggleSteamMonitorWindow?: () => Promise<{ isOpen: boolean }>
+  minimizeSteamMonitorWindow?: () => Promise<{ success: boolean }>
+  bringSteamMonitorToFront?: () => Promise<{ success: boolean }>
+  setSteamMonitorAlwaysOnTop?: (flag: boolean) => Promise<{ success: boolean; alwaysOnTop: boolean }>
+  broadcastSteamTelemetry?: (data: any) => void
+  onSteamTelemetryUpdate?: (callback: (data: any) => void) => () => void
   openAddFriendModal: () => Promise<void>
   onShowAddFriendModal: (callback: () => void) => () => void
   openFriendProfileModal: (friendId: string) => Promise<void>
@@ -565,7 +688,7 @@ export interface ElectronAPI {
   // Auto Updater
   checkUpdate: () => Promise<void>
   downloadUpdate: (url?: string) => Promise<any>
-  installUpdate: () => Promise<void>
+  installUpdate: () => Promise<{ success: boolean; error?: string }>
   onUpdaterEvent: (callback: (payload: { status: string; data?: any }) => void) => () => void
 
   // Hardware Specs
@@ -576,15 +699,41 @@ export interface ElectronAPI {
   onBoostStatus?: (callback: (data: { active: boolean; gameName?: string; freedMB?: number; timestamp: number }) => void) => () => void
 
   // Eclipse Clips Studio (Medal.tv Style)
+  releaseUnusedMediaMemory?: () => void
   clips?: {
+    getAutoClipStatus?: () => Promise<import('./autoClips').AutoClipStatus>
+    setupAutoClipGame?: (game: import('./autoClips').GsiGameId) => Promise<import('./autoClips').AutoClipSetupResult>
     getSources: () => Promise<Array<{ id: string; name: string; thumbnail?: string; appIcon?: string }>>
     saveClip: (payload: any) => Promise<{ success: boolean; clip?: EclipseClip; error?: string }>
+    nativeStart?: (duration:number) => Promise<{success:boolean;error?:string} & ClipCaptureStatus>
+    nativeStop?: () => Promise<{success:boolean}>
+    nativeRetryMicrophone?: () => Promise<boolean>
+    nativeSnapshot?: () => Promise<{success:boolean;id?:string;error?:string;thumbnailDataUrl?:string}>
+    nativePreview?: () => Promise<{thumbnailDataUrl?:string}>
+    nativeSetDuration?: (seconds:number) => Promise<boolean>
+    onNativeStatus?: (callback:(status:ClipCaptureStatus)=>void) => (()=>void)
     listClips: () => Promise<EclipseClip[]>
+    analyzeClip: (clipId: string) => Promise<ClipAnalysis>
+    setCaptureActive?: (active: boolean) => Promise<boolean>
     deleteClip: (clipId: string) => Promise<{ success: boolean; error?: string }>
     updateMeta: (payload: { clipId: string; title: string; tags?: string[] }) => Promise<{ success: boolean; meta?: any; error?: string }>
+    shareConfig: () => Promise<{configured:boolean;maxBytes:number}>
+    shareLinks: (filePath:string) => Promise<{id:string;url:string;expires:number;title:string}[]>
+    shareClip: (payload:{clip:import('../services/clipEdits').ClipExportRequest;token:string;days:number}) => Promise<{success:boolean;id?:string;url?:string;expires?:number;error?:string}>
+    deleteShare: (payload:{id:string;token:string}) => Promise<{success:boolean;error?:string}>
+    copyShare: (id:string) => Promise<{success:boolean}>
+    copyEdited: (payload:import('../services/clipEdits').ClipExportRequest) => Promise<{success:boolean;bytes?:number;error?:string}>
+    onShareProgress: (callback:(progress:{phase:string;percent:number})=>void) => (()=>void)
+    audioProcesses: () => Promise<{supported:boolean;processes:{pid:number;name:string}[];detectedGame?:import('../services/clipAudioSelection').AudioGame|null}>
+    prepareAudio: (selection:{game:string;discord:boolean;historySeconds:number}) => Promise<{success:boolean;game?:boolean;discord?:boolean;error?:string}>
+    stopAudio: () => Promise<boolean>
+    setAudioHistory?: (seconds: number) => Promise<boolean>
+    onAudioStatus: (callback:(status:{channel:string;available:boolean})=>void) => (()=>void)
+    saveDraft: (payload: { clipId: string; draft: { state: import('../services/clipEdits').ClipEditState; sourceDuration: number } | null }) => Promise<import('../services/clipEdits').ClipDraftSaveResult>
     openFolder: (filePath: string) => Promise<{ success: boolean; error?: string }>
     copyFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
-    exportClip: (payload: { filePath: string; suggestedName: string; trimStart?: number; trimEnd?: number }) => Promise<{ success: boolean; exportedPath?: string; canceled?: boolean; error?: string }>
+    exportClip: (payload: import('../services/clipEdits').ClipExportRequest) => Promise<{ success: boolean; exportedPath?: string; canceled?: boolean; error?: string }>
+    optimizeClip?: (payload: { clipId: string; quality?: 'balanced' | 'discord' }) => Promise<{ success: boolean; oldSize?: number; newSize?: number; savedPercent?: number; clip?: EclipseClip; error?: string }>
     readVideoData?: (filePath: string) => Promise<{ success: boolean; dataUrl?: string; error?: string }>
     getSettings: () => Promise<ClipSettings>
     saveSettings: (settings: Partial<ClipSettings>) => Promise<ClipSettings>
@@ -620,9 +769,9 @@ export interface ElectronAPI {
   media?: {
     getStatus: (filter?: string) => Promise<MediaState>
     setFilter?: (filter: string) => Promise<{ success: boolean }>
-    playPause: () => Promise<{ success: boolean }>
-    next: () => Promise<{ success: boolean }>
-    previous: () => Promise<{ success: boolean }>
+    playPause: (filter?: 'all'|'spotify'|'youtube', sessionId?: string) => Promise<{ success: boolean; error?: string }>
+    next: (filter?: 'all'|'spotify'|'youtube', sessionId?: string) => Promise<{ success: boolean; error?: string }>
+    previous: (filter?: 'all'|'spotify'|'youtube', sessionId?: string) => Promise<{ success: boolean; error?: string }>
     registerHotkeys?: (keybinds: { playPause?: string; next?: string; prev?: string }) => Promise<{ success: boolean }>
     onUpdate: (callback: (state: MediaState) => void) => () => void
   }
@@ -637,11 +786,11 @@ export interface ElectronAPI {
   // Spicetify Spotify Extension & Mod Manager
   spicetify?: {
     getStatus: () => Promise<SpicetifyStatus>
-    install: () => Promise<{ success: boolean; error?: string }>
-    apply: () => Promise<{ success: boolean; error?: string }>
-    restore: () => Promise<{ success: boolean; error?: string }>
-    upgrade: () => Promise<{ success: boolean; error?: string }>
-    openFolder: () => Promise<{ success: boolean; error?: string }>
+    install: () => Promise<SpicetifyResult>
+    apply: () => Promise<SpicetifyResult>
+    restore: () => Promise<SpicetifyResult>
+    upgrade: () => Promise<SpicetifyResult>
+    openFolder: () => Promise<SpicetifyResult>
     onLog: (callback: (log: string) => void) => () => void
     onStatus: (callback: (status: string) => void) => () => void
   }
@@ -685,8 +834,10 @@ export interface ElectronAPI {
 
   // Roblox Codes & Experience Tracker
   roblox?: {
+    searchGames?: (query: string) => Promise<import('./robloxCodes').RobloxCodeGame[]>
+    onCodesUpdated?: (callback: (data: import('./robloxCodes').RobloxGameCodesResult) => void) => () => void
     getActiveExperience: () => Promise<RobloxExperience | null>
-    getCodes: (gameName: string, placeId?: string, universeId?: string, forceRefresh?: boolean) => Promise<RobloxGameCodesResult>
+    getCodes: (gameName: string, placeId?: string, universeId?: string, forceRefresh?: boolean) => Promise<import('./robloxCodes').RobloxGameCodesResult>
     refreshExperience: () => Promise<RobloxExperience | null>
     getExperiencePlaytime?: () => Promise<RobloxTrackedExperience[]>
     syncPlaytime?: () => Promise<RobloxTrackedExperience[]>
@@ -694,8 +845,11 @@ export interface ElectronAPI {
     onPlaytimeUpdated?: (callback: () => void) => () => void
   }
 
-  // Controller battery status
+  // Controller battery status & input
   getControllerBattery?: () => Promise<ControllerBatteryInfo>
+  vibrateController?: () => Promise<boolean>
+  startGamepadService?: () => Promise<boolean>
+  stopGamepadService?: () => Promise<boolean>
 
   // Performance & System Boost
   setMediaPerformanceMode?: (isPerf: boolean) => Promise<{ success: boolean }>

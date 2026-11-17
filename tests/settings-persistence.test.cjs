@@ -1,0 +1,12 @@
+const test=require('node:test'),assert=require('node:assert/strict'),load=require('./download-loader.cjs')
+function fixture(t){
+  const previous=global.window;t.after(()=>global.window=previous)
+  const pending=[],errors=[],state={settings:{language:'de',overlayPerformance:false,overlayMedia:false},updateSettings(patch){Object.assign(state.settings,patch)}}
+  global.window={electronAPI:{setSettings:patch=>new Promise((resolve,reject)=>pending.push({patch,resolve,reject}))}}
+  const persist=load({'../store/gameStore':{useGameStore:{getState:()=>state}},'../store/uiStore':{useUIStore:{getState:()=>({showNotification:message=>errors.push(message)})}}})('src/services/settingsPersistence.ts').persistAppSettings
+  return{state,pending,errors,persist,tick:()=>new Promise(resolve=>setImmediate(resolve))}
+}
+test('failed overlay settings are rolled back and reported',async t=>{const f=fixture(t),save=f.persist({overlayPerformance:true});assert.equal(f.state.settings.overlayPerformance,true);await f.tick();f.pending[0].resolve({success:false});assert.equal(await save,false);assert.equal(f.state.settings.overlayPerformance,false);assert.equal(f.errors.length,1)})
+test('rapid failed toggles roll back to the last persisted value, not an unsaved intermediate state',async t=>{const f=fixture(t),a=f.persist({overlayPerformance:true}),b=f.persist({overlayPerformance:false});await f.tick();assert.equal(f.pending.length,1);f.pending[0].resolve({success:false});await f.tick();assert.equal(f.pending.length,2);assert.equal(f.state.settings.overlayPerformance,false);f.pending[1].reject(Error('Disk full'));await Promise.all([a,b]);assert.equal(f.state.settings.overlayPerformance,false)})
+test('a later failure retains an earlier successfully committed toggle and unrelated fields',async t=>{const f=fixture(t),a=f.persist({overlayPerformance:true}),b=f.persist({overlayPerformance:false,overlayMedia:true});await f.tick();f.pending[0].resolve({success:true});await f.tick();f.pending[1].resolve({success:false});await Promise.all([a,b]);assert.equal(f.state.settings.overlayPerformance,true);assert.equal(f.state.settings.overlayMedia,false)})
+test('native settings cache is unchanged when atomic disk persistence fails',()=>{const{commitSettings}=load()('electron/settingsCommit.ts');let cache={overlayPerformance:false};assert.throws(()=>{cache=commitSettings(cache,{overlayPerformance:true},()=>{throw Error('Disk full')})});assert.equal(cache.overlayPerformance,false)})

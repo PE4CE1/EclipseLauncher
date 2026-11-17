@@ -1,49 +1,30 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Play, Download, ArrowUpCircle, RefreshCw, Sparkles, ExternalLink } from 'lucide-react'
+import { Check, Play } from 'lucide-react'
+import { UpdateCard } from '../updates/UpdateCard'
+import { updateNotes, updatePercent } from '../../services/updatePresentation'
 import { useGameStore } from '../../store/gameStore'
 import { useScanner } from '../../hooks/useScanner'
 import { useTranslation } from '../../hooks/useTranslation'
-import { checkForAppUpdates, APP_VERSION, type AppReleaseInfo } from '../../services/updateService'
-// @ts-ignore
-import eclipseLogo from '../../assets/logo.png'
+import { checkStartupUpdates, isNewerVersion, type AppReleaseInfo } from '../../services/updateService'
+import { useLaunchOverlay } from './LaunchOverlay'
+import { prepareStartupLibrary, waitForStartupMinimum } from '../../services/startupLibrary'
 
 interface SplashViewProps {
   onComplete: () => void
 }
 
 function getInitialAutoScan(): boolean {
-  try {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem('eclipse-game-store') : null
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (parsed?.state?.settings?.autoScanSplash !== undefined) {
-        return !!parsed.state.settings.autoScanSplash
-      }
-    }
-  } catch {}
-  return true // Default: Auto-scan is ON
+  return useGameStore.getState().settings.autoScanSplash !== false
 }
 
 function getInitialScanSteam(): boolean {
-  try {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem('eclipse-game-store') : null
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (parsed?.state?.settings?.scanUninstalledSteam !== undefined) {
-        return !!parsed.state.settings.scanUninstalledSteam
-      }
-    }
-  } catch {}
-  return true
+  return useGameStore.getState().settings.scanUninstalledSteam !== false
 }
 
 export function SplashView({ onComplete }: SplashViewProps) {
   const updateSettings = useGameStore(state => state.updateSettings)
   const scanMessage = useGameStore(state => state.scanMessage)
-  const settings = useGameStore(state => state.settings)
-  const activeGame = useGameStore(state => state.activeGame)
-  const isPerformanceMode = Boolean(settings?.performanceMode || (activeGame && settings?.gamePerformanceMode !== false))
   const { scan } = useScanner()
   const { language } = useTranslation()
 
@@ -55,30 +36,22 @@ export function SplashView({ onComplete }: SplashViewProps) {
   )
   const [isDone, setIsDone] = useState(false)
   const isFinishedRef = useRef(false)
+  const sequenceRunningRef = useRef(false)
+  const foundUpdateRef = useRef<AppReleaseInfo | null>(null)
+  const skipStartupUpdateRef = useRef(false)
+  const preparationRef = useRef<AbortController | null>(null)
+  const preparingArtworkRef = useRef(false)
 
   // Update check states
   const [foundUpdate, setFoundUpdate] = useState<AppReleaseInfo | null>(null)
   const [isDownloadingUpdate, setIsDownloadingUpdate] = useState(false)
   const [updateDownloaded, setUpdateDownloaded] = useState(false)
+  const [updateError, setUpdateError] = useState('')
   const [updateDownloadProgress, setUpdateDownloadProgress] = useState(0)
 
   // Local settings toggles for manual start mode
   const [loadSteam, setLoadSteam] = useState(getInitialScanSteam)
   const [autoScanSplash, setAutoScanSplash] = useState(getInitialAutoScan)
-
-  // Minimal, subtle ambient stars
-  const stars = useMemo(() => [
-    { id: 1, left: '12%', top: '14%', size: 1.5, opacity: 0.3, duration: '3.2s', delay: '0.2s' },
-    { id: 2, left: '84%', top: '11%', size: 1,   opacity: 0.2, duration: '4.1s', delay: '1.1s' },
-    { id: 3, left: '26%', top: '28%', size: 1.5, opacity: 0.2, duration: '3.6s', delay: '0.7s' },
-    { id: 4, left: '76%', top: '32%', size: 1,   opacity: 0.3, duration: '4.8s', delay: '1.5s' },
-    { id: 5, left: '8%',  top: '48%', size: 1.5, opacity: 0.2, duration: '3.9s', delay: '0.4s' },
-    { id: 6, left: '91%', top: '54%', size: 1,   opacity: 0.2, duration: '4.3s', delay: '2.0s' },
-    { id: 7, left: '18%', top: '72%', size: 1.5, opacity: 0.3, duration: '3.4s', delay: '0.9s' },
-    { id: 8, left: '82%', top: '78%', size: 1,   opacity: 0.2, duration: '4.5s', delay: '1.3s' },
-    { id: 9, left: '29%', top: '88%', size: 1,   opacity: 0.2, duration: '3.7s', delay: '0.6s' },
-    { id: 10, left: '68%', top: '91%', size: 1.5, opacity: 0.3, duration: '4.0s', delay: '1.8s' },
-  ], [])
 
   const finish = () => {
     if (!isFinishedRef.current) {
@@ -87,29 +60,27 @@ export function SplashView({ onComplete }: SplashViewProps) {
     }
   }
 
-  // Pre-load storage & drives in background during splash screen (0% UI freeze)
-  useEffect(() => {
-    if (window.electronAPI?.storage?.getDrives) {
-      window.electronAPI.storage.getDrives().catch(() => {})
-    }
-  }, [])
-
   // Listen for native electron-updater events
   useEffect(() => {
     if (window.electronAPI?.onUpdaterEvent) {
       const unsub = window.electronAPI.onUpdaterEvent(({ status, data }) => {
-        if (status === 'available' && data) {
-          setFoundUpdate({
+        if (status === 'available' && data && isNewerVersion(data.version) && !skipStartupUpdateRef.current && useGameStore.getState().settings.autoCheckUpdates !== false) {
+          const release = {
             version: data.version || 'New',
             name: data.releaseName || `Version ${data.version}`,
-            notes: data.releaseNotes || '',
+            notes: updateNotes(data.releaseNotes),
             publishedAt: data.releaseDate || '',
             downloadUrl: '',
             isNewer: true
-          })
-        } else if (status === 'downloading' && data?.percent) {
+          }
+          foundUpdateRef.current = release
+          setFoundUpdate(release)
+        } else if (status === 'error' && foundUpdateRef.current) {
+          setIsDownloadingUpdate(false)
+          setUpdateError(typeof data === 'string' ? data : 'Update download failed')
+        } else if (status === 'downloading' && typeof data?.percent === 'number') {
           setIsDownloadingUpdate(true)
-          setUpdateDownloadProgress(Math.round(data.percent))
+          setUpdateDownloadProgress(updatePercent(data.percent))
         } else if (status === 'downloaded') {
           setIsDownloadingUpdate(false)
           setUpdateDownloaded(true)
@@ -121,71 +92,92 @@ export function SplashView({ onComplete }: SplashViewProps) {
 
   // Sync external scanner messages if provided
   useEffect(() => {
-    if (scanMessage && !isDone && !foundUpdate) {
+    if (scanMessage && !isDone && !foundUpdate && !preparingArtworkRef.current) {
       setStatusText(scanMessage)
     }
   }, [scanMessage, isDone, foundUpdate])
 
-  const runProgressSequence = async () => {
+  const runProgressSequence = async (skipUpdate = false, forceScan = false) => {
+    if (sequenceRunningRef.current || isFinishedRef.current) return
+    sequenceRunningRef.current = true
+    const startedAt = Date.now()
     const abortController = new AbortController()
-
-    // 1. Initial stage: Check for updates (0.3s)
-    setProgress(10)
-    setStatusText(language === 'de' ? 'Prüfe auf Updates...' : 'Checking for updates...')
-    await new Promise(r => setTimeout(r, 300))
-
+    preparationRef.current?.abort()
+    preparationRef.current = abortController
+    preparingArtworkRef.current = false
     try {
-      if (window.electronAPI?.checkUpdate) {
-        window.electronAPI.checkUpdate()
-      }
-      const updateCheck = await checkForAppUpdates()
-      if (updateCheck && updateCheck.isNewer) {
-        setFoundUpdate(updateCheck)
-        setStatusText(language === 'de' ? `Update v${updateCheck.version} verfügbar!` : `Update v${updateCheck.version} available!`)
-        // STOP sequence here! The mandatory update modal is now shown.
-        return
-      }
-    } catch (e) {
-      console.warn('[SplashView] Update check error:', e)
-    }
+      setProgress(10)
+      setStatusText(language === 'de' ? 'Prüfe auf Updates...' : 'Checking for updates...')
 
-    // 2. Scan manifests & build library
-    setProgress(45)
-    setStatusText(language === 'de' ? 'Scanne installierte Spiele & erstelle Bibliothek...' : 'Scanning installed games & library...')
+      try {
+        const updateCheck = skipUpdate ? null : await checkStartupUpdates(useGameStore.getState().settings.autoCheckUpdates !== false)
+        if (updateCheck && updateCheck.isNewer) {
+          foundUpdateRef.current = updateCheck
+          setFoundUpdate(updateCheck)
+          setStatusText(language === 'de' ? `Update v${updateCheck.version} verfügbar!` : `Update v${updateCheck.version} available!`)
+          // STOP sequence here! The mandatory update modal is now shown.
+          return
+        }
+      } catch (e) {
+        console.warn('[SplashView] Update check error:', e)
+      }
 
-    let scannedCount = 0
-    try {
-      const games = await scan({
-        signal: abortController.signal,
-        awaitEnrichment: false,
+      if (foundUpdateRef.current || abortController.signal.aborted) return
+
+      // 2. Scan manifests & build library
+      setProgress(20)
+      setStatusText(language === 'de' ? 'Scanne installierte Spiele & erstelle Bibliothek...' : 'Scanning installed games & library...')
+
+      const libraryViewReady = import('../library/LibraryView').catch(error => {
+        console.warn('[SplashView] Library view will load when opened:', error)
       })
-      scannedCount = games?.length || 0
-    } catch (e) {
-      console.warn('[SplashView] Scan error:', e)
-    }
+      const [result] = await Promise.all([prepareStartupLibrary({
+        scan: forceScan || useGameStore.getState().settings.autoScan !== false ? scan : undefined,
+        signal: abortController.signal,
+        getGames: () => {
+          const state = useGameStore.getState()
+          return [
+            ...(Array.isArray(state.installedGames) ? state.installedGames : []),
+            ...(Array.isArray(state.library) ? state.library : []),
+          ].filter(game => game && typeof game.name === 'string')
+            .map(game => ({ ...game, isFavorite: state.favoriteIds.includes(game.id) || ('isFavorite' in game && game.isFavorite === true) }))
+        },
+        onProgress: update => {
+          if (update.stage === 'covers') {
+            preparingArtworkRef.current = true
+            setProgress(previous => Math.max(previous, update.total ? 35 + Math.round(update.completed / update.total * 62) : 97))
+            setStatusText(language === 'de'
+              ? `Bereite Cover vor · ${update.completed} / ${update.total}`
+              : `Preparing artwork · ${update.completed} / ${update.total}`)
+          }
+        },
+      }), libraryViewReady])
+      if (abortController.signal.aborted) return
 
-    // 3. Preload & Cache Optimization
-    setProgress(85)
-    setStatusText(language === 'de' ? 'Lade Cover-Art & optimiere Spiele-Cache...' : 'Preloading cover art & optimizing cache...')
-    await new Promise(r => setTimeout(r, 350))
-
-    // 4. Ready Stage
-    setProgress(100)
-    setIsDone(true)
-    const countLabel = scannedCount > 0 
-      ? (language === 'de' ? `${scannedCount} Spiele geladen` : `${scannedCount} games loaded`) 
-      : (language === 'de' ? 'Bereit • Willkommen' : 'Ready • Welcome')
-    setStatusText(language === 'de' ? `Bibliothek bereit • ${countLabel}` : `Library Ready • ${countLabel}`)
-
-    // 5. Short clean pause then smooth exit
-    await new Promise(r => setTimeout(r, 350))
-    finish()
+      // 4. Ready Stage
+      setProgress(100)
+      setIsDone(true)
+      setStatusText(result.timedOut || result.failed > 0
+        ? (language === 'de' ? 'Bibliothek bereit · Weitere Cover laden bei Bedarf' : 'Library ready · Remaining artwork loads on demand')
+        : (language === 'de' ? `Bibliothek bereit · ${result.loaded} Cover geladen` : `Library ready · ${result.loaded} covers loaded`))
+      await waitForStartupMinimum(startedAt, abortController.signal)
+      if (!foundUpdateRef.current && !abortController.signal.aborted) finish()
+    } catch (error) {
+      console.error('[SplashView] Library preparation failed:', error)
+      if (!abortController.signal.aborted && !foundUpdateRef.current) {
+        setStatusText(language === 'de' ? 'Starte mit deiner gespeicherten Bibliothek…' : 'Starting with your saved library…')
+        await waitForStartupMinimum(startedAt, abortController.signal)
+        if (!abortController.signal.aborted) finish()
+      }
+    } finally { sequenceRunningRef.current = false }
   }
 
-  // Auto-Start immediately from frame 0 if auto-scan is active
+  // Scheduling avoids starting an orphaned scan during React StrictMode's probe mount.
   useEffect(() => {
-    if (autoScanEnabled) {
-      runProgressSequence()
+    const timer = autoScanEnabled ? setTimeout(() => { void runProgressSequence() }, 0) : undefined
+    return () => {
+      clearTimeout(timer)
+      preparationRef.current?.abort()
     }
   }, [])
 
@@ -195,30 +187,34 @@ export function SplashView({ onComplete }: SplashViewProps) {
       scanUninstalledSteam: loadSteam,
       autoScanSplash: autoScanSplash,
     })
-    await runProgressSequence()
+    await runProgressSequence(false, true)
   }
 
   const handleStartUpdate = async () => {
     if (!foundUpdate) return
+    setUpdateError('')
     setIsDownloadingUpdate(true)
-    setUpdateDownloadProgress(3)
+    setUpdateDownloadProgress(0)
 
     if (window.electronAPI?.downloadUpdate) {
       try {
-        const res = await window.electronAPI.downloadUpdate(foundUpdate.downloadUrl)
+        const res = await window.electronAPI.downloadUpdate(foundUpdate.downloadUrl || undefined)
         if (res && res.success === false) {
           throw new Error(res.error || 'Download failed')
         }
       } catch (e) {
         console.warn('[SplashView] downloadUpdate failed, opening download URL:', e)
         setIsDownloadingUpdate(false)
-        if (window.electronAPI?.openUrl) {
+        setUpdateError(e instanceof Error ? e.message : 'Update download failed')
+        if (foundUpdate.downloadUrl && window.electronAPI?.openUrl) {
           window.electronAPI.openUrl(foundUpdate.downloadUrl)
-        } else {
+        } else if (foundUpdate.downloadUrl) {
           window.open(foundUpdate.downloadUrl, '_blank')
         }
       }
     } else {
+      setIsDownloadingUpdate(false)
+      setUpdateError('Automatic installation is unavailable')
       if (window.electronAPI?.openUrl) {
         window.electronAPI.openUrl(foundUpdate.downloadUrl)
       } else {
@@ -227,9 +223,9 @@ export function SplashView({ onComplete }: SplashViewProps) {
     }
   }
 
-  const handleInstallUpdate = () => {
+  const handleInstallUpdate = async () => {
     if (window.electronAPI?.installUpdate) {
-      window.electronAPI.installUpdate()
+      return window.electronAPI.installUpdate()
     } else if (window.electronAPI?.relaunchApp) {
       window.electronAPI.relaunchApp()
     } else {
@@ -239,199 +235,28 @@ export function SplashView({ onComplete }: SplashViewProps) {
 
   const isScanningActive = autoScanEnabled || userClickedStart
 
-  return (
-    <motion.div 
-      initial={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
-      className="fixed inset-0 z-[99999] flex items-center justify-center splash-screen-overlay text-white select-none overflow-hidden"
-      style={{ backgroundColor: '#040405' }}
-    >
-      {/* ─── Ambient Space Backdrop ─── */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {!isPerformanceMode && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[440px] h-[440px] bg-white/[0.03] rounded-full blur-[100px]" />
-        )}
-        
-        {stars.map((star) => (
-          <div
-            key={star.id}
-            className="absolute rounded-full bg-white"
-            style={{
-              left: star.left,
-              top: star.top,
-              width: `${star.size}px`,
-              height: `${star.size}px`,
-              opacity: star.opacity,
-              animation: `pulse ${star.duration} ease-in-out infinite`,
-              animationDelay: star.delay
-            }}
-          />
-        ))}
-      </div>
-
-      {/* ─── Main Splash Content Container ─── */}
-      <div className="relative z-10 w-full max-w-[420px] px-6 flex flex-col items-center">
-        
-        {/* Floating Eclipse Logo with Corona Glow */}
-        <div className="relative mb-5 flex items-center justify-center w-28 h-28">
-          {!isPerformanceMode && (
-            <motion.div 
-              className="absolute w-24 h-24 rounded-full bg-white/10 pointer-events-none blur-[28px] splash-corona-glow"
-              style={{ filter: 'blur(28px)' }}
-              animate={{
-                scale: [0.95, 1.12, 0.95],
-                opacity: [0.3, 0.65, 0.3]
-              }}
-              transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-            />
-          )}
-
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1, y: isPerformanceMode ? 0 : [-2, 2, -2] }}
-            transition={{ 
-              scale: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
-              opacity: { duration: 0.5 },
-              y: isPerformanceMode ? { duration: 0 } : { duration: 3.5, repeat: Infinity, ease: 'easeInOut' }
-            }}
-            className="relative z-10 w-20 h-20 flex items-center justify-center rounded-full overflow-hidden"
-            style={{
-              maskImage: 'radial-gradient(circle, black 70%, transparent 88%)',
-              WebkitMaskImage: 'radial-gradient(circle, black 70%, transparent 88%)',
-            }}
-          >
-            <img 
-              src={eclipseLogo} 
-              alt="Eclipse Launcher" 
-              className="w-18 h-18 object-contain rounded-full" 
-            />
-          </motion.div>
-        </div>
-
-        {/* Brand Header */}
-        <div className="text-center mb-6">
-          <motion.h1 
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="text-xl font-bold tracking-[0.3em] uppercase text-white"
-          >
-            ECLIPSE
-          </motion.h1>
-          
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="flex items-center justify-center gap-2 mt-1.5"
-          >
-            <span className="text-[10px] font-semibold tracking-[0.25em] text-white/40 uppercase">
-              Unified Game Library
-            </span>
-            <span className="text-white/20 text-[10px]">•</span>
-            <span className="text-[10px] font-medium tracking-wider text-white/40 font-mono">
-              v{APP_VERSION}
-            </span>
-          </motion.div>
-        </div>
-
+  const actions = (
         <AnimatePresence mode="wait">
           {foundUpdate ? (
-            /* ─── State 3: Ultra-Clean Minimalist Update View ─── */
-            <motion.div
-              key="mandatory-update"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full space-y-4"
-            >
-              {/* Sleek Minimalist Update Card */}
-              <div className="p-4 rounded-2xl bg-[#0c0d12]/90 border border-white/10 space-y-3 text-center backdrop-blur-md">
-                <div className="flex items-center justify-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs font-semibold text-white tracking-wide">
-                    {language === 'de' ? 'Update erforderlich' : 'Update Required'}
-                  </span>
-                </div>
-
-                <p className="text-[11px] text-white/50 leading-relaxed px-2">
-                  {language === 'de'
-                    ? 'Eine neue Version von Eclipse Launcher ist verfügbar. Bitte aktualisiere den Launcher, um fortzufahren.'
-                    : 'A new version of Eclipse Launcher is available. Please update the launcher to proceed.'}
-                </p>
-
-                {/* Version Transition Pills */}
-                <div className="flex items-center justify-center gap-2 pt-1">
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/50">
-                    <span className="text-[10px] uppercase font-semibold text-white/30 tracking-wider">
-                      {language === 'de' ? 'Aktuell' : 'Current'}
-                    </span>
-                    <span className="text-xs font-mono font-medium text-white/60">
-                      v{APP_VERSION}
-                    </span>
-                  </div>
-                  
-                  <span className="text-white/20 text-xs">→</span>
-
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/15 border border-white/25 text-white shadow-sm">
-                    <span className="text-[10px] uppercase font-semibold text-white/50 tracking-wider">
-                      {language === 'de' ? 'Neu' : 'New'}
-                    </span>
-                    <span className="text-xs font-mono font-bold text-white">
-                      v{foundUpdate.version}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Live Download Progress (when active) */}
-              {isDownloadingUpdate && (
-                <div className="space-y-1.5">
-                  <div className="w-full h-1 bg-white/[0.08] rounded-full overflow-hidden relative">
-                    <motion.div 
-                      className="absolute left-0 top-0 bottom-0 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,0.7)]"
-                      animate={{ width: `${updateDownloadProgress}%` }}
-                      transition={{ duration: 0.2 }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-white/50 px-0.5">
-                    <span>{language === 'de' ? 'Lade Update herunter...' : 'Downloading update...'}</span>
-                    <span className="font-mono font-semibold text-white">{updateDownloadProgress}%</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Primary Action Button */}
-              <div>
-                {updateDownloaded ? (
-                  <button
-                    onClick={handleInstallUpdate}
-                    className="w-full py-3 bg-white hover:bg-white/90 active:scale-[0.99] text-black rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] cursor-pointer"
-                  >
-                    <RefreshCw size={13} className="text-black" />
-                    <span>{language === 'de' ? 'Jetzt neu starten & anwenden' : 'Restart & Apply'}</span>
-                  </button>
-                ) : isDownloadingUpdate ? (
-                  <button
-                    disabled
-                    className="w-full py-3 bg-white/10 text-white/40 rounded-xl font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-2 cursor-not-allowed"
-                  >
-                    <RefreshCw size={13} className="animate-spin text-white/40" />
-                    <span>{language === 'de' ? `Lade herunter... (${updateDownloadProgress}%)` : `Downloading... (${updateDownloadProgress}%)`}</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleStartUpdate}
-                    className="w-full py-3 bg-white hover:bg-white/90 active:scale-[0.99] text-black rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] cursor-pointer"
-                  >
-                    <Download size={13} className="text-black" />
-                    <span>{language === 'de' ? 'Update jetzt installieren' : 'Install Update Now'}</span>
-                  </button>
-                )}
-              </div>
-            </motion.div>
+            <UpdateCard
+              key="startup-update"
+              language={language}
+              status={updateError ? 'error' : updateDownloaded ? 'downloaded' : isDownloadingUpdate ? 'downloading' : 'available'}
+              version={foundUpdate.version}
+              notes={foundUpdate.notes}
+              publishedAt={foundUpdate.publishedAt}
+              progress={updateDownloadProgress}
+              error={updateError}
+              onDownload={handleStartUpdate}
+              onInstall={handleInstallUpdate}
+              onContinue={() => {
+                skipStartupUpdateRef.current = true
+                foundUpdateRef.current = null
+                setFoundUpdate(null)
+                setUpdateError('')
+                void runProgressSequence(true, userClickedStart)
+              }}
+            />
           ) : isScanningActive ? (
             /* ─── State 1: Active Progress & Loading Animation ─── */
             <motion.div 
@@ -445,7 +270,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
               {/* Progress Track */}
               <div className="w-full h-1 bg-white/[0.08] rounded-full overflow-hidden relative">
                 <motion.div 
-                  className="absolute left-0 top-0 bottom-0 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,0.7)]"
+                  className="absolute left-0 top-0 bottom-0 bg-[#ff9a56] rounded-full shadow-[0_0_12px_rgba(255,255,255,0.7)]"
                   animate={{ width: `${progress}%` }}
                   transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                 />
@@ -460,7 +285,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
                     <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse flex-shrink-0" />
                   )}
                   <span className="text-white/60 font-medium tracking-wide truncate">
-                    {statusText}
+                    {isDone ? (language === 'de' ? 'Abgeschlossen' : 'Complete') : (language === 'de' ? 'Deine Bibliothek' : 'Your library')}
                   </span>
                 </div>
                 <span className="text-white/40 font-mono text-[11px] font-semibold flex-shrink-0">
@@ -479,7 +304,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
               className="w-full space-y-3"
             >
               {/* Option 1: Load Steam Library */}
-              <label className="flex items-start p-3 rounded-xl bg-[#0c0d12] hover:bg-[#12141a] border border-white/10 hover:border-white/20 cursor-pointer transition-all duration-150 group">
+              <label className="flex items-start p-3 rounded-xl bg-[#170d08] hover:bg-[#21120b] border border-white/10 hover:border-white/20 cursor-pointer transition-all duration-150 group">
                 <div className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center mr-3 transition-colors flex-shrink-0 ${
                   loadSteam ? 'bg-white text-black' : 'bg-transparent border border-white/30 group-hover:border-white/50'
                 }`}>
@@ -502,7 +327,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
               </label>
 
               {/* Option 2: Always Scan Automatically */}
-              <label className="flex items-start p-3 rounded-xl bg-[#0c0d12] hover:bg-[#12141a] border border-white/10 hover:border-white/20 cursor-pointer transition-all duration-150 group">
+              <label className="flex items-start p-3 rounded-xl bg-[#170d08] hover:bg-[#21120b] border border-white/10 hover:border-white/20 cursor-pointer transition-all duration-150 group">
                 <div className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center mr-3 transition-colors flex-shrink-0 ${
                   autoScanSplash ? 'bg-white text-black' : 'bg-transparent border border-white/30 group-hover:border-white/50'
                 }`}>
@@ -519,7 +344,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
                     {language === 'de' ? 'Zukünftig automatisch starten' : 'Always scan automatically'}
                   </p>
                   <p className="text-[11px] text-white/40 mt-0.5">
-                    {language === 'de' ? 'Diesen Screen beim nächsten Start überspringen' : 'Skip options on next launch'}
+                    {language === 'de' ? 'Bibliothek beim nächsten Start automatisch vorbereiten' : 'Prepare the library automatically on next launch'}
                   </p>
                 </div>
               </label>
@@ -527,7 +352,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
               {/* Launch Button */}
               <button
                 onClick={handleManualStart}
-                className="w-full mt-2 py-3 bg-white hover:bg-white/90 active:scale-[0.99] text-black rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] cursor-pointer"
+                className="w-full mt-2 py-3 bg-[#ff934f] hover:bg-[#ffa569] active:scale-[0.99] text-black rounded-xl font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(255,113,38,0.15)] cursor-pointer"
               >
                 <Play size={13} className="fill-black text-black" />
                 <span>{language === 'de' ? 'Eclipse starten' : 'Launch Eclipse'}</span>
@@ -535,9 +360,14 @@ export function SplashView({ onComplete }: SplashViewProps) {
             </motion.div>
           )}
         </AnimatePresence>
-
-      </div>
-    </motion.div>
   )
+  useLaunchOverlay({
+    className: `splash-screen-overlay${foundUpdate ? ' launch-screen--update' : ''}`,
+    message: foundUpdate
+      ? (language === 'de' ? 'Ein neues Kapitel steht bereit.' : 'A new chapter is ready.')
+      : isScanningActive ? statusText : (language === 'de' ? 'Bereit für dein nächstes Spiel.' : 'Ready for your next game.'),
+    showLoader: !foundUpdate && isScanningActive,
+    children: actions,
+  })
+  return null
 }
-

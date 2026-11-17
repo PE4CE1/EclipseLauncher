@@ -1,23 +1,131 @@
 import { exec, execFile } from 'child_process'
 import { BrowserWindow, app } from 'electron'
-import { setDiscordActivity, setDiscordIdleActivity, setDiscordDownloadActivity, clearDiscordActivity } from './discordRPC'
+import { setDiscordActivity, setDiscordIdleActivity, setDiscordDownloadActivity, clearDiscordActivity, refreshDiscordActivity, setDiscordEnabled, setDiscordVersionVisible } from './discordRPC'
+import { SteamDownloadMonitor, type DownloadActivity } from './steamDownloadActivity'
+import { normalizeDiscordSettings, mergeDiscordSettings, discordPresenceMode } from './discordPresence'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
-import { showOverlay, hideOverlay, getOverlayWindow, isEditModeActive } from './overlayManager'
-import { startRLService, stopRLService } from './rlService'
+import { showOverlay, hideOverlay, getOverlayWindow } from './overlayManager'
+import { buildOverlayData } from './overlayState'
+import { startRLService, stopRLService, configureRLService, type RLPlaylist } from './rlService'
 import { addPlaytimeRecord } from './playtimeService'
-import { setActiveGameMetrics } from './metricsService'
-import { startGameFpsMonitor, stopGameFpsMonitor } from './gameFpsService'
+import { stopGameFpsMonitor } from './gameFpsService'
 import { startRobloxTracker, stopRobloxTracker, flushRobloxExperiencePlaytime } from './robloxService'
 import { onGameStartedAutoClip, onGameStoppedAutoClip } from './autoClipService'
 import { startRobloxAntiAfk, stopRobloxAntiAfk } from './robloxAntiAfkService'
-import { trimMemoryNow } from './memoryOptimizerService'
+import { requestMemoryRelief } from './memoryOptimizerService'
+import { updateTrayMenu } from './main'
+import { clipsModeSettings, type AppMode } from '../src/services/appMode'
+let clipsOnly = false
+export function setProcessMonitorMode(mode: AppMode) { clipsOnly = mode === 'clips'; invalidateSettingsCache() }
+import { NON_STEAM_GAMES, getNonSteamGame } from '../src/services/nonSteamGames'
+import { executableName, identifyGameProcess, parseProcessSnapshot, selectGameProcess } from './gameDetection'
+import { discoverRiotGames, epicManifestDirectory, insideInstallation } from './nonSteamDiscovery'
 
 interface ActiveDetectedGame {
   name: string
   exeName: string
   startTime: number
+}
+
+// ─── Roblox Process & Window Verification ──────────────────────────────────
+// Roblox frequently leaves headless background worker/telemetry processes running
+// after the game window is closed. These helper functions distinguish active GUI
+// Roblox gameplay from stale/windowless background processes.
+
+export const ROBLOX_GAME_EXES = new Set([
+  'robloxplayerbeta.exe',
+  'robloxplayerlauncher.exe',
+  'roblox.exe',
+  'windows10universal.exe',
+  'bloxstrap.exe'
+])
+
+export function isRobloxCandidateExe(exe: string): boolean {
+  if (!exe) return false
+  const lower = exe.toLowerCase().trim()
+  if (ROBLOX_GAME_EXES.has(lower)) return true
+  if ((lower.includes('roblox') || lower.includes('bloxstrap')) &&
+      !lower.includes('studio') &&
+      !lower.includes('installer') &&
+      !lower.includes('crash') &&
+      !lower.includes('helper')) {
+    return true
+  }
+  return false
+}
+
+export function isRobloxGame(name?: string, exe?: string): boolean {
+  const n = (name || '').toLowerCase().trim()
+  const e = (exe || '').toLowerCase().trim()
+  return n === 'roblox' || n.includes('roblox') || isRobloxCandidateExe(e)
+}
+
+export function isNoWindowPlaceholder(title: string): boolean {
+  if (!title) return true
+  const t = title.trim().toLowerCase()
+  if (
+    t === '' ||
+    t === 'n/a' ||
+    t === 'nicht zutreffend' ||
+    t === 'n/d' ||
+    t === 'n.d.' ||
+    t === 'nie dotyczy' ||
+    t === 'н/д' ||
+    t === 'geen' ||
+    t === 'unknown' ||
+    t === 'não aplicável' ||
+    t === 'brak' ||
+    t === 'non disponible' ||
+    t === 'olemainthreadwndname' ||
+    t === 'default ime' ||
+    t === 'msctfime ui' ||
+    t === 'gdi+ window'
+  ) {
+    return true
+  }
+  return false
+}
+
+export function isRobloxActiveWindowTitle(title: string): boolean {
+  if (!title || isNoWindowPlaceholder(title)) return false
+  const t = title.trim().toLowerCase()
+  if (t.includes('installer') || t.includes('crash') || t.includes('setup') || t.includes('update') || t.includes('helper') || t.includes('unins')) {
+    return false
+  }
+  return t.includes('roblox') || t.length > 0
+}
+
+export async function verifyRobloxActiveWindow(candidateExes: string[]): Promise<{ hasActiveWindow: boolean; activePid: number; activeExe: string }> {
+  for (const exe of candidateExes) {
+    try {
+      const stdout = await new Promise<string>((resolve) => {
+        execFile('tasklist.exe', ['/FI', `IMAGENAME eq ${exe}`, '/V', '/FO', 'CSV', '/NH'], { windowsHide: true, maxBuffer: 1024 * 512 }, (err, out) => {
+          if (err || !out) resolve('')
+          else resolve(out)
+        })
+      })
+
+      if (!stdout) continue
+
+      const lines = stdout.split(/\r?\n/)
+      for (const line of lines) {
+        if (!line.trim()) continue
+        // CSV: "name.exe","PID","session","session#","mem usage","status","user","cpu","window title"
+        const parts = line.match(/"([^"]*)"/g)
+        if (parts && parts.length >= 9) {
+          const m = parts.map(s => s.slice(1, -1))
+          const pid = parseInt(m[1], 10)
+          const title = m[8]
+          if (!isNaN(pid) && isRobloxActiveWindowTitle(title)) {
+            return { hasActiveWindow: true, activePid: pid, activeExe: exe }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+  return { hasActiveWindow: false, activePid: 0, activeExe: '' }
 }
 
 // Helper to read user Discord RPC and Overlay settings with in-memory caching
@@ -26,48 +134,41 @@ let lastSettingsRead = 0
 let robloxTrackerActive = false
 let lastActiveRobloxExperience: any = null
 
-function updateRobloxDiscordActivity(exp: any) {
-  if (exp && exp.placeId) {
-    lastActiveRobloxExperience = exp
-  }
-  if (!currentGame || currentGame.name !== 'Roblox') return
-  const currentSettings = getAppSettings()
-  if (!currentSettings.discordEnabled) return
+function updateRobloxDiscordActivity(exp: { name: string; placeId: string; universeId: string; iconUrl?: string } | null) {
+  if (!currentGame || !isRobloxGame(currentGame.name, currentGame.exeName)) return
+  lastActiveRobloxExperience = exp?.name && exp.name !== 'Roblox Experience' ? exp : null
+  syncDiscordPresence()
+}
 
-  if (currentSettings.discordRpcRobloxSubGame !== false && exp && exp.name) {
-    console.log(`[RobloxTracker] Active experience: ${exp.name} (Place: ${exp.placeId}, Universe: ${exp.universeId})`)
-    setDiscordActivity(
-      exp.name,
-      currentGame.startTime,
-      currentSettings.discordPrivacyMode,
-      currentSettings.discordActivityStyle || 'clipping',
-      undefined,
-      exp.iconUrl,
-      'in Roblox',
-      'https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/public/Roblox-Logo-Icon.png',
-      'Roblox',
-      currentSettings.discordRpcAnimatedText ?? false
-    )
-  } else {
-    console.log(`[RobloxTracker] In Roblox Menu / No Experience`)
-    setDiscordActivity(
-      'Roblox',
-      currentGame.startTime,
-      currentSettings.discordPrivacyMode,
-      currentSettings.discordActivityStyle || 'clipping',
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      currentSettings.discordRpcAnimatedText ?? false
-    )
-  }
+export function getLastActiveRobloxExperience() {
+  return lastActiveRobloxExperience
 }
 
 export function invalidateSettingsCache() {
   cachedSettings = null
   lastSettingsRead = 0
+}
+
+export function updateSettingsInMemory(settings: any) {
+  if (!settings) return
+  if (clipsOnly) settings = clipsModeSettings(settings)
+  if (!cachedSettings) {
+    getAppSettings()
+  }
+  const discord = mergeDiscordSettings(cachedSettings || {}, settings)
+  cachedSettings = {
+    ...cachedSettings,
+    ...settings,
+    ...discord,
+    discordRpc: discord.discordEnabled,
+    discordRpcIdle: discord.showIdle,
+    discordRpcShowDownloads: discord.showDownloads,
+    discordRpcPrivacyMode: discord.discordPrivacyMode,
+    overlayPositions: settings.overlayPositions ?? cachedSettings?.overlayPositions,
+    overlayMetrics: settings.overlayMetrics ?? cachedSettings?.overlayMetrics,
+    crosshairConfig: settings.crosshairConfig !== undefined ? settings.crosshairConfig : cachedSettings?.crosshairConfig,
+  }
+  lastSettingsRead = Date.now()
 }
 
 function getAppSettings() {
@@ -92,7 +193,6 @@ function getAppSettings() {
     if (fs.existsSync(settingsPath)) {
       const s = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
       cachedSettings = {
-        gamePerformanceMode: s.gamePerformanceMode ?? true,
         autoMinimizeOnGame: s.autoMinimizeOnGame ?? false,
         autoRestoreOnGameStop: s.autoRestoreOnGameStop ?? true,
         discordEnabled: s.discordRpc ?? true,
@@ -100,11 +200,12 @@ function getAppSettings() {
         discordPrivacyMode: s.discordRpcPrivacyMode ?? false,
         discordRpcRobloxSubGame: s.discordRpcRobloxSubGame ?? true,
         discordRpcAnimatedText: s.discordRpcAnimatedText ?? false,
+        discordRpcShowVersion: s.discordRpcShowVersion === true,
         showDownloads: s.discordRpcShowDownloads ?? true,
         showIdle: s.discordRpcIdle ?? true,
         overlayPerformance: s.overlayPerformance ?? false,
         overlayCrosshair: s.overlayCrosshair ?? false,
-        overlayGeneralAlwaysOn: s.overlayGeneralAlwaysOn !== false,
+        overlayGeneralAlwaysOn: s.overlayGeneralAlwaysOn === true,
         overlayCps: s.overlayCps ?? false,
         overlayController: s.overlayController ?? false,
         overlayMedia: s.overlayMedia ?? false,
@@ -119,6 +220,7 @@ function getAppSettings() {
         overlayRLSteam: s.overlayRLSteam ?? false,
         overlayRLController: s.overlayRLController ?? false,
         rlPlaylist: s.rlPlaylist ?? '2v2',
+        rlPlayerId: typeof s.rlPlayerId === 'string' ? s.rlPlayerId : '',
         trnApiKey: s.trnApiKey ?? '',
         steamProfileUrl: s.steamProfileUrl ?? '',
         rlScoreboardKeyKb: s.rlScoreboardKeyKb ?? 'Tab',
@@ -132,18 +234,18 @@ function getAppSettings() {
         overlayPositions: s.overlayPositions ?? defaultPositions,
       }
       lastSettingsRead = now
+      if (clipsOnly) cachedSettings = clipsModeSettings(cachedSettings)
       return cachedSettings
     }
   } catch (e) {}
 
   cachedSettings = {
-    gamePerformanceMode: true,
     autoMinimizeOnGame: false,
     autoRestoreOnGameStop: true,
     discordEnabled: true, discordActivityStyle: 'clipping', discordPrivacyMode: false, showDownloads: true, showIdle: true,
-    overlayPerformance: false, overlayCrosshair: false, overlayGeneralAlwaysOn: true, 
+    overlayPerformance: false, overlayCrosshair: false, overlayGeneralAlwaysOn: false,
     overlayCps: false, overlayController: false, overlayControllerStreamOnly: false, overlayMedia: false, overlayMediaSource: 'all' as const, overlayMediaAutoHide: false, overlayMediaVisualizer: true, overlayRobloxTimer: false, overlayRobloxCps: false, overlayRobloxAntiAfk: false,
-    overlayRLHud: false, overlayRLSteam: false, overlayRLController: false, rlPlaylist: '2v2' as const, trnApiKey: '',
+    overlayRLHud: false, overlayRLSteam: false, overlayRLController: false, rlPlaylist: '2v2' as const, rlPlayerId: '', trnApiKey: '',
     steamProfileUrl: '', rlScoreboardKeyKb: 'Tab', rlScoreboardKeyCtrl: 'Select', rlSteamAvatarScale: 85,
     rlControllerSkin: 'ps5_white' as const, rlControllerUrl: 'https://gamepadviewer.com/?p=1&s=ps5_white', rlControllerScale: 80,
     overlayMetrics: defaultMetrics,
@@ -198,13 +300,12 @@ const KNOWN_GAME_EXES: Record<string, string> = {
   'robloxplayerlauncher.exe': 'Roblox',
   'roblox.exe': 'Roblox',
   'windows10universal.exe': 'Roblox',
+  'bloxstrap.exe': 'Roblox',
   'fortniteclient-win64-shipping.exe': 'Fortnite',
   'valorant-win64-shipping.exe': 'VALORANT',
   'leagueclient.exe': 'League of Legends',
   'league of legends.exe': 'League of Legends',
   'minecraftlauncher.exe': 'Minecraft',
-  'javaw.exe': 'Minecraft',
-  'java.exe': 'Minecraft',
   'minecraft.exe': 'Minecraft',
   'rocketleague.exe': 'Rocket League',
   'cs2.exe': 'Counter-Strike 2',
@@ -224,7 +325,6 @@ const KNOWN_GAME_EXES: Record<string, string> = {
   'rustclient.exe': 'Rust',
   'dayz_x64.exe': 'DayZ',
   'cod.exe': 'Call of Duty',
-  'bootstrapper.exe': 'Call of Duty',
   'destiny2.exe': 'Destiny 2',
   'warframe.x64.exe': 'Warframe',
   'overwatch.exe': 'Overwatch 2',
@@ -232,7 +332,6 @@ const KNOWN_GAME_EXES: Record<string, string> = {
   'yuanshen.exe': 'Genshin Impact',
   'starrail.exe': 'Honkai: Star Rail',
   'zenlesszonezero.exe': 'Zenless Zone Zero',
-  'client-win64-shipping.exe': 'Wuthering Waves',
   'fallguys_client_game.exe': 'Fall Guys',
   'palworld-win64-shipping.exe': 'Palworld',
   'helldivers2.exe': 'Helldivers 2',
@@ -272,6 +371,8 @@ const KNOWN_GAME_EXES: Record<string, string> = {
 
 // Dynamic map for custom user-added or scanned games
 const customGameExes: Record<string, string> = {}
+const gameSteamIds = new Map<string, number>()
+const gameNameKey = (name: string) => name.normalize('NFKC').replace(/[™®©]/g, '').toLowerCase().trim()
 
 export const GENERIC_PROCESS_BLACKLIST = new Set([
   'crashpad_handler.exe', 'crashreporter.exe', 'crashreport.exe', 'crashreportclient.exe',
@@ -312,12 +413,27 @@ export function isIgnoredExe(name: string): boolean {
   return false
 }
 
-export function registerGameExe(exeName: string, gameName: string) {
-  if (!exeName) return
-  const cleanExe = exeName.toLowerCase().trim()
+export function registerGameExe(exeName: string, gameName: string, steamId?: number, fallbackOnly = false): boolean {
+  if (typeof exeName !== 'string' || typeof gameName !== 'string' || !gameName.trim() || exeName.length > 2048 || gameName.length > 256) return false
+  const cleanExe = executableName(exeName)
   if (cleanExe.endsWith('.exe') && !isIgnoredExe(cleanExe)) {
-    customGameExes[cleanExe] = gameName
+    if (fallbackOnly && (customGameExes[cleanExe] || KNOWN_GAME_EXES[cleanExe])) return false
+    customGameExes[cleanExe] = gameName.trim()
+    if (Number.isSafeInteger(steamId) && steamId! > 0 && !getNonSteamGame(gameName)) gameSteamIds.set(gameNameKey(gameName), steamId!)
+    return true
   }
+  return false
+}
+
+export function registerInstalledGameRecords(records: unknown): number {
+  if (!Array.isArray(records) || records.length > 2048) throw new Error('Invalid installed game registry')
+  let registered = 0
+  for (const record of records) {
+    if (!record || typeof record !== 'object' || typeof record.executable !== 'string' || record.executable.includes('://')) continue
+    if (!/\.exe$/i.test(record.executable) || typeof record.name !== 'string') continue
+    if (registerGameExe(record.executable, record.name, record.steamId)) registered++
+  }
+  return registered
 }
 
 let cachedSteamPathSync: string | null = null;
@@ -328,7 +444,7 @@ function getSteamPathSync(): string | null {
   if (hasCheckedSteamPath) return cachedSteamPathSync;
   hasCheckedSteamPath = true;
   try {
-    const stdout = require('child_process').execSync('reg query "HKCU\\Software\\Valve\\Steam" /v SteamPath', { encoding: 'utf-8' })
+    const stdout = require('child_process').execSync('reg query "HKCU\\Software\\Valve\\Steam" /v SteamPath', { encoding: 'utf-8', windowsHide: true, timeout: 3000 })
     const match = stdout.match(/SteamPath\s+REG_SZ\s+(.*)/i)
     if (match && match[1]) {
       cachedSteamPathSync = match[1].trim().replace(/\//g, '\\')
@@ -370,73 +486,46 @@ function extractAcfField(content: string, field: string): string | null {
   return match ? match[1] : null
 }
 
-// Real-time Steam Download Monitor (Simplified)
-function checkSteamActiveDownloads(): { name: string } | null {
-  const steamPath = getSteamPathSync()
-  if (!steamPath) return null
-
-  const folders = getSteamLibraryFolders(steamPath)
-
-  for (const folder of folders) {
-    const steamappsPath = path.join(folder, 'steamapps')
-    const downloadingPath = path.join(steamappsPath, 'downloading')
-    if (!fs.existsSync(steamappsPath)) continue
-
-    try {
-      const manifests = fs.readdirSync(steamappsPath).filter(f => f.startsWith('appmanifest_') && f.endsWith('.acf'))
-      
-      for (const manifest of manifests) {
-        const acfPath = path.join(steamappsPath, manifest)
-        const content = fs.readFileSync(acfPath, 'utf-8')
-        
-        const appId = extractAcfField(content, 'appid')
-        const name = extractAcfField(content, 'name')
-        const stateFlags = parseInt(extractAcfField(content, 'StateFlags') || '0', 10)
-
-        if (!name || !appId) continue
-
-        const downloadingFolderPath = path.join(downloadingPath, appId)
-        const isDownloadingFolderExists = fs.existsSync(downloadingFolderPath)
-        const isDownloadingState = (stateFlags & 1024) !== 0 || (stateFlags & 16) !== 0 || isDownloadingFolderExists
-
-        if (isDownloadingState) {
-          return { name }
-        }
-      }
-    } catch (e) {}
-  }
-  return null
+let steamDownloadRootRetryAt = 0
+async function downloadSteamPath(): Promise<string | null> {
+  if (cachedSteamPathSync) return cachedSteamPathSync
+  if (Date.now() < steamDownloadRootRetryAt) return null
+  steamDownloadRootRetryAt = Date.now() + 60_000
+  return new Promise(resolve => execFile('reg.exe', ['query', 'HKCU\\Software\\Valve\\Steam', '/v', 'SteamPath'], { encoding: 'utf8', windowsHide: true, timeout: 3000 }, (error, stdout) => {
+    const found = !error && /SteamPath\s+REG_SZ\s+(.*)/i.exec(String(stdout))
+    if (found) cachedSteamPathSync = found[1].trim().replace(/\//g, '\\')
+    resolve(cachedSteamPathSync)
+  }))
 }
 
 // Real-time Epic Games Download Monitor (Simplified)
-function checkEpicActiveDownloads(): { name: string } | null {
+async function checkEpicActiveDownloads(): Promise<DownloadActivity | null> {
   const epicManifestDir = 'C:\\ProgramData\\Epic\\EpicGamesLauncher\\Data\\Manifests'
-  if (!fs.existsSync(epicManifestDir)) return null
 
   try {
     // 1. Check Pending folder first
     const pendingDir = path.join(epicManifestDir, 'Pending')
-    if (fs.existsSync(pendingDir)) {
-      const pendingFiles = fs.readdirSync(pendingDir).filter(f => f.endsWith('.item'))
+    if (await fs.promises.stat(pendingDir).then(info => info.isDirectory(), () => false)) {
+      const pendingFiles = (await fs.promises.readdir(pendingDir)).filter(f => f.endsWith('.item'))
       for (const file of pendingFiles) {
         try {
           const filePath = path.join(pendingDir, file)
-          const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+          const data = JSON.parse(await fs.promises.readFile(filePath, 'utf-8'))
           const name = data.DisplayName || data.AppName
-          if (name) return { name }
+          if (name) return { name, source: 'Epic Games', phase: 'download' }
         } catch (e) {}
       }
     }
 
     // 2. Check main Manifests directory for incomplete installs
-    const files = fs.readdirSync(epicManifestDir).filter(f => f.endsWith('.item'))
+    const files = (await fs.promises.readdir(epicManifestDir)).filter(f => f.endsWith('.item'))
     for (const file of files) {
       try {
         const filePath = path.join(epicManifestDir, file)
-        const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+        const data = JSON.parse(await fs.promises.readFile(filePath, 'utf-8'))
         if (data.bIsIncompleteInstall || data.bIsDownload || data.bIsUpdating) {
           const name = data.DisplayName || data.AppName
-          if (name) return { name }
+          if (name) return { name, source: 'Epic Games', phase: 'download' }
         }
       } catch (e) {}
     }
@@ -445,18 +534,19 @@ function checkEpicActiveDownloads(): { name: string } | null {
 }
 
 
-function findGameExesFast(gameDir: string, depth: number = 0): string[] {
-  if (depth > 4) return []
+async function findGameExesFast(gameDir: string, shouldContinue: () => boolean, depth = 0): Promise<string[]> {
+  if (depth > 4 || !shouldContinue()) return []
   const found: string[] = []
   try {
-    const entries = fs.readdirSync(gameDir, { withFileTypes: true })
+    const entries = await fs.promises.readdir(gameDir, { withFileTypes: true })
     for (const entry of entries) {
+      if (!shouldContinue()) break
       const lower = entry.name.toLowerCase()
       if (entry.isFile() && lower.endsWith('.exe')) {
         if (!isIgnoredExe(lower)) found.push(lower)
       } else if (entry.isDirectory()) {
         if (!['directx', '_commonredist', 'redist', 'support', 'installer', 'mono', 'dotnet', 'burstdebug', '_burst', 'shader', 'logs', 'extras', 'plugins'].some(k => lower.includes(k))) {
-          found.push(...findGameExesFast(path.join(gameDir, entry.name), depth + 1))
+          found.push(...await findGameExesFast(path.join(gameDir, entry.name), shouldContinue, depth + 1))
         }
       }
     }
@@ -464,27 +554,35 @@ function findGameExesFast(gameDir: string, depth: number = 0): string[] {
   return found
 }
 
-export function autoScanInstalledGames() {
+export async function autoScanInstalledGames(shouldContinue: () => boolean = () => true): Promise<void> {
   try {
-    const steamPath = getSteamPathSync()
+    if (!hasCheckedSteamPath) {
+      hasCheckedSteamPath = true
+      const output = await new Promise<string>(resolve => execFile('reg.exe', ['query', 'HKCU\\Software\\Valve\\Steam', '/v', 'SteamPath'], { windowsHide: true, timeout: 3000 }, (error, stdout) => resolve(error ? '' : stdout)))
+      cachedSteamPathSync = /SteamPath\s+REG_SZ\s+(.+)/i.exec(output)?.[1].trim().replace(/\//g, '\\') || null
+    }
+    const steamPath = cachedSteamPathSync
+    if (!shouldContinue()) return
     if (steamPath) {
       const folders = getSteamLibraryFolders(steamPath)
       for (const folder of folders) {
+        if (!shouldContinue()) return
         const steamappsPath = path.join(folder, 'steamapps')
-        if (!fs.existsSync(steamappsPath)) continue
         try {
-          const manifests = fs.readdirSync(steamappsPath).filter(f => f.startsWith('appmanifest_') && f.endsWith('.acf'))
+          const manifests = (await fs.promises.readdir(steamappsPath)).filter(f => f.startsWith('appmanifest_') && f.endsWith('.acf'))
           for (const manifest of manifests) {
+            if (!shouldContinue()) return
             const acfPath = path.join(steamappsPath, manifest)
-            const content = fs.readFileSync(acfPath, 'utf-8')
+            const content = await fs.promises.readFile(acfPath, 'utf-8')
             const name = extractAcfField(content, 'name')
             const installdir = extractAcfField(content, 'installdir')
             if (name && installdir) {
               const gameCommonPath = path.join(steamappsPath, 'common', installdir)
-              if (fs.existsSync(gameCommonPath)) {
-                const exes = findGameExesFast(gameCommonPath)
+              {
+                const exes = await findGameExesFast(gameCommonPath, shouldContinue)
                 for (const exe of exes) {
-                  customGameExes[exe] = name
+                  if (!shouldContinue()) return
+                  registerGameExe(exe, name, Number(/appmanifest_(\d+)\.acf/i.exec(manifest)?.[1]))
                 }
               }
             }
@@ -496,25 +594,36 @@ export function autoScanInstalledGames() {
 
   // Also scan Epic Games
   try {
-    const epicManifestDir = 'C:\\ProgramData\\Epic\\EpicGamesLauncher\\Data\\Manifests'
-    if (fs.existsSync(epicManifestDir)) {
-      const files = fs.readdirSync(epicManifestDir).filter(f => f.endsWith('.item'))
+    const epicManifestDir = await epicManifestDirectory()
+    if (epicManifestDir && shouldContinue()) {
+      const files = (await fs.promises.readdir(epicManifestDir)).filter(f => f.endsWith('.item'))
       for (const file of files) {
+        if (!shouldContinue()) return
         try {
           const filePath = path.join(epicManifestDir, file)
-          const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+          const data = JSON.parse(await fs.promises.readFile(filePath, 'utf-8'))
           const name = data.DisplayName || data.AppName
           const exe = data.LaunchExecutable
           if (name && exe && exe.toLowerCase().endsWith('.exe')) {
-            const lowerExe = exe.toLowerCase()
-            if (!isIgnoredExe(lowerExe)) {
-              customGameExes[lowerExe] = name
+            registerGameExe(exe, name)
+            if (typeof data.InstallLocation === 'string') {
+              const launchPath = insideInstallation(data.InstallLocation, exe)
+              if (launchPath) {
+                for (const sibling of await findGameExesFast(path.dirname(launchPath), shouldContinue)) {
+                  if (!shouldContinue()) return
+                  registerGameExe(sibling, name)
+                }
+              }
             }
           }
         } catch (_) {}
       }
     }
   } catch (_) {}
+  for (const game of await discoverRiotGames(shouldContinue)) {
+    if (!shouldContinue()) return
+    if (game.executable) registerGameExe(game.executable, game.name)
+  }
 }
 
 let currentGame: ActiveDetectedGame | null = null
@@ -522,150 +631,210 @@ let currentGamePid: number = 0
 let missCount = 0
 let monitorInterval: NodeJS.Timeout | null = null
 let rlServiceActive = false
+let getMonitorWindow: () => BrowserWindow | null = () => null
+function syncRLHud(settings: { overlayRLHud?: boolean; rlPlaylist?: string; rlPlayerId?: string }) {
+  configureRLService({ rlPlaylist: settings.rlPlaylist as RLPlaylist, rlPlayerId: settings.rlPlayerId })
+  if (currentGame?.name === 'Rocket League' && settings.overlayRLHud) {
+    if (!rlServiceActive) {
+      rlServiceActive = true
+      startRLService(data => {
+        for (const window of new Set([getMonitorWindow(), getOverlayWindow()])) {
+          if (window && !window.isDestroyed()) window.webContents.send('rl:mmr-update', data)
+        }
+      }, settings.rlPlaylist as RLPlaylist)
+    }
+  } else if (rlServiceActive) { rlServiceActive = false; stopRLService() }
+}
 let lastLibraryScanTime = 0
-let downloadCheckTick = 0
-let lastActiveDownload: { name: string } | null = null
+let lastDownloadCheck = 0
+let lastActiveDownload: DownloadActivity | null = null
+let downloadClients = { steam: false, epic: false }
+let steamActivityRefreshTimer: ReturnType<typeof setTimeout> | undefined
+const steamDownloads = new SteamDownloadMonitor(() => {
+  if (steamActivityRefreshTimer) return
+  steamActivityRefreshTimer = setTimeout(() => {
+    steamActivityRefreshTimer = undefined
+    const settings = getAppSettings()
+    if (downloadClients.steam && settings.discordEnabled && settings.showDownloads && !currentGame) refreshExternalDownloads(downloadClients.steam, downloadClients.epic, monitorGeneration)
+  }, 500)
+  steamActivityRefreshTimer.unref?.()
+})
+let downloadScanInProgress = false, downloadScanRevision = 0
+let launcherDownloadName: string | null = null
+
+function refreshExternalDownloads(steam: boolean, epic: boolean, generation: number) {
+  if (downloadScanInProgress) return
+  downloadScanInProgress = true; lastDownloadCheck = Date.now()
+  const revision = ++downloadScanRevision
+  void Promise.all([
+    steam ? downloadSteamPath().then(root => root ? steamDownloads.scan(root) : null) : Promise.resolve(null),
+    epic ? checkEpicActiveDownloads() : Promise.resolve(null),
+  ]).then(([steamActivity, epicActivity]) => {
+    if (generation !== monitorGeneration || revision !== downloadScanRevision) return
+    lastActiveDownload = steamActivity || epicActivity; lastDownloadCheck = Date.now(); syncDiscordPresence()
+  }).catch(() => { if (revision === downloadScanRevision) lastActiveDownload = null })
+    .finally(() => { downloadScanInProgress = false })
+}
+
+export function setLauncherDownloadActivity(name: unknown) {
+  launcherDownloadName = typeof name === 'string' && name.trim() ? name.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 128) : null
+  syncDiscordPresence()
+}
+
+export function syncDiscordPresence() {
+  const settings = normalizeDiscordSettings(getAppSettings())
+  setDiscordEnabled(settings.discordEnabled)
+  setDiscordVersionVisible(settings.discordRpcShowVersion)
+  const download = launcherDownloadName || (Date.now() - lastDownloadCheck < 20_000 ? lastActiveDownload?.name : undefined)
+  const mode = discordPresenceMode(settings, currentGame, download)
+  if (mode === 'off') { clearDiscordActivity(); return }
+  if (mode === 'download') { setDiscordDownloadActivity(download!, settings.discordRpcAnimatedText, launcherDownloadName ? { name: launcherDownloadName, source: 'Eclipse', phase: 'download' } : lastActiveDownload || undefined, settings.discordPrivacyMode); return }
+  if (mode === 'idle') { setDiscordIdleActivity(settings.discordRpcAnimatedText, clipsOnly); return }
+  if (!currentGame) return
+  const roblox = isRobloxGame(currentGame.name, currentGame.exeName)
+  const experience = roblox && settings.discordRpcRobloxSubGame ? lastActiveRobloxExperience : null
+  setDiscordActivity(
+    experience?.name || currentGame.name, currentGame.startTime,
+    settings.discordPrivacyMode, settings.discordActivityStyle,
+    gameSteamIds.get(gameNameKey(currentGame.name)), experience?.iconUrl || (roblox ? 'https://raw.githubusercontent.com/PE4CE1/EclipseLauncher/main/public/Roblox-Logo-Icon.png' : undefined),
+    experience ? 'in Roblox' : undefined,
+    undefined, undefined, settings.discordRpcAnimatedText, currentGamePid,
+  )
+}
 
 export function isAnyGameRunning(): boolean {
   return currentGame !== null
 }
 
 export function isRobloxRunning(): boolean {
-  if (currentGame && (currentGame.name.toLowerCase() === 'roblox' || currentGame.exeName.toLowerCase().includes('roblox'))) {
+  if (currentGame && isRobloxGame(currentGame.name, currentGame.exeName)) {
     return true
   }
   return false
 }
 
+let isProcessScanInProgress = false
+let monitorGeneration = 0
+let previousRunningExes = new Set<string>()
+
+function persistCurrentSession(): void {
+  if (!currentGame) return
+  const minutes = Math.max(0, (Date.now() - currentGame.startTime) / 60000)
+  const isRoblox = isRobloxGame(currentGame.name, currentGame.exeName)
+  addPlaytimeRecord(isRoblox ? 'roblox' : currentGame.name, currentGame.name, minutes, isRoblox ? 999001 : undefined)
+  if (isRoblox) flushRobloxExperiencePlaytime()
+}
+
 export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
+  getMonitorWindow = getMainWindow
   if (monitorInterval) return
+  const generation = ++monitorGeneration
 
-  // Initial immediate scan of all installed Steam & Epic games
-  autoScanInstalledGames()
+  // Discovery yields on filesystem I/O so Windows can keep handling the window.
+  void autoScanInstalledGames(() => generation === monitorGeneration)
 
-  monitorInterval = setInterval(() => {
+  monitorInterval = setInterval(async () => {
     if (process.platform !== 'win32') return
-
-    // Removed 5 minute synchronous scan as it causes 'Not Responding' freezes
+    if (isProcessScanInProgress) return
+    isProcessScanInProgress = true
 
     const appSettings = getAppSettings()
     const mainWindow = getMainWindow()
 
-    // Optimization: If a game is actively running with a known PID, perform a 0ms lightweight PID alive check.
-    if (currentGame && currentGamePid > 0) {
-      let isGameStillAlive = false
-      try {
-        process.kill(currentGamePid, 0)
-        isGameStillAlive = true
-      } catch (e: any) {
-        // EPERM means process exists but we don't have permission to signal it -> STILL ALIVE!
-        if (e && (e.code === 'EPERM' || e.code === 'EACCES')) {
-          isGameStillAlive = true
-        } else {
-          isGameStillAlive = false
-        }
-      }
-
-      if (isGameStillAlive) {
-        return
-      }
-
-      // Game has exited! Trigger game stopped logic immediately.
-      console.log(`[ProcessMonitor] Detected game stopped (PID ${currentGamePid} exited): ${currentGame.name}`)
-      try {
-        const elapsedMins = Math.max(1, Math.round((Date.now() - (currentGame.startTime || Date.now())) / 60000))
-        addPlaytimeRecord(currentGame.name, currentGame.name, elapsedMins)
-      } catch (e) {
-        console.error('[ProcessMonitor] Failed to record playtime on stop:', e)
-      }
-
-      if (appSettings.autoRestoreOnGameStop !== false) {
-        try {
-          if (mainWindow && mainWindow.isMinimized()) {
-            mainWindow.restore()
-          }
-        } catch (_) {}
-      }
-
-      if (robloxTrackerActive) {
-        robloxTrackerActive = false
-        stopRobloxTracker(updateRobloxDiscordActivity)
-      }
-      stopRobloxAntiAfk()
-
-      // Deactivate AutoClip
-      onGameStoppedAutoClip()
-
-      currentGame = null
-      currentGamePid = 0
-      setActiveGameMetrics(null)
-      stopGameFpsMonitor()
-      mainWindow?.webContents.send('games:stopped')
-      hideOverlay()
-      return
-    }
-
     // Run Windows tasklist directly without cmd.exe intermediary (hidden, zero console window)
-    execFile('tasklist.exe', ['/FO', 'CSV', '/NH'], { windowsHide: true, maxBuffer: 1024 * 1024 }, (err, stdout) => {
-      let runningExes = new Set<string>()
-      const runningExePids = new Map<string, number>()
+    execFile('tasklist.exe', ['/FO', 'CSV', '/NH'], { windowsHide: true, timeout: 10_000, maxBuffer: 4 * 1024 * 1024 }, async (err, stdout) => {
+      try {
+        if (err || generation !== monitorGeneration) return
+        const processes = parseProcessSnapshot(stdout || '')
+        // A malformed or incomplete command response is not evidence of a game exit.
+        if (stdout?.trim() && processes.size === 0) return
+        let runningExes = new Set(processes.keys())
+        const runningExePids = new Map<string, number>()
+        for (const [exe, pids] of processes) {
+          runningExePids.set(exe, pids.includes(currentGamePid) ? currentGamePid : pids[0])
+        }
 
-      if (!err && stdout) {
-        const lines = stdout.split('\r\n')
-        for (const line of lines) {
-          if (!line) continue
-          // CSV format: "name.exe","PID","session","session#","mem usage"
-          const parts = line.match(/"([^"]+)"/g)
-          if (parts && parts.length >= 2) {
-            const exeName = parts[0].replace(/"/g, '').toLowerCase()
-            const pid = parseInt(parts[1].replace(/"/g, ''), 10)
-            runningExes.add(exeName)
-            if (!isNaN(pid)) runningExePids.set(exeName, pid)
+        // Roblox Background Process Blacklisting & Window Verification:
+        // When Roblox is closed, it frequently leaves hanging background processes (e.g. RobloxPlayerBeta.exe, Bloxstrap)
+        // in Task Manager without a visible window. Filter out any Roblox candidate that lacks an active GUI window.
+        const robloxCandidates = Array.from(runningExes).filter(e => isRobloxCandidateExe(e))
+        if (robloxCandidates.length > 0) {
+          const robloxWindowInfo = await verifyRobloxActiveWindow(robloxCandidates)
+          if (generation !== monitorGeneration) return
+          if (!robloxWindowInfo.hasActiveWindow) {
+            // No active Roblox window found - all detected Roblox processes are purely background/headless!
+            for (const cand of robloxCandidates) {
+              runningExes.delete(cand)
+              runningExePids.delete(cand)
+            }
+            if (currentGame && isRobloxGame(currentGame.name, currentGame.exeName)) {
+              console.log(`[ProcessMonitor] Active Roblox window not visible (PID ${currentGamePid}); waiting for grace period.`)
+            }
+          } else {
+            // Verified active Roblox game window exists! Ensure active PID is set
+            runningExePids.set(robloxWindowInfo.activeExe, robloxWindowInfo.activePid)
           }
         }
-      }
 
       // Combine known games + custom scanned games
       const allExes = { ...KNOWN_GAME_EXES, ...customGameExes }
+      for (const game of NON_STEAM_GAMES) {
+        for (const exe of [...game.processes, ...game.bootstrap || []]) allExes[exe] = game.name
+      }
       
-      let detectedName: string | null = null
-      let detectedExe: string | null = null
+      const foundGames: Array<{ name: string; exe: string; pid: number; bootstrap?: boolean }> = []
 
       for (const [exe, name] of Object.entries(allExes)) {
         if (isIgnoredExe(exe)) continue
-        if (runningExes.has(exe)) {
-          detectedName = name
-          detectedExe = exe
-          break
+        const identity = identifyGameProcess(exe, name)
+        if (identity && runningExes.has(exe)) {
+          foundGames.push({
+            ...identity,
+            exe,
+            pid: runningExePids.get(exe) ?? 0
+          })
         }
       }
 
       // Heuristic fallback for modded or variantly named executables
-      if (!detectedName) {
+      if (foundGames.length === 0) {
         for (const running of runningExes) {
           if (running.includes('uninstall') || running.includes('helper') || running.includes('crash') || running.includes('error') || running.includes('service')) continue
           if (running.includes('deadbydaylight') || running.includes('dead by daylight')) {
-            detectedName = 'Dead by Daylight'
-            detectedExe = running
+            foundGames.push({ name: 'Dead by Daylight', exe: running, pid: runningExePids.get(running) ?? 0 })
             break
           }
           if (running.includes('gta5_enhanced') || running.includes('gtav_enhanced')) {
-            detectedName = 'Grand Theft Auto V Enhanced'
-            detectedExe = running
+            foundGames.push({ name: 'Grand Theft Auto V Enhanced', exe: running, pid: runningExePids.get(running) ?? 0 })
             break
           }
           if (running.includes('gta5') || running.includes('gtav') || running.includes('playgtav') || running.includes('fivem')) {
-            detectedName = 'Grand Theft Auto V'
-            detectedExe = running
+            foundGames.push({ name: 'Grand Theft Auto V', exe: running, pid: runningExePids.get(running) ?? 0 })
             break
           }
           if (running.includes('rdr2') || running.includes('playrdr2')) {
-            detectedName = 'Red Dead Redemption 2'
-            detectedExe = running
+            foundGames.push({ name: 'Red Dead Redemption 2', exe: running, pid: runningExePids.get(running) ?? 0 })
+            break
+          }
+          if ((running.includes('roblox') || running.includes('bloxstrap')) && !runningExes.has('robloxcrashhandler.exe')) {
+            if (!running.includes('studio') && !running.includes('installer') && !running.includes('crash')) {
+              foundGames.push({ name: 'Roblox', exe: running, pid: runningExePids.get(running) ?? 0 })
+              break
+            }
+          }
+          if (running.includes('rocketleague') || running.includes('rocket league')) {
+            foundGames.push({ name: 'Rocket League', exe: running, pid: runningExePids.get(running) ?? 0 })
             break
           }
         }
       }
+
+      let detectedName: string | null = null
+      let detectedExe: string | null = null
+
+      const selected = selectGameProcess(foundGames, previousRunningExes, currentGame, currentGamePid, Date.now())
+      if (selected) { detectedName = selected.name; detectedExe = selected.exe }
+      previousRunningExes = runningExes
 
       if (detectedName && detectedExe) {
         missCount = 0
@@ -674,11 +843,27 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
 
         // Priority 1: Game active
         if (!currentGame || currentGame.name !== detectedName) {
+          if (currentGame) {
+            console.log(`[ProcessMonitor] Game switched from ${currentGame.name} to ${detectedName} (PID: ${gamePid})`)
+            try {
+              persistCurrentSession()
+            } catch (_) {}
+            if (robloxTrackerActive) {
+              robloxTrackerActive = false
+              stopRobloxTracker(updateRobloxDiscordActivity)
+            }
+            lastActiveRobloxExperience = null
+            stopRobloxAntiAfk()
+            if (rlServiceActive) {
+              rlServiceActive = false
+              stopRLService()
+            }
+            onGameStoppedAutoClip()
+          }
           console.log(`[ProcessMonitor] Detected game started: ${detectedName} (PID: ${gamePid}, binary: ${detectedExe})`)
           const startTime = Date.now()
           currentGame = { name: detectedName, exeName: detectedExe, startTime }
           currentGamePid = gamePid
-          setActiveGameMetrics(detectedName)
 
           // Auto-minimize on game start ONLY if explicitly configured
           if (appSettings.autoMinimizeOnGame === true) {
@@ -689,25 +874,16 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
             } catch (_) {}
           }
 
-          // Trim launcher RAM immediately so max system memory is free for the game
-          trimMemoryNow()
 
           // Start Smart Auto-Clipping event watcher for detected game
-          onGameStartedAutoClip(detectedName, appSettings)
+          onGameStartedAutoClip(detectedName)
 
-          // Start real external FPS monitor ONLY if user actually enabled the performance overlay
-          if (gamePid > 0 && appSettings.overlayPerformance) {
-            startGameFpsMonitor(gamePid)
-          }
-
-          // Update Discord RPC
-          if (appSettings.discordEnabled) {
-            setDiscordActivity(detectedName, startTime, appSettings.discordPrivacyMode, appSettings.discordActivityStyle || 'clipping', undefined, undefined, undefined, undefined, undefined, appSettings.discordRpcAnimatedText ?? false)
-          }
 
           // Start Roblox sub-game tracker if Roblox AND user has Discord & Roblox sub-game detection enabled
-          const allowRobloxSubGame = appSettings.discordRpcRobloxSubGame !== false
-          if (detectedName === 'Roblox') {
+          const isRoblox = isRobloxGame(detectedName, detectedExe)
+          const allowRobloxSubGame = appSettings.discordEnabled && appSettings.discordRpcRobloxSubGame !== false
+
+          if (isRoblox) {
             if (allowRobloxSubGame && !robloxTrackerActive) {
               robloxTrackerActive = true
               startRobloxTracker(updateRobloxDiscordActivity)
@@ -715,13 +891,13 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
               robloxTrackerActive = false
               stopRobloxTracker(updateRobloxDiscordActivity)
             }
-          } else if (detectedName !== 'Roblox' && robloxTrackerActive) {
+          } else if (!isRoblox && robloxTrackerActive) {
             robloxTrackerActive = false
             stopRobloxTracker(updateRobloxDiscordActivity)
           }
 
           // Roblox Anti-AFK (1-pixel micro nudge)
-          if (detectedName === 'Roblox') {
+          if (isRoblox) {
             if (appSettings.overlayRobloxAntiAfk) {
               startRobloxAntiAfk()
             } else {
@@ -731,98 +907,50 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
             stopRobloxAntiAfk()
           }
 
-          // Start RL service if Rocket League AND user has enabled it
-          if (isRL && appSettings.overlayRLHud && !rlServiceActive) {
-            rlServiceActive = true
-            startRLService((rlData) => {
-              const overlayWin = getOverlayWindow()
-              overlayWin?.webContents.send('rl:mmr-update', rlData)
-            }, (appSettings.rlPlaylist as any) || '2v2', appSettings.trnApiKey || '')
-          } else if (!appSettings.overlayRLHud && rlServiceActive) {
-            rlServiceActive = false
-            stopRLService()
-          }
-
           // Notify renderer
           mainWindow?.webContents.send('games:started', { 
             name: detectedName, 
             startTime,
-            performanceMode: appSettings.gamePerformanceMode !== false 
           })
+
+          requestMemoryRelief()
         } else if (currentGame.exeName !== detectedExe || (gamePid > 0 && currentGamePid !== gamePid)) {
           // SAME GAME, smoothly transitioned from launcher/bootstrap to main shipping binary
           console.log(`[ProcessMonitor] Game process transitioned: ${detectedName} (${currentGame.exeName} -> ${detectedExe}, PID: ${gamePid})`)
           currentGame.exeName = detectedExe
           if (gamePid > 0) currentGamePid = gamePid
-          if (gamePid > 0 && appSettings.overlayPerformance) {
-            startGameFpsMonitor(gamePid)
+
+          const isRoblox = isRobloxGame(currentGame.name, currentGame.exeName)
+          const allowRobloxSubGame = appSettings.discordEnabled && appSettings.discordRpcRobloxSubGame !== false
+          if (isRoblox && allowRobloxSubGame && !robloxTrackerActive) {
+            robloxTrackerActive = true
+            startRobloxTracker(updateRobloxDiscordActivity)
           }
         }
 
-        // Check if overlay should be visible for active game
-        const isControllerStreamOnly = !!appSettings.overlayControllerStreamOnly
-        const isControllerActive = !!(appSettings.overlayController || (isRL && appSettings.overlayRLController))
-        const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || (!isControllerStreamOnly && appSettings.overlayController) || appSettings.overlayMedia
-        const hasActiveGameOverlay = hasGeneralOverlay || (detectedName === 'Roblox' && (appSettings.overlayRobloxTimer || appSettings.overlayRobloxCps || appSettings.overlayRobloxAntiAfk)) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam || (!isControllerStreamOnly && appSettings.overlayRLController))) || isControllerActive
+        showOverlay(buildOverlayData(appSettings,currentGame,currentGamePid))
+        syncRLHud(appSettings)
+        syncDiscordPresence()
+        refreshDiscordActivity()
 
-        if (hasActiveGameOverlay) {
-          showOverlay({ 
-            name: detectedName, 
-            startTime: currentGame?.startTime || Date.now(), 
-            positions: appSettings.overlayPositions,
-            settings: {
-              performance: appSettings.overlayPerformance,
-              crosshair: appSettings.overlayCrosshair,
-              cps: appSettings.overlayCps || (detectedName === 'Roblox' && appSettings.overlayRobloxCps),
-              robloxCps: appSettings.overlayCps || (detectedName === 'Roblox' && appSettings.overlayRobloxCps),
-              robloxTimer: appSettings.overlayRobloxTimer && detectedName === 'Roblox',
-              robloxAntiAfk: appSettings.overlayRobloxAntiAfk && detectedName === 'Roblox',
-              rlHud: isRL && appSettings.overlayRLHud,
-              overlayRLSteam: isRL && appSettings.overlayRLSteam,
-              overlayController: appSettings.overlayController,
-              overlayControllerStreamOnly: appSettings.overlayControllerStreamOnly,
-              overlayRLController: (isRL && appSettings.overlayRLController) || appSettings.overlayController,
-              rlControllerSkin: appSettings.rlControllerSkin,
-              rlControllerUrl: appSettings.rlControllerUrl,
-              rlControllerScale: appSettings.rlControllerScale,
-              metrics: appSettings.overlayMetrics,
-              crosshairConfig: appSettings.crosshairConfig,
-              steamProfileUrl: appSettings.steamProfileUrl,
-              rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
-              overlayMedia: appSettings.overlayMedia,
-              overlayMediaSource: appSettings.overlayMediaSource,
-              overlayMediaAutoHide: appSettings.overlayMediaAutoHide,
-              overlayMediaVisualizer: appSettings.overlayMediaVisualizer !== false,
-            }
-          })
-        } else if (!isEditModeActive()) {
-          hideOverlay()
-        }
       } else {
         // No game active
         if (currentGame) {
           missCount++
-          // Grace period: allow 2 ticks (~4 seconds) for game processes transitioning
-          if (missCount < 2) {
+          // Protected games can briefly replace their launch process before the
+          // shipping binary appears. Preserve the same session through that handoff.
+          const launching = currentGame && NON_STEAM_GAMES.some(game => game.bootstrap?.includes(currentGame!.exeName))
+          if (missCount < (launching && Date.now() - currentGame.startTime < 90_000 ? 10 : 3)) {
             return
           }
           missCount = 0
           console.log(`[ProcessMonitor] Detected game stopped: ${currentGame.name}`)
+          const isRoblox = isRobloxGame(currentGame.name, currentGame.exeName)
+          const stoppedWasRoblox = isRoblox
+          const stoppedPid = currentGamePid
           try {
-            const elapsedMins = Math.max(1, Math.round((Date.now() - (currentGame.startTime || Date.now())) / 60000))
-            const isRoblox = currentGame.name.toLowerCase() === 'roblox'
-            addPlaytimeRecord(isRoblox ? 'roblox' : currentGame.name, currentGame.name, elapsedMins, isRoblox ? 999001 : undefined)
+            persistCurrentSession()
             if (isRoblox) {
-              try {
-                flushRobloxExperiencePlaytime()
-              } catch (_) {}
-              if (lastActiveRobloxExperience?.placeId) {
-                addPlaytimeRecord(
-                  `roblox_exp_${lastActiveRobloxExperience.placeId}`,
-                  lastActiveRobloxExperience.name || 'Roblox Experience',
-                  elapsedMins
-                )
-              }
               mainWindow?.webContents.send('roblox:playtime-updated')
             }
           } catch (e) {
@@ -856,54 +984,15 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
 
           currentGame = null
           currentGamePid = 0
-          setActiveGameMetrics(null)
           stopGameFpsMonitor()
           mainWindow?.webContents.send('games:stopped')
 
-          // Trim memory after game stops and overlay/trackers are cleared
-          trimMemoryNow()
+          // Reclaim unused data without paging out the launcher while it is reopening.
+          requestMemoryRelief()
+          syncOverlaySettingsLive()
         }
 
-        // Show overlay on desktop if Always Show is on, or if Controller overlay is enabled in normal (non-stream-only) mode
-        const isControllerStreamOnlyDesktop = !!appSettings.overlayControllerStreamOnly
-        const isControllerActiveDesktop = !!appSettings.overlayController
-        const hasGeneralOverlayDesktop = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayMedia || (!isControllerStreamOnlyDesktop && isControllerActiveDesktop)
-        const shouldShowDesktopOverlay = (appSettings.overlayGeneralAlwaysOn && hasGeneralOverlayDesktop) || (!isControllerStreamOnlyDesktop && isControllerActiveDesktop)
-
-        if (shouldShowDesktopOverlay) {
-          showOverlay({
-            name: 'Desktop',
-            startTime: Date.now(),
-            positions: appSettings.overlayPositions,
-            settings: {
-              performance: appSettings.overlayPerformance,
-              crosshair: appSettings.overlayCrosshair,
-              cps: appSettings.overlayCps,
-              overlayMedia: appSettings.overlayMedia,
-              overlayMediaSource: appSettings.overlayMediaSource,
-              overlayMediaAutoHide: appSettings.overlayMediaAutoHide,
-              overlayMediaVisualizer: appSettings.overlayMediaVisualizer !== false,
-              robloxCps: false,
-              robloxTimer: false,
-              rlHud: false,
-              overlayRLSteam: false,
-              overlayController: appSettings.overlayController,
-              overlayControllerStreamOnly: appSettings.overlayControllerStreamOnly,
-              overlayRLController: appSettings.overlayController,
-              rlControllerSkin: appSettings.rlControllerSkin,
-              rlControllerUrl: appSettings.rlControllerUrl,
-              rlControllerScale: appSettings.rlControllerScale,
-              metrics: appSettings.overlayMetrics,
-              crosshairConfig: appSettings.crosshairConfig,
-              steamProfileUrl: appSettings.steamProfileUrl,
-              rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
-            }
-          })
-        } else if (!currentGame && !isControllerActiveDesktop && !isEditModeActive()) {
-          hideOverlay()
-        }
-
-        if (!appSettings.discordEnabled && !appSettings.showIdle && !appSettings.showDownloads) {
+        if (!appSettings.discordEnabled) {
           clearDiscordActivity()
           return
         }
@@ -911,194 +1000,94 @@ export function startProcessMonitor(getMainWindow: () => BrowserWindow | null) {
         // Priority 2: Check for external downloads (Steam & Epic Games) ONLY if their client processes are running
         const isSteamRunning = runningExes.has('steam.exe')
         const isEpicRunning = runningExes.has('epicgameslauncher.exe')
+        downloadClients = { steam: isSteamRunning, epic: isEpicRunning }
         
-        // THROTTLE download checking to every 15 seconds (5 ticks of 3s) to avoid synchronous disk-read freezing
-        let activeExtDownload = null;
-        if (appSettings.showDownloads) {
-          downloadCheckTick++;
-          if (downloadCheckTick >= 5) {
-            downloadCheckTick = 0;
-            const steamDownload = isSteamRunning ? checkSteamActiveDownloads() : null
-            const epicDownload = isEpicRunning ? checkEpicActiveDownloads() : null
-            activeExtDownload = steamDownload || epicDownload
-            lastActiveDownload = activeExtDownload;
-          } else {
-            activeExtDownload = lastActiveDownload;
-          }
+        // Expire cached download activity during games; never restore an old
+        // download after a long session or after its launcher has exited.
+        if (!appSettings.showDownloads || (!isSteamRunning && !isEpicRunning)) {
+          lastActiveDownload = null; lastDownloadCheck = 0; downloadScanRevision++; steamDownloads.reset()
+        } else if (!downloadScanInProgress && Date.now() - lastDownloadCheck >= 8000) {
+          refreshExternalDownloads(isSteamRunning, isEpicRunning, generation)
         }
 
-        if (activeExtDownload && appSettings.showDownloads) {
-          // Send simplified Discord RPC
-          setDiscordDownloadActivity(activeExtDownload.name, appSettings.discordRpcAnimatedText ?? false)
-        } else if (appSettings.showIdle) {
-          // Priority 3: Idle
-          setDiscordIdleActivity(appSettings.discordRpcAnimatedText ?? false)
-        } else {
-          clearDiscordActivity()
-        }
+        syncDiscordPresence()
       }
-    })
+    } catch (error) {
+      console.warn('[ProcessMonitor] Process snapshot failed:', error)
+    } finally {
+      isProcessScanInProgress = false
+    }
+  })
   }, 3000)
 
-  // Trigger initial overlay sync immediately on startup
-  setTimeout(() => {
-    syncOverlaySettingsLive()
-  }, 1000)
+  // Always-on overlays must also start when Eclipse opens without a running game.
+  syncOverlaySettingsLive()
 }
 
 export function getCurrentDetectedGame() {
   return currentGame
 }
 
+export function getCurrentDetectedGamePid(): number {
+  return currentGamePid
+}
+
+export function stopProcessMonitor(): void {
+  downloadScanRevision++; steamDownloads.reset(); lastActiveDownload = null; downloadClients = { steam: false, epic: false }; clearTimeout(steamActivityRefreshTimer); steamActivityRefreshTimer = undefined
+  monitorGeneration++
+  if (monitorInterval) clearInterval(monitorInterval)
+  monitorInterval = null
+  resetCurrentDetectedGame()
+  previousRunningExes.clear()
+}
+
 export function resetCurrentDetectedGame() {
   if (currentGame) {
     console.log(`[ProcessMonitor] Manually resetting detected game: ${currentGame.name}`)
     try {
-      const elapsedMins = Math.max(1, Math.round((Date.now() - (currentGame.startTime || Date.now())) / 60000))
-      addPlaytimeRecord(currentGame.name, currentGame.name, elapsedMins)
+      persistCurrentSession()
     } catch {}
     if (rlServiceActive) {
       rlServiceActive = false
       stopRLService()
     }
+    if (robloxTrackerActive) {
+      robloxTrackerActive = false
+      stopRobloxTracker(updateRobloxDiscordActivity)
+    }
+    lastActiveRobloxExperience = null
+    stopRobloxAntiAfk()
+    stopGameFpsMonitor()
+    onGameStoppedAutoClip()
     currentGame = null
+    currentGamePid = 0
+    missCount = 0
     hideOverlay()
+    syncDiscordPresence()
   }
 }
 
-export function syncOverlaySettingsLive() {
-  invalidateSettingsCache()
-  const appSettings = getAppSettings()
-  const overlayWin = getOverlayWindow()
-  const isRL = currentGame?.name === 'Rocket League'
-  const hasGeneralOverlay = appSettings.overlayPerformance || appSettings.overlayCrosshair || appSettings.overlayCps || appSettings.overlayController || appSettings.overlayMedia
-
-  const overlaySettings = {
-    performance: appSettings.overlayPerformance,
-    crosshair: appSettings.overlayCrosshair,
-    cps: appSettings.overlayCps || (currentGame?.name === 'Roblox' && appSettings.overlayRobloxCps),
-    overlayMedia: appSettings.overlayMedia,
-    overlayMediaSource: appSettings.overlayMediaSource,
-    overlayMediaAutoHide: appSettings.overlayMediaAutoHide,
-    overlayMediaVisualizer: appSettings.overlayMediaVisualizer !== false,
-    robloxCps: appSettings.overlayCps || (currentGame?.name === 'Roblox' && appSettings.overlayRobloxCps),
-    robloxTimer: appSettings.overlayRobloxTimer && currentGame?.name === 'Roblox',
-    robloxAntiAfk: appSettings.overlayRobloxAntiAfk && currentGame?.name === 'Roblox',
-    rlHud: isRL && appSettings.overlayRLHud,
-    overlayRLSteam: isRL && appSettings.overlayRLSteam,
-    overlayController: appSettings.overlayController,
-    overlayRLController: (isRL && appSettings.overlayRLController) || appSettings.overlayController,
-    rlControllerSkin: appSettings.rlControllerSkin,
-    rlControllerUrl: appSettings.rlControllerUrl,
-    rlControllerScale: appSettings.rlControllerScale,
-    metrics: appSettings.overlayMetrics,
-    crosshairConfig: appSettings.crosshairConfig,
-    steamProfileUrl: appSettings.steamProfileUrl,
-    rlSteamAvatarScale: appSettings.rlSteamAvatarScale,
+export function syncOverlaySettingsLive(explicitSettings?: any) {
+  if (explicitSettings) {
+    updateSettingsInMemory(explicitSettings)
   }
+  const appSettings = explicitSettings
+    ? { ...getAppSettings(), ...explicitSettings }
+    : getAppSettings()
 
-  // Live toggle Roblox Anti-AFK protection
-  if (currentGame?.name === 'Roblox') {
-    if (appSettings.overlayRobloxAntiAfk) {
-      startRobloxAntiAfk()
-    } else {
-      stopRobloxAntiAfk()
-    }
+  if (isRobloxGame(currentGame?.name,currentGame?.exeName)) {
+    if (appSettings.overlayRobloxAntiAfk) startRobloxAntiAfk()
+    else stopRobloxAntiAfk()
   }
+  showOverlay(buildOverlayData(appSettings,currentGame,currentGamePid))
+  syncRLHud(appSettings)
 
-  // If overlay window is already open (e.g. edit mode or running), immediately push live settings
-  if (overlayWin && !overlayWin.isDestroyed()) {
-    overlayWin.webContents.send('overlay:update', {
-      name: currentGame?.name || 'Desktop',
-      startTime: currentGame?.startTime || Date.now(),
-      positions: appSettings.overlayPositions,
-      settings: overlaySettings,
-    })
+  const trackRoblox = !!currentGame && isRobloxGame(currentGame.name, currentGame.exeName) && appSettings.discordRpcRobloxSubGame !== false && appSettings.discordEnabled
+  if (trackRoblox && !robloxTrackerActive) { robloxTrackerActive = true; startRobloxTracker(updateRobloxDiscordActivity) }
+  else if (!trackRoblox && robloxTrackerActive) {
+    robloxTrackerActive = false
+    stopRobloxTracker(updateRobloxDiscordActivity)
+    lastActiveRobloxExperience = null
   }
-
-  if (currentGame) {
-    const shouldShow = hasGeneralOverlay || (currentGame.name === 'Roblox' && (appSettings.overlayRobloxTimer || appSettings.overlayRobloxCps || appSettings.overlayRobloxAntiAfk)) || (isRL && (appSettings.overlayRLHud || appSettings.overlayRLSteam || appSettings.overlayRLController))
-
-    if (shouldShow) {
-      showOverlay({
-        name: currentGame.name,
-        startTime: currentGame.startTime || Date.now(),
-        positions: appSettings.overlayPositions,
-        settings: overlaySettings,
-      })
-    } else if (!isEditModeActive()) {
-      hideOverlay()
-    }
-  } else {
-    if (appSettings.overlayGeneralAlwaysOn && hasGeneralOverlay) {
-      showOverlay({
-        name: 'Desktop',
-        startTime: Date.now(),
-        positions: appSettings.overlayPositions,
-        settings: overlaySettings,
-      })
-    } else if (!isEditModeActive()) {
-      hideOverlay()
-    }
-  }
-
-  // Live Discord Activity refresh on settings change (e.g. toggled between Playing and Clipping or Roblox SubGame toggle)
-  if (currentGame) {
-    if (appSettings.discordEnabled) {
-      if (currentGame.name === 'Roblox') {
-        const { startRobloxTracker, stopRobloxTracker } = require('./robloxService')
-        const allowSubGame = appSettings.discordRpcRobloxSubGame !== false
-
-        if (allowSubGame) {
-          if (!robloxTrackerActive) {
-            robloxTrackerActive = true
-            startRobloxTracker(updateRobloxDiscordActivity)
-          }
-        } else {
-          if (robloxTrackerActive) {
-            robloxTrackerActive = false
-            stopRobloxTracker(updateRobloxDiscordActivity)
-          }
-          setDiscordActivity(
-            'Roblox',
-            currentGame.startTime,
-            appSettings.discordPrivacyMode,
-            appSettings.discordActivityStyle || 'clipping',
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            appSettings.discordRpcAnimatedText ?? false
-          )
-        }
-      } else {
-        setDiscordActivity(
-          currentGame.name,
-          currentGame.startTime,
-          appSettings.discordPrivacyMode,
-          appSettings.discordActivityStyle || 'clipping',
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          appSettings.discordRpcAnimatedText ?? false
-        )
-      }
-    } else if (appSettings.showIdle) {
-      setDiscordIdleActivity(appSettings.discordRpcAnimatedText ?? false)
-    } else {
-      clearDiscordActivity()
-    }
-  } else {
-    // If no game is running, immediately update Idle activity state
-    if (appSettings.showIdle) {
-      setDiscordIdleActivity(appSettings.discordRpcAnimatedText ?? false)
-    } else {
-      clearDiscordActivity()
-    }
-  }
+  syncDiscordPresence()
 }
-
-
